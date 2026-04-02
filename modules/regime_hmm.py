@@ -64,21 +64,29 @@ class RegimeHMM:
         print(f"HMM Model saved to {self.model_path}")
         return True
 
-    def predict_regime(self, ticker="^NSEI"):
+    def predict_regime(self, ticker="^NSEI", target_date=None):
         """
-        Predicts the current regime for the index.
+        Predicts the current regime for the index at a specific target_date.
+        If target_date is None, uses datetime.now().
         Returns: String (BULLISH, BEARISH, VOLATILE)
         """
         if not self.model:
             # Try to train if model missing
             if not self.train(ticker):
-                return "SIDEWAYS" # Default fallback
+                return "VOLATILE" # Default fallback
         
-        # Fetch last 30 days to get current state
-        start = (datetime.now() - timedelta(days=60)).strftime("%Y-%m-%d")
-        data = yf.download(ticker, start=start, progress=False)
+        # Determine the time window
+        if target_date is None:
+            target_dt = datetime.now()
+        else:
+            target_dt = pd.to_datetime(target_date)
+            
+        # Fetch trailing 60 days to get state sequence
+        start_dt = target_dt - timedelta(days=90)
+        data = yf.download(ticker, start=start_dt.strftime("%Y-%m-%d"), end=target_dt.strftime("%Y-%m-%d"), progress=False)
+        
         if data.empty:
-            return "SIDEWAYS"
+            return "VOLATILE"
             
         if isinstance(data.columns, pd.MultiIndex):
             close = data[('Close', ticker)]
@@ -86,6 +94,9 @@ class RegimeHMM:
             close = data['Close']
             
         returns = np.log(close / close.shift(1)).dropna()
+        if len(returns) < 10:
+            return "VOLATILE"
+            
         X = returns.values.reshape(-1, 1)
         
         # Predict hidden states for the sequence
@@ -93,7 +104,6 @@ class RegimeHMM:
         current_state = hidden_states[-1]
         
         # Map hidden states to human labels
-        # We identify states by their mean (return) and variance (volatility)
         return self._map_state_to_regime(current_state)
 
     def _map_state_to_regime(self, state_idx):

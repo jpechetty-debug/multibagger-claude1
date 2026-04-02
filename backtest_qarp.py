@@ -18,6 +18,7 @@ from ticker_list import TICKERS
 from db.repository import get_connection
 from modules.scoring import calculate_institutional_score
 from modules.fundamentals import calculate_piotroski_f_score
+from modules.regime_hmm import RegimeHMM
 
 # Disable emojis for Windows terminal stability
 console = Console(force_terminal=True, emoji=False)
@@ -121,6 +122,7 @@ def run_backtest(years=3, universe_size=50):
     portfolio_value = 100.0
     history = []
     ticker_cache = {}
+    hmm = RegimeHMM()
     test_universe = list(TICKERS[:universe_size])
     if os.path.exists("delisted_candidates.txt"):
         with open("delisted_candidates.txt", "r") as f:
@@ -178,8 +180,52 @@ def run_backtest(years=3, universe_size=50):
                 bnch_ret = (float(bnch_data['Close'].iloc[-1]) - float(bnch_data['Close'].iloc[0])) / float(bnch_data['Close'].iloc[0])
             except:
                 bnch_ret = 0.0
-            portfolio_value *= (1 + avg_ret)
-            history.append({"date": reb_date.date(), "portfolio_value": portfolio_value, "period_ret": avg_ret * 100, "benchmark_ret": float(bnch_ret) * 100, "picks": ", ".join(top_picks['Symbol'].head(3).tolist())})
+            
+            # --- Regime-Aware Position Sizing (v4.3) ---
+            regime_hmm = hmm.predict_regime(target_date=reb_date)
+            
+            # Enhanced Trend & Volatility Filters
+            try:
+                hist_6m = yf.download("^NSEI", end=reb_date, period="6mo", progress=False)
+                if hist_6m.empty:
+                    regime, exposure = "BULLISH", 1.0
+                else:
+                    # 1. Price vs EMA Filters
+                    price_now = float(hist_6m['Close'].values.flatten()[-1])
+                    ema_200 = float(hist_6m['Close'].ewm(span=200).mean().values.flatten()[-1])
+                    ema_50 = float(hist_6m['Close'].ewm(span=50).mean().values.flatten()[-1])
+                    
+                    # 2. Volatility Spike Detection (Trailing 20 days)
+                    rets = hist_6m['Close'].pct_change().dropna()
+                    vol_now = float(rets.tail(20).std() * (252**0.5) * 100) # Annualized Vol
+                    
+                    # 3. Decision Logic
+                    if price_now < ema_200 or price_now < ema_50:
+                        regime, exposure = "BEARISH", 0.1
+                    elif vol_now > 25.0: # Volatility Spike Filter
+                        regime, exposure = "VOLATILE", 0.3
+                    elif regime_hmm == "BULLISH":
+                        regime, exposure = "BULLISH", 1.0
+                    else:
+                        regime, exposure = "VOLATILE", 0.5
+            except Exception:
+                regime, exposure = "VOLATILE", 0.5
+            
+            # Weighted Return Calculation (Cash yield assumed at 5% p.a. -> 1.25% per 3M)
+            risk_free_3m = 0.0125 
+            weighted_ret = (avg_ret * exposure) + (risk_free_3m * (1 - exposure))
+            portfolio_value *= (1 + weighted_ret)
+            
+            history.append({
+                "date": reb_date.date(), 
+                "portfolio_value": portfolio_value, 
+                "period_ret": weighted_ret * 100, 
+                "raw_stock_ret": avg_ret * 100,
+                "benchmark_ret": float(bnch_ret) * 100, 
+                "regime": regime,
+                "exposure": exposure,
+                "picks": ", ".join(top_picks['Symbol'].head(3).tolist())
+            })
             progress.advance(main_task)
 
     df_results = pd.DataFrame(history)
@@ -196,16 +242,23 @@ def run_backtest(years=3, universe_size=50):
     table.add_row("Annual Alpha", f"{m['Alpha']:+.2f}%")
     console.print(table)
     with open("qarp_backtest_report.md", "w") as f:
-        f.write("# QARP Institutional Validation Report\n\n")
+        f.write("# QARP Institutional Validation Report (v4.2 - Regime-Aware)\n\n")
         f.write(f"- Backtest Period: {start_date.date()} to {end_date.date()}\n")
+        f.write(f"- Regime Detection: Gaussian HMM (Bullish/Volatile/Bearish)\n")
+        f.write(f"- Position Sizing: Dynamic Exposure (Bull=100%, Vol=50%, Bear=10%)\n")
         f.write(f"- Slippage Modeling: Tiered (0.2% - 2.0%)\n")
-        f.write(f"- Transaction Costs: 0.2% per round-trip\n")
-        f.write(f"- Survivorship Bias: Included Delisted Candidates\n\n")
+        f.write(f"- Transaction Costs: 0.2% per round-trip\n\n")
+        
         f.write("## Performance Metrics\n")
         f.write(f"| Metric | Result |\n| :--- | :--- |\n")
-        for k, v in m.items(): f.write(f"| {k} | {v:.2f}{'%' if 'Max' in k or 'CAGR' in k or 'Alpha' in k or 'Vol' in k else ''} |\n")
-        f.write("\n## Equity Curve Breakdown\n")
-        f.write(df_results[['date', 'period_ret', 'benchmark_ret', 'picks']].to_markdown(index=False))
+        f.write(f"| CAGR | {m['CAGR']:.2f}% |\n")
+        f.write(f"| Sharpe | {m['Sharpe']:.2f} |\n")
+        f.write(f"| MaxDD | {m['MaxDD']:.2f}% |\n")
+        f.write(f"| Alpha | {m['Alpha']:+.2f}% |\n")
+        f.write(f"| IR | {m['IR']:.2f} |\n\n")
+        
+        f.write("## Equity Curve Breakdown\n")
+        f.write(df_results[['date', 'regime', 'exposure', 'period_ret', 'benchmark_ret', 'picks']].to_markdown(index=False))
 
 if __name__ == "__main__":
     import argparse
