@@ -1,119 +1,88 @@
-# 🏛️ Sovereign AI Trading Engine (v3.6 - Hardened)
+# 🏛️ Sovereign AI Trading Engine (v4.0 - Institutional Grade)
 
-An institutional-grade quantitative screening and scoring ecosystem designed for the Indian (NSE) and Global (US) markets. V3.6 focuses on architectural hardening, security-first data ingestion, and standardized API responses.
+An institutional-grade quantitative screening, scoring, and backtesting ecosystem designed for the Indian (NSE) and Global (US) markets. V4.0 introduces the **QARP Alpha Validation Suite**, a unified **Sovereign CLI**, and automated **Cold-Start Setup**.
 
 ---
 
-## 💎 Core Investment Philosophy
+## 🚀 Quick Start (Cold Start)
 
-The Sovereign Engine is built on the **"Quality at a Reasonable Price" (QARP)** principle, enhanced by **Momentum Alpha**. It filters out 99% of the market noise to find stocks exhibiting high return on capital, robust cash flows, and accelerating earnings momentum.
+To initialize the environment, database, and baseline models in a single command:
 
-## 🧠 Hardened Scoring Methodology
+```bash
+python setup.py
+```
+This script handles `.env` configuration, database schema migrations, and fetches initial benchmark data for Nifty 50 calibration.
 
-The heart of the system is the `calculate_institutional_score` function in `modules/scoring.py`. This is a dynamic, regime-aware weighting engine that adapts to market conditions.
+---
 
-### 1. Factor Normalization & Splines
-- **Sigmoid Normalization**: Every raw metric is passed through a `sigmoid-based normalization` (0-100) to prevent step-cliff biases.
-- **Smooth Graduation Splines**: Replaced binary disqualifiers with continuous splines. A stock with 15.1% ROE no longer scores 20 points higher than one with 14.9%.
-- **Deterministic Tie-Breaking**: Implemented a symbol-hash based microscopic epsilon (5-decimal precision) to ensure stable rankings for stocks with identical fundamentals.
+## 🧠 Hardened Scoring Methodology: The 8-Factor Model
 
-### 2. The 8-Factor Model
+The heart of the system is the `calculate_institutional_score` function in `modules/scoring.py`. This is a dynamic, regime-aware weighting engine that uses **Sigmoid Normalization** and **Smooth Graduation Splines** to ensure stable, bias-free rankings.
+
 | Factor | Default Weight | Why it Matters |
 | --- | --- | --- |
-| **Sales Growth** | 0.15 | Verifies top-line demand expansion. |
-| **ROE Stability** | 0.15 | Measures capital efficiency and moat strength. |
-| **Cash conversion** | 0.10 | Detects accounting red flags (CFO/PAT). |
+| **Sales Growth** | 0.15 | Verifies top-line demand expansion (5Y CAGR). |
+| **ROE Stability** | 0.15 | Measures capital efficiency and moat strength (5Y Average). |
+| **Cash conversion** | 0.10 | Detects accounting red flags (CFO/PAT > 0.8). |
 | **Valuation Gap** | 0.15 | Graham / PEG Margin of Safety. |
 | **EPS Velocity** | 0.10 | Identifies profit inflection points. |
 | **F-Score** | 0.10 | 9-Pt Piotroski business health. |
 | **Leverage** | 0.10 | Debt/Equity penalties (Sect-weighted). |
-| **Momentum** | 0.15 | Relative Strength and technical trend. |
+| **Momentum** | 0.15 | Relative Strength and 52W High proximity. |
+
+---
+
+## 📈 Alpha Validation (Backtesting)
+
+V4.0 introduces the **QARP Walk-Forward Backtester**, allowing you to validate the 8-factor thesis against historical Point-In-Time (PIT) fundamentals.
+
+```bash
+python sovereign-cli.py backtest qarp --years 3 --universe top-100
+```
+- **PIT Methodology**: Simulates historical reporting lags to eliminate look-ahead bias.
+- **Benchmark Comparison**: Automatic Alpha calculation vs. Nifty 50 (^NSEI).
+- **Report Generation**: Detailed Markdown reports with CAGR, Sharpe, and Drawdown metrics.
+
+---
+
+## 🛠️ Unified Operational CLI (`sovereign-cli.py`)
+
+The root directory has been consolidated. All specialized scripts are now accessible through a unified command structure:
+
+### 🗄️ Database (`db`)
+- `db init`: Initialize/migrate schemas.
+- `db stats`: Instant table audit and row counts.
+- `db cleanup`: Vacuum and optimize all SQLite databases.
+
+### 🔍 Universe Scanning (`scan`)
+- `scan quick`: Main high-conviction screener run.
+- `scan master`: Audit the core "Master Picks" list.
+- `scan swarm`: Trigger MiroFish Multi-Agent simulation for symbols.
+- `scan user`: Custom watch-list scanner.
+
+### 🔬 Research & ML (`research` / `ml`)
+- `ml train`: Retrain the XGBoost Meta-Model on PIT data.
+- `ml explain --symbol TICKER`: Generate SHAP values for a specific stock's score.
+- `research alpha`: Calculate historical alpha attribution.
+- `research liquidity`: Run slippage simulations for large positions.
 
 ---
 
 ## 🏗️ System Architecture
 
-The trading engine follows a decoupled, **Service-Oriented Design** for maximum scalability.
+The trading engine follows a decoupled, **Service-Oriented Design**:
 
-```mermaid
-graph TD
-    A[ticker_list.py] --> B[TaskQueueCoordinator]
-    B --> C[IngestionService]
-    B --> D[ScoringService]
-    B --> M[MonitoringService]
-    
-    C -->|Multi-Source| E[yfinance / nsepython]
-    C -->|Validate| F[Pydantic Models]
-    
-    D -->|8-Factor| G[Institutional Scoring]
-    D -->|ML| H[MLOpsService / XGBoost]
-    D -->|Swarm Validation| S[MiroFish Client Service]
-    
-    S -->|REST API| Z[(MiroFish Prediction Engine)]
-    
-    M -->|Metrics| P[(Prometheus Export)]
-    
-    F --> I[DataStoreService]
-    I --> J[(stocks.db / PostgreSQL)]
-    I --> K[(pit_store.db)]
-    
-    J --> L[FastAPI / main.py]
-    L --> N[Web UI Dashboard]
-```
-
-### Swarm Intelligence Validation (MiroFish Integration)
-Before taking a final position, high-conviction picks generated by the QARP/Momentum pipeline can be passed to our **Multi-Agent Simulation Layer**. Running `python scan_swarm.py --tickers ...` triggers a Swarm Intelligence debate via the MiroFish engine. Multiple AI agents parse contemporary news and fundamental data to battle-test the thesis, returning a finalized "Swarm Conviction Score."
+1. **Ingestion**: Multi-source data fetchers (yfinance/local) with Pydantic validation.
+2. **Scoring**: 8-Factor regime-aware engine + XGBoost Meta-Model.
+3. **Execution**: Slippage-aware order simulation with VIX-based Circuit Breakers.
+4. **Audit**: PIT DataStore ensures every historical tick is reproducible.
 
 ---
 
-## 🛡️ Hardening & Reliability (v3.6)
-
-Recent architectural improvements for production-grade stability:
-- **Parameterized SQL Foundation**: Replaced vulnerable string interpolation in background price updaters with secure parameterized queries.
-- **Refined Estimates Fallback**: Fixed critical indentation bugs in `estimates.py` ensuring self-computed estimates correctly trigger when manual analyst consensus is missing.
-- **Standardized API Responses**: API endpoints migrated to use `HTTPException` with proper status codes (404 for missing stocks, 400 for regime violations), improving client-side error handling.
-- **Database Consistency**: Implemented `sqlite3.Row` factory for all historical data fetches to prevent latent tuple-access TypeErrors.
-- **Shadowing Removal**: Gutted redundant technical indicator definitions in `screener.py` to ensure imports from `modules/technicals.py` are the single source of truth.
-
----
-
-## 📡 Observability & Monitoring
-
-The engine is now fully instrumented for production-grade observability:
-- **Prometheus Metrics**: High-resolution business metrics exposed via `/metrics`.
-- **Latency Tracking**: Every Celery task is instrumented with timers to monitor pipeline throughput and data ingestion lag.
-- **Data Quality (DQ) Guard**: Real-time tracking of fundamental data coverage and LLM thesis fallbacks.
-
----
-
-## 🛠️ Operational CLI (`sovereign-cli.py`)
-
-- `health`: Run deep-forensic checks on env, deps, and connectivity.
-- `ml-ops`: Monitor and update ML models (`--retrain`, `--update`).
-- `tune-db`: One-click optimization for all SQLite databases.
-- `db-stats`: Instant table audit and health overview.
-- `regime`: Real-time diagnostic of market regime voting.
-
----
-
-## ⚙️ Advanced Configuration (`config.py`)
-
-| Key | Default | Purpose |
-| --- | --- | --- |
-| `DATABASE_URL` | env | Dynamic DB routing (PostgreSQL/SQLite). |
-| `OLLAMA_URL` | env | Remote LLM gateway for thesis generation. |
-| `CORS_ALLOWED_ORIGINS` | env | Comma-separated trusted web origins. |
-| `MAX_SECTOR_EXPOSURE` | 0.25 | Prevents portfolio over-indexing. |
-| `HARD_KILL_SWITCH_VIX` | 35.0 | Stops execution during extreme volatility. |
-
----
-
-## 🚀 Getting Started
-
-1. **Install Dependencies**: `pip install -r requirements.txt`
-2. **Setup**: Configure `DATABASE_URL` in `.env` if using Postgres (SQLite works out of the box).
-3. **Health Check**: Run `python sovereign-cli.py health`.
-4. **Scan**: Execute `python main.py` and access the dashboard at `:9005`.
+## 🛡️ Reliability & Security
+- **Parameterized SQL**: 100% protection against injection in all DB layers.
+- **Circuit Breakers**: VIX > 35 automatic "Hard Kill" switch for production scanners.
+- **Standardized API**: FastAPI backend with `HTTPException` standardized error codes.
 
 ---
 *Institutional-grade quantitative excellence on Indian and Global markets.*
