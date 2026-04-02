@@ -110,11 +110,10 @@ The engine is now fully instrumented for production-grade observability:
 
 ## 🚀 Getting Started
 
-1. **Install Core**: `pip install -r requirements.txt`
-2. **Install Observability**: `pip install -r requirements_additions.txt` (Prometheus)
-3. **Setup**: Configure `DATABASE_URL` in `.env` if using Postgres (SQLite works out of the box).
-4. **Health Check**: Run `python sovereign-cli.py health`.
-5. **Scan**: Execute `python main.py` and access the dashboard at `:9005`.
+1. **Install Dependencies**: `pip install -r requirements.txt`
+2. **Setup**: Configure `DATABASE_URL` in `.env` if using Postgres (SQLite works out of the box).
+3. **Health Check**: Run `python sovereign-cli.py health`.
+4. **Scan**: Execute `python main.py` and access the dashboard at `:9005`.
 
 ---
 *Institutional-grade quantitative excellence on Indian and Global markets.*
