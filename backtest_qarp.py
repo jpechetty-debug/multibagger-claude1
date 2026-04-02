@@ -76,13 +76,17 @@ def get_pit_factors(symbol, target_date, cache=None):
         
         # Calculate ratios
         rev = income[latest_q].get('Total Revenue', 0)
+        dates = pd.to_datetime(income.columns)
+        prev_q = dates[1] if len(dates) > 1 else None
+        rev_prev = income[prev_q].get('Total Revenue', 0) if prev_q else 0
+        data["Sales_Growth_TTM%"] = ((rev - rev_prev) / rev_prev * 100) if rev_prev > 0 else 0
+        
         net_income = income[latest_q].get('Net Income', 0)
         equity = balance[latest_q].get('Stockholders Equity', 1)
         total_debt = balance[latest_q].get('Total Debt', 0)
         cfo = cashflow[latest_q].get('Operating Cash Flow', 0)
         
         data["ROE%"] = (net_income / equity) * 100 if equity > 0 else 0
-        data["Sales_Growth_TTM%"] = 15.0
         data["CFO_PAT_Ratio"] = cfo / net_income if net_income > 0 else 1.0
         data["Debt_Equity"] = total_debt / equity if equity > 0 else 0
         
@@ -145,8 +149,9 @@ def run_backtest(years=3, universe_size=50):
                 continue
             df_snapshot = pd.DataFrame(universe_metrics)
             top_picks = df_snapshot.nlargest(10, 'total_score')
-            if i + 1 >= len(reb_dates): break
-            next_date = reb_dates[i+1]
+            
+            # 2. Performance Phase (Forward Return + Slippage)
+            next_date = reb_dates[i+1] if i + 1 < len(reb_dates) else end_date
             period_returns = []
             for _, row in top_picks.iterrows():
                 symbol = row.get('Symbol', 'Unknown')
