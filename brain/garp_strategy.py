@@ -18,7 +18,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from brain.fundamental_filters import validate_garp_criteria
-import database
+import db.repository as database
 import asyncio
 from modules.news import get_stock_news
 

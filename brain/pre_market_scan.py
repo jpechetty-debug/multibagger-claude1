@@ -21,7 +21,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from brain.news_gate import NewsGate
 from modules.news import get_stock_news
-import database
+import db.repository as database
 
 class PreMarketScanner:
     def __init__(self):

@@ -124,7 +124,7 @@ def run_full_scan(self):
 
         if successful:
             import pandas as pd
-            from database import save_multibaggers
+            from db.repository import save_multibaggers
             df = pd.DataFrame(successful)
             save_multibaggers(df)
 
@@ -198,7 +198,7 @@ def run_backtest_refresh():
 @celery_task_timer("prune_pit_data")
 def prune_pit_data():
     try:
-        from database import prune_fundamentals_pit_retention
+        from db.repository import prune_fundamentals_pit_retention
         deleted = prune_fundamentals_pit_retention()
         return {"status": "success", "rows_pruned": deleted, "pruned_at": datetime.now().isoformat()}
     except Exception as e:

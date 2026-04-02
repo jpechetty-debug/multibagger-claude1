@@ -1,6 +1,6 @@
 import sqlite3
 
-import database
+import db.repository as database
 import numpy as np
 import pandas as pd
 import vectorbt as vbt

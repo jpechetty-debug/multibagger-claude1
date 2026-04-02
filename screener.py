@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import Dict
 from ticker_list import TICKERS
 from modules.logger import ScanLogger
-import database
+import db.repository as database
 from research.conviction_engine import calculate_conviction_score
 from modules.fundamentals import (
     calculate_piotroski_f_score, 
@@ -1730,7 +1730,7 @@ def main():
         # Save to SQLite
         # Save to SQLite
         try:
-            import database
+            import db.repository as database
             database.save_multibaggers(df)
         except Exception as e:
             import logging

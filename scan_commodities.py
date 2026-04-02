@@ -51,7 +51,7 @@ def scan_commodities():
         # Save to DB (Optional: separate table or same table?)
         # For now, saving to multibaggers table so it shows on UI
         try:
-            import database
+            import db.repository as database
             database.save_multibaggers(df)
             print(f"\n✅ Successfully saved {len(results)} commodities to database.")
         except Exception as e:

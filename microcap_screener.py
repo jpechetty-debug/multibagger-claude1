@@ -141,7 +141,7 @@ def main():
     
     # Save to SQLite (New)
     try:
-        import database
+        import db.repository as database
         database.save_microcaps(candidates)
     except ImportError:
         print("Database module not found. Skipping DB save.")

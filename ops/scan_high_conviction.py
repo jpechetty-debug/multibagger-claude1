@@ -8,7 +8,7 @@ import asyncio
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import screener
-import database
+import db.repository as database
 
 STOCKS = [
     "INDIGOPNTS.NS",

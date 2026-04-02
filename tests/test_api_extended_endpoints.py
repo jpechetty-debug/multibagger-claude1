@@ -12,7 +12,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import config
-import database as database_module
+import db.repository as database_module
 import main
 
 import modules.financials as financials_module

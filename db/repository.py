@@ -1,37 +1,28 @@
-# ──────────────────────────────────────────────────────────────────────────────
-# DATABASE LAYER — canonical raw-SQL interface
-# Connection management is delegated to db/engine.py (SQLAlchemy 2.0).
-# All callers continue to use the functions here unchanged.
-# To migrate a caller to the ORM layer, import from db.engine instead.
-# ──────────────────────────────────────────────────────────────────────────────
-import os as _os
-# Respect DATABASE_URL so both SQLite (dev) and PostgreSQL (prod) work.
-# database.py only supports SQLite paths; PostgreSQL callers must use db/engine.
-_DATABASE_URL = _os.getenv("DATABASE_URL", "")
-if _DATABASE_URL.startswith("sqlite:///"):
-    DB_NAME = _DATABASE_URL[len("sqlite:///"):]
-elif not _DATABASE_URL or _DATABASE_URL.startswith("sqlite"):
-    pass  # keep default DB_NAME below
-else:
-    import warnings as _warnings
-    _warnings.warn(
-        "DATABASE_URL is set to a non-SQLite URL but database.py only supports "
-        "SQLite. Use db/engine.py (SQLAlchemy) for PostgreSQL connections.",
-        RuntimeWarning,
-        stacklevel=1,
-    )
+# db/repository.py
+"""
+Sovereign AI Trading Engine — Database Repository Layer (v4.0)
 
+Consolidation of the legacy database.py into the modern db/ package.
+Uses SQLAlchemy engine from db/engine.py for connection management
+while preserving the pandas-based data pipeline interface.
+
+All public functions maintain identical signatures to the legacy module
+for backwards compatibility.
+"""
 import sqlite3
+import time
 import pandas as pd
 from datetime import datetime
-import time
+from db.engine import engine, IS_SQLITE, init_tables
 
-DB_NAME = "stocks.db"  # overridden above if DATABASE_URL=sqlite:///...
+# ── Constants ─────────────────────────────────────────────────────────────────
 DB_BUSY_TIMEOUT_MS = 5000
 SQLITE_WRITE_RETRIES = 5
 SQLITE_RETRY_BASE_SECONDS = 0.05
 PIT_RETENTION_DAYS = 365 * 3
 
+
+# ── Internal Utilities ────────────────────────────────────────────────────────
 
 def _normalize_as_of_date(value=None):
     """
@@ -56,12 +47,59 @@ def _normalize_as_of_date(value=None):
         return datetime.now().date().isoformat()
 
 
+def _is_sqlite_lock_error(exc: Exception) -> bool:
+    msg = str(exc).lower()
+    return "database is locked" in msg or "database table is locked" in msg
+
+
+def _run_sqlite_write_with_retry(write_fn, operation_name):
+    """Retry wrapper for SQLite write operations with exponential backoff."""
+    if not IS_SQLITE:
+        # PostgreSQL handles concurrency natively; skip retry logic
+        return write_fn()
+
+    for attempt in range(SQLITE_WRITE_RETRIES):
+        try:
+            return write_fn()
+        except Exception as exc:
+            if _is_sqlite_lock_error(exc) and attempt < SQLITE_WRITE_RETRIES - 1:
+                wait = SQLITE_RETRY_BASE_SECONDS * (2 ** attempt)
+                print(f"SQLite lock during {operation_name}; retrying in {wait:.2f}s.")
+                time.sleep(wait)
+                continue
+            raise
+
+
+# ── Connection Factory ────────────────────────────────────────────────────────
+
+def get_connection():
+    """
+    Return a raw DBAPI connection from the SQLAlchemy engine pool.
+
+    For SQLite: applies WAL mode and busy_timeout pragmas.
+    For PostgreSQL: returns a pooled psycopg connection.
+
+    Callers are responsible for closing the connection.
+    """
+    raw_conn = engine.raw_connection()
+
+    if IS_SQLITE:
+        raw_conn.execute(f"PRAGMA busy_timeout={DB_BUSY_TIMEOUT_MS}")
+        raw_conn.execute("PRAGMA journal_mode=WAL")
+
+    return raw_conn
+
+
+# ── Schema Introspection (SQLite-specific) ────────────────────────────────────
+
 def _table_columns(conn, table_name):
+    """Return set of column names for a table (SQLite PRAGMA)."""
     rows = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
     return {row[1] for row in rows}
 
 
 def _table_exists(conn, table_name):
+    """Check if a table exists (SQLite sqlite_master)."""
     row = conn.execute(
         "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
         (table_name,),
@@ -70,10 +108,13 @@ def _table_exists(conn, table_name):
 
 
 def _ensure_column(conn, table_name, column_name, column_type):
+    """Add a column if it doesn't exist (SQLite ALTER TABLE)."""
     columns = _table_columns(conn, table_name)
     if column_name not in columns:
         conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
 
+
+# ── PIT Table DDL ─────────────────────────────────────────────────────────────
 
 def _ensure_fundamentals_pit_table(conn):
     conn.execute(
@@ -114,9 +155,12 @@ def _ensure_fundamentals_pit_table(conn):
     )
 
 
+# ── Runtime Schema Migration ─────────────────────────────────────────────────
+
 def _ensure_runtime_schema():
     """
-    Ensure runtime schema is upgraded for Phase 67 point-in-time storage.
+    Ensure runtime schema is upgraded for point-in-time storage and
+    all column additions across phases.
     """
     conn = get_connection()
     try:
@@ -124,9 +168,9 @@ def _ensure_runtime_schema():
             _ensure_column(conn, "multibaggers", "as_of_date", "TEXT")
         if _table_exists(conn, "valuation_metrics"):
             _ensure_column(conn, "valuation_metrics", "as_of_date", "TEXT")
-        
-        # Phase 10: Research Layer
+
         if _table_exists(conn, "multibaggers"):
+            # Phase 10: Research Layer
             _ensure_column(conn, "multibaggers", "conviction_score", "REAL")
             _ensure_column(conn, "multibaggers", "conviction_boost", "REAL")
             _ensure_column(conn, "multibaggers", "institutional_interest", "INTEGER")
@@ -135,44 +179,39 @@ def _ensure_runtime_schema():
             _ensure_column(conn, "multibaggers", "data_quality", "REAL")
             _ensure_column(conn, "multibaggers", "data_confidence", "REAL")
             _ensure_column(conn, "multibaggers", "f_score_method", "TEXT")
-            
             # Backtest columns
             _ensure_column(conn, "multibaggers", "backtest_cagr", "REAL")
             _ensure_column(conn, "multibaggers", "backtest_win_rate", "REAL")
             _ensure_column(conn, "multibaggers", "backtest_max_dd", "REAL")
             _ensure_column(conn, "multibaggers", "backtest_sharpe", "REAL")
-            
             # Hybrid Scoring (ML) columns
             _ensure_column(conn, "multibaggers", "ml_predicted_return", "REAL")
             _ensure_column(conn, "multibaggers", "shap_breakdown", "TEXT")
-            
             # 52W Range columns
             _ensure_column(conn, "multibaggers", "high_52w", "REAL")
             _ensure_column(conn, "multibaggers", "low_52w", "REAL")
-            
             # Multibagger Hunt columns
             _ensure_column(conn, "multibaggers", "pledge_pct", "REAL")
             _ensure_column(conn, "multibaggers", "piotroski_score", "INTEGER")
-            
             # Momentum Features
             _ensure_column(conn, "multibaggers", "ret_1m", "REAL")
             _ensure_column(conn, "multibaggers", "ret_3m", "REAL")
             _ensure_column(conn, "multibaggers", "ret_6m", "REAL")
             _ensure_column(conn, "multibaggers", "vol_breakout", "REAL")
             _ensure_column(conn, "multibaggers", "dist_from_52w_high", "REAL")
-            
             # New Fundamental Scores
             _ensure_column(conn, "multibaggers", "roce", "REAL")
             _ensure_column(conn, "multibaggers", "median_pat_growth", "REAL")
-            
             # ML Rank Score
             _ensure_column(conn, "multibaggers", "ml_rank_score", "REAL")
-            
+
         _ensure_fundamentals_pit_table(conn)
         conn.commit()
     finally:
         conn.close()
 
+
+# ── PIT Snapshot Functions ────────────────────────────────────────────────────
 
 def _write_fundamentals_snapshot(df_db):
     """
@@ -193,7 +232,6 @@ def _write_fundamentals_snapshot(df_db):
             return None
         if isinstance(value, datetime):
             return value.isoformat(sep=" ", timespec="seconds")
-        # Handles pandas Timestamp without importing pandas-specific types.
         if hasattr(value, "to_pydatetime"):
             try:
                 dt_val = value.to_pydatetime()
@@ -259,14 +297,14 @@ def _write_fundamentals_snapshot(df_db):
     try:
         from modules.pit_auditor import PITDataStore
         pit_store = PITDataStore()
-        for idx, row in df_db.iterrows():
+        for _, row in df_db.iterrows():
             sym = row.get("symbol")
-            if not sym: continue
-            
+            if not sym:
+                continue
+
             source = "ScreenerLive"
-            # In live scans, the report date is when we pulled it (updated_at)
-            report_dt = str(row.get("updated_at", as_of_date)) 
-            
+            report_dt = str(row.get("updated_at", as_of_date))
+
             metrics = {
                 "score": row.get("score"),
                 "sales_cagr_5y": row.get("sales_cagr_5y"),
@@ -276,10 +314,9 @@ def _write_fundamentals_snapshot(df_db):
                 "cfo_pat_ratio": row.get("cfo_pat_ratio"),
                 "market_cap_cr": row.get("market_cap_cr")
             }
-            
+
             for m_name, m_val in metrics.items():
                 if m_val is not None:
-                    # Mathematical cast avoids DB type errors
                     pit_store.insert_record(
                         sym, m_name, float(m_val), report_dt, as_of_date, source
                     )
@@ -401,30 +438,6 @@ def load_fundamentals_universe_as_of(as_of_date=None):
     finally:
         conn.close()
 
-def get_connection():
-    conn = sqlite3.connect(DB_NAME, timeout=5, check_same_thread=False)
-    conn.execute(f"PRAGMA busy_timeout={DB_BUSY_TIMEOUT_MS}")
-    conn.execute("PRAGMA journal_mode=WAL")
-    return conn
-
-
-def _is_sqlite_lock_error(exc: Exception) -> bool:
-    msg = str(exc).lower()
-    return "database is locked" in msg or "database table is locked" in msg
-
-
-def _run_sqlite_write_with_retry(write_fn, operation_name):
-    for attempt in range(SQLITE_WRITE_RETRIES):
-        try:
-            return write_fn()
-        except sqlite3.OperationalError as exc:
-            if _is_sqlite_lock_error(exc) and attempt < SQLITE_WRITE_RETRIES - 1:
-                wait = SQLITE_RETRY_BASE_SECONDS * (2 ** attempt)
-                print(f"SQLite lock during {operation_name}; retrying in {wait:.2f}s.")
-                time.sleep(wait)
-                continue
-            raise
-
 
 def prune_fundamentals_pit_retention(keep_days=PIT_RETENTION_DAYS):
     """
@@ -463,11 +476,13 @@ def prune_fundamentals_pit_retention(keep_days=PIT_RETENTION_DAYS):
     return _run_sqlite_write_with_retry(_prune, "fundamentals_pit retention prune")
 
 
+# ── Database Initialization ──────────────────────────────────────────────────
+
 def init_db():
     """Initialize the database tables."""
     conn = get_connection()
     cursor = conn.cursor()
-    
+
     # Multibagger Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS multibaggers (
@@ -526,7 +541,8 @@ def init_db():
             CHECK(score >= 0 AND score <= 100)
         )
     ''')
-    # Institutional Auditing: Score History
+
+    # Score History
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS score_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -539,7 +555,7 @@ def init_db():
         )
     ''')
 
-    # Institutional Auditing: Factor Penalties
+    # Factor Penalties
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS factor_penalties (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -550,7 +566,8 @@ def init_db():
             FOREIGN KEY (symbol) REFERENCES multibaggers (symbol)
         )
     ''')
-    
+
+    # Valuation Metrics
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS valuation_metrics (
             symbol TEXT PRIMARY KEY,
@@ -566,7 +583,7 @@ def init_db():
             FOREIGN KEY (symbol) REFERENCES multibaggers (symbol)
         )
     ''')
-    
+
     # Microcap Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS microcaps (
@@ -584,7 +601,7 @@ def init_db():
         )
     ''')
 
-    # Phase 50: Slippage Auto-Calibration
+    # Executions
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS executions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -601,6 +618,7 @@ def init_db():
         )
     ''')
 
+    # Slippage Metrics
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS slippage_metrics (
             tier TEXT,
@@ -615,10 +633,10 @@ def init_db():
         )
     ''')
 
-    # Phase 67: Point-in-time fundamentals snapshot table.
+    # PIT table
     _ensure_fundamentals_pit_table(conn)
 
-    # Thesis Break Detection: buy_thesis table
+    # Thesis Break Detection
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS buy_thesis (
             symbol TEXT PRIMARY KEY,
@@ -633,17 +651,21 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
+
     conn.commit()
     conn.close()
     _ensure_runtime_schema()
     _backfill_fundamentals_pit_from_multibaggers()
     prune_fundamentals_pit_retention()
-    print(f"Database {DB_NAME} initialized.")
+    print("Database initialized via db/repository.py.")
+
+
+# ── Bulk Save Functions ──────────────────────────────────────────────────────
 
 def save_multibaggers(df):
     """Save Multibagger Screener results to DB."""
-    if df.empty: return
+    if df.empty:
+        return
     conn_exists = get_connection()
     try:
         has_multibaggers = _table_exists(conn_exists, "multibaggers")
@@ -659,14 +681,14 @@ def save_multibaggers(df):
         df["As_Of_Date"] = df["As_Of_Date"].apply(_normalize_as_of_date)
     else:
         df["As_Of_Date"] = _normalize_as_of_date()
-    
+
     # Select cols matching schema
     cols = [
-        "Symbol", "Price", "Sector", "Score", "F_Score", "Rating", 
-        "Buy_Below", "Stop_Loss", "Target_1", 
-        "Sales_Growth_TTM%", "ROE%", "PEG_Ratio", "Debt_Equity", 
-        "RSI", "Smart_Money%", 
-        "Market_Cap_Cr", "CFO_PAT_Ratio", "Sales_Growth_5Y%", "Avg_ROE_5Y%", 
+        "Symbol", "Price", "Sector", "Score", "F_Score", "Rating",
+        "Buy_Below", "Stop_Loss", "Target_1",
+        "Sales_Growth_TTM%", "ROE%", "PEG_Ratio", "Debt_Equity",
+        "RSI", "Smart_Money%",
+        "Market_Cap_Cr", "CFO_PAT_Ratio", "Sales_Growth_5Y%", "Avg_ROE_5Y%",
         "PE_Ratio", "Down_From_52W_High%", "RS_Rating", "Earnings_Accel", "Sector_Leader",
         "Graham_Number", "Value_Gap%", "Technical_Signal",
         "Analyst_Rating", "Analyst_Upside%",
@@ -682,20 +704,26 @@ def save_multibaggers(df):
         "ROCE_pct", "Median_PAT_Growth_5Y_pct", "ml_rank_score",
         "Ret_1M", "Ret_3M", "Ret_6M", "Vol_Breakout", "Dist_From_52W_High"
     ]
-    
+
     available_cols = [c for c in cols if c in df.columns]
     print(f"DEBUG DB: Saving {len(df)} stocks. Available cols: {available_cols}")
     df_db = df[available_cols].copy()
-    
+
     # Mapping to DB names
     mapping = {
-        "Symbol": "symbol", "Price": "price", "Sector": "sector", "Score": "score", "F_Score": "f_score", "Rating": "rating", 
-        "Buy_Below": "buy_below", "Stop_Loss": "stop_loss", "Target_1": "target_1", 
-        "Sales_Growth_TTM%": "sales_growth", "ROE%": "roe", "PEG_Ratio": "peg_ratio", "Debt_Equity": "debt_equity", 
-        "RSI": "rsi", "Smart_Money%": "smart_money", 
-        "Market_Cap_Cr": "market_cap_cr", "CFO_PAT_Ratio": "cfo_pat_ratio", "Sales_Growth_5Y%": "sales_cagr_5y", "Avg_ROE_5Y%": "avg_roe_5y", 
-        "PE_Ratio": "pe_ratio", "Down_From_52W_High%": "down_from_52w", "RS_Rating": "rs_rating", "Earnings_Accel": "earnings_accel", "Sector_Leader": "sector_leader",
-        "Graham_Number": "graham_number", "Value_Gap%": "value_gap", "Technical_Signal": "technical_signal",
+        "Symbol": "symbol", "Price": "price", "Sector": "sector", "Score": "score",
+        "F_Score": "f_score", "Rating": "rating",
+        "Buy_Below": "buy_below", "Stop_Loss": "stop_loss", "Target_1": "target_1",
+        "Sales_Growth_TTM%": "sales_growth", "ROE%": "roe", "PEG_Ratio": "peg_ratio",
+        "Debt_Equity": "debt_equity",
+        "RSI": "rsi", "Smart_Money%": "smart_money",
+        "Market_Cap_Cr": "market_cap_cr", "CFO_PAT_Ratio": "cfo_pat_ratio",
+        "Sales_Growth_5Y%": "sales_cagr_5y", "Avg_ROE_5Y%": "avg_roe_5y",
+        "PE_Ratio": "pe_ratio", "Down_From_52W_High%": "down_from_52w",
+        "RS_Rating": "rs_rating", "Earnings_Accel": "earnings_accel",
+        "Sector_Leader": "sector_leader",
+        "Graham_Number": "graham_number", "Value_Gap%": "value_gap",
+        "Technical_Signal": "technical_signal",
         "Analyst_Rating": "analyst_rating", "Analyst_Upside%": "analyst_upside",
         "Promoter_Holding%": "promoter_holding", "Inst_Holding%": "inst_holding",
         "ATR": "atr", "Stop_Loss_ATR": "stop_loss_atr", "Max_Qty_1L": "max_qty_1l",
@@ -727,17 +755,10 @@ def save_multibaggers(df):
         "Vol_Breakout": "vol_breakout",
         "Dist_From_52W_High": "dist_from_52w_high"
     }
-    
+
     df_db.rename(columns=mapping, inplace=True)
-    
-    # Preserve existing last_audited if merging is not already done above correctly (logic seems mixed)
-    # The original code acted as a full refresh, so we do need to re-attach last_audited.
-    # But wait, original code:
-    # try: existing = pd.read_sql... merge... except...
-    # df_db.to_sql(..., if_exists="replace")
-    
-    # NEW LOGIC:
-    # 1. Fetch existing 'last_audited' timestamps to preserve them
+
+    # Preserve existing last_audited timestamps
     try:
         conn_read = get_connection()
         try:
@@ -746,21 +767,16 @@ def save_multibaggers(df):
             )
         finally:
             conn_read.close()
-        # Merge to keep old audit timestamps if new data doesn't have it
         if "last_audited" not in df_db.columns:
-             df_db = df_db.merge(existing_audit, on="symbol", how="left")
+            df_db = df_db.merge(existing_audit, on="symbol", how="left")
         else:
             if df_db['last_audited'].isnull().all():
-                 df_db = df_db.drop(columns=['last_audited'])
-                 df_db = df_db.merge(existing_audit, on="symbol", how="left")
-
+                df_db = df_db.drop(columns=['last_audited'])
+                df_db = df_db.merge(existing_audit, on="symbol", how="left")
     except Exception as e:
         print(f"Warning preserving audit logs: {e}")
-        # traceback.print_exc() # Removed during strip but would be here
-    
-    print(f"DEBUG DB: Post-merge df_db columns: {df_db.columns.tolist()}")
 
-    # Phase 3: Outlier Protection Capping
+    # Outlier Protection Capping
     if "pe_ratio" in df_db.columns:
         df_db["pe_ratio"] = df_db["pe_ratio"].clip(lower=-100, upper=1000)
     if "roe" in df_db.columns:
@@ -768,28 +784,25 @@ def save_multibaggers(df):
     if "score" in df_db.columns:
         df_db["score"] = df_db["score"].clip(lower=0, upper=100)
 
-    # 2. De-duplicate input DF just in case
+    # De-duplicate
     df_db = df_db.drop_duplicates(subset=['symbol'], keep='first')
 
     def _write_all():
         conn_write = get_connection()
         try:
-            # 3. Clear only the stocks being updated to prevent duplicate PRIMARY KEY errors
-            # instead of deleting the entire table. This enables consolidation.
             cursor = conn_write.cursor()
             symbols_to_update = df_db['symbol'].tolist()
             if symbols_to_update:
                 placeholders = ', '.join(['?'] * len(symbols_to_update))
-                cursor.execute(f"DELETE FROM multibaggers WHERE symbol IN ({placeholders})", symbols_to_update)
-            
+                cursor.execute(
+                    f"DELETE FROM multibaggers WHERE symbol IN ({placeholders})",
+                    symbols_to_update
+                )
+
             conn_write.commit()
-            # 4. Append new data.
-            print(f"DEBUG DB: Writing {len(df_db)} rows to multibaggers...")
             df_db.to_sql("multibaggers", conn_write, if_exists="append", index=False)
-            print("DEBUG DB: Write successful.")
-            
-            # Phase 1: Persist Score History
-            print(f"DEBUG DB: checking score history. score in df_db: {'score' in df_db.columns}, symbol in df_db: {'symbol' in df_db.columns}")
+
+            # Persist Score History
             if "score" in df_db.columns and "symbol" in df_db.columns:
                 history_records = []
                 for _, row in df_db.iterrows():
@@ -803,27 +816,26 @@ def save_multibaggers(df):
                     INSERT INTO score_history (symbol, total_score, close_price, pe_ratio)
                     VALUES (?, ?, ?, ?)
                 ''', history_records)
-                
-            # Phase 1: Persist Factor Penalties
-            print(f"DEBUG DB: checking factor_penalties in df. factor_penalties in cols: {'factor_penalties' in df.columns}, Symbol in cols: {'Symbol' in df.columns}")
+
+            # Persist Factor Penalties
             if "factor_penalties" in df.columns and "Symbol" in df.columns:
                 import ast
                 penalty_records = []
                 for _, row in df.iterrows():
                     symbol = row["Symbol"]
                     penalties = row.get("factor_penalties", [])
-                    
+
                     if isinstance(penalties, str):
                         try:
                             penalties = ast.literal_eval(penalties)
-                        except:
+                        except Exception:
                             penalties = []
-                            
+
                     if isinstance(penalties, list):
                         for p in penalties:
                             penalty_records.append((
-                                symbol, 
-                                p.get("name"), 
+                                symbol,
+                                p.get("name"),
                                 p.get("value")
                             ))
                 if penalty_records:
@@ -831,7 +843,7 @@ def save_multibaggers(df):
                         INSERT INTO factor_penalties (symbol, penalty_name, penalty_value)
                         VALUES (?, ?, ?)
                     ''', penalty_records)
-            
+
             conn_write.commit()
         finally:
             conn_write.close()
@@ -842,23 +854,32 @@ def save_multibaggers(df):
         prune_fundamentals_pit_retention()
     except Exception as exc:
         print(f"Warning: PIT retention prune skipped: {exc}")
-    print("Saved Multibaggers to SQLite (Schema Preserved).")
+    print("Saved Multibaggers to DB (Schema Preserved).")
+
 
 def save_microcaps(df):
     """Save Microcap Screener results to DB."""
-    if df.empty: return
-    
+    if df.empty:
+        return
+
     conn = get_connection()
     df["updated_at"] = datetime.now()
-    
-    cols = ["Symbol", "Price", "Score", "MarketCap_Cr", "Sales_Growth%", "Promoter_Hol%", "Buy_Zone", "Stop_Loss", "Target_1", "Target_2", "updated_at"]
-    
+
+    cols = [
+        "Symbol", "Price", "Score", "MarketCap_Cr", "Sales_Growth%",
+        "Promoter_Hol%", "Buy_Zone", "Stop_Loss", "Target_1", "Target_2", "updated_at"
+    ]
+
     df_db = df[cols].copy()
-    df_db.columns = ["symbol", "price", "score", "market_cap", "sales_growth", "promoter_holding", "buy_zone", "stop_loss", "target_1", "target_2", "updated_at"]
-    
+    df_db.columns = [
+        "symbol", "price", "score", "market_cap", "sales_growth",
+        "promoter_holding", "buy_zone", "stop_loss", "target_1", "target_2", "updated_at"
+    ]
+
     df_db.to_sql("microcaps", conn, if_exists="replace", index=False)
     conn.close()
-    print("Saved Microcaps to SQLite.")
+    print("Saved Microcaps to DB.")
+
 
 if __name__ == "__main__":
     init_db()

@@ -36,7 +36,7 @@ def scan_specific_symbols():
         print(df[['Symbol', 'Price', 'Score', 'Rating']])
         
         # Save to DB
-        import database
+        import db.repository as database
         database.save_multibaggers(df)
         print("\n✅ Saved to database.")
     else:

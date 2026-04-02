@@ -341,10 +341,10 @@ async def get_multibaggers(as_of_date: str | None = None):
     """Fetch Top Multibagger Picks"""
     try:
         if as_of_date:
-            import database as database_module
+            from db.repository import load_fundamentals_universe_as_of
 
             def _read_as_of_records():
-                df, snapshot_date = database_module.load_fundamentals_universe_as_of(
+                df, snapshot_date = load_fundamentals_universe_as_of(
                     as_of_date
                 )
                 if df.empty:

@@ -54,7 +54,7 @@ def scan_picks():
         
         # Save to DB immediately for the user to see in UI
         try:
-            import database
+            import db.repository as database
             database.save_multibaggers(df_final)
             print("\n✅ Successfully saved to 'multibaggers' table via database.py.")
         except Exception as e:

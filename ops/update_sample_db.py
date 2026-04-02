@@ -9,7 +9,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_DIR)
 
 import screener
-import database
+import db.repository as database
 
 async def update_sample():
     symbols = ["RELIANCE.NS", "TCS.NS", "TITAN.NS"]

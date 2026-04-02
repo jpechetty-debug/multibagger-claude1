@@ -87,7 +87,7 @@ def scan_master_picks():
         
         # Save to DB
         try:
-            import database
+            import db.repository as database
             database.save_multibaggers(df)
             print(f"\n✅ Successfully saved {len(results)} stocks to database (multibaggers table).")
         except Exception as e:
