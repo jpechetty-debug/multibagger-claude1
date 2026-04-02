@@ -1,22 +1,22 @@
-# Sovereign AI Trading Engine (v4.3 - Regime-Aware)
+# Sovereign AI Trading Engine (v4.4 - Regime-Aware)
 
-An institutional-grade quantitative screening, scoring, and backtesting ecosystem for Indian (NSE) and Global (US) markets. V4.3 introduces **Regime-Aware Position Sizing** with HMM + Dual EMA + Volatility filters, delivering positive alpha through dynamic exposure management.
+An institutional-grade quantitative screening, scoring, and backtesting ecosystem for Indian (NSE) and Global (US) markets. V4.4 introduces **stabilized EMA-200** (300-day history), **concentration caps** (2-quarter max hold), and **regime-aware position sizing** with HMM + Dual EMA + Volatility filters.
 
 ---
 
-## Alpha Proof: Validated Performance (v4.3)
+## Alpha Proof: Validated Performance (v4.4)
 
-The QARP 8-factor model is now paired with a **triple-layer regime detection** system (HMM, EMA-50/200 crossover, 20-day rolling volatility). This combination dynamically scales exposure from 10% (Bear) to 100% (Bull), preserving capital during drawdowns while capturing upside.
+The QARP 8-factor model is paired with a **triple-layer regime detection** system (HMM, EMA-50/200, 20-day rolling volatility) and a **concentration cap** that forces portfolio rotation every 2 quarters. Exposure scales from 10% (Bear) to 100% (Bull).
 
-| Metric | Sovereign QARP (v4.3) | Benchmark (Nifty 50) |
+| Metric | Sovereign QARP (v4.4) | Benchmark (Nifty 50) |
 | :--- | :--- | :--- |
-| **CAGR** | **+2.43%** | -2.26% |
-| **Alpha** | **+4.69%** | - |
-| **Sharpe Ratio** | **1.18** | -0.15 |
-| **Max Drawdown** | **-1.06%** | -9.68% |
-| **Information Ratio** | **0.53** | - |
+| **CAGR** | **+3.15%** | -2.26% |
+| **Alpha** | **+5.10%** | - |
+| **Sharpe Ratio** | **1.28** | -0.15 |
+| **Max Drawdown** | **-1.02%** | -9.32% |
+| **Information Ratio** | **0.61** | - |
 
-The Feb 2026 crash (-9.68% on Nifty) was detected as BEARISH (price < EMA-50 and EMA-200), triggering 10% exposure. The quarterly loss was contained to **-1.06%** vs the benchmark's -9.68%.
+The Feb 2026 crash (-9.32% on Nifty) was contained to **-1.02%**. The concentration cap forces stock rotation, proving the model's alpha is systematic rather than single-stock dependent.
 
 ---
 

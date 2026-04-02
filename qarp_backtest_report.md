@@ -1,4 +1,4 @@
-# QARP Institutional Validation Report (v4.2 - Regime-Aware)
+# QARP Institutional Validation Report (v4.4 - Regime-Aware)
 
 - Backtest Period: 2024-04-02 to 2026-04-02
 - Regime Detection: Gaussian HMM (Bullish/Volatile/Bearish)
@@ -9,17 +9,17 @@
 ## Performance Metrics
 | Metric | Result |
 | :--- | :--- |
-| CAGR | 2.43% |
-| Sharpe | 1.18 |
-| MaxDD | -1.06% |
-| Alpha | +4.69% |
-| IR | 0.53 |
+| CAGR | 3.15% |
+| Sharpe | 1.28 |
+| MaxDD | -1.02% |
+| Alpha | +5.10% |
+| IR | 0.61 |
 
 ## Equity Curve Breakdown
 | date       | regime   |   exposure |   period_ret |   benchmark_ret | picks                       |
 |:-----------|:---------|-----------:|-------------:|----------------:|:----------------------------|
-| 2025-02-01 | BEARISH  |        0.1 |  -0.00462004 |         3.6285  | IRFC.NS, TCS.NS, POLYCAB.NS |
+| 2025-02-01 | BEARISH  |        0.1 |  -0.00462034 |         3.6285  | IRFC.NS, TCS.NS, POLYCAB.NS |
 | 2025-05-01 | BULLISH  |        1   |   1.49188    |         0.89807 | IRFC.NS                     |
-| 2025-08-01 | BEARISH  |        0.1 |   1.71603    |         4.70887 | POLYCAB.NS, IRFC.NS         |
+| 2025-08-01 | BEARISH  |        0.1 |   2.56694    |         4.70887 | POLYCAB.NS                  |
 | 2025-11-01 | BULLISH  |        1   |   0.897751   |        -1.71833 | IRFC.NS, TCS.NS             |
-| 2026-02-01 | BEARISH  |        0.1 |  -1.06416    |        -9.68336 | IRFC.NS, TCS.NS             |
+| 2026-02-01 | BEARISH  |        0.1 |  -1.02127    |        -9.31745 | IRFC.NS, TCS.NS             |

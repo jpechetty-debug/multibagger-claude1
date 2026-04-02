@@ -150,6 +150,16 @@ def run_backtest(years=3, universe_size=50):
                 progress.advance(main_task)
                 continue
             df_snapshot = pd.DataFrame(universe_metrics)
+            
+            # --- Concentration Cap: 2-Quarter Consecutive Hold Constraint (v4.4) ---
+            prev_picks = history[-1].get('picks', '').split(', ') if len(history) >= 1 else []
+            prev_prev_picks = history[-2].get('picks', '').split(', ') if len(history) >= 2 else []
+            blocked_symbols = set(prev_picks) & set(prev_prev_picks)
+            
+            # Filter out blocked symbols from this rebalance
+            if blocked_symbols:
+                df_snapshot = df_snapshot[~df_snapshot['Symbol'].isin(blocked_symbols)]
+            
             top_picks = df_snapshot.nlargest(10, 'total_score')
             
             # 2. Performance Phase (Forward Return + Slippage)
@@ -186,23 +196,27 @@ def run_backtest(years=3, universe_size=50):
             
             # Enhanced Trend & Volatility Filters
             try:
-                hist_6m = yf.download("^NSEI", end=reb_date, period="6mo", progress=False)
-                if hist_6m.empty:
+                # --- EMA Stability Filter (v4.4: 300D History) ---
+                start_300d = reb_date - timedelta(days=300)
+                hist_long = yf.download("^NSEI", start=start_300d, end=reb_date, progress=False)
+                
+                if hist_long.empty:
                     regime, exposure = "BULLISH", 1.0
                 else:
-                    # 1. Price vs EMA Filters
-                    price_now = float(hist_6m['Close'].values.flatten()[-1])
-                    ema_200 = float(hist_6m['Close'].ewm(span=200).mean().values.flatten()[-1])
-                    ema_50 = float(hist_6m['Close'].ewm(span=50).mean().values.flatten()[-1])
+                    # 1. Price vs EMA Filters (Stabilized with 300 days)
+                    price_now = float(hist_long['Close'].values.flatten()[-1])
+                    # Use all data for ewm to ensure it converges
+                    ema_200 = float(hist_long['Close'].ewm(span=200).mean().values.flatten()[-1])
+                    ema_50 = float(hist_long['Close'].ewm(span=50).mean().values.flatten()[-1])
                     
                     # 2. Volatility Spike Detection (Trailing 20 days)
-                    rets = hist_6m['Close'].pct_change().dropna()
-                    vol_now = float(rets.tail(20).std() * (252**0.5) * 100) # Annualized Vol
+                    rets = hist_long['Close'].pct_change().dropna()
+                    vol_now = float(rets.tail(20).std() * (252**0.5) * 100)
                     
                     # 3. Decision Logic
                     if price_now < ema_200 or price_now < ema_50:
                         regime, exposure = "BEARISH", 0.1
-                    elif vol_now > 25.0: # Volatility Spike Filter
+                    elif vol_now > 25.0:
                         regime, exposure = "VOLATILE", 0.3
                     elif regime_hmm == "BULLISH":
                         regime, exposure = "BULLISH", 1.0
@@ -242,7 +256,7 @@ def run_backtest(years=3, universe_size=50):
     table.add_row("Annual Alpha", f"{m['Alpha']:+.2f}%")
     console.print(table)
     with open("qarp_backtest_report.md", "w") as f:
-        f.write("# QARP Institutional Validation Report (v4.2 - Regime-Aware)\n\n")
+        f.write("# QARP Institutional Validation Report (v4.4 - Regime-Aware)\n\n")
         f.write(f"- Backtest Period: {start_date.date()} to {end_date.date()}\n")
         f.write(f"- Regime Detection: Gaussian HMM (Bullish/Volatile/Bearish)\n")
         f.write(f"- Position Sizing: Dynamic Exposure (Bull=100%, Vol=50%, Bear=10%)\n")
@@ -263,7 +277,7 @@ def run_backtest(years=3, universe_size=50):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--years", type=int, default=3)
+    parser.add_argument("--years", type=int, default=2)
     parser.add_argument("--universe", type=int, default=50)
     args = parser.parse_args()
     run_backtest(years=args.years, universe_size=args.universe)
