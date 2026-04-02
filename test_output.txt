@@ -1,0 +1,23 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-8.2.2, pluggy-1.6.0
+rootdir: D:\Tradeidesa\Multibagger-claude\Newmultibagger-main
+configfile: pytest.ini
+plugins: anyio-4.13.0, locust-2.43.3, asyncio-0.23.7, cov-5.0.0, django-4.11.1
+asyncio: mode=Mode.AUTO
+collected 11 items
+
+tests\test_api_extended_endpoints.py .......F...                         [100%]
+
+================================== FAILURES ===================================
+______________ test_quarterly_results_endpoint_success_and_error ______________
+tests\test_api_extended_endpoints.py:239: in test_quarterly_results_endpoint_success_and_error
+    quarterly_results_module, "get_quarterly_timeline", fake_quarterly_error
+E   NameError: name 'fake_quarterly_error' is not defined
+---------------------------- Captured stdout call -----------------------------
+API Request: Quarterly Timeline for INFY.NS
+Got results for INFY.NS, cleaning JSON... (took 0.00s)
+JSON cleaned and cached for INFY.NS (took 0.00s)
+Background price updater stopped.
+=========================== short test summary info ===========================
+FAILED tests/test_api_extended_endpoints.py::test_quarterly_results_endpoint_success_and_error
+======================== 1 failed, 10 passed in 2.71s =========================
