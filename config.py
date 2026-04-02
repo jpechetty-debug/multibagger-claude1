@@ -89,6 +89,10 @@ AUTO_FLAG_WHITELIST = [
     "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "SBIN.NS",
 ]
 
+# ── MiroFish Swarm Intelligence ───────────────────────────────────────────────
+USE_MIROFISH: bool = os.getenv("USE_MIROFISH", "False").lower() == "true"
+MIROFISH_URL: str = os.getenv("MIROFISH_API_URL", "http://localhost:5001/api")
+
 # ── Scoring Weights ───────────────────────────────────────────────────────────
 SCORING_WEIGHTS = {
     "balanced": {

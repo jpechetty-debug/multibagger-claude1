@@ -2,6 +2,7 @@ import os
 import time
 import requests
 import json
+import config
 from loguru import logger
 from typing import Dict, Any, Optional
 
@@ -13,9 +14,13 @@ class MiroFishClient:
 
     def __init__(self, base_url: str = None):
         if not base_url:
-            base_url = os.getenv("MIROFISH_API_URL", "http://localhost:5001/api")
+            base_url = config.MIROFISH_URL
         self.base_url = base_url.rstrip("/")
-        logger.info(f"Initialized MiroFish Client with base_url: {self.base_url}")
+        self.enabled = config.USE_MIROFISH
+        if self.enabled:
+            logger.info(f"Initialized MiroFish Client with base_url: {self.base_url}")
+        else:
+            logger.info("MiroFish Client initialized in MOCK/FALLBACK mode.")
 
     def create_project(self, name: str, description: str, document_text: str) -> Optional[Dict]:
         """
@@ -140,6 +145,9 @@ class MiroFishClient:
         If the real MiroFish server is unreachable, it falls back to a dummy response.
         """
         logger.info(f"Submitting ticker {ticker} to MiroFish for swarm analysis...")
+        if not self.enabled:
+            return f"# Local AI Thesis for {ticker}\n\n[MOCK MODE] Momentum is strong, fundamentals support the QARP thesis."
+            
         proj = self.create_project(f"{ticker} Swarm Debate", "QARP validation", context)
         if not proj:
             logger.warning("MiroFish unvailable. Using fallback heuristic.")

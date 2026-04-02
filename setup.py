@@ -58,6 +58,34 @@ def warmup_data():
     except Exception as e:
         print(f"⚠️  Benchmark warm-up failed: {e}")
 
+def seed_sample_data():
+    """Seed pit_store.db with minimal historical data for ML cold-clones."""
+    print_step(3.5, "Seeding Sample PIT Data (ML Cold-Start)")
+    try:
+        import sqlite3
+        conn = sqlite3.connect("pit_store.db")
+        cursor = conn.cursor()
+        
+        # Check if empty
+        cursor.execute("SELECT count(*) FROM multibaggers")
+        if cursor.fetchone()[0] == 0:
+            print("Seeding sample rows for RELIANCE and TCS...")
+            samples = [
+                ('RELIANCE.NS', 85.5, 20.2, 0.45, 120.5, 9, 82.1, 2400.0, '2023-12-31'),
+                ('TCS.NS', 92.1, 38.5, 0.05, 110.1, 8, 91.5, 3600.0, '2023-12-31')
+            ]
+            cursor.executemany("""
+                INSERT INTO multibaggers (symbol, score, roe, debt_equity, cfo_pat_ratio, piotroski_score, rs_rating, price, as_of_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, samples)
+            conn.commit()
+            print("✅ Seeded 2 sample records.")
+        else:
+            print("ℹ️  PIT Store already contains data. Skipping seed.")
+        conn.close()
+    except Exception as e:
+        print(f"⚠️  Data seeding failed: {e}")
+
 def initialize_ml():
     print_step(4, "ML Model Initialization")
     if os.path.exists("xgboost_meta_model.pkl"):
@@ -104,5 +132,6 @@ if __name__ == "__main__":
     setup_environment()
     setup_database()
     warmup_data()
+    seed_sample_data()
     initialize_ml()
     run_health_check()
