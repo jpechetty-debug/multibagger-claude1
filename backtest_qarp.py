@@ -160,6 +160,8 @@ def run_backtest(years=3, universe_size=50):
             if blocked_symbols:
                 df_snapshot = df_snapshot[~df_snapshot['Symbol'].isin(blocked_symbols)]
             
+            # Hard filter for zero-score data failures (v9.6)
+            df_snapshot = df_snapshot[df_snapshot['total_score'] > 5]
             top_picks = df_snapshot.nlargest(10, 'total_score')
             
             # 2. Performance Phase (Forward Return + Slippage)

@@ -6,10 +6,20 @@ export function Heartbeat() {
   const [latency, setLatency] = useState(14.2)
   
   useEffect(() => {
-    const i = setInterval(() => {
-      setLatency(12 + Math.random() * 4)
-    }, 2000)
-    return () => clearInterval(i)
+    const checkLatency = async () => {
+      const start = performance.now()
+      try {
+        await fetch('/api/health') // Ping health endpoint for latency
+        const end = performance.now()
+        setLatency(Math.round(end - start))
+      } catch (err) {
+        setLatency(0)
+      }
+    }
+
+    checkLatency()
+    const interval = setInterval(checkLatency, 5000)
+    return () => clearInterval(interval)
   }, [])
 
   return (

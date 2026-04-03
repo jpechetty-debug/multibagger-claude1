@@ -592,6 +592,7 @@ async def get_regime_status():
                 "regime": regime,
                 "vix": details.get("vix", 0),
                 "vix_threshold": 18.0,
+                "momentum_accel": details.get("momentum_accel", 0),
                 "votes": votes,
                 "is_forced": data.get("is_forced", False),
                 "details": details,

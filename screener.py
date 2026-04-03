@@ -1716,6 +1716,10 @@ def main():
             mcap_series = pd.to_numeric(df["Market_Cap_Cr"], errors="coerce").fillna(0)
             pe_series = pd.to_numeric(df["PE_Ratio"], errors="coerce").fillna(0)
             df = df[(mcap_series != 0) | (pe_series != 0)]
+        # Hard filter for zero-score data failures (v9.6)
+        if "Score" in df.columns:
+            df = df[df["Score"] > 5]
+            
         dropped_on_save = pre_save_count - len(df)
         if dropped_on_save > 0:
             print(f"Pre-save fetch-validity filter dropped {dropped_on_save} stocks. Remaining: {len(df)}")

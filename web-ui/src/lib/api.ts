@@ -5,6 +5,7 @@ export interface MarketRegimeData {
   regime: 'BULL' | 'BEAR' | 'SIDEWAYS' | 'VOLATILE'
   reason: string
   india_vix: number
+  momentum_accel: number
   breadth_ratio: number
   advance_count: number
   decline_count: number

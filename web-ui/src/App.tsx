@@ -41,7 +41,7 @@ export default function App() {
     <div className="min-h-screen bg-brand-bg text-brand-text font-sans selection:bg-brand-accent/30 selection:text-brand-accent grainy">
       <Header 
         regime={regime?.regime} 
-        acceleration={0.32} // Acceleration is 0.32 in v9.1
+        acceleration={regime?.momentum_accel ?? 0}
       />
 
       <SignalGrid 

@@ -218,6 +218,27 @@ def refresh_regime_cache():
         return {"status": "error", "message": str(e)}
 
 
+@app.task(name="worker.tasks.run_paper_trade")
+@celery_task_timer("run_paper_trade")
+def run_paper_trade():
+    try:
+        from sovereign_cli import cmd_paper_trade
+        # Create a dummy args object for the command
+        class Args:
+            pass
+        args = Args()
+        args.regime = None # Auto-detect
+        
+        result = cmd_paper_trade(args)
+        return {
+            "status": "success",
+            "executed_at": datetime.now().isoformat(),
+            "signal": result
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
 @app.task(name="worker.tasks.run_stress_test")
 @celery_task_timer("run_stress_test")
 def run_stress_test(portfolio: dict):

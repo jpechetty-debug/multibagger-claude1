@@ -8,9 +8,6 @@ interface FloorDockProps {
 export function FloorDock({ activeTab, onTabChange }: FloorDockProps) {
   const tabs = [
     { name: 'Signals', icon: LayoutGrid },
-    { name: 'Portfolio', icon: Briefcase },
-    { name: 'Alerts', icon: Bell },
-    { name: 'Terminal', icon: Settings },
   ]
 
   return (
