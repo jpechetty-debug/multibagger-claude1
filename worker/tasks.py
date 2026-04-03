@@ -229,7 +229,8 @@ def run_paper_trade():
         args = Args()
         args.regime = None # Auto-detect
         
-        result = cmd_paper_trade(args)
+        import asyncio
+        result = asyncio.run(cmd_paper_trade(args))
         return {
             "status": "success",
             "executed_at": datetime.now().isoformat(),

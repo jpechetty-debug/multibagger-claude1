@@ -72,12 +72,37 @@ async def cmd_db_cleanup(args):
     run_cleanup()
 
 async def cmd_db_dups(args):
-    """Identify and optionally clean duplicate entries."""
-    from scripts.internal.diagnose import check_duplicates # Assuming diagnose has this
-    # Fallback to the logic previously in sovereign-cli.py
+    """Identify and optionally clean duplicate entries in stocks.db."""
     print_header("Duplicate Record Forensic")
-    # ... logic from previous cli version ...
-    print("Feature coming soon: migrating logic from scripts/internal/diagnose.py")
+    import sqlite3
+    try:
+        conn = sqlite3.connect("stocks.db")
+        cursor = conn.cursor()
+        
+        # Check multibaggers table
+        cursor.execute("SELECT symbol, count(*) FROM multibaggers GROUP BY symbol HAVING count(*) > 1")
+        dups = cursor.fetchall()
+        
+        if not dups:
+            print("✅ No duplicate symbols found in 'multibaggers' table.")
+        else:
+            print(f"⚠️  Found {len(dups)} duplicate symbols in 'multibaggers':")
+            for symbol, count in dups:
+                print(f"  - {symbol:15}: {count} occurrences")
+        
+        # Check other related tables if they exist
+        for table in ['valuation_metrics', 'fundamentals_pit']:
+            try:
+                cursor.execute(f"SELECT symbol, count(*) FROM {table} GROUP BY symbol HAVING count(*) > 1")
+                t_dups = cursor.fetchall()
+                if t_dups:
+                    print(f"\n📂 Duplicate symbols in '{table}': {len(t_dups)}")
+            except sqlite3.OperationalError:
+                pass
+                
+        conn.close()
+    except Exception as e:
+        print(f"❌ Error during duplicate check: {e}")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # COMMAND: SCAN Group
@@ -186,42 +211,11 @@ async def cmd_paper_trade(args):
     print(f"📡 Scanning Universe of {len(universe)} stocks...")
 
     # 4. Fetch Fundamentals and Score
-    import yfinance as yf
-    from modules.scoring import calculate_institutional_score
-    from modules.fundamentals import calculate_piotroski_f_score
-    import json
-    import numpy as np
-
-    results = []
-    # Simplified live fundamental extractor
-    for symbol in universe:
-        try:
-            print(f"  Fetching: {symbol}", end="\r")
-            ticker = yf.Ticker(symbol)
-            info = ticker.info
-            
-            # Use TTM/Quarterly data from ticker info for speed in live scan
-            data = {
-                "Symbol": symbol,
-                "Price": info.get("currentPrice", 0),
-                "Sector": info.get("sector", "Unknown"),
-                "ROE%": info.get("returnOnEquity", 0) * 100,
-                "Sales_Growth_TTM%": info.get("revenueGrowth", 0) * 100,
-                "Debt_Equity": info.get("debtToEquity", 0) / 100 if info.get("debtToEquity") else 0,
-                "F_Score": calculate_piotroski_f_score(ticker),
-                "PE_Ratio": info.get("trailingPE", 0),
-                "Market_Cap": info.get("marketCap", 0),
-                "Down_From_52W_High%": ((info.get("fiftyTwoWeekHigh", 1) - info.get("currentPrice", 1)) / info.get("fiftyTwoWeekHigh", 1)) * 100
-            }
-            
-            score_res = calculate_institutional_score(data, market_regime=regime)
-            data['total_score'] = score_res['total_score']
-            results.append(data)
-        except Exception as e:
-            continue
-
+    # Wrapping synchronous yfinance scan in a thread to keep the event loop responsive (v9.6)
+    results = await asyncio.to_thread(_run_paper_trade_scan, universe, regime)
+    
     if not results:
-        print("❌ Failed to fetch data for scan.")
+        print("❌ Failed to fetch data for scan (Empty results or error during scan).")
         return
 
     df_snapshot = pd.DataFrame(results)
@@ -267,6 +261,44 @@ async def cmd_paper_trade(args):
     print(f"\n✅ REBALANCE SIGNAL GENERATED: {regime} (Exposure: {exposure:.0%})")
     print(f"Top Picks: {', '.join(picks[:3])}...")
     print(f"Log updated: {log_file}")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# HELPERS
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _run_paper_trade_scan(universe, regime):
+    """Synchronous core loop for paper-trade scanning. Called via asyncio.to_thread."""
+    import yfinance as yf
+    from modules.scoring import calculate_institutional_score
+    from modules.fundamentals import calculate_piotroski_f_score
+    
+    results = []
+    for symbol in universe:
+        try:
+            print(f"  Fetching: {symbol}", end="\r")
+            ticker = yf.Ticker(symbol)
+            info = ticker.info
+            
+            # Simplified for speed in live scan, mirroring backtest logic
+            data = {
+                "Symbol": symbol,
+                "Price": info.get("currentPrice", 0),
+                "Sector": info.get("sector", "Unknown"),
+                "ROE%": info.get("returnOnEquity", 0) * 100,
+                "Sales_Growth_TTM%": info.get("revenueGrowth", 0) * 100,
+                "Debt_Equity": info.get("debtToEquity", 0) / 100 if info.get("debtToEquity") else 0,
+                "F_Score": calculate_piotroski_f_score(ticker),
+                "PE_Ratio": info.get("trailingPE", 0),
+                "Market_Cap": info.get("marketCap", 0),
+                "Down_From_52W_High%": ((info.get("fiftyTwoWeekHigh", 1) - info.get("currentPrice", 1)) / info.get("fiftyTwoWeekHigh", 1)) * 100
+            }
+            
+            score_res = calculate_institutional_score(data, market_regime=regime)
+            data['total_score'] = score_res['total_score']
+            results.append(data)
+        except Exception:
+            continue
+    return results
 
 # ══════════════════════════════════════════════════════════════════════════════
 # ENTRY POINT
