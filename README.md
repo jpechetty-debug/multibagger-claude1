@@ -1,89 +1,149 @@
-# Sovereign AI Trading Engine (v11.0 - Nexus Alpha)
+# Sovereign AI Trading Engine
 
-An institutional-grade quantitative screening, scoring, and backtesting ecosystem for Indian (NSE) and Global (US) markets. **V11.0** introduces **Nexus Alpha**, a major evolution that integrates **Multi-Agent Swarm Intelligence (MiroFish)** and **Real-Time News Sentiment** as a first-class alpha generator.
+Sovereign is a quantitative screening and research platform for Indian equities. It combines a FastAPI backend, a React/Vite dashboard, point-in-time data storage, a scoring engine, CLI workflows for scans and backtests, and a standalone worker for recurring runtime jobs.
 
----
+This README is the operational entrypoint for running the project locally. For a deeper layout overview, see [ARCHITECTURE.md](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/ARCHITECTURE.md).
 
-## 📈 Alpha Proof: Validated Performance
+## What Is In The Repo
 
-The Sovereign Engine uses a **triple-layer regime detection** system combined with a 2-quarter concentration cap. **V11.0** adds a qualitative filter (Sentiment) to prune "Value Traps" that quantitative data alone might miss.
+- FastAPI API in [main.py](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/main.py)
+- Extracted route modules in [app_routes](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/app_routes)
+- Core screening, scoring, and data logic in [modules](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/modules)
+- Repository and PIT persistence code in [db](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/db)
+- Standalone background jobs in [worker](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/worker)
+- React frontend in [web-ui](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/web-ui)
+- Regression and contract tests in [tests](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/tests)
 
-| Metric | Sovereign QARP (v4.4 Backtest) | Benchmark (Nifty 50) |
-| :--- | :--- | :--- |
-| **CAGR** | **+3.15%** | -2.26% |
-| **Alpha** | **+5.10%** | - |
-| **Sharpe Ratio** | **1.28** | -0.15 |
-| **Max Drawdown** | **-1.02%** | -9.32% |
+## Canonical Entry Points
 
-> [!IMPORTANT]
-> **V11.0: Nexus Alpha & Swarm Intelligence**
-> This version introduces a **9th Factor** to the scoring model: **News Sentiment**. It also integrates the **MiroFish Multi-Agent Engine**, which initiates a real-time debate between AI agents (Fundamentalist, Technicalist, Skeptic) to validate high-conviction picks before execution.
+- Backend API: `uvicorn main:app --reload`
+- Runtime worker: `python -m worker.runtime`
+- CLI: `python sovereign_cli.py ...`
+- Frontend dev server: `cd web-ui && npm run dev`
 
----
+The repo-root [main.py](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/main.py) is the only active web application entrypoint. The `src/` tree is deprecated compatibility scaffolding and should not be used for new work.
 
-## 🖥️ Sovereign Research Terminal v3.5
+## Quick Start
 
-The frontend now provides deeper observability into the AI decision process:
-- **News Feed Integration**: Real-time headline analysis and sentiment "drift" monitoring via `/api/news`.
-- **Swarm Consensus Reports**: View full markdown reports from the MiroFish agent debates via `/api/swarm/report`.
-- **High-Fidelity Sync**: Actual network latency monitoring and system heartbeat integration.
+### Prerequisites
 
----
+- Python 3.11+
+- Node.js 18+
+- npm
 
-## 🏗️ 9-Factor Institutional Scoring (v11.0)
+### Backend Setup
 
-The heart of the system is a dynamic, regime-aware weighting engine that now correlates quant metrics with qualitative market consensus.
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+Copy-Item .env.example .env
+```
 
-- **Quality**: ROE Stability, Sales Growth (5Y CAGR), and F-Score (Piotroski).
-- **Integrity**: Cash Conversion (CFO/PAT > 0.8) and Forensic Red Flags.
-- **Value**: Sigmoid-weighted P/E Gap and PEG Margin of Safety.
-- **Momentum**: Relative Strength and 52-Week High Proximity.
-- **Nexus Alpha (New)**: **Real-Time News Sentiment**. Uses NLP (VADER) to score headlines and detect institutional "Toxic Drift" or "Breakout Bullishness."
+Notes:
+- Local development can run against SQLite without extra database setup.
+- See [.env.example](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/.env.example) for database, Redis, and risk-governor settings.
 
----
+### Start The Backend
 
-## 🐟 MiroFish Swarm Intelligence (v10.0)
+```powershell
+uvicorn main:app --reload
+```
 
-High-conviction picks are passed through a **Multi-Agent Simulation Bridge**:
-1. **Context Generation**: Real-time SQL extraction of all QARP metrics.
-2. **Agent Debate**: A swarm of specialized agents deliberates on the "Fundamental vs. Qualitative" alignment.
-3. **Consensus Report**: Generates a high-fidelity markdown thesis for every pick in the Top 10.
+The API will be available on `http://localhost:8000`.
 
----
+### Start The Runtime Worker
 
-## 🛡️ Recovery Shield (Regime Detection)
+```powershell
+python -m worker.runtime
+```
 
-Standard EMA-200 crossovers are augmented by a **Momentum-Acceleration** signal:
-1. **Trend Offset**: Price vs. 200DMA (300-day stabilized window).
-2. **Momentum Acceleration**: The **Rate of Change (ROC)** of the EMA slope.
-3. **Recovery Shield**: Rapid slope improvement (`accel > 0.5`) triggers a "Bullish Inflection" offset for BEARish signals.
+Use the worker when you want background price updates and scheduled maintenance outside the web app process.
 
----
+Optional:
 
-## 🛠️ Unified Operational CLI (`sovereign_cli.py`)
+```powershell
+python -m worker.runtime --skip-audit
+```
 
-### 📄 Signal Logging (`paper-trade`)
-- `paper-trade --universe 50`: Runs 9-factor scoring and logs signals for quarterly rebalancing.
+### Start The Frontend
 
-### 🔍 Universe Scanning (`scan`)
-- `scan quick`: Main high-conviction quantitative screener.
-- `scan swarm`: **v10.0** - Trigger MiroFish swarm intelligence for target tickers.
-- `scan swarm --deep --push`: Run a high-fidelity simulation and push conviction updates to the DB.
+```powershell
+cd web-ui
+npm install
+npm run dev
+```
 
-### 🧪 Backtesting & ML (`backtest` / `ml`)
-- `backtest qarp --rebalance quarterly`: Walk-forward simulation with institutional friction.
-- `ml explain --symbol TICKER`: Generate SHAP values to audit a stock's final score.
+The Vite dev server proxies `/api` requests to `http://localhost:8000`.
 
-### ⚙️ System Ops (`sys`)
-- `sys db dups`: Scan database for duplicate records.
-- `sys regime`: Check current market status and the v9.6+ Acceleration signal.
+## Common CLI Commands
 
----
+```powershell
+python sovereign_cli.py scan quick
+python sovereign_cli.py scan swarm --tickers INFY.NS,TCS.NS --deep
+python sovereign_cli.py sys health
+python sovereign_cli.py sys regime
+python sovereign_cli.py paper-trade --universe 50
+```
 
-## 🗄️ Persistence & Data Integrity
-- **Datastore**: SQLite (`stocks.db`) + PIT historical data (`pit_store.db`).
-- **Signal Log**: `paper_trade_signals.json` contains the verified out-of-sample data trail.
-- **Swarm Repository**: `data/swarm_reports/` stores all MiroFish consensus reports.
+CLI groups currently available:
+- `db`
+- `scan`
+- `ml`
+- `research`
+- `backtest`
+- `sys`
+- `paper-trade`
 
----
-*Professional-grade quantitative excellence on Indian and Global markets.*
+## Frontend/API Contract Notes
+
+The dashboard now relies on a normalized contract layer instead of consuming backend payloads directly:
+
+- Shared frontend-facing types live in [web-ui/src/lib/contracts.ts](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/web-ui/src/lib/contracts.ts)
+- Backend payload normalization lives in [web-ui/src/lib/api.ts](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/web-ui/src/lib/api.ts)
+- Dashboard loading, error, refresh, and empty states are handled in [web-ui/src/App.tsx](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/web-ui/src/App.tsx) and [web-ui/src/components/signals/SignalGrid.tsx](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/web-ui/src/components/signals/SignalGrid.tsx)
+
+The main frontend contract-sensitive endpoints are:
+- `/api/stocks`
+- `/api/regime_status`
+- `/api/health`
+- `/api/reports/{symbol}`
+
+## Testing
+
+Backend:
+
+```powershell
+python -m pytest -q -m "not live"
+```
+
+Frontend:
+
+```powershell
+cd web-ui
+npm test
+npm run build
+```
+
+The frontend test harness is powered by Vitest and Testing Library. The most important current UI contract tests live in:
+- [web-ui/src/lib/api.test.ts](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/web-ui/src/lib/api.test.ts)
+- [web-ui/src/App.test.tsx](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/web-ui/src/App.test.tsx)
+
+`pytest.ini` is the single source of truth for pytest behavior in this repo.
+
+## Repo Layout
+
+- [main.py](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/main.py): active FastAPI app
+- [app_routes](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/app_routes): extracted API routers and response contracts
+- [modules](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/modules): screening, scoring, data ingestion, and domain services
+- [db](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/db): schema and repository layer
+- [worker](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/worker): background runtime jobs
+- [web-ui](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/web-ui): React/Vite client
+- [tests](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/tests): regression and contract coverage
+- [src](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/src): deprecated compatibility path
+
+## Development Notes
+
+- Prefer adding new backend behavior to the active root app and extracted router/modules, not `src/`.
+- New runtime artifacts should live in ignored output locations such as `runtime/`, `logs/`, or `reports_cache/`, not as committed source files.
+- For architectural context and runtime policy, see [ARCHITECTURE.md](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/ARCHITECTURE.md).

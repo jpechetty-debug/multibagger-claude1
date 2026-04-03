@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any, Optional, Union
 import numpy as np
 import config
@@ -12,6 +13,29 @@ from modules.news_sentiment import engine as news_engine
 _Number = Union[int, float]
 _StockData = dict[str, Any]
 _SectorMedians = dict[str, dict[str, float]]
+
+
+@dataclass(frozen=True)
+class FactorState:
+    score_sales: float
+    score_roe: float
+    score_cfo: float
+    score_val: float
+    score_eps: float
+    score_fscore: float
+    score_de: float
+    score_mom_combined: float
+    score_sentiment: float
+    sg_val: float
+    roe_val: float
+    best_roe: float
+    pe: Optional[_Number]
+    peg: Optional[_Number]
+    price: float
+    atr: float
+    stock_sector: str
+    prom_hold: float
+    inst_hold: float
 
 
 def normalize_metric(
@@ -71,6 +95,684 @@ def calculate_sector_medians(results: list[_StockData]) -> _SectorMedians:
         }
     return medians
 
+
+def _resolve_mode_and_weights(market_regime: str | None) -> tuple[str, dict[str, float], str]:
+    mode = market_regime.lower() if market_regime else "balanced"
+    if mode not in config.SCORING_WEIGHTS:
+        mode = "balanced"
+    return mode, config.SCORING_WEIGHTS[mode], mode.capitalize()
+
+
+def _calculate_sentiment_factor(
+    data: _StockData,
+    weights: dict[str, float],
+) -> tuple[float, float]:
+    w_sentiment = weights.get("w_sentiment", 0.0)
+    is_backtest = data.get("backtest", False) or not data.get("Symbol")
+    if is_backtest:
+        return 50.0, 0.0
+
+    try:
+        sentiment_data = news_engine.get_alpha_signal(data.get("Symbol", ""))
+        score_sentiment = (sentiment_data["sentiment_score"] + 1.0) / 2.0 * 100.0
+    except Exception:
+        score_sentiment = 50.0
+
+    return score_sentiment, w_sentiment
+
+
+def _calculate_roe_metrics(data: _StockData) -> tuple[float, float, float]:
+    roe_5y = data.get("Avg_ROE_5Y%", 0)
+    roe_current = data.get("ROE%", 0)
+    profit_margin = data.get("Profit_Margin%", 0)
+    reported_roe = roe_5y if roe_5y != 0 else roe_current
+    if roe_5y > 0:
+        return roe_5y, reported_roe, 1.0
+    if roe_current > 0:
+        return roe_current, reported_roe, 0.85
+    if profit_margin > 0:
+        return profit_margin, reported_roe, 0.70
+    return 0.0, reported_roe, 0.0
+
+
+def _build_factor_state(data: _StockData, score_sentiment: float) -> FactorState:
+    sg_val = data.get("Sales_Growth_5Y%", 0) or data.get("Sales_Growth_TTM%", 0) or 0
+    score_sales = normalize_metric(data.get("Sales_Growth_5Y%", 0), 0, 40)
+
+    roe_val, best_roe, roe_confidence = _calculate_roe_metrics(data)
+    score_roe = normalize_metric(roe_val, 10, 30) * roe_confidence
+
+    score_cfo = normalize_metric(data.get("CFO_PAT_Ratio", 0), 0.5, 1.5)
+
+    pe = data.get("PE_Ratio")
+    peg = data.get("PEG_Ratio")
+    score_pe = normalize_metric(pe, 15, 60, invert=True) if (pe is not None and pe > 0) else 0
+    score_peg = normalize_metric(peg, 0.8, 2.5, invert=True) if (peg is not None and peg > 0) else 0
+    if score_pe > 0 and score_peg > 0:
+        score_val = (score_pe * 0.5) + (score_peg * 0.5)
+    elif score_pe > 0:
+        score_val = score_pe
+    else:
+        score_val = score_peg
+
+    score_eps = normalize_metric(data.get("EPS_Growth%", 0), 5, 30)
+
+    f_score_val = data.get("F_Score")
+    if f_score_val is None:
+        f_score_val = 0
+    score_fscore = (f_score_val / 9.0) * 100
+
+    stock_sector = data.get("Sector", "") or ""
+    if "Bank" in stock_sector or "Financial" in stock_sector:
+        score_de = 80
+    else:
+        score_de = normalize_metric(data.get("Debt_Equity", 0), 0, 1.0, invert=True)
+
+    price = data.get("Price", 0) or 0
+    atr = data.get("ATR", 0) or 0
+    down_from_high = data.get("Down_From_52W_High%", 0)
+    score_mom_tech = normalize_metric(down_from_high, 0, 40, invert=True) if price > 0 else 0
+
+    rs_rating = data.get("RS_Rating")
+    if rs_rating is None:
+        score_rs = 50
+    elif rs_rating > 1.2:
+        score_rs = 100
+    elif rs_rating > 1.0:
+        score_rs = 75
+    elif rs_rating > 0.8:
+        score_rs = 50
+    else:
+        score_rs = 25
+    score_mom_combined = (score_mom_tech * 0.5) + (score_rs * 0.5)
+
+    inst_hold = data.get("Inst_Holding%")
+    if inst_hold is None:
+        inst_hold = 0
+    prom_hold = data.get("Promoter_Holding%")
+    if prom_hold is None:
+        prom_hold = 0
+
+    return FactorState(
+        score_sales=score_sales,
+        score_roe=score_roe,
+        score_cfo=score_cfo,
+        score_val=score_val,
+        score_eps=score_eps,
+        score_fscore=score_fscore,
+        score_de=score_de,
+        score_mom_combined=score_mom_combined,
+        score_sentiment=score_sentiment,
+        sg_val=sg_val,
+        roe_val=roe_val,
+        best_roe=best_roe,
+        pe=pe,
+        peg=peg,
+        price=price,
+        atr=atr,
+        stock_sector=stock_sector,
+        prom_hold=prom_hold,
+        inst_hold=inst_hold,
+    )
+
+
+def _get_available_factors(
+    data: _StockData,
+    state: FactorState,
+    weights: dict[str, float],
+    w_sentiment: float,
+) -> list[tuple[str, float, float]]:
+    available = []
+    if data.get("Sales_Growth_5Y%", 0) != 0 or data.get("Sales_Growth_TTM%", 0) != 0:
+        available.append(("sales", state.score_sales, weights["w_sales"]))
+    if state.roe_val != 0:
+        available.append(("roe", state.score_roe, weights["w_roe"]))
+    if data.get("CFO_PAT_Ratio", 0) != 0:
+        available.append(("cfo", state.score_cfo, weights["w_cfo"]))
+    if (state.pe is not None and state.pe > 0) or (state.peg is not None and state.peg > 0):
+        available.append(("val", state.score_val, weights["w_val"]))
+    if data.get("EPS_Growth%", 0) != 0:
+        available.append(("eps", state.score_eps, weights["w_eps"]))
+    available.append(("fscore", state.score_fscore, weights["w_fscore"]))
+    available.append(("de", state.score_de, weights["w_de"]))
+    available.append(("mom", state.score_mom_combined, weights["w_mom"]))
+    available.append(("sentiment", state.score_sentiment, w_sentiment))
+    return available
+
+
+def _calculate_base_score(
+    data: _StockData,
+    state: FactorState,
+    weights: dict[str, float],
+    w_sentiment: float,
+) -> tuple[float, float]:
+    available = _get_available_factors(data, state, weights, w_sentiment)
+    data_confidence = round((len(available) / 9) * 100, 1)
+
+    if available:
+        total_available_weight = sum(weight for _, _, weight in available)
+        scale = 1.0 / total_available_weight if total_available_weight > 0 else 1.0
+        base_score = sum(score * weight * scale for _, score, weight in available)
+    else:
+        base_score = 0.0
+
+    factor_count = len(available)
+    if factor_count < 6:
+        data_multiplier = max(0.1, min(1.0, (factor_count / 6.0) ** 1.5))
+        base_score *= data_multiplier
+
+    base_score += data.get("Estimate_Score_Adj", 0)
+    return base_score, data_confidence
+
+
+def _apply_sector_relative_adjustment(
+    base_score: float,
+    state: FactorState,
+    sector_medians: Optional[_SectorMedians],
+) -> float:
+    if not sector_medians or state.stock_sector not in sector_medians:
+        return base_score
+
+    sm = sector_medians[state.stock_sector]
+    sector_rel_bonus = 0
+    if state.best_roe > sm["median_roe"] * 1.2:
+        sector_rel_bonus += 3
+    elif state.best_roe > 0 and state.best_roe < sm["median_roe"] * 0.5:
+        sector_rel_bonus -= 5
+
+    if state.sg_val > sm["median_growth"] * 1.2:
+        sector_rel_bonus += 3
+    elif state.sg_val > 0 and state.sg_val < sm["median_growth"] * 0.5:
+        sector_rel_bonus -= 5
+
+    sector_rel_bonus = max(-10, min(6, sector_rel_bonus))
+    return base_score + sector_rel_bonus
+
+
+def _calculate_bonus_total(data: _StockData, state: FactorState, sector_boost: _Number) -> float:
+    total_bonus = 0
+    inflection_score = data.get("Earnings_Inflection_Score")
+    if inflection_score is None:
+        inflection_score = 0
+    if inflection_score >= 4:
+        total_bonus += 8
+    elif inflection_score >= 3:
+        total_bonus += 5
+    elif inflection_score >= 2:
+        total_bonus += 3
+    elif data.get("Earnings_Accel"):
+        total_bonus += 2
+
+    total_bonus += sector_boost
+
+    value_gap = data.get("Value_Gap%", 0)
+    if value_gap > 50:
+        total_bonus += 10
+    elif value_gap > 20:
+        total_bonus += 5
+
+    f_score_check = data.get("F_Score")
+    if f_score_check is not None and f_score_check >= 8:
+        total_bonus += 5
+
+    if data.get("Technical_Signal") == "Bullish":
+        total_bonus += 5
+
+    rating = str(data.get("Analyst_Rating") or "").lower()
+    upside = data.get("Analyst_Upside%")
+    if upside is None:
+        upside = 0
+    if "strong buy" in rating:
+        total_bonus += 5
+    elif "buy" in rating:
+        total_bonus += 2
+    if upside > 20:
+        total_bonus += 5
+
+    if state.inst_hold > 20:
+        total_bonus += 5
+    elif state.inst_hold > 10:
+        total_bonus += 2
+    if state.prom_hold > 60:
+        total_bonus += 3
+
+    if state.price > 0:
+        atr_pct = state.atr / state.price
+        if atr_pct < 0.03:
+            total_bonus += 2
+
+    if state.pe is not None and 0 < state.pe < 12 and data.get("Avg_ROE_5Y%", 0) > 25:
+        total_bonus += 7
+    if state.pe is not None and 0 < state.pe < 7 and data.get("Avg_ROE_5Y%", 0) > 15:
+        total_bonus += 7
+
+    if "Utility" in state.stock_sector or "Energy" in state.stock_sector or "Power" in state.stock_sector:
+        de_check = data.get("Debt_Equity")
+        fs_check = data.get("F_Score")
+        if (de_check is not None and de_check > 1.0) and (fs_check is not None and fs_check >= 6):
+            total_bonus += 5
+
+    return min(total_bonus, 15)
+
+
+def _apply_penalty_rules(
+    base_score: float,
+    data: _StockData,
+    state: FactorState,
+    factor_audit: list[dict[str, float]],
+) -> float:
+    total_penalty = 0
+
+    if state.price > 0:
+        atr_pct = state.atr / state.price
+        if atr_pct > 0.07:
+            total_penalty += 2
+            factor_audit.append({"name": "High Volatility", "value": -2})
+        if atr_pct > 0.10:
+            total_penalty += 5
+            factor_audit.append({"name": "Extreme Volatility", "value": -5})
+
+    sales_5y = data.get("Sales_Growth_5Y%", 0)
+    sales_ttm = data.get("Sales_Growth_TTM%", 0)
+    if sales_5y < 0 and sales_ttm < 0:
+        total_penalty += 5
+        factor_audit.append({"name": "Declining Revenue (Long & Short)", "value": -5})
+    elif sales_5y < 0 or sales_ttm < 0:
+        total_penalty += 3
+        factor_audit.append({"name": "Declining Revenue (Partial)", "value": -3})
+
+    if state.pe is not None and state.pe > 80:
+        total_penalty += 5
+        factor_audit.append({"name": "Extreme Overvaluation", "value": -5})
+    elif state.pe is not None and state.pe > 60:
+        total_penalty += 3
+        factor_audit.append({"name": "High Overvaluation", "value": -3})
+
+    if state.prom_hold > 0 and state.prom_hold < 20:
+        total_penalty += 5
+        factor_audit.append({"name": "Low Promoter Holding (<20%)", "value": -5})
+    elif state.prom_hold > 0 and state.prom_hold < 30:
+        total_penalty += 2
+        factor_audit.append({"name": "Low Promoter Holding (<30%)", "value": -2})
+
+    return base_score - total_penalty
+
+
+def _apply_checklist_gate(
+    data: _StockData,
+    state: FactorState,
+    base_score: float,
+    score_ceiling: float,
+    disqualifiers: list[str],
+) -> tuple[int, int, float, float]:
+    checklist_pass = 0
+    checklist_total = 12
+
+    mcap_cr = data.get("Market_Cap_Cr")
+    if mcap_cr is not None and mcap_cr > 1000:
+        checklist_pass += 1
+    if state.pe is not None and 0 < state.pe < 25:
+        checklist_pass += 1
+    if state.best_roe > 17:
+        checklist_pass += 1
+    de_val = data.get("Debt_Equity")
+    if de_val is not None and 0 <= de_val < 1.0:
+        checklist_pass += 1
+    if data.get("CFO_PAT_Ratio", 0) > 1.0:
+        checklist_pass += 1
+    down_pct = data.get("Down_From_52W_High%", -1)
+    if 0 <= down_pct < 25:
+        checklist_pass += 1
+    sg = data.get("Sales_Growth_5Y%", 0) or data.get("Sales_Growth_TTM%", 0)
+    if sg > 15:
+        checklist_pass += 1
+    eps_g = data.get("EPS_Growth%", 0)
+    if eps_g > 0:
+        checklist_pass += 1
+    if state.prom_hold > 50:
+        checklist_pass += 1
+    f_val_check = data.get("F_Score")
+    if f_val_check is not None and f_val_check >= 6:
+        checklist_pass += 1
+    if sg > 10 and eps_g > 10:
+        checklist_pass += 1
+    value_gap = data.get("Value_Gap%", 0)
+    if value_gap > 0 or (state.pe is not None and 0 < state.pe < 20):
+        checklist_pass += 1
+
+    if checklist_pass >= 11:
+        base_score += 5
+
+    if checklist_pass >= 9:
+        checklist_penalty = (12 - checklist_pass) * 0.66
+        current_ceiling = 80 + (checklist_pass - 9) * (20 / 3.0)
+    else:
+        checklist_penalty = 2.0 + ((9 - checklist_pass) / 9.0 * 18.0)
+        current_ceiling = 40 + (checklist_pass / 9.0 * 40.0)
+
+    base_score -= checklist_penalty
+    score_ceiling = min(score_ceiling, current_ceiling)
+
+    if checklist_pass < 9:
+        disqualifiers.append(f"Institutional Quality Gate {checklist_pass}/{checklist_total}")
+
+    return checklist_pass, checklist_total, base_score, score_ceiling
+
+
+def _build_conviction_input(data: _StockData) -> _StockData:
+    return {
+        "symbol": data.get("Symbol", ""),
+        "sales_growth": data.get("Sales_Growth_5Y%", 0),
+        "profit_growth": data.get("EPS_Growth%", 0),
+        "roce": data.get("Avg_ROE_5Y%", 0),
+        "debt_to_equity": data.get("Debt_Equity", 0),
+        "promoter_holding": data.get("Promoter_Holding%", 0),
+        "pledge": 0,
+    }
+
+
+def _apply_spline_cap(
+    val: Optional[_Number],
+    full_score_val: _Number,
+    max_penalty_val: _Number,
+    min_cap: _Number,
+    name: str,
+    score_ceiling: float,
+    disqualifiers: list[str],
+) -> float:
+    if val is None or not np.isfinite(val):
+        return score_ceiling
+
+    cap = 100.0
+    if full_score_val > max_penalty_val:
+        if val <= max_penalty_val:
+            cap = min_cap
+        elif val < full_score_val:
+            ratio = (full_score_val - val) / float(full_score_val - max_penalty_val)
+            cap = 100.0 - (ratio ** 1.5) * (100.0 - min_cap)
+    else:
+        if val >= max_penalty_val:
+            cap = min_cap
+        elif val > full_score_val:
+            ratio = (val - full_score_val) / float(max_penalty_val - full_score_val)
+            cap = 100.0 - (ratio ** 1.5) * (100.0 - min_cap)
+
+    if cap < 96:
+        score_ceiling = min(score_ceiling, cap)
+        disqualifiers.append(f"{name} ({val:.1f})")
+
+    return score_ceiling
+
+
+def _apply_score_ceiling_rules(
+    data: _StockData,
+    state: FactorState,
+) -> tuple[float, list[str]]:
+    score_ceiling = 100.0
+    disqualifiers: list[str] = []
+
+    score_ceiling = _apply_spline_cap(
+        state.best_roe,
+        15.0,
+        0.0,
+        60,
+        "ROE Decay Spline",
+        score_ceiling,
+        disqualifiers,
+    )
+    if state.best_roe < 0:
+        score_ceiling = _apply_spline_cap(
+            state.best_roe,
+            0.0,
+            -15.0,
+            40,
+            "Value Destruction Spline",
+            score_ceiling,
+            disqualifiers,
+        )
+
+    if state.sg_val is not None:
+        score_ceiling = _apply_spline_cap(
+            state.sg_val,
+            10.0,
+            -5.0,
+            60,
+            "Growth Decay Spline",
+            score_ceiling,
+            disqualifiers,
+        )
+        if state.sg_val < -5:
+            score_ceiling = _apply_spline_cap(
+                state.sg_val,
+                -5.0,
+                -25.0,
+                40,
+                "Declining Revenue Spline",
+                score_ceiling,
+                disqualifiers,
+            )
+
+    if state.best_roe > 100:
+        score_ceiling = _apply_spline_cap(
+            state.best_roe,
+            100.0,
+            250.0,
+            45,
+            "Anomalous ROE Risk",
+            score_ceiling,
+            disqualifiers,
+        )
+
+    profit_margin = data.get("Profit_Margin%", 0)
+    if profit_margin is not None:
+        score_ceiling = _apply_spline_cap(
+            profit_margin,
+            10.0,
+            -5.0,
+            60,
+            "Margin Decay Spline",
+            score_ceiling,
+            disqualifiers,
+        )
+
+    f_score_val = data.get("F_Score")
+    if f_score_val is None:
+        f_score_val = 0
+    if f_score_val <= 4:
+        score_ceiling = min(score_ceiling, 65 + (f_score_val * 5.9))
+        disqualifiers.append(f"Quality Floor Spline (F:{f_score_val})")
+
+    value_gap = data.get("Value_Gap%", 0)
+    if value_gap < 0:
+        score_ceiling = _apply_spline_cap(
+            value_gap,
+            0.0,
+            -70.0,
+            65,
+            "Overvaluation Spline",
+            score_ceiling,
+            disqualifiers,
+        )
+
+    cfo_pat = data.get("CFO_PAT_Ratio", 0)
+    if cfo_pat is not None:
+        score_ceiling = _apply_spline_cap(
+            cfo_pat,
+            0.8,
+            0.0,
+            60,
+            "Cash Quality Spline",
+            score_ceiling,
+            disqualifiers,
+        )
+
+    if state.prom_hold > 0 and state.inst_hold < 10:
+        score_ceiling = _apply_spline_cap(
+            state.prom_hold,
+            30.0,
+            10.0,
+            65,
+            "Anchor Investor Spline",
+            score_ceiling,
+            disqualifiers,
+        )
+
+    eps_check = data.get("EPS_Growth%", 0)
+    if eps_check is not None:
+        score_ceiling = _apply_spline_cap(
+            eps_check,
+            10.0,
+            -10.0,
+            65,
+            "EPS Decay Spline",
+            score_ceiling,
+            disqualifiers,
+        )
+
+    factor_scores = [
+        state.score_sales,
+        state.score_roe,
+        state.score_cfo,
+        state.score_val,
+        state.score_eps,
+        state.score_fscore,
+        state.score_de,
+        state.score_mom_combined,
+    ]
+    avg_quality = sum(factor_scores) / len(factor_scores)
+    score_ceiling = _apply_spline_cap(
+        avg_quality,
+        50.0,
+        30.0,
+        55,
+        "Lopsided Profile Spline",
+        score_ceiling,
+        disqualifiers,
+    )
+
+    cyclical_sectors = {"Energy", "Basic Materials", "Utilities"}
+    if (
+        state.stock_sector in cyclical_sectors
+        and state.best_roe > 0
+        and state.pe is not None
+        and state.pe > 0
+    ):
+        cycle_risk = state.best_roe / state.pe
+        score_ceiling = _apply_spline_cap(
+            cycle_risk,
+            2.0,
+            5.0,
+            65,
+            "Cyclical Peak Spline",
+            score_ceiling,
+            disqualifiers,
+        )
+
+    return score_ceiling, disqualifiers
+
+
+def _apply_optional_intel_adjustments(
+    data: _StockData,
+    factor_audit: list[dict[str, float]],
+    score_ceiling: float,
+    disqualifiers: list[str],
+) -> tuple[float, float, float, list[str]]:
+    total_bonus = 0.0
+    total_penalty = 0.0
+    symbol = data.get("Symbol", "")
+
+    try:
+        promoter_result = calculate_promoter_score(symbol) or {}
+        if promoter_result.get("is_disqualified"):
+            score_ceiling = min(score_ceiling, 60)
+            disqualifiers.append("D15: Heavy Insider Sell-Off")
+            factor_audit.append({"name": "D15: Heavy Insider Sell-Off", "value": -40})
+
+        promoter_adjustment = promoter_result.get("score_adjustment", 0)
+        if promoter_adjustment > 0:
+            total_bonus += promoter_adjustment
+            factor_audit.append(
+                {"name": "Promoter Buying Boost", "value": promoter_adjustment}
+            )
+        elif promoter_adjustment < 0:
+            total_penalty += abs(promoter_adjustment)
+            factor_audit.append(
+                {"name": "Promoter Selling Penalty", "value": promoter_adjustment}
+            )
+    except Exception:
+        pass
+
+    try:
+        estimate_result = get_estimate_data(symbol) or {}
+        estimate_momentum = estimate_result.get("momentum", {})
+        if estimate_momentum.get("is_disqualified"):
+            score_ceiling = min(score_ceiling, 55)
+            disqualifiers.append("D16: Estimate Collapse (3Q consecutive downgrades)")
+            factor_audit.append({"name": "D16: Estimate Collapse", "value": -45})
+
+        estimate_cap = estimate_momentum.get("score_cap")
+        if estimate_cap is not None:
+            score_ceiling = min(score_ceiling, estimate_cap)
+            disqualifiers.append(f"Earnings Miss Streak (cap {estimate_cap})")
+            factor_audit.append(
+                {"name": "Earnings Miss Streak", "value": -(100 - estimate_cap)}
+            )
+
+        estimate_adjustment = estimate_momentum.get("score_adjustment", 0)
+        if estimate_adjustment > 0:
+            total_bonus += estimate_adjustment
+            factor_audit.append(
+                {"name": "Estimate Momentum Bonus", "value": estimate_adjustment}
+            )
+        elif estimate_adjustment < 0:
+            total_penalty += abs(estimate_adjustment)
+            factor_audit.append(
+                {"name": "Estimate Downgrade Penalty", "value": estimate_adjustment}
+            )
+    except Exception:
+        pass
+
+    return total_bonus, total_penalty, score_ceiling, disqualifiers
+
+
+def _calculate_tiebreak_epsilon(symbol: str) -> float:
+    import hashlib
+
+    sym_hash = int(hashlib.md5(symbol.encode()).hexdigest(), 16) % 1000
+    return sym_hash / 100000.0
+
+
+def _build_factor_breakdown(
+    state: FactorState,
+    weights: dict[str, float],
+    w_sentiment: float,
+    conviction: dict[str, Any],
+    sector_boost: _Number,
+) -> dict[str, float]:
+    return {
+        "Fundamentals": round(
+            (
+                state.score_sales * weights["w_sales"]
+                + state.score_roe * weights["w_roe"]
+                + state.score_cfo * weights["w_cfo"]
+                + state.score_eps * weights["w_eps"]
+            ),
+            1,
+        ),
+        "Value": round(state.score_val * weights["w_val"], 1),
+        "Risk": round(
+            (
+                state.score_fscore * weights["w_fscore"]
+                + state.score_de * weights["w_de"]
+            ),
+            1,
+        ),
+        "Momentum": round(state.score_mom_combined * weights["w_mom"], 1),
+        "News_Sentiment": round(state.score_sentiment * w_sentiment, 1),
+        "Smart_Money": 10 if conviction["institutional_interest"] else 0,
+        "Sector": sector_boost,
+    }
+
 def calculate_institutional_score(
     data: _StockData,
     sector_boost: _Number = 0,
@@ -88,609 +790,62 @@ def calculate_institutional_score(
         - [x] Integrate `NewsSentimentEngine` into `modules/scoring.py`.
         - [x] Update `total_score` calculation to include the 9th factor.
     """
-    mode = market_regime.lower() if market_regime else "balanced"
-    
-    if mode not in config.SCORING_WEIGHTS:
-        mode = "balanced"
-        
-    weights = config.SCORING_WEIGHTS[mode]
-    scoring_strategy = mode.capitalize()
-    
-    # Unpack
-    w_sales = weights["w_sales"]
-    w_roe = weights["w_roe"]
-    w_cfo = weights["w_cfo"]
-    w_val = weights["w_val"]
-    w_eps = weights["w_eps"]
-    w_fscore = weights["w_fscore"]
-    w_de = weights["w_de"]
-    w_mom = weights["w_mom"]
-    w_sentiment = weights.get("w_sentiment", 0.0)
-    
-    # --- V11.0: BACKTEST COMPATIBILITY ---
-    # Backtests do not have Point-In-Time news data. 
-    # Force weight to 0 if in backtest mode to avoid skewing historical results.
-    is_backtest = data.get("backtest", False) or not data.get("Symbol")
-    if is_backtest:
-        w_sentiment = 0.0
-        score_sentiment = 50.0
-    else:
-        # --- V6.0: METRIC CALCULATION (Pre-Scoring) ---
-        # 0. News Sentiment (v11.0 Nexus Alpha)
-        try:
-            sentiment_data = news_engine.get_alpha_signal(data.get("Symbol", ""))
-            # Normalize -1.0..1.0 to 0..100
-            score_sentiment = (sentiment_data["sentiment_score"] + 1.0) / 2.0 * 100.0
-        except Exception:
-            score_sentiment = 50.0 # Neutral fallback
-    
-    # 1. Sales Growth
-    # (used in V6.0 sector relative scoring)
-    sg_val = data.get("Sales_Growth_5Y%", 0) or data.get("Sales_Growth_TTM%", 0) or 0
-    score_sales = normalize_metric(data.get("Sales_Growth_5Y%", 0), 0, 40)
+    _, weights, scoring_strategy = _resolve_mode_and_weights(market_regime)
+    score_sentiment, w_sentiment = _calculate_sentiment_factor(data, weights)
+    state = _build_factor_state(data, score_sentiment)
+    base_score, data_confidence = _calculate_base_score(data, state, weights, w_sentiment)
+    base_score = _apply_sector_relative_adjustment(base_score, state, sector_medians)
 
-    # 2. ROE (with cascading fallback + V3.1 confidence penalty)
-    roe_5y = data.get("Avg_ROE_5Y%", 0)
-    roe_current = data.get("ROE%", 0)
-    profit_margin = data.get("Profit_Margin%", 0)
-    if roe_5y > 0:
-        roe_val = roe_5y
-        best_roe = roe_5y
-        roe_confidence = 1.0   # Full confidence: 5Y average
-    elif roe_current > 0:
-        roe_val = roe_current
-        best_roe = roe_current
-        roe_confidence = 0.85  # 15% penalty: single-year only
-    elif profit_margin > 0:
-        roe_val = profit_margin
-        best_roe = profit_margin
-        roe_confidence = 0.70  # 30% penalty: proxy metric
-    else:
-        roe_val = 0
-        best_roe = 0
-        roe_confidence = 0.0
-    
-    score_roe = normalize_metric(roe_val, 10, 30) * roe_confidence
-    
-    # 3. CFO / PAT
-    score_cfo = normalize_metric(data.get("CFO_PAT_Ratio", 0), 0.5, 1.5)
-    
-    # 4. Valuation
-    pe = data.get("PE_Ratio")
-    peg = data.get("PEG_Ratio")
-    score_pe = normalize_metric(pe, 15, 60, invert=True) if (pe is not None and pe > 0) else 0
-    score_peg = normalize_metric(peg, 0.8, 2.5, invert=True) if (peg is not None and peg > 0) else 0
-    # Smart valuation: use what's available
-    if score_pe > 0 and score_peg > 0:
-        score_val = (score_pe * 0.5) + (score_peg * 0.5)
-    elif score_pe > 0:
-        score_val = score_pe  # PE-only when PEG is missing
-    else:
-        score_val = score_peg  # PEG-only (unlikely)
-    
-    # 5. EPS Growth
-    score_eps = normalize_metric(data.get("EPS_Growth%", 0), 5, 30)
-    
-    # 6. F-Score (0-9)
-    f_score_val = data.get("F_Score")
-    if f_score_val is None: f_score_val = 0
-    score_fscore = (f_score_val / 9.0) * 100
-    
-    # 7. Debt / Equity
-    if "Bank" in data.get("Sector", "") or "Financial" in data.get("Sector", ""):
-        score_de = 80 
-    else:
-        score_de = normalize_metric(data.get("Debt_Equity", 0), 0, 1.0, invert=True)
-        
-    # 8. Momentum
-    down_from_high = data.get("Down_From_52W_High%", 0)
-    price = data.get("Price", 0) or 0
-    score_mom_tech = normalize_metric(down_from_high, 0, 40, invert=True) if price > 0 else 0
-    
-    rs_rating = data.get("RS_Rating")
-    if rs_rating is None: rs_rating = 0
-    score_rs = 0
-    if rs_rating > 1.2: score_rs = 100
-    elif rs_rating > 1.0: score_rs = 75
-    elif rs_rating > 0.8: score_rs = 50
-    else: score_rs = 25
-    
-    score_mom_combined = (score_mom_tech * 0.5) + (score_rs * 0.5)
+    factor_audit: list[dict[str, float]] = []
+    base_score += _calculate_bonus_total(data, state, sector_boost)
+    base_score = _apply_penalty_rules(base_score, data, state, factor_audit)
 
-    # --- DYNAMIC WEIGHT REDISTRIBUTION ---
-    # Build factor list with scores and weights
-    factors = [
-        ("sales", score_sales, w_sales),
-        ("roe", score_roe, w_roe),
-        ("cfo", score_cfo, w_cfo),
-        ("val", score_val, w_val),
-        ("eps", score_eps, w_eps),
-        ("fscore", score_fscore, w_fscore),
-        ("de", score_de, w_de),
-        ("mom", score_mom_combined, w_mom),
-        ("sentiment", score_sentiment, w_sentiment),
-    ]
-    
-    # Identify which factors have actual data
-    # FIX: Check if the source DATA existed, not just if score > 0. 
-    # Otherwise, bad data (score 0) gets excluded and weight is redistributed!
-    available = []
-    
-    # 1. Sales
-    if data.get("Sales_Growth_5Y%", 0) != 0 or data.get("Sales_Growth_TTM%", 0) != 0:
-        available.append(("sales", score_sales, w_sales))
-    # 2. ROE (roe_val calculated above)
-    if roe_val != 0:
-        available.append(("roe", score_roe, w_roe))
-    # 3. CFO
-    if data.get("CFO_PAT_Ratio", 0) != 0:
-        available.append(("cfo", score_cfo, w_cfo))
-    # 4. Valuation (PE or PEG)
-    if (pe is not None and pe > 0) or (peg is not None and peg > 0):
-        available.append(("val", score_val, w_val))
-    # 5. EPS
-    if data.get("EPS_Growth%", 0) != 0:
-        available.append(("eps", score_eps, w_eps))
-    # 6. F-Score (Always exists 0-9)
-    available.append(("fscore", score_fscore, w_fscore))
-    # 7. Debt/Equity (Always exists, default 0 is valid)
-    available.append(("de", score_de, w_de))
-    # 8. Momentum (Always exists)
-    available.append(("mom", score_mom_combined, w_mom))
-    # 9. News Sentiment (Always exists, even if 0.0)
-    available.append(("sentiment", score_sentiment, w_sentiment))
-    
-    # V3.1: Data Confidence  fraction of factors with real data
-    # (Denominator is 9 total factors in v11.0)
-    data_confidence = round((len(available) / 9) * 100, 1)
-    
-    if available:
-        # Redistribute total weight (1.0) proportionally among available factors
-        total_available_weight = sum(w for _, _, w in available)
-        if total_available_weight > 0:
-            scale = 1.0 / total_available_weight
-        else:
-            scale = 1.0
-        
-        base_score = sum(score * weight * scale for _, score, weight in available)
-    else:
-        base_score = 0
-    
-    # --- FIX A & Phase 4: DATA CONFIDENCE PENALTY (Continuous Decay) ---
-    # Prevent weight redistribution from inflating sparse-data stocks without hard cliffs
-    factor_count = len(available)
-    if factor_count < 6:
-        # Smooth decay multiplier from 1.0 (at 6 factors) down to 0.1 (at 0)
-        data_multiplier = max(0.1, min(1.0, (factor_count / 6.0) ** 1.5))
-        base_score *= data_multiplier
-    
-    # --- V7.0: INSTITUTIONAL ANALYST ADJUSTMENT ---
-    # Apply adjustment from manual seeds or Alpha Vantage momentum
-    est_adj = data.get("Estimate_Score_Adj", 0)
-    base_score += est_adj
-    
-    # --- V6.0 UPGRADE 1: SECTOR-RELATIVE BONUS/PENALTY ---
-    stock_sector = data.get("Sector", "Unknown")
-    if sector_medians and stock_sector in sector_medians:
-        sm = sector_medians[stock_sector]
-        sector_rel_bonus = 0
-        # ROE vs Sector Median
-        if best_roe > sm["median_roe"] * 1.2:
-            sector_rel_bonus += 3  # Sector leader in profitability
-        elif best_roe > 0 and best_roe < sm["median_roe"] * 0.5:
-            sector_rel_bonus -= 5  # Sector laggard
-        # Growth vs Sector Median
-        if sg_val > sm["median_growth"] * 1.2:
-            sector_rel_bonus += 3  # Sector leader in growth
-        elif sg_val > 0 and sg_val < sm["median_growth"] * 0.5:
-            sector_rel_bonus -= 5  # Sector laggard
-        # Apply (capped)
-        sector_rel_bonus = max(-10, min(6, sector_rel_bonus))
-        base_score += sector_rel_bonus
-    
-    # --- V3.1: BONUS SYSTEM (Capped at MAX_BONUS to prevent score inflation) ---
-    MAX_BONUS = 15
-    total_bonus = 0
-    
-    # Phase 2: Earnings Inflection Bonus (Graduated 0-5 Score)
-    inflection_score = data.get("Earnings_Inflection_Score")
-    if inflection_score is None: inflection_score = 0
-    if inflection_score >= 4:
-        total_bonus += 8  # Strong acceleration across revenue, earnings, and margins
-    elif inflection_score >= 3:
-        total_bonus += 5  # Good acceleration
-    elif inflection_score >= 2:
-        total_bonus += 3  # Moderate acceleration
-    elif data.get("Earnings_Accel"):
-        total_bonus += 2  # Basic acceleration fallback
+    conviction = calculate_conviction_score(_build_conviction_input(data))
+    if conviction["institutional_interest"]:
+        base_score += 10
 
-    # Phase 3: Sector Bonus
-    total_bonus += sector_boost
-    
-    # Phase 4: Value Gap Bonus (Margin of Safety)
-    value_gap = data.get("Value_Gap%", 0)
-    if value_gap > 50:
-        total_bonus += 10
-    elif value_gap > 20:
-        total_bonus += 5
-        
-    # Phase 5: Financial Fortress Bonus (F-Score 8 or 9)
-    f_score_check = data.get("F_Score")
-    if f_score_check is not None and f_score_check >= 8:
-        total_bonus += 5
-        
-    # Phase 6: Technical Trend Bonus
-    if data.get("Technical_Signal") == "Bullish":
-        total_bonus += 5
-        
-    # Phase 7: Analyst Consensus Bonus
-    rating = str(data.get("Analyst_Rating") or "").lower()
-    upside = data.get("Analyst_Upside%")
-    if upside is None: upside = 0
-    
-    if "strong buy" in rating:
-        total_bonus += 5
-    elif "buy" in rating:
-        total_bonus += 2
-        
-    if upside > 20: 
-        total_bonus += 5
-        
-    # Phase 8: Institutional Sponsorship Bonus
-    inst_hold = data.get("Inst_Holding%")
-    if inst_hold is None: inst_hold = 0
-    prom_hold = data.get("Promoter_Holding%")
-    if prom_hold is None: prom_hold = 0
-    
-    if inst_hold > 20:
-        total_bonus += 5
-    elif inst_hold > 10:
-        total_bonus += 2
-        
-    if prom_hold > 60:
-        total_bonus += 3
-        
-    # Phase 9: Volatility Bonus (only the positive part)
-    atr = data.get("ATR", 0) or 0
-    price = data.get("Price", 1) or 1
-    if price > 0:
-        atr_pct = atr / price
-        if atr_pct < 0.03: # Low Volatility (Stable)
-            total_bonus += 2
+    score_ceiling, disqualifiers = _apply_score_ceiling_rules(data, state)
+    extra_bonus, extra_penalty, score_ceiling, disqualifiers = _apply_optional_intel_adjustments(
+        data,
+        factor_audit,
+        score_ceiling,
+        disqualifiers,
+    )
+    base_score += extra_bonus
+    base_score -= extra_penalty
 
-    # PHASE 43: ALPHA FACTOR TUNING (VALUE GEMS)
-    # 1. Deep Value + High Quality (Coal India Case)
-    if pe is not None and 0 < pe < 12 and data.get("Avg_ROE_5Y%", 0) > 25:
-        total_bonus += 7
-        
-    # 2. Statistically Cheapest Gem (PFC / REC Case)
-    if pe is not None and 0 < pe < 7 and data.get("Avg_ROE_5Y%", 0) > 15:
-        total_bonus += 7
-        
-    # 3. Utility Debt Shield (Power Grid Case)
-    sector = str(data.get("Sector") or "")
-    if "Utility" in sector or "Energy" in sector or "Power" in sector:
-        de_check = data.get("Debt_Equity")
-        fs_check = data.get("F_Score")
-        if (de_check is not None and de_check > 1.0) and (fs_check is not None and fs_check >= 6):
-            total_bonus += 5
+    checklist_pass, checklist_total, base_score, score_ceiling = _apply_checklist_gate(
+        data,
+        state,
+        base_score,
+        score_ceiling,
+        disqualifiers,
+    )
 
-    # --- APPLY CAPPED BONUS ---
-    capped_bonus = min(total_bonus, MAX_BONUS)
-    base_score += capped_bonus
-
-    # --- PENALTY SYSTEM (Uncapped  bad stocks must be punished) ---
-    total_penalty = 0
-    factor_audit = []
-    
-    # Volatility Penalties
-    if price > 0:
-        atr_pct = atr / price
-        if atr_pct > 0.07: # High Volatility (Risky)
-            total_penalty += 2
-            factor_audit.append({"name": "High Volatility", "value": -2})
-        if atr_pct > 0.10: # Extremely Volatile
-            total_penalty += 5
-            factor_audit.append({"name": "Extreme Volatility", "value": -5})
-
-    # P1: Declining Revenue
-    sales_5y = data.get("Sales_Growth_5Y%", 0)
-    sales_ttm = data.get("Sales_Growth_TTM%", 0)
-    if sales_5y < 0 and sales_ttm < 0:
-        total_penalty += 5  # Both long-term and short-term revenue declining
-        factor_audit.append({"name": "Declining Revenue (Long & Short)", "value": -5})
-    elif sales_5y < 0 or sales_ttm < 0:
-        total_penalty += 3  # One of them declining
-        factor_audit.append({"name": "Declining Revenue (Partial)", "value": -3})
-
-    # P2: Extreme Overvaluation
-    if pe is not None and pe > 80:
-        total_penalty += 5
-        factor_audit.append({"name": "Extreme Overvaluation", "value": -5})
-    elif pe is not None and pe > 60:
-        total_penalty += 3
-        factor_audit.append({"name": "High Overvaluation", "value": -3})
-
-    # P3: Low Promoter Holding (Governance Risk)
-    if prom_hold > 0 and prom_hold < 20:
-        total_penalty += 5
-        factor_audit.append({"name": "Low Promoter Holding (<20%)", "value": -5})
-    elif prom_hold > 0 and prom_hold < 30:
-        total_penalty += 2
-        factor_audit.append({"name": "Low Promoter Holding (<30%)", "value": -2})
-
-    base_score -= total_penalty 
-            
-    # --- PHASE 10: RESEARCH LAYER (CLONING + CONVICTION) ---
-    stock_data_for_conviction = {
-        "symbol": data.get("Symbol", ""),
-        "sales_growth": data.get("Sales_Growth_5Y%", 0),
-        "profit_growth": data.get("EPS_Growth%", 0), # Proxy
-        "roce": data.get("Avg_ROE_5Y%", 0), # Proxy
-        "debt_to_equity": data.get("Debt_Equity", 0),
-        "promoter_holding": data.get("Promoter_Holding%", 0),
-        "pledge": 0 # Not currently in data but engine handles 0
-    }
-    
-    conviction = calculate_conviction_score(stock_data_for_conviction)
-    
-    # 1. Add Institutional Boost to Base Score
-    if conviction['institutional_interest']:
-        base_score += 10 # Direct boost for super investor interest
-
-    # --- V3.1 & Phase 4: DISQUALIFIER RULES (Continuous Score Ceilings) ---
-    score_ceiling = 100.0
-    disqualifiers = []
-    
-    # Helper for smooth ceiling splines to prevent step-cliffs
-    def apply_spline_cap(val, full_score_val, max_penalty_val, min_cap, name):
-        nonlocal score_ceiling, disqualifiers
-        if val is None or not np.isfinite(val): return
-        
-        cap = 100.0
-        if full_score_val > max_penalty_val:
-            if val <= max_penalty_val: 
-                cap = min_cap
-            elif val < full_score_val:
-                ratio = (full_score_val - val) / float(full_score_val - max_penalty_val)
-                cap = 100.0 - (ratio ** 1.5) * (100.0 - min_cap)
-        else:
-            if val >= max_penalty_val: 
-                cap = min_cap
-            elif val > full_score_val:
-                ratio = (val - full_score_val) / float(max_penalty_val - full_score_val)
-                cap = 100.0 - (ratio ** 1.5) * (100.0 - min_cap)
-                
-        if cap < 96:
-            score_ceiling = min(score_ceiling, cap)
-            disqualifiers.append(f"{name} ({val:.1f})")
-
-    # D1 & D10: ROE Spline (Good: >15%, Bad: <0%, Cap: 60)
-    roe_5y = data.get("Avg_ROE_5Y%", 0)
-    roe_curr = data.get("ROE%", 0)
-    best_roe = roe_5y if roe_5y != 0 else roe_curr
-    apply_spline_cap(best_roe, 15.0, 0.0, 60, "ROE Decay Spline")
-    if best_roe < 0:
-        apply_spline_cap(best_roe, 0.0, -15.0, 40, "Value Destruction Spline")
-        
-    # D2 & D11: Revenue Growth Spline (Good: >10%, Bad: <-5%, Cap: 60)
-    sg_check = data.get("Sales_Growth_5Y%", 0) or data.get("Sales_Growth_TTM%", 0)
-    if sg_check is not None:
-        apply_spline_cap(sg_check, 10.0, -5.0, 60, "Growth Decay Spline")
-        if sg_check < -5:
-            apply_spline_cap(sg_check, -5.0, -25.0, 40, "Declining Revenue Spline")
-
-    # D3: Extreme ROE anomaly (data error)  ROE > 100% decaying aggressively
-    if best_roe is not None and best_roe > 100:
-        apply_spline_cap(best_roe, 100.0, 250.0, 45, "Anomalous ROE Risk")
-    
-    # D4: Profit margin spline
-    pm = data.get("Profit_Margin%", 0)
-    if pm is not None:
-        apply_spline_cap(pm, 10.0, -5.0, 60, "Margin Decay Spline")
-    
-    # D5: F-Score quality mismatch
-    f_score_val = data.get("F_Score")
-    if f_score_val is None: f_score_val = 0
-    if f_score_val <= 4:
-        # If F-Score is low, prevent high overall scores smoothly
-        score_ceiling = min(score_ceiling, 65 + (f_score_val * 5.9))
-        disqualifiers.append(f"Quality Floor Spline (F:{f_score_val})")
-    
-    # D6: Overvaluation Spline (Good gap: 0%, Bad gap: -70%, Cap: 65)
-    value_gap = data.get("Value_Gap%", 0)
-    if value_gap < 0:
-        apply_spline_cap(value_gap, 0.0, -70.0, 65, "Overvaluation Spline")
-        
-    # D8: Cash Flow conversion (Good: >0.8, Bad: <0.0, Cap: 60)
-    cfo_pat = data.get("CFO_PAT_Ratio", 0)
-    if cfo_pat is not None:
-        apply_spline_cap(cfo_pat, 0.8, 0.0, 60, "Cash Quality Spline")
-    
-    # D9: Governance Risk (Soft anchor)
-    if prom_hold > 0 and inst_hold is not None:
-        if prom_hold < 30 and inst_hold < 10:
-            apply_spline_cap(prom_hold, 30.0, 10.0, 65, "Anchor Investor Spline")
-            
-    # D12: EPS Growth Spline
-    eps_check = data.get("EPS_Growth%", 0)
-    if eps_check is not None:
-        apply_spline_cap(eps_check, 10.0, -10.0, 65, "EPS Decay Spline")
-
-    # --- Phase 4: D13 MULTI-DIMENSION QUALITY GATE (Continuous) ---
-    factor_scores = [score_sales, score_roe, score_cfo, score_val, 
-                     score_eps, score_fscore, score_de, score_mom_combined]
-    avg_quality = sum(factor_scores) / len(factor_scores)
-    apply_spline_cap(avg_quality, 50.0, 30.0, 55, "Lopsided Profile Spline")
-    
-    # --- Phase 4: D14 CYCLICALITY GUARD (Smooth Peak Risk) ---
-    CYCLICAL_SECTORS = {"Energy", "Basic Materials", "Utilities"}
-    if stock_sector in CYCLICAL_SECTORS:
-        if best_roe > 0 and pe is not None and pe > 0:
-            cycle_risk = best_roe / pe
-            apply_spline_cap(cycle_risk, 2.0, 5.0, 65, "Cyclical Peak Spline")
-    
-    # --- D15: PROMOTER BEHAVIOUR INTELLIGENCE ---
-    # Heavy insider dumping after stock run-up
-    try:
-        from modules.promoter_intel import calculate_promoter_score
-        _prom_result = calculate_promoter_score(data.get("Symbol", ""))
-        if _prom_result and _prom_result.get("is_disqualified"):
-            score_ceiling = min(score_ceiling, 60)
-            disqualifiers.append("D15: Heavy Insider Sell-Off")
-            factor_audit.append({"name": "D15: Heavy Insider Sell-Off", "value": -40})
-        _prom_adj = _prom_result.get("score_adjustment", 0)
-        if _prom_adj > 0:
-            total_bonus += _prom_adj  # Promoter buying conviction
-            factor_audit.append({"name": "Promoter Buying Boost", "value": _prom_adj})
-        elif _prom_adj < 0:
-            total_penalty += abs(_prom_adj)  # Promoter selling penalty
-            factor_audit.append({"name": "Promoter Selling Penalty", "value": _prom_adj})
-    except Exception:
-        pass  # Graceful degradation: promoter intel is optional
-    
-    # --- D16: ESTIMATE MOMENTUM DISQUALIFIER ---
-    # 3 consecutive estimate downgrades
-    try:
-        from modules.estimates import get_estimate_data
-        _est_result = get_estimate_data(data.get("Symbol", ""))
-        _est_mom = _est_result.get("momentum", {})
-        if _est_mom.get("is_disqualified"):
-            score_ceiling = min(score_ceiling, 55)
-            disqualifiers.append("D16: Estimate Collapse (3Q consecutive downgrades)")
-            factor_audit.append({"name": "D16: Estimate Collapse", "value": -45})
-        _est_cap = _est_mom.get("score_cap")
-        if _est_cap is not None:
-            score_ceiling = min(score_ceiling, _est_cap)
-            disqualifiers.append(f"Earnings Miss Streak (cap {_est_cap})")
-            factor_audit.append({"name": "Earnings Miss Streak", "value": -(100-_est_cap)})
-        _est_adj = _est_mom.get("score_adjustment", 0)
-        if _est_adj > 0:
-            total_bonus += _est_adj  # Estimate momentum bonus
-            factor_audit.append({"name": "Estimate Momentum Bonus", "value": _est_adj})
-        elif _est_adj < 0:
-            total_penalty += abs(_est_adj)  # Estimate downgrade penalty
-            factor_audit.append({"name": "Estimate Downgrade Penalty", "value": _est_adj})
-    except Exception:
-        pass  # Graceful degradation: estimates are optional
-    
-    # --- D7: 12-POINT INSTITUTIONAL QUALITY CHECKLIST ---
-    # Combines Finology + Tickertape + Sovrenn methodology
-    checklist_pass = 0
-    checklist_total = 12
-    
-    # C1: Market Cap > 1,000 Cr (liquidity & stability)
-    mcap_cr = data.get("Market_Cap_Cr")
-    if mcap_cr is not None and mcap_cr > 1000:
-        checklist_pass += 1
-    # C2: Valuation  PE < 25 (reasonable price)
-    if pe is not None and 0 < pe < 25:
-        checklist_pass += 1
-    # C3: Profitability  ROE > 17% (institutional threshold)
-    if best_roe > 17:
-        checklist_pass += 1
-    # C4: Leverage  Debt/Equity between 0 and 1.0 (must have data)
-    de_val = data.get("Debt_Equity")
-    if de_val is not None and 0 <= de_val < 1.0:
-        checklist_pass += 1
-    # C5: Cash Quality  CFO/PAT > 1.0 (profits backed by cash)
-    if data.get("CFO_PAT_Ratio", 0) > 1.0:
-        checklist_pass += 1
-    # C6: Momentum  between 0 and 25% drop from 52W high (must have data)
-    down_pct = data.get("Down_From_52W_High%", -1)
-    if 0 <= down_pct < 25:
-        checklist_pass += 1
-    # C7: Revenue Growth > 15% CAGR (Aggressive Growth Gate)
-    sg = data.get("Sales_Growth_5Y%", 0) or data.get("Sales_Growth_TTM%", 0)
-    if sg > 15:
-        checklist_pass += 1
-    # C8: Earnings Growth  EPS Growth positive
-    eps_g = data.get("EPS_Growth%", 0)
-    if eps_g > 0:
-        checklist_pass += 1
-    # C9: Promoter Conviction  Holding > 50% (skin in the game)
-    if prom_hold > 50:
-        checklist_pass += 1
-    # C10: Financial Fortress  F-Score >= 6 (Piotroski quality)
-    f_val_check = data.get("F_Score")
-    if f_val_check is not None and f_val_check >= 6:
-        checklist_pass += 1
-    # C11: Profit Uptrend (Sovrenn)  both revenue AND earnings growing > 10%
-    #       Aggressive confirmation of execution
-    if sg > 10 and eps_g > 10:
-        checklist_pass += 1
-    # C12: Valuation Comfort (Sovrenn + Workflow Step 3)
-    #       Trading at or below fair value OR PE < 20 (good business at fair price)
-    if value_gap > 0 or (pe is not None and 0 < pe < 20):
-        checklist_pass += 1
-    
-    # Checklist  Bonus (only for Institutional/Strong Elite quality > 9/12)
-    if checklist_pass >= 11:
-        base_score += 5  # Institutional grade  nearly all boxes ticked
-    # Removed +3 bonus for 9/12 pass to increase difficulty for Elite status
-    
-    # --- Phase 4: CONTINUOUS CHECKLIST SPLINE (Institutional fix for step-cliffs) ---
-    # Replaces binary steps with a smooth decay curve from 12 passes down to 0
-    # Elite Gate (9/12) is preserved as a inflection point
-    
-    # Smooth Penalty Spline: 12 passes (0) -> 9 passes (-2) -> 6 passes (-8) -> 0 passes (-20)
-    if checklist_pass >= 9:
-        checklist_penalty = (12 - checklist_pass) * 0.66  # Linear decay for top tier
-    else:
-        # Exponential decay for lower tiers
-        checklist_penalty = 2.0 + ((9 - checklist_pass) / 9.0 * 18.0)
-    
-    # Smooth Ceiling Spline: 12 passes (100) -> 9 passes (80) -> 6 passes (65) -> 0 passes (40)
-    if checklist_pass >= 9:
-        # Interpolate between 80 and 100
-        current_ceiling = 80 + (checklist_pass - 9) * (20 / 3.0)
-    else:
-        # Interpolate between 40 and 80
-        current_ceiling = 40 + (checklist_pass / 9.0 * 40.0)
-        
-    base_score -= checklist_penalty
-    score_ceiling = min(score_ceiling, current_ceiling)
-    
-    if checklist_pass < 9:
-        disqualifiers.append(f"Institutional Quality Gate {checklist_pass}/{checklist_total}")
-
-    # Apply ceiling
     final_score = min(base_score, score_ceiling)
-    
-    # --- PHASE 4: DETERMINISTIC TIE-BREAKER (Institutional Requirement) ---
-    # Add a microscopic deterministic epsilon based on symbol hash to prevent ranking draws
-    # This ensures two stocks with the same fundamental score have a stable, non-random order
-    import hashlib
-    sym_hash = int(hashlib.md5(data.get("Symbol", "").encode()).hexdigest(), 16) % 1000
-    epsilon = sym_hash / 100000.0 # Range 0.00000 to 0.00999
-    
-    final_score += epsilon
-    
-    # Phase 1: Track Disqualifiers in Audit payload
-    for dq in disqualifiers:
-        factor_audit.append({"name": dq, "value": round(score_ceiling - 100, 1)})
-    
-    # --- FINAL SCORE ---
+    final_score += _calculate_tiebreak_epsilon(data.get("Symbol", ""))
+
+    for disqualifier in disqualifiers:
+        factor_audit.append({"name": disqualifier, "value": round(score_ceiling - 100, 1)})
+
     raw_score = round(base_score, 1)
-    
+
     return {
-        "total_score": round(max(0, min(final_score, 100.1)), 5), # Preserving epsilon precision
+        "total_score": round(max(0, min(final_score, 100.1)), 5),
         "raw_score": raw_score,
         "checklist_score": f"{checklist_pass}/{checklist_total}",
         "data_confidence": data_confidence,
-        "conviction_score": conviction['conviction_score'],
-        "conviction_boost": conviction['conviction_boost'],
-        "institutional_interest": conviction['institutional_interest'],
-        "super_investors": ", ".join(conviction['investors']),
+        "conviction_score": conviction["conviction_score"],
+        "conviction_boost": conviction["conviction_boost"],
+        "institutional_interest": conviction["institutional_interest"],
+        "super_investors": ", ".join(conviction["investors"]),
         "scoring_strategy": scoring_strategy,
         "factor_penalties": factor_audit,
-        "factor_breakdown": {
-             "Fundamentals": round((score_sales*w_sales + score_roe*w_roe + score_cfo*w_cfo + score_eps*w_eps), 1),
-             "Value": round((score_val*w_val), 1),
-             "Risk": round((score_fscore*w_fscore + score_de*w_de), 1),
-             "Momentum": round((score_mom_combined*w_mom), 1),
-             "News_Sentiment": round((score_sentiment*w_sentiment), 1),
-             "Smart_Money": 10 if conviction['institutional_interest'] else 0,
-             "Sector": sector_boost
-        }
+        "factor_breakdown": _build_factor_breakdown(
+            state,
+            weights,
+            w_sentiment,
+            conviction,
+            sector_boost,
+        ),
     }

@@ -14,11 +14,13 @@ import time
 import pandas as pd
 from datetime import datetime
 from db.engine import engine, IS_SQLITE, init_tables
+from modules.runtime_settings import runtime_settings
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-DB_BUSY_TIMEOUT_MS = 5000
-SQLITE_WRITE_RETRIES = 5
-SQLITE_RETRY_BASE_SECONDS = 0.05
+DB_NAME = str(getattr(engine.url, "database", "stocks.db") or "stocks.db")
+DB_BUSY_TIMEOUT_MS = runtime_settings.sqlite_busy_timeout_ms
+SQLITE_WRITE_RETRIES = runtime_settings.sqlite_write_retries
+SQLITE_RETRY_BASE_SECONDS = runtime_settings.sqlite_retry_base_seconds
 PIT_RETENTION_DAYS = 365 * 3
 
 
@@ -81,13 +83,13 @@ def get_connection():
 
     Callers are responsible for closing the connection.
     """
-    raw_conn = engine.raw_connection()
-
     if IS_SQLITE:
+        raw_conn = sqlite3.connect(DB_NAME, timeout=5, check_same_thread=False)
         raw_conn.execute(f"PRAGMA busy_timeout={DB_BUSY_TIMEOUT_MS}")
         raw_conn.execute("PRAGMA journal_mode=WAL")
+        return raw_conn
 
-    return raw_conn
+    return engine.raw_connection()
 
 
 # ── Schema Introspection (SQLite-specific) ────────────────────────────────────

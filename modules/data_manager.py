@@ -10,12 +10,17 @@ from typing import Dict, List, Optional, Any
 import logging
 import sqlite3
 import pickle
+import threading
 import time
 from abc import ABC, abstractmethod
 from datetime import datetime, date
 
 import pandas_market_calendars as mcal
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+
+from modules.sources.groww_source import GrowwSource
+from modules.sources.nse_source import NSESource
+from modules.sources.yfinance_source import YFinanceSource
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +127,32 @@ async def _run_executor_safe(loop, executor, fn, default):
     except Exception as e:
         logger.debug(f"Executor Error in DataManager: {e}")
         return default
+
+
+def _run_coroutine_sync(coro):
+    """Run an async coroutine from synchronous compatibility wrappers."""
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+
+    result = {}
+    error = {}
+
+    def _runner():
+        try:
+            result["value"] = asyncio.run(coro)
+        except BaseException as exc:  # pragma: no cover - passthrough for sync callers
+            error["value"] = exc
+
+    thread = threading.Thread(target=_runner, daemon=True)
+    thread.start()
+    thread.join()
+
+    if "value" in error:
+        raise error["value"]
+
+    return result.get("value")
 
 
 _PNSEA_INFO_ALIASES = {
@@ -362,6 +393,65 @@ class YFinanceProvider(DataProvider):
             "cash_flow": cf
         }
 
+# --- Legacy Compatibility Manager ---
+class DataSourceManager:
+    """
+    Backward-compatible synchronous manager used by older modules and tests.
+
+    The newer async-first production path uses ``DataManager`` below. This
+    compatibility layer preserves the legacy fallback chain that wraps the
+    ``modules.sources`` adapters.
+    """
+
+    def __init__(self, sources: Optional[List[Any]] = None):
+        self.sources = list(sources or [YFinanceSource(), NSESource(), GrowwSource()])
+
+    def fetch_fundamentals(self, symbol: str) -> Dict:
+        for source in self.sources:
+            try:
+                data = source.fetch_fundamentals(symbol)
+                if data and "error" not in data:
+                    return data
+            except Exception as exc:
+                logger.warning(
+                    "Legacy source %s failed for %s: %s",
+                    source.__class__.__name__,
+                    symbol,
+                    exc,
+                )
+        return {"symbol": symbol, "error": "All sources failed"}
+
+    def fetch_history(self, symbol: str, period: str = "1y") -> pd.DataFrame:
+        for source in self.sources:
+            try:
+                history = source.fetch_history(symbol, period=period)
+                if history is not None and not history.empty:
+                    return history
+            except Exception as exc:
+                logger.warning(
+                    "Legacy history source %s failed for %s: %s",
+                    source.__class__.__name__,
+                    symbol,
+                    exc,
+                )
+        return pd.DataFrame()
+
+    def fetch_quarterly_results(self, symbol: str) -> List[Dict]:
+        for source in self.sources:
+            try:
+                timeline = source.fetch_quarterly_results(symbol)
+                if timeline:
+                    return timeline
+            except Exception as exc:
+                logger.warning(
+                    "Legacy quarterly source %s failed for %s: %s",
+                    source.__class__.__name__,
+                    symbol,
+                    exc,
+                )
+        return []
+
+
 # --- Main Data Manager ---
 class DataManager:
     def __init__(self, max_concurrency: int = 15):
@@ -463,8 +553,12 @@ class DataManager:
                 return incomplete_payload
             return {"symbol": symbol, "error": "All providers failed", "source": "fallback_failed"}
 
+    def fetch_fundamentals(self, symbol: str) -> Dict:
+        """Synchronous compatibility wrapper for older callers."""
+        return _run_coroutine_sync(self.async_fetch_fundamentals(symbol))
+
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=5))
-    async def fetch_history(self, symbol: str, period: str = "1y") -> pd.DataFrame:
+    async def async_fetch_history(self, symbol: str, period: str = "1y") -> pd.DataFrame:
         """Fetch historical price data with quality checks"""
         async with self.semaphore:
             loop = asyncio.get_running_loop()
@@ -514,7 +608,11 @@ class DataManager:
                 
             return df
 
-    async def fetch_quarterly_results(self, symbol: str) -> List[Dict]:
+    def fetch_history(self, symbol: str, period: str = "1y") -> pd.DataFrame:
+        """Synchronous compatibility wrapper for older callers."""
+        return _run_coroutine_sync(self.async_fetch_history(symbol, period=period))
+
+    async def async_fetch_quarterly_results(self, symbol: str) -> List[Dict]:
         """Fetch quarterly financial results"""
         async with self.semaphore:
             loop = asyncio.get_running_loop()
@@ -530,6 +628,10 @@ class DataManager:
                     "profit": qf.loc["Net Income", col] if "Net Income" in qf.index else 0
                 })
             return results
+
+    def fetch_quarterly_results(self, symbol: str) -> List[Dict]:
+        """Synchronous compatibility wrapper for older callers."""
+        return _run_coroutine_sync(self.async_fetch_quarterly_results(symbol))
 
     async def fetch_batch(self, symbols: List[str]) -> Dict[str, Dict]:
         tasks = [self.async_fetch_fundamentals(s) for s in symbols]

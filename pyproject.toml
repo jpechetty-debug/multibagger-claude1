@@ -2,7 +2,7 @@
 requires = ["setuptools>=72", "wheel"]
 build-backend = "setuptools.backends.legacy:build"
 
-# ── Project metadata ──────────────────────────────────────────────────────────
+# Project metadata
 [project]
 name = "newmultibagger"
 version = "3.0.0"
@@ -10,66 +10,38 @@ description = "Institutional-grade fundamental screener for Indian equities"
 requires-python = ">=3.11"
 readme = "README.md"
 license = { text = "Proprietary" }
-dependencies = []                           # managed via requirements.txt
+dependencies = []
 
 [project.scripts]
-newmultibagger = "main:app"                 # canonical entry point
+newmultibagger = "main:app"
 
-# ── Tool: pytest ──────────────────────────────────────────────────────────────
-[tool.pytest.ini_options]
-testpaths      = ["tests"]
-python_files   = ["test_*.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-asyncio_mode   = "auto"
-addopts        = [
-    "-v",
-    "--tb=short",
-    "--strict-markers",
-    "--cov=modules",
-    "--cov=screener",
-    "--cov-report=term-missing",
-    "--cov-fail-under=40",           # raise as test suite matures
-]
-markers = [
-    "live: marks tests that call external APIs (deselect with -m 'not live')",
-    "slow: marks slow-running tests",
-    "integration: marks integration tests that need a running DB",
-]
-filterwarnings = [
-    "error",
-    "ignore::DeprecationWarning:src.main",  # our own deprecation wrapper
-    "ignore::PendingDeprecationWarning",
-    "ignore::UserWarning:vectorbt",
-]
-
-# ── Tool: ruff (lint + format) ────────────────────────────────────────────────
+# Tool: ruff (lint + format)
 [tool.ruff]
 target-version = "py311"
-line-length    = 100
-src            = [".", "modules", "brain", "backtest", "db", "worker", "research"]
-exclude        = [
+line-length = 100
+src = [".", "modules", "brain", "backtest", "db", "worker", "research"]
+exclude = [
     ".agent", "__pycache__", "extracted_hhhhhh",
     "web-ui/node_modules", ".venv", "venv",
     "sovereign_cli.py", "sovereign_analyst_reports.py", "sovereign_mcp.py",
 ]
 
 [tool.ruff.lint]
-select  = ["E", "F", "W", "I", "UP", "B", "C4", "PIE", "T20", "SIM"]
-ignore  = [
-    "E501",   # line too long — handled by formatter
-    "B008",   # function call in default arg (FastAPI pattern)
-    "T201",   # print statements — used deliberately for scan output
+select = ["E", "F", "W", "I", "UP", "B", "C4", "PIE", "T20", "SIM"]
+ignore = [
+    "E501",
+    "B008",
+    "T201",
 ]
 
 [tool.ruff.lint.isort]
 known-first-party = ["modules", "brain", "backtest", "db", "worker", "research", "config"]
 
-# ── Tool: mypy ────────────────────────────────────────────────────────────────
+# Tool: mypy
 [tool.mypy]
-python_version         = "3.11"
-warn_return_any        = true
-warn_unused_ignores    = true
-disallow_untyped_defs  = false   # start permissive; tighten per module
+python_version = "3.11"
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = false
 ignore_missing_imports = true
-files                  = ["modules/scoring.py", "modules/retry_utils.py", "db/"]
+files = ["modules/scoring.py", "modules/retry_utils.py", "db/"]

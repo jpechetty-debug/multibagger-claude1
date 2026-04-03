@@ -133,3 +133,46 @@ async def test_db_dups_forensic():
         mock_connect.return_value.close()
         
     if os.path.exists(test_db): os.remove(test_db)
+
+
+@pytest.mark.asyncio
+async def test_cmd_regime_prints_regime_and_acceleration():
+    args = MagicMock()
+
+    with patch("sovereign_cli.MarketDataProvider") as mock_provider, \
+         patch("builtins.print") as mock_print:
+        mock_provider.return_value.get_market_regime.return_value = {
+            "regime": "SIDEWAYS",
+            "details": {"momentum_accel": 1.25},
+        }
+        await sovereign_cli.cmd_regime(args)
+
+    printed = " ".join(str(call.args[0]) for call in mock_print.call_args_list if call.args)
+    assert "Current Regime: SIDEWAYS" in printed
+    assert "Acceleration: 1.25" in printed
+
+
+@pytest.mark.asyncio
+async def test_cmd_paper_trade_skips_non_rebalance_without_force(mock_signals_log, monkeypatch):
+    class FakeDateTime(datetime):
+        @classmethod
+        def now(cls):
+            return cls(2026, 4, 3, 9, 0, 0)
+
+    monkeypatch.setattr(sovereign_cli, "datetime", FakeDateTime)
+
+    args = MagicMock()
+    args.universe = 5
+    args.force = False
+
+    with patch("sovereign_cli.MarketDataProvider") as mock_provider, \
+         patch("builtins.print") as mock_print:
+        await sovereign_cli.cmd_paper_trade(args)
+
+    with open(mock_signals_log, "r") as handle:
+        history = json.load(handle)
+
+    printed = " ".join(str(call.args[0]) for call in mock_print.call_args_list if call.args)
+    assert history == []
+    assert "Today is not a rebalance date" in printed
+    mock_provider.assert_not_called()

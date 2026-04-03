@@ -1,55 +1,80 @@
-import { Activity } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { useState, useEffect } from 'react'
+import { Activity } from 'lucide-react'
+
+import { api } from '../../lib/api'
 
 export function Heartbeat() {
-  const [latency, setLatency] = useState(14.2)
-  
+  const [latency, setLatency] = useState<number | null>(null)
+  const [isHealthy, setIsHealthy] = useState(true)
+
   useEffect(() => {
+    let isCancelled = false
+
     const checkLatency = async () => {
       const start = performance.now()
       try {
-        await fetch('/api/health') // Ping health endpoint for latency
+        await api.getHealth()
         const end = performance.now()
-        setLatency(Math.round(end - start))
-      } catch (err) {
-        setLatency(0)
+        if (!isCancelled) {
+          setLatency(Math.round(end - start))
+          setIsHealthy(true)
+        }
+      } catch {
+        if (!isCancelled) {
+          setLatency(null)
+          setIsHealthy(false)
+        }
       }
     }
 
-    checkLatency()
-    const interval = setInterval(checkLatency, 5000)
-    return () => clearInterval(interval)
+    void checkLatency()
+    const interval = setInterval(() => {
+      void checkLatency()
+    }, 5000)
+
+    return () => {
+      isCancelled = true
+      clearInterval(interval)
+    }
   }, [])
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1 }}
-      className="brutalist-card p-6 h-full border-l-4 border-l-brand-accent flex flex-col justify-between group hover:border-l-brand-accent/80 transition-all"
+      className="brutalist-card flex h-full flex-col justify-between border-l-4 border-l-brand-accent p-6 transition-all group hover:border-l-brand-accent/80"
     >
       <div>
-        <div className="flex justify-between items-center mb-4">
-          <span className="text-[10px] font-mono text-brand-text-dim uppercase font-bold tracking-widest">Neural Heartbeat</span>
-          <Activity className="w-4 h-4 text-brand-accent animate-pulse" />
+        <div className="mb-4 flex items-center justify-between">
+          <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-brand-text-dim">
+            Neural Heartbeat
+          </span>
+          <Activity
+            className={`h-4 w-4 ${isHealthy ? 'animate-pulse text-brand-accent' : 'text-brand-rose'}`}
+          />
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-5xl font-display font-black tracking-tighter">{latency.toFixed(1)}</span>
-          <span className="text-sm font-mono text-brand-text-dim font-bold">ms</span>
+          <span className="font-display text-5xl font-black tracking-tighter">
+            {latency === null ? '--' : latency.toFixed(1)}
+          </span>
+          <span className="text-sm font-mono font-bold text-brand-text-dim">ms</span>
         </div>
       </div>
       <div className="mt-8">
-        <div className="h-1 w-full bg-brand-bg rounded-full overflow-hidden">
-          <motion.div 
+        <div className="h-1 w-full overflow-hidden rounded-full bg-brand-bg">
+          <motion.div
             initial={{ width: 0 }}
-            animate={{ width: '100%' }}
-            className="h-full bg-brand-accent shadow-[0_0_10px_rgba(0,255,163,0.5)]"
+            animate={{ width: isHealthy ? '100%' : '35%' }}
+            className={`h-full ${isHealthy ? 'bg-brand-accent shadow-[0_0_10px_rgba(0,255,163,0.5)]' : 'bg-brand-rose'}`}
           />
         </div>
-        <div className="flex justify-between mt-2 font-mono text-[9px] uppercase font-bold text-brand-text-dim">
-          <span>P99 Integrity</span>
-          <span className="text-brand-accent">99.9%</span>
+        <div className="mt-2 flex justify-between font-mono text-[9px] font-bold uppercase text-brand-text-dim">
+          <span>{isHealthy ? 'Feed Integrity' : 'Feed Degraded'}</span>
+          <span className={isHealthy ? 'text-brand-accent' : 'text-brand-rose'}>
+            {isHealthy ? 'Online' : 'Retrying'}
+          </span>
         </div>
       </div>
     </motion.div>

@@ -33,7 +33,7 @@ class IngestionService(BaseService):
                 return None
 
             # 2. Fetch technical history
-            hist = await self.data_manager.fetch_history(symbol, period="1y")
+            hist = await self.data_manager.async_fetch_history(symbol, period="1y")
             if hist.empty:
                 self.logger.warning(f"No price history for {symbol}", symbol=symbol)
                 return None

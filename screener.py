@@ -573,7 +573,7 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         info = _merge_info(info, info_backfill)
 
         # --- Technicals (Price & Moving Averages) ---
-        hist = await _dm.fetch_history(ticker_symbol, period="1y")
+        hist = await _dm.async_fetch_history(ticker_symbol, period="1y")
         if hist.empty:
             return {
                 "Symbol": ticker_symbol,

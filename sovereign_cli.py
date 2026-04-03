@@ -10,7 +10,9 @@ import argparse
 import os
 import asyncio
 import json
+import sqlite3 as _sqlite3
 import pandas as pd
+from types import SimpleNamespace
 from datetime import datetime
 
 # Ensure project modules are importable
@@ -18,6 +20,14 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, PROJECT_ROOT)
 
 from db.repository import get_connection
+from modules.market_data import MarketDataProvider
+
+# Use a local proxy so tests can patch ``sovereign_cli.sqlite3.connect``
+# without mutating the global stdlib sqlite module.
+sqlite3 = SimpleNamespace(
+    connect=_sqlite3.connect,
+    OperationalError=_sqlite3.OperationalError,
+)
 
 # Global Paths for v9.6 Automation
 SIGNALS_LOG = "paper_trade_signals.json"
@@ -73,7 +83,6 @@ async def cmd_db_cleanup(args):
 async def cmd_db_dups(args):
     """Identify and optionally clean duplicate entries in stocks.db."""
     print_header("Duplicate Record Forensic")
-    import sqlite3
     try:
         conn = sqlite3.connect("stocks.db")
         cursor = conn.cursor()
@@ -184,7 +193,6 @@ async def cmd_health(args):
 async def cmd_regime(args):
     """Check and display the current market regime."""
     print_header("Sovereign Regime Audit")
-    from modules.market_data import MarketDataProvider
     try:
         provider = MarketDataProvider()
         res = provider.get_market_regime()
@@ -209,7 +217,6 @@ async def cmd_paper_trade(args):
         return
 
     # 2. Market Regime Check
-    from modules.market_data import MarketDataProvider
     provider = MarketDataProvider()
     regime_res = provider.get_market_regime()
     regime = regime_res['regime']
