@@ -19,7 +19,7 @@ uvicorn main:app --reload     # single canonical entry point
 | **One DB layer** — `db/engine.py` (SQLAlchemy 2.0) for new code | `database.py` is legacy raw-SQL; migrate callers incrementally |
 | **Pinned dependencies** — never remove `==` pins from `requirements.txt` | Unpinned = non-deterministic builds |
 | **No committed artifacts** — `.gitignore` blocks `*.csv`, `*.zip`, `*.bak*` | Use `reports_cache/` (gitignored) for output files |
-| **Wrong-repo files stay out** — `sovereign-cli.py` etc. belong in sovereign-engine | Check the WRONG_REPO banner before touching those files |
+| **Wrong-repo files stay out** — `sovereign_cli.py` etc. belong in sovereign-engine | Check the WRONG_REPO banner before touching those files |
 
 ## Branch & PR workflow
 

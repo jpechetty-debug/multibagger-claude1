@@ -54,7 +54,7 @@ Standard EMA-200 crossovers often lag during sharp market recoveries. **Sovereig
 
 ---
 
-## 🛠️ Unified Operational CLI (`sovereign-cli.py`)
+## 🛠️ Unified Operational CLI (`sovereign_cli.py`)
 
 All operations are consolidated into a high-fidelity CLI for researchers and traders.
 

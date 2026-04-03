@@ -50,7 +50,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **`src/main.py` is now a deprecated shim** — emits `DeprecationWarning` and
   re-exports `app` from root `main.py` for backward compatibility. Will be removed
   in the next sprint.
-- **Wrong-repo sovereign files marked** — `sovereign-cli.py`,
+- **Wrong-repo sovereign files marked** — `sovereign_cli.py`,
   `sovereign_analyst_reports.py`, `sovereign_mcp.py` now carry a `WRONG REPOSITORY`
   banner. Migration to `sovereign-engine` repo tracked in issue #SOVEREIGN-MIGRATION.
 

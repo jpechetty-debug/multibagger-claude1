@@ -97,6 +97,11 @@ try:
 except ImportError:
     pass
 
+@app.get("/api/health")
+async def health_check():
+    """System Health Check for Research Terminal Latency"""
+    return {"status": "ok"}
+
 
 DB_NAME = "stocks.db"
 DB_PATH = DB_NAME

@@ -71,6 +71,12 @@ app.conf.update(
             "args": (),
             "options": {"queue": "compute"},
         },
+        "paper-trade-quarterly": {
+            "task": "worker.tasks.run_paper_trade",
+            "schedule": crontab(0, 9, day_of_month="1", month_of_year="2,5,8,11"),
+            "args": (),
+            "options": {"queue": "compute"},
+        },
     },
 
     # Task Routing

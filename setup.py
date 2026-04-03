@@ -120,7 +120,7 @@ def run_health_check():
             status = "PRESENT" if os.path.exists(db) else "MISSING"
             print(f"  Database {db:15}: {status}")
             
-        print("\n✨ Setup Complete! Run 'python sovereign-cli.py health' for deep audit.")
+        print("\n✨ Setup Complete! Run 'python sovereign_cli.py health' for deep audit.")
     except Exception as e:
         print(f"⚠️  Health check encountered issues: {e}")
 

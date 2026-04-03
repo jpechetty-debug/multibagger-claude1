@@ -51,7 +51,7 @@ src            = [".", "modules", "brain", "backtest", "db", "worker", "research
 exclude        = [
     ".agent", "__pycache__", "extracted_hhhhhh",
     "web-ui/node_modules", ".venv", "venv",
-    "sovereign-cli.py", "sovereign_analyst_reports.py", "sovereign_mcp.py",
+    "sovereign_cli.py", "sovereign_analyst_reports.py", "sovereign_mcp.py",
 ]
 
 [tool.ruff.lint]
