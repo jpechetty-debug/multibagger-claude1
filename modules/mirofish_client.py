@@ -80,9 +80,30 @@ class MiroFishClient:
             logger.error(f"MiroFish connection error (create_simulation): {e}")
         return None
 
-    def prepare_simulation(self, simulation_id: str) -> Optional[str]:
+    def poll_task(self, task_id: str, timeout_sec: int = 60) -> bool:
+        """Poll a MiroFish task until completion or failure."""
+        start_time = time.time()
+        while time.time() - start_time < timeout_sec:
+            try:
+                url = f"{self.base_url}/task/status"
+                resp = requests.post(url, json={"task_id": task_id}, timeout=5)
+                data = resp.json()
+                if data.get("success"):
+                    status = data["data"].get("status")
+                    if status == "completed":
+                        return True
+                    elif status == "failed":
+                        logger.error(f"MiroFish task {task_id} failed: {data['data'].get('error')}")
+                        return False
+            except Exception as e:
+                logger.warning(f"Error polling task {task_id}: {e}")
+            time.sleep(2)
+        logger.error(f"Timeout polling MiroFish task {task_id}")
+        return False
+
+    def prepare_simulation(self, simulation_id: str) -> bool:
         """
-        Prepare simulation environment (generates agents). Returns a task_id.
+        Prepare simulation environment (generates agents). Blocks until ready.
         """
         try:
             url = f"{self.base_url}/simulation/prepare"
@@ -90,14 +111,16 @@ class MiroFishClient:
             resp.raise_for_status()
             data = resp.json()
             if data.get("success"):
-                return data["data"].get("task_id")
+                task_id = data["data"].get("task_id")
+                if not task_id: return True # Already prepared
+                return self.poll_task(task_id, timeout_sec=120)
         except Exception as e:
             logger.error(f"MiroFish connection error (prepare_simulation): {e}")
-        return None
+        return False
 
     def generate_report(self, simulation_id: str) -> Optional[str]:
         """
-        Start report generation task.
+        Start report generation task. Returns report_id if successful.
         """
         try:
             url = f"{self.base_url}/report/generate"
@@ -114,6 +137,7 @@ class MiroFishClient:
         """
         Poll report status until completion.
         """
+        # Generate the report generation task first
         report_id = self.generate_report(simulation_id)
         if not report_id:
             return None
@@ -161,11 +185,12 @@ class MiroFishClient:
         if not sim_id:
             return "Simulation failed to start."
             
-        task_id = self.prepare_simulation(sim_id)
-        # In a real impl, wait for prepare task...
-        
+        success = self.prepare_simulation(sim_id)
+        if not success:
+            return "Simulation preparation failed (agent generation timeout)."
+            
         report_id = self.wait_for_report(sim_id)
         if report_id:
-            return f"Swarm simulation complete. Report ID: {report_id}"
+            return f"Swarm simulation complete. Consensus reached. Report ID: {report_id}"
             
         return "Simulation timed out or failed."

@@ -96,19 +96,23 @@ MIROFISH_URL: str = os.getenv("MIROFISH_API_URL", "http://localhost:5001/api")
 # ── Scoring Weights ───────────────────────────────────────────────────────────
 SCORING_WEIGHTS = {
     "balanced": {
-        "w_sales": 0.15, "w_roe": 0.15, "w_cfo": 0.10, "w_val": 0.15,
-        "w_eps": 0.10, "w_fscore": 0.10, "w_de": 0.10, "w_mom": 0.15,
+        "w_sales": 0.15, "w_roe": 0.15, "w_cfo": 0.05, "w_val": 0.15,
+        "w_eps": 0.10, "w_fscore": 0.10, "w_de": 0.10, "w_mom": 0.10,
+        "w_sentiment": 0.10, # Alternative Data Factor (v11.0)
     },
     "momentum": {
         "w_sales": 0.10, "w_roe": 0.00, "w_cfo": 0.00, "w_val": 0.00,
-        "w_eps": 0.40, "w_fscore": 0.10, "w_de": 0.05, "w_mom": 0.35,
+        "w_eps": 0.35, "w_fscore": 0.10, "w_de": 0.05, "w_mom": 0.25,
+        "w_sentiment": 0.15, # Aggressive news follow
     },
     "value": {
-        "w_sales": 0.10, "w_roe": 0.15, "w_cfo": 0.15, "w_val": 0.30,
+        "w_sales": 0.10, "w_roe": 0.15, "w_cfo": 0.10, "w_val": 0.30,
         "w_eps": 0.10, "w_fscore": 0.10, "w_de": 0.10, "w_mom": 0.00,
+        "w_sentiment": 0.05, # Conservative filtering
     },
     "quality": {
-        "w_sales": 0.10, "w_roe": 0.20, "w_cfo": 0.20, "w_val": 0.10,
-        "w_eps": 0.10, "w_fscore": 0.15, "w_de": 0.10, "w_mom": 0.05,
+        "w_sales": 0.10, "w_roe": 0.20, "w_cfo": 0.15, "w_val": 0.10,
+        "w_eps": 0.10, "w_fscore": 0.15, "w_de": 0.10, "w_mom": 0.00,
+        "w_sentiment": 0.10,
     },
 }

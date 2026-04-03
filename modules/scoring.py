@@ -6,6 +6,7 @@ import config
 from research.conviction_engine import calculate_conviction_score
 from modules.promoter_intel import calculate_promoter_score
 from modules.estimates import get_estimate_data
+from modules.news_sentiment import engine as news_engine
 
 # Type aliases
 _Number = Union[int, float]
@@ -79,6 +80,13 @@ def calculate_institutional_score(
     """
     Calculates a 'Composite Institutional Score' out of 100.
     Phase 23: Dynamic Factor Weights based on Market Regime.
+    - [x] **Phase 1: Sentiment Engine Core**
+        - [x] Create `modules/news_sentiment.py` for headline analysis.
+        - [x] Implement local VADER/HuggingFace fallback for sentiment scoring.
+    - [x] **Phase 2: Scoring Model Integration**
+        - [x] Add `w_sentiment` to `SCORING_WEIGHTS` in `config.py`.
+        - [x] Integrate `NewsSentimentEngine` into `modules/scoring.py`.
+        - [x] Update `total_score` calculation to include the 9th factor.
     """
     mode = market_regime.lower() if market_regime else "balanced"
     
@@ -97,8 +105,14 @@ def calculate_institutional_score(
     w_fscore = weights["w_fscore"]
     w_de = weights["w_de"]
     w_mom = weights["w_mom"]
+    w_sentiment = weights.get("w_sentiment", 0.0)
     
     # --- V6.0: METRIC CALCULATION (Pre-Scoring) ---
+    # 0. News Sentiment (v11.0 Nexus Alpha)
+    sentiment_data = news_engine.get_alpha_signal(data.get("Symbol", ""))
+    # Normalize -1.0..1.0 to 0..100
+    score_sentiment = (sentiment_data["sentiment_score"] + 1.0) / 2.0 * 100.0
+    
     # 1. Sales Growth
     # (used in V6.0 sector relative scoring)
     sg_val = data.get("Sales_Growth_5Y%", 0) or data.get("Sales_Growth_TTM%", 0) or 0
@@ -183,6 +197,7 @@ def calculate_institutional_score(
         ("fscore", score_fscore, w_fscore),
         ("de", score_de, w_de),
         ("mom", score_mom_combined, w_mom),
+        ("sentiment", score_sentiment, w_sentiment),
     ]
     
     # Identify which factors have actual data
@@ -211,10 +226,12 @@ def calculate_institutional_score(
     available.append(("de", score_de, w_de))
     # 8. Momentum (Always exists)
     available.append(("mom", score_mom_combined, w_mom))
+    # 9. News Sentiment (Always exists, even if 0.0)
+    available.append(("sentiment", score_sentiment, w_sentiment))
     
     # V3.1: Data Confidence  fraction of factors with real data
-    # (Denominator is 8 total factors)
-    data_confidence = round((len(available) / 8) * 100, 1)
+    # (Denominator is 9 total factors in v11.0)
+    data_confidence = round((len(available) / 9) * 100, 1)
     
     if available:
         # Redistribute total weight (1.0) proportionally among available factors
@@ -661,6 +678,7 @@ def calculate_institutional_score(
              "Value": round((score_val*w_val), 1),
              "Risk": round((score_fscore*w_fscore + score_de*w_de), 1),
              "Momentum": round((score_mom_combined*w_mom), 1),
+             "News_Sentiment": round((score_sentiment*w_sentiment), 1),
              "Smart_Money": 10 if conviction['institutional_interest'] else 0,
              "Sector": sector_boost
         }

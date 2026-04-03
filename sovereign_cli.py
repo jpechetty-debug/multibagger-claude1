@@ -9,19 +9,18 @@ import io
 import argparse
 import os
 import asyncio
+import json
 import pandas as pd
 from datetime import datetime
-
-# Ensure UTF-8 output on Windows
-if sys.platform == "win32":
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 # Ensure project modules are importable
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, PROJECT_ROOT)
 
 from db.repository import get_connection
+
+# Global Paths for v9.6 Automation
+SIGNALS_LOG = "paper_trade_signals.json"
 
 def print_header(text):
     print(f"\n{'='*60}")
@@ -138,6 +137,10 @@ async def cmd_scan_run(args):
         cmd.append(os.path.join("scripts", "internal", script_name))
         if args.tickers:
             cmd.extend(["--tickers", args.tickers])
+        if args.deep:
+            cmd.append("--deep")
+        if args.push:
+            cmd.append("--push")
 
     print(f"🚀 Running: {' '.join(cmd)}")
     subprocess.run(cmd)
@@ -166,24 +169,30 @@ async def cmd_ml_explain(args):
 
 async def cmd_health(args):
     """System-wide health check."""
-    # Logic similar to existing cmd_health
-    print_header("Sovereign AI: Health Guard")
-    from scripts.internal.diagnose import run_diagnostic
-    # Fallback to local logic for now
-    print("Environment:")
-    for f in [".env", "requirements.txt", "stocks.db"]:
-        status = "✅" if os.path.exists(f) else "❌"
-        print(f"  {status} {f}")
+    """Run v9.6 health check diagnostic via isolated subprocess."""
+    print_header("Sovereign Health Audit")
+    import subprocess
+    import sys
+    try:
+        script_path = os.path.join("scripts", "internal", "diagnose.py")
+        subprocess.run([sys.executable, script_path], check=True)
+    except subprocess.CalledProcessError:
+        print("❌ Health check failed.")
+    except Exception as e:
+        print(f"❌ Error invoking health check: {e}")
 
 async def cmd_regime(args):
-    """Check market regime."""
+    """Check and display the current market regime."""
+    print_header("Sovereign Regime Audit")
     from modules.market_data import MarketDataProvider
-    provider = MarketDataProvider()
-    result = provider.get_market_regime()
-    print_header(f"Market Regime: {result['regime']}")
-    print(f"Suggestion: {result['strategy_suggestion']}")
-    if 'momentum_accel' in result['details']:
-        print(f"Acceleration: {result['details']['momentum_accel']:.2f}")
+    try:
+        provider = MarketDataProvider()
+        res = provider.get_market_regime()
+        print(f"Current Regime: {res.get('regime', 'UNKNOWN')}")
+        if 'details' in res and 'momentum_accel' in res['details']:
+            print(f"Acceleration: {res['details']['momentum_accel']:.2f}")
+    except Exception as e:
+        print(f"❌ Error checking regime: {e}")
 
 async def cmd_paper_trade(args):
     """Run live signal logging and paper trading logic."""
@@ -221,12 +230,14 @@ async def cmd_paper_trade(args):
     df_snapshot = pd.DataFrame(results)
     
     # 5. Concentration Cap: 2-Quarter Consecutive Hold Constraint
-    log_file = "paper_trade_signals.json"
+    log_file = SIGNALS_LOG
     history = []
     if os.path.exists(log_file):
         with open(log_file, "r") as f:
-            try: history = json.load(f)
-            except: history = []
+            try:
+                history = json.load(f)
+            except (json.JSONDecodeError, IOError):
+                history = []
 
     prev1_picks = history[-1].get('picks', []) if len(history) >= 1 else []
     prev2_picks = history[-2].get('picks', []) if len(history) >= 2 else []
@@ -255,12 +266,12 @@ async def cmd_paper_trade(args):
     }
 
     history.append(signal_entry)
-    with open(log_file, "w") as f:
-        json.dump(history, f, indent=2)
+    with open(SIGNALS_LOG, "w") as f:
+        json.dump(history, f, indent=4)
 
     print(f"\n✅ REBALANCE SIGNAL GENERATED: {regime} (Exposure: {exposure:.0%})")
     print(f"Top Picks: {', '.join(picks[:3])}...")
-    print(f"Log updated: {log_file}")
+    print(f"Log updated: {SIGNALS_LOG}")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # HELPERS
@@ -304,7 +315,7 @@ def _run_paper_trade_scan(universe, regime):
 # ENTRY POINT
 # ══════════════════════════════════════════════════════════════════════════════
 
-def main():
+async def main():
     parser = argparse.ArgumentParser(description="Sovereign AI Trading Engine - Unified CLI (v4.0)")
     subparsers = parser.add_subparsers(dest="group", help="Command groups")
 
@@ -314,13 +325,14 @@ def main():
     db_sub.add_parser("init", help="Initialize schema")
     db_sub.add_parser("stats", help="Show table counts")
     db_sub.add_parser("cleanup", help="Vacuum and optimize")
-    db_sub.add_parser("dups", help="Find duplicates")
 
     # SCAN Group
     scan_parser = subparsers.add_parser("scan", help="Run universe scans")
     scan_parser.add_argument("type", choices=["quick", "commodities", "master", "requested", "swarm", "value", "user", "missing", "tmpv"])
     scan_parser.add_argument("--smoke", action="store_true", help="Quick scan dry-run")
     scan_parser.add_argument("--tickers", help="Comma-separated tickers for swarm/requested")
+    scan_parser.add_argument("--deep", action="store_true", help="Run high-fidelity deep simulation")
+    scan_parser.add_argument("--push", action="store_true", help="Push conviction updates to database")
 
     # ML Group
     ml_parser = subparsers.add_parser("ml", help="Machine Learning operations")
@@ -356,6 +368,7 @@ def main():
     sys_sub.add_parser("health", help="Run health check")
     sys_sub.add_parser("setup", help="Run first-time setup")
     sys_sub.add_parser("regime", help="Check market regime")
+    sys_sub.add_parser("dups", help="Find duplicate symbols in DB")
 
     # PAPER-TRADE Group (v9.1 Bridge)
     pt_parser = subparsers.add_parser("paper-trade", help="Live signal logging and paper trading")
@@ -364,17 +377,15 @@ def main():
 
     args = parser.parse_args()
 
-    loop = asyncio.get_event_loop()
-    
     if args.group == "db":
-        if args.command == "init": loop.run_until_complete(cmd_db_init(args))
-        elif args.command == "stats": loop.run_until_complete(cmd_db_stats(args))
-        elif args.command == "cleanup": loop.run_until_complete(cmd_db_cleanup(args))
+        if args.command == "init": await cmd_db_init(args)
+        elif args.command == "stats": await cmd_db_stats(args)
+        elif args.command == "cleanup": await cmd_db_cleanup(args)
     elif args.group == "scan":
-        loop.run_until_complete(cmd_scan_run(args))
+        await cmd_scan_run(args)
     elif args.group == "ml":
-        if args.command == "train": loop.run_until_complete(cmd_ml_train(args))
-        elif args.command == "explain": loop.run_until_complete(cmd_ml_explain(args))
+        if args.command == "train": await cmd_ml_train(args)
+        elif args.command == "explain": await cmd_ml_explain(args)
     elif args.group == "backtest":
         if args.command == "qarp":
             # This will call our new script
@@ -386,16 +397,23 @@ def main():
             cmd = [sys.executable, "backtest_engine.py", "--symbol", args.symbol, "--fast", str(args.fast), "--slow", str(args.slow)]
             subprocess.run(cmd)
     elif args.group == "sys":
-        if args.command == "health": loop.run_until_complete(cmd_health(args))
-        elif args.command == "regime": loop.run_until_complete(cmd_regime(args))
+        if args.command == "health": await cmd_health(args)
+        elif args.command == "regime": await cmd_regime(args)
+        elif args.command == "dups": await cmd_db_dups(args)
         elif args.command == "setup": 
             import setup
             setup.setup_environment()
             setup.setup_database()
     elif args.group == "paper-trade":
-        loop.run_until_complete(cmd_paper_trade(args))
+        await cmd_paper_trade(args)
     else:
         parser.print_help()
 
 if __name__ == "__main__":
-    main()
+    # Ensure UTF-8 output on Windows at runtime only (isolated from tests)
+    import io
+    if sys.platform == "win32":
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
+    asyncio.run(main())
