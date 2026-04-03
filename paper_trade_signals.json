@@ -1,0 +1,30 @@
+[
+  {
+    "timestamp": "2026-04-02T18:01:16.734876",
+    "date": "2026-04-02",
+    "regime": "BEAR",
+    "exposure": 0.1,
+    "picks": [
+      "TCS.NS",
+      "RELIANCE.NS",
+      "TITAN.NS"
+    ],
+    "metrics": [
+      {
+        "Symbol": "TCS.NS",
+        "total_score": 46.20375,
+        "Price": 2450.7
+      },
+      {
+        "Symbol": "RELIANCE.NS",
+        "total_score": 25.65626,
+        "Price": 1350.5
+      },
+      {
+        "Symbol": "TITAN.NS",
+        "total_score": 0.0,
+        "Price": 4097.2
+      }
+    ]
+  }
+]

@@ -119,7 +119,7 @@ class MarketDataProvider:
         details = {}
         
         try:
-            # --- FACTOR 1: TREND (Nifty 50 vs 200DMA) ---
+            # --- FACTOR 1: TREND (Nifty 50 vs 200DMA + Momentum Acceleration v9.1) ---
             data = yf.download(index_ticker, period="1y", progress=False)
             if not data.empty:
                 if isinstance(data.columns, pd.MultiIndex):
@@ -127,18 +127,36 @@ class MarketDataProvider:
                 else:
                     prices = data['Close']
                 
-                current_price = prices.iloc[-1]
-                dma200 = prices.rolling(window=200).mean().iloc[-1]
+                current_price = float(prices.iloc[-1])
+                dma200 = float(prices.rolling(window=200).mean().iloc[-1])
                 
+                # 1.1 Price vs DMA Offset
                 offset = (current_price - dma200) / dma200
                 details['trend_offset'] = offset
                 
+                # 1.2 Momentum Acceleration (ROC of EMA Slope)
+                ema200_series = prices.ewm(span=200).mean()
+                slope = ema200_series.diff()
+                accel = slope.diff() # Change in slope
+                
+                # Normalize acceleration relative to price for sensitivity
+                accel_norm = (accel.iloc[-1] / current_price) * 10000 
+                details['momentum_accel'] = accel_norm
+                
+                # 1.3 Decision Logic with Recovery Shield
                 if offset > 0.02:
                     votes['BULL'] += 1
                     details['trend_vote'] = 'BULL'
                 elif offset < -0.02:
-                    votes['BEAR'] += 1
-                    details['trend_vote'] = 'BEAR'
+                    # Recovery Shield: If price is recovering fast (accel > 0.5) 
+                    # even if below 200DMA, we soften the BEAR vote.
+                    if accel_norm > 0.5:
+                        votes['SIDEWAYS'] += 1
+                        details['trend_vote'] = 'RECOVERY_SIDEWAYS'
+                        print(f"📈 Recovery Shield: Accel {accel_norm:.2f} > 0.5. Softening BEAR offset {offset:.1%}")
+                    else:
+                        votes['BEAR'] += 1
+                        details['trend_vote'] = 'BEAR'
                 else:
                     votes['SIDEWAYS'] += 1
                     details['trend_vote'] = 'SIDEWAYS'
