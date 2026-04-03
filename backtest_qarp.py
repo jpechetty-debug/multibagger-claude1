@@ -143,6 +143,7 @@ def run_backtest(years=3, universe_size=50):
             for symbol in test_universe:
                 f = get_pit_factors(symbol, reb_date, cache=ticker_cache)
                 if f:
+                    f['backtest'] = True
                     score_res = calculate_institutional_score(f)
                     f['total_score'] = score_res['total_score']
                     universe_metrics.append(f)

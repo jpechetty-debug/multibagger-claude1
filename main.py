@@ -388,16 +388,6 @@ def get_market_calendar():
     except Exception as e:
         return {"error": str(e)}
 
-@app.get("/api/news/{symbol}")
-async def get_stock_news(symbol: str):
-    """Fetch latest news and sentiment for a symbol"""
-    try:
-        from modules.news_engine import get_news_for_symbol
-        news = await _run_blocking(get_news_for_symbol, symbol)
-        return {"symbol": symbol, "news": news}
-    except Exception as e:
-        return {"error": str(e)}
-
 @app.get("/api/stocks")
 async def get_multibaggers(as_of_date: str | None = None):
     """Fetch Top Multibagger Picks"""
@@ -871,24 +861,6 @@ async def run_scan():
 @app.get("/")
 def read_root():
     return FileResponse("web-ui/index.html")
-
-# News API with Sentiment Intelligence (Phase 63 & 64)
-@app.get("/api/news/{symbol}")
-async def get_news(symbol: str):
-    """Fetch Narrative Intelligence (News) with Sentiment Analysis"""
-    try:
-        from modules.news import get_stock_news
-        
-        # 1. Fetch primary news from yfinance (Fast)
-        news = await get_stock_news(symbol)
-
-
-        
-        # 2. News fetch consolidated to yfinance
-
-        return news
-    except Exception as e:
-        return {"error": str(e)}
 
 # Market Movers API (Phase 64)
 @app.get("/api/market_movers")

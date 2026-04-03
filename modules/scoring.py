@@ -107,11 +107,22 @@ def calculate_institutional_score(
     w_mom = weights["w_mom"]
     w_sentiment = weights.get("w_sentiment", 0.0)
     
-    # --- V6.0: METRIC CALCULATION (Pre-Scoring) ---
-    # 0. News Sentiment (v11.0 Nexus Alpha)
-    sentiment_data = news_engine.get_alpha_signal(data.get("Symbol", ""))
-    # Normalize -1.0..1.0 to 0..100
-    score_sentiment = (sentiment_data["sentiment_score"] + 1.0) / 2.0 * 100.0
+    # --- V11.0: BACKTEST COMPATIBILITY ---
+    # Backtests do not have Point-In-Time news data. 
+    # Force weight to 0 if in backtest mode to avoid skewing historical results.
+    is_backtest = data.get("backtest", False) or not data.get("Symbol")
+    if is_backtest:
+        w_sentiment = 0.0
+        score_sentiment = 50.0
+    else:
+        # --- V6.0: METRIC CALCULATION (Pre-Scoring) ---
+        # 0. News Sentiment (v11.0 Nexus Alpha)
+        try:
+            sentiment_data = news_engine.get_alpha_signal(data.get("Symbol", ""))
+            # Normalize -1.0..1.0 to 0..100
+            score_sentiment = (sentiment_data["sentiment_score"] + 1.0) / 2.0 * 100.0
+        except Exception:
+            score_sentiment = 50.0 # Neutral fallback
     
     # 1. Sales Growth
     # (used in V6.0 sector relative scoring)
