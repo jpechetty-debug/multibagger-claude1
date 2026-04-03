@@ -1,6 +1,6 @@
-# Sovereign AI Trading Engine (v9.6 - Hardened Signals)
+# Sovereign AI Trading Engine (v9.6 - Hardened Automation)
 
-An institutional-grade quantitative screening, scoring, and backtesting ecosystem for Indian (NSE) and Global (US) markets. **V9.6** introduces **Hardened Signals**, enforcing a strict data-quality floor, real-time momentum acceleration synchronization, and automated institutional paper-trade logging.
+An institutional-grade quantitative screening, scoring, and backtesting ecosystem for Indian (NSE) and Global (US) markets. **V9.6** introduces **Hardened Automation**, featuring non-blocking signal generation, deep database forensics, and real-time system health synchronization.
 
 ---
 
@@ -17,17 +17,17 @@ The Sovereign Engine uses a **triple-layer regime detection** system combined wi
 | **Information Ratio** | **0.61** | - |
 
 > [!IMPORTANT]
-> **V9.6: Hardened Signals & UI Refinement**
-> This version introduces a **Hard Score Floor (> 5.0)** across all pipelines to exclude data-orphans and phantom picks. It also synchronizes the **Live Momentum Acceleration** signal from the backend directly to the Research Terminal gauges and adds automated paper-trade task scheduling.
+> **V9.6: Hardened Automation & Diagnostic Forensic**
+> This version introduces **Non-Blocking Paper-Trade Scans** (asyncio-to-thread) to ensure the Celery worker remains responsive during full universe rebalances. It also adds a **Duplicate Record Forensic** tool to preserve database integrity and integrates a **Real-time Heartbeat** endpoint (`/api/health`) for the Research Terminal.
 
 ---
 
 ## 🖥️ Sovereign Research Terminal v3
 
-The frontend has been rebuilt from the ground up to provide institutional-grade data visualization and interaction:
+The frontend provides institutional-grade data visualization and interaction:
 - **Technical Brutalist Design**: High-conviction, asymmetric UI optimized for density and focus.
 - **Modern Tech Stack**: Built with **Vite**, **React**, **TypeScript**, and **TailwindCSS**.
-- **Real-time Integration**: Direct connection to the FastAPI backend with live **Momentum Acceleration** sync and internal network latency monitoring.
+- **Real-time Integration**: Direct connection to the FastAPI backend with live **Momentum Acceleration** sync and **actual network latency monitoring** via `/api/health`.
 - **Agentic Ready**: Fully compatible with the **Model Context Protocol (MCP)** for seamless AI agent interaction.
 
 ---
@@ -45,7 +45,7 @@ The heart of the system is the dynamic, regime-aware weighting engine that uses 
 
 ## 🛡️ Recovery Shield (Regime Detection)
 
-Standard EMA-200 crossovers often lag during sharp market recoveries. **Sovereign v9.5** utilizes a **Momentum-Acceleration** signal:
+Standard EMA-200 crossovers often lag during sharp market recoveries. **Sovereign v9.6** utilizes a **Momentum-Acceleration** signal:
 
 1. **Trend Offset**: Price vs. 200DMA (300-day stabilized window).
 2. **Momentum Acceleration**: The **Rate of Change (ROC)** of the EMA slope, dynamically synced to the Terminal gauges.
@@ -61,8 +61,8 @@ All operations are consolidated into a high-fidelity CLI for researchers and tra
 ### 📄 Signal Logging (`paper-trade`)
 The bridge between backtest and real execution.
 - `paper-trade --universe 50`: Detects regime, runs 8-factor scoring, and logs signals.
-- **Score Hardening**: Enforces the **> 5.0 score floor** to block data failures.
-- **Automation**: Now supports **Celery-task-driven automation** for institutional paper-trade logging.
+- **Non-Blocking**: Uses `asyncio.to_thread` for background indexing (v9.6).
+- **Automation**: Fully integrated with **Celery Beat** for quarterly scheduled rebalancing.
 
 ### 🔍 Universe Scanning (`scan`)
 - `scan quick`: Main high-conviction screener.
@@ -77,7 +77,8 @@ The bridge between backtest and real execution.
 ### ⚙️ System Ops (`sys`)
 - `sys menu`: Main operational dashboard.
 - `sys health`: Baseline system audit (dependencies, DB integrity).
-- `sys regime`: Check current market status and the v9.5 Acceleration signal.
+- `sys db dups`: **New in v9.6** - Scan database for duplicate records.
+- `sys regime`: Check current market status and the v9.6 Acceleration signal.
 
 ---
 
