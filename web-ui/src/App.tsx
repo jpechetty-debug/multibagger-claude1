@@ -87,7 +87,7 @@ export default function App() {
       />
 
       <SignalGrid
-        signals={filteredSignals.slice(0, 11)}
+        signals={filteredSignals}
         totalSignalCount={signals.length}
         searchTerm={searchTerm}
         loading={loading}
