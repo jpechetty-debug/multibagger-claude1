@@ -154,6 +154,34 @@ async def cmd_scan_run(args):
     print(f"🚀 Running: {' '.join(cmd)}")
     subprocess.run(cmd)
 
+
+async def cmd_rs_ingest(args):
+    """Ingest RS CSV signals into the multibaggers table."""
+    print_header("RS Signals: Ingest")
+    from scripts.internal.ingest_rs_signals import ingest
+
+    ingest(csv_path=args.csv_path)
+
+
+async def cmd_rs_enrich(args):
+    """Enrich RS rows that have not been audited yet."""
+    print_header("RS Signals: Enrich")
+    from scripts.internal.enrich_rs_signals import enrich
+
+    enrich(
+        db_path=args.db_path,
+        delay_seconds=args.delay_seconds,
+        market_regime=args.market_regime,
+    )
+
+
+async def cmd_rs_cleanup(args):
+    """Delete RS rows for the requested symbols."""
+    print_header("RS Signals: Cleanup")
+    from scripts.internal.cleanup_signals import cleanup_symbols
+
+    cleanup_symbols(symbols=args.symbols, db_path=args.db_path)
+
 # ══════════════════════════════════════════════════════════════════════════════
 # COMMAND: ML Group
 # ══════════════════════════════════════════════════════════════════════════════
@@ -341,6 +369,19 @@ async def main():
     scan_parser.add_argument("--deep", action="store_true", help="Run high-fidelity deep simulation")
     scan_parser.add_argument("--push", action="store_true", help="Push conviction updates to database")
 
+    # RS Group
+    rs_parser = subparsers.add_parser("rs", help="Relative strength signal operations")
+    rs_sub = rs_parser.add_subparsers(dest="command")
+    rs_ingest = rs_sub.add_parser("ingest", help="Ingest RS CSV export into the database")
+    rs_ingest.add_argument("--csv-path", default=os.path.join(PROJECT_ROOT, "tmp_rs_data.csv"))
+    rs_enrich = rs_sub.add_parser("enrich", help="Enrich unaudited RS rows with market data")
+    rs_enrich.add_argument("--db-path", default=os.path.join(PROJECT_ROOT, "stocks.db"))
+    rs_enrich.add_argument("--delay-seconds", type=float, default=2.0)
+    rs_enrich.add_argument("--market-regime", default="SIDEWAYS")
+    rs_cleanup = rs_sub.add_parser("cleanup", help="Delete RS rows for explicit symbols")
+    rs_cleanup.add_argument("--symbols", nargs="+", required=True)
+    rs_cleanup.add_argument("--db-path", default=os.path.join(PROJECT_ROOT, "stocks.db"))
+
     # ML Group
     ml_parser = subparsers.add_parser("ml", help="Machine Learning operations")
     ml_sub = ml_parser.add_subparsers(dest="command")
@@ -390,6 +431,11 @@ async def main():
         elif args.command == "cleanup": await cmd_db_cleanup(args)
     elif args.group == "scan":
         await cmd_scan_run(args)
+    elif args.group == "rs":
+        if args.command == "ingest": await cmd_rs_ingest(args)
+        elif args.command == "enrich": await cmd_rs_enrich(args)
+        elif args.command == "cleanup": await cmd_rs_cleanup(args)
+        else: rs_parser.print_help()
     elif args.group == "ml":
         if args.command == "train": await cmd_ml_train(args)
         elif args.command == "explain": await cmd_ml_explain(args)
