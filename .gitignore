@@ -111,3 +111,8 @@ screener_results.*
 sovereign-cli.py
 sovereign_analyst_reports.py
 sovereign_mcp.py
+ 
+test_results.txt
+schema_output.txt
+alpha_report.md
+qarp_backtest_report.md

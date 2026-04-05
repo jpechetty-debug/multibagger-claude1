@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import joblib
 import os
 
-MODEL_PATH = "market_regime_hmm.pkl"
+MODEL_PATH = os.path.join("runtime", "models", "market_regime_hmm.pkl")
 
 class RegimeHMM:
     """

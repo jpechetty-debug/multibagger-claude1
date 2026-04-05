@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from modules.data_manager import data_manager
+from modules.data_service import data_manager
 
 def get_quarterly_results(symbol):
     """

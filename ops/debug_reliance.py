@@ -8,7 +8,7 @@ import pandas as pd
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_DIR)
 
-from modules.data_manager import data_manager
+from modules.data_service import data_manager
 from modules.fundamentals import calculate_current_roe, calculate_recent_sales_growth, extract_financial_metric
 
 async def debug_reliance():

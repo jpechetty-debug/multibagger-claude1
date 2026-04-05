@@ -1,4 +1,65 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+import re
+import os
+
+with open('main.py', 'r', encoding='utf-8') as f:
+    text = f.read()
+
+parts = text.split('# API Endpoints')
+# The second part contains all endpoints but might contain if __name__ == '__main__':
+block = parts[1]
+
+# Exclude the __main__ block
+main_block = ''
+idx_main = block.find('if __name__ == "__main__":')
+if idx_main != -1:
+    idx_end_main = block.find('@app', idx_main) 
+    if idx_end_main != -1:
+        main_block = block[idx_main:idx_end_main]
+        block = block[:idx_main] + '\n' + block[idx_end_main:]
+    else:
+        main_block = block[idx_main:]
+        block = block[:idx_main]
+
+# Also grab the websocket if it's before API Endpoints
+ws_idx = text.find('@app.websocket')
+ws_block = ''
+if ws_idx != -1 and ws_idx < len(parts[0]):
+    ws_end = text.find('# Allow CORS', ws_idx)
+    if ws_end != -1:
+        ws_block = text[ws_idx:ws_end]
+        parts[0] = parts[0][:ws_idx] + parts[0][ws_end:]
+
+# Replace @app with @router in the extracted blocks
+ws_block = ws_block.replace('@app.websocket', '@router.websocket')
+api_routes = block.replace('@app.get', '@router.get').replace('@app.post', '@router.post').replace('@app.websocket', '@router.websocket')
+
+api_file = '''from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+import pandas as pd
+import numpy as np
+import json
+import os
+import csv
+import asyncio
+import yfinance as yf
+import time
+from datetime import datetime
+from pydantic import BaseModel, Field
+
+from modules.dependencies import *
+from app_routes.contracts import RegimeStatusResponse
+from modules.symbol_utils import normalize_symbol
+from modules.revisions import analyze_revisions
+from modules.drift_monitor import monitor_drift
+from modules.allocation_hrp import HRPAllocator
+
+router = APIRouter()
+
+''' + ws_block + '\n' + api_routes
+
+with open('app_routes/api.py', 'w', encoding='utf-8') as f:
+    f.write(api_file)
+
+final_main = '''from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
 import pandas as pd
@@ -32,11 +93,7 @@ from modules.dependencies import (
 )
 
 from app_routes import public_router
-from app_routes.stocks import router as stocks_router
-from app_routes.analysis import router as analysis_router
-from app_routes.regime import router as regime_router
-from app_routes.trading import router as trading_router
-from app_routes.system import router as system_router
+from app_routes.api import router as api_router
 
 # Background Task for Periodic Price Updates
 @asynccontextmanager
@@ -85,41 +142,12 @@ except ImportError:
     pass
 
 app.include_router(public_router)
-app.include_router(stocks_router)
-app.include_router(analysis_router)
-app.include_router(regime_router)
-app.include_router(trading_router)
-app.include_router(system_router)
+app.include_router(api_router)
 app.mount("/static", StaticFiles(directory="web-ui"), name="static")
 
-if __name__ == "__main__":
-    import uvicorn
-    if runtime_settings.embed_weekly_audit_in_web:
-        start_weekly_audit_thread(
-            get_connection=get_connection,
-            run_sqlite_write_with_retry_sync=_run_sqlite_write_with_retry_sync,
-            logger=runtime_logger,
-        )
-    else:
-        runtime_logger.info(
-            "Embedded weekly audit loop disabled",
-            standalone_worker="python -m worker.runtime",
-        )
+''' + main_block
 
-    app_logger.info(
-        "Starting server",
-        host="127.0.0.1",
-        port=9005,
-        embedded_price_updater=runtime_settings.embed_price_updater_in_web,
-        embedded_weekly_audit=runtime_settings.embed_weekly_audit_in_web,
-    )
-    uvicorn.run(
-        "main:app", 
-        host="127.0.0.1", 
-        port=9005, 
-        reload=True,
-        reload_excludes=["*.db", "*.db-journal", "*.db-wal", "*.log", "*.txt"]
-    )
+with open('main.py', 'w', encoding='utf-8') as f:
+    f.write(final_main)
 
-
-
+print("Done Refactoring!")

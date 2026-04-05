@@ -20,7 +20,7 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, PROJECT_ROOT)
 
 from db.repository import get_connection
-from modules.market_data import MarketDataProvider
+from modules.data_service import MarketDataProvider
 
 # Use a local proxy so tests can patch ``sovereign_cli.sqlite3.connect``
 # without mutating the global stdlib sqlite module.

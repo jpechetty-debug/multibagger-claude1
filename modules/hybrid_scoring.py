@@ -13,7 +13,7 @@ import xgboost as xgb
 
 warnings.filterwarnings("ignore")
 
-MODEL_PATH = "xgboost_meta_model.pkl"
+MODEL_PATH = os.path.join("runtime", "models", "xgboost_meta_model.pkl")
 FEATURES = [
     "score",
     "sales_cagr_5y",

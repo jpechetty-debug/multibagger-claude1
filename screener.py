@@ -20,7 +20,7 @@ from modules.fundamentals import (
     calculate_median_pat_growth
 )
 from modules.estimates import get_estimate_data
-from modules.data_manager import DataManager, data_manager
+from modules.data_service import DataManager, data_manager
 from backtest.engine import VectorBTEngine
 import asyncio
 from datetime import datetime, date, timedelta
@@ -505,7 +505,7 @@ def get_benchmark_return():
         
         # --- MARKET CLOSED FIX (Dynamic) ---
         today = datetime.now().date()
-        from modules.data_manager import data_manager
+        from modules.data_service import data_manager
         is_valid_trading_day = today in data_manager.valid_trading_days
         is_holiday_or_weekend = not is_valid_trading_day
         
@@ -1148,7 +1148,7 @@ def main():
     final_mode = args.mode
     if args.mode == "auto":
         print(" Auto-Regime: Analyzing Market Structure...")
-        from modules.market_data import MarketDataProvider
+        from modules.data_service import MarketDataProvider
         provider = MarketDataProvider()
         regime_data = provider.get_market_regime()
         final_mode = regime_data["strategy_suggestion"].lower()

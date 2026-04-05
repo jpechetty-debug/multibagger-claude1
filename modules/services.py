@@ -20,7 +20,7 @@ class IngestionService(BaseService):
     
     def __init__(self, logger=None):
         super().__init__(logger)
-        from modules.data_manager import data_manager
+        from modules.data_service import data_manager
         self.data_manager = data_manager
 
     async def fetch_single_stock(self, symbol: str) -> Optional[StockDataPayload]:
@@ -96,7 +96,7 @@ class DataStoreService(BaseService):
     
     def __init__(self, logger=None):
         super().__init__(logger)
-        from modules.data_manager import PersistentCache
+        from modules.data_service import PersistentCache
         self._memory_cache = {}
         self._db_cache = PersistentCache(db_path="data_cache.db")
         

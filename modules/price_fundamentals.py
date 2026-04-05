@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 from modules.retry_utils import run_with_exponential_backoff
-from modules.data_manager import data_manager
+from modules.data_service import data_manager
 
 
 def _safe_float(value) -> Optional[float]:
