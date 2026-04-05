@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from worker.background_jobs import run_weekly_audit_loop, start_weekly_audit_thread
 import pandas as pd
 import numpy as np
 import json
@@ -974,7 +975,7 @@ async def get_estimates(symbol: str):
 def weekly_audit_loop():
     """Compatibility wrapper around the standalone weekly audit worker."""
     run_weekly_audit_loop(
-        deps.get_connection=deps.get_connection,
+        get_connection=deps.get_connection,
         run_sqlite_write_with_retry_sync=deps._run_sqlite_write_with_retry_sync,
         logger=deps.runtime_logger,
     )
@@ -1158,13 +1159,3 @@ async def get_hrp_allocation():
         return {"error": str(e)}
 
 
-# Helper to clean JSON (NaN/Inf)
-def deps._json_safe_clean(obj):
-    if isinstance(obj, list):
-        return [deps._json_safe_clean(x) for x in obj]
-    if isinstance(obj, dict):
-        return {k: deps._json_safe_clean(v) for k, v in obj.items()}
-    if isinstance(obj, float):
-        if np.isnan(obj) or np.isinf(obj):
-            return None
-    return obj
