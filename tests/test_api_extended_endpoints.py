@@ -16,7 +16,7 @@ import db.repository as database_module
 import main
 
 import modules.financials as financials_module
-import modules.market_data as market_data_module
+import modules.data_service as market_data_module
 import modules.news as news_module
 import modules.peer_analysis as peer_analysis_module
 import modules.quarterly_results as quarterly_results_module
@@ -273,8 +273,9 @@ def test_valuation_endpoint_uses_db_and_returns_metrics(tmp_path, monkeypatch):
     conn.commit()
     conn.close()
 
-    monkeypatch.setattr(main, "DB_PATH", str(db_path), raising=False)
-    monkeypatch.setattr(main, "DB_NAME", str(db_path), raising=False)
+    import modules.dependencies as deps
+    monkeypatch.setattr(deps, "DB_PATH", str(db_path), raising=False)
+    monkeypatch.setattr(deps, "DB_NAME", str(db_path), raising=False)
 
     class FakeTicker:
         @property
@@ -368,8 +369,9 @@ def test_valuation_endpoint_cached_payload_shape(tmp_path, monkeypatch):
     conn.commit()
     conn.close()
 
-    monkeypatch.setattr(main, "DB_PATH", str(db_path), raising=False)
-    monkeypatch.setattr(main, "DB_NAME", str(db_path), raising=False)
+    import modules.dependencies as deps
+    monkeypatch.setattr(deps, "DB_PATH", str(db_path), raising=False)
+    monkeypatch.setattr(deps, "DB_NAME", str(db_path), raising=False)
 
     class ExplodingTicker:
         @property
@@ -392,9 +394,8 @@ def test_valuation_endpoint_cached_payload_shape(tmp_path, monkeypatch):
 
 def test_order_lifecycle_endpoints(tmp_path, monkeypatch):
     tracker_db = tmp_path / "portfolio_history_test.db"
-    monkeypatch.setattr(
-        main, "portfolio_tracker", tracker_module.PortfolioTracker(str(tracker_db)), raising=False
-    )
+    import modules.dependencies as deps
+    monkeypatch.setattr(deps, "portfolio_tracker", tracker_module.PortfolioTracker(str(tracker_db)), raising=False)
 
     class FakeRiskGovernor:
         def check_kill_switch(
@@ -411,7 +412,7 @@ def test_order_lifecycle_endpoints(tmp_path, monkeypatch):
         def log_rejected_trade(self, *_args, **_kwargs):
             return None
 
-    monkeypatch.setattr(main, "risk_governor", FakeRiskGovernor(), raising=False)
+    monkeypatch.setattr(deps, "risk_governor", FakeRiskGovernor(), raising=False)
 
     with TestClient(main.app) as client:
         buy_response = client.post(

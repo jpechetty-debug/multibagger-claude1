@@ -5,7 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## [Unreleased] — Sprint: Infrastructure Hardening
+## [Unreleased] — Sprint: Sovereign v3.0 Transformation
+
+### Added
+- **Nexus Alpha (v11.0)** — Complete modularize of the scoring engine with enhanced institutional scoring logic and type safety.
+- **Technical Brutalist UI** — Migration from legacy dashboard to a high-performance, Vite-powered React/TypeScript terminal interface.
+- **QARP v4.4 Hardening** — Integrated EMA-200 / 300-day trend filters and enforced portfolio concentration controls for backtest robustness.
+- **Sector-Wise RS Ingestion** — Automated workflow for ingesting high-conviction signals from `RS_Top10_Per_Sector.xlsx` into `stocks.db`.
+- **Pure Data Architecture** — Finalized removal of all Alpha Vantage dependencies; transitioning to a yfinance and local NSE data model.
+
+## [2.2.0] — Sprint: Infrastructure Hardening
 
 ### Fixed
 - **BOM characters removed** from `modules/risk.py`, `modules/peer_analysis.py`,

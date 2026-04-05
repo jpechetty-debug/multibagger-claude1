@@ -75,7 +75,7 @@ async def get_news_sentiment(symbol: str):
 def get_market_calendar():
     """Return valid trading days for the current year."""
     try:
-        from modules.data_manager import data_manager
+        from modules.data_service import data_manager
 
         valid_days = [day.isoformat() for day in data_manager.valid_trading_days]
         return {"valid_trading_days": valid_days}

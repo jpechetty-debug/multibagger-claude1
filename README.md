@@ -1,18 +1,26 @@
-# Sovereign AI Trading Engine
+# Sovereign Research Terminal v3.0
 
-Sovereign is a quantitative screening and research platform for Indian equities. It combines a FastAPI backend, a React/Vite dashboard, point-in-time data storage, a scoring engine, CLI workflows for scans and backtests, and a standalone worker for recurring runtime jobs.
+Sovereign is an institutional-grade quantitative screening and research platform for Indian equities. It integrates the **Nexus Alpha (v11.0)** scoring engine, a **Technical Brutalist** React/Vite dashboard, and a hardened **QARP (v4.4)** quantitative model with 200-day trend filters and portfolio concentration controls.
 
-This README is the operational entrypoint for running the project locally. For a deeper layout overview, see [ARCHITECTURE.md](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/ARCHITECTURE.md).
+This README is the operational entrypoint for running the terminal locally. For a deeper layout overview, see [ARCHITECTURE.md](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/ARCHITECTURE.md).
 
 ## What Is In The Repo
 
-- FastAPI API in [main.py](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/main.py)
-- Extracted route modules in [app_routes](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/app_routes)
-- Core screening, scoring, and data logic in [modules](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/modules)
-- Repository and PIT persistence code in [db](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/db)
-- Standalone background jobs in [worker](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/worker)
-- React frontend in [web-ui](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/web-ui)
-- Regression and contract tests in [tests](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/tests)
+- FastAPI API in [main.py](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/main.py)
+- Extracted route modules in [app_routes](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/app_routes)
+- **Nexus Alpha (v11.0)** core scoring and data logic in [modules](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/modules)
+- Repository and PIT persistence code in [db](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/db)
+- Standalone background jobs in [worker](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/worker)
+- **Technical Brutalist** React frontend in [web-ui](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/web-ui)
+- Regression and contract tests in [tests](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/tests)
+
+## Core Intelligence & Hardening (v4.4)
+
+- **QARP Strategy**: Hardened Quality at a Reasonable Price model with regime-aware weights.
+- **Trend Filtering**: Integrated EMA-200 / 300-day lookback filters to mitigate drawdowns.
+- **Concentration Controls**: Enforced 2-quarter consecutive-hold constraints for statistical robustness.
+- **Sector RS High-Conviction**: Automated ingestion of ~200 top-performing stocks via `RS_Top10_Per_Sector.xlsx`.
+- **Pure Data Model**: Fully purged Alpha Vantage dependencies; now utilizing pure `yfinance` and local NSE data.
 
 ## Canonical Entry Points
 
@@ -83,6 +91,7 @@ python sovereign_cli.py scan quick
 python sovereign_cli.py scan swarm --tickers INFY.NS,TCS.NS --deep
 python sovereign_cli.py sys health
 python sovereign_cli.py sys regime
+python sovereign_cli.py research rs-sector  # Ingest Sector RS signals
 python sovereign_cli.py paper-trade --universe 50
 ```
 
@@ -133,14 +142,14 @@ The frontend test harness is powered by Vitest and Testing Library. The most imp
 
 ## Repo Layout
 
-- [main.py](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/main.py): active FastAPI app
-- [app_routes](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/app_routes): extracted API routers and response contracts
-- [modules](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/modules): screening, scoring, data ingestion, and domain services
-- [db](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/db): schema and repository layer
-- [worker](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/worker): background runtime jobs
-- [web-ui](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/web-ui): React/Vite client
-- [tests](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/tests): regression and contract coverage
-- [src](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/src): deprecated compatibility path
+- [main.py](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/main.py): active FastAPI app
+- [app_routes](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/app_routes): extracted API routers and response contracts
+- [modules](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/modules): **Nexus Alpha** scoring, data ingestion, and domain services
+- [db](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/db): repository layer and PIT snapshot logic
+- [worker](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/worker): background runtime jobs
+- [web-ui](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/web-ui): **Technical Brutalist** UI
+- [tests](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/tests): regression and contract coverage
+- [src](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/src): [DEPRECATED] compatibility path
 
 ## Development Notes
 
