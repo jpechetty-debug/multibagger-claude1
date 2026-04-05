@@ -2,17 +2,17 @@
 
 Sovereign is an institutional-grade quantitative screening and research platform for Indian equities. It integrates the **Nexus Alpha (v11.0)** scoring engine, a **Technical Brutalist** React/Vite dashboard, and a hardened **QARP (v4.4)** quantitative model with 200-day trend filters and portfolio concentration controls.
 
-This README is the operational entrypoint for running the terminal locally. For a deeper layout overview, see [ARCHITECTURE.md](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/ARCHITECTURE.md).
+This README is the operational entrypoint for running the terminal locally. For a deeper layout overview, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## What Is In The Repo
 
-- FastAPI API in [main.py](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/main.py)
-- Extracted route modules in [app_routes](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/app_routes)
-- **Nexus Alpha (v11.0)** core scoring and data logic in [modules](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/modules)
-- Repository and PIT persistence code in [db](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/db)
-- Standalone background jobs in [worker](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/worker)
-- **Technical Brutalist** React frontend in [web-ui](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/web-ui)
-- Regression and contract tests in [tests](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/tests)
+- FastAPI API in [main.py](./main.py)
+- Extracted route modules in [app_routes](./app_routes)
+- **Nexus Alpha (v11.0)** core scoring and data logic in [modules](./modules)
+- Repository and PIT persistence code in [db](./db)
+- Standalone background jobs in [worker](./worker)
+- **Technical Brutalist** React frontend in [web-ui](./web-ui)
+- Regression and contract tests in [tests](./tests)
 
 ## Core Intelligence & Hardening (v4.4)
 
@@ -29,7 +29,7 @@ This README is the operational entrypoint for running the terminal locally. For 
 - CLI: `python sovereign_cli.py ...`
 - Frontend dev server: `cd web-ui && npm run dev`
 
-The repo-root [main.py](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/main.py) is the only active web application entrypoint. The `src/` tree is deprecated compatibility scaffolding and should not be used for new work.
+The repo-root [main.py](./main.py) is the only active web application entrypoint. The `src/` tree is deprecated compatibility scaffolding and should not be used for new work.
 
 ## Quick Start
 
@@ -50,7 +50,7 @@ Copy-Item .env.example .env
 
 Notes:
 - Local development can run against SQLite without extra database setup.
-- See [.env.example](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/.env.example) for database, Redis, and risk-governor settings.
+- See [.env.example](./.env.example) for database, Redis, and risk-governor settings.
 
 ### Start The Backend
 
@@ -108,9 +108,9 @@ CLI groups currently available:
 
 The dashboard now relies on a normalized contract layer instead of consuming backend payloads directly:
 
-- Shared frontend-facing types live in [web-ui/src/lib/contracts.ts](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/web-ui/src/lib/contracts.ts)
-- Backend payload normalization lives in [web-ui/src/lib/api.ts](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/web-ui/src/lib/api.ts)
-- Dashboard loading, error, refresh, and empty states are handled in [web-ui/src/App.tsx](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/web-ui/src/App.tsx) and [web-ui/src/components/signals/SignalGrid.tsx](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/web-ui/src/components/signals/SignalGrid.tsx)
+- Shared frontend-facing types live in [web-ui/src/lib/contracts.ts](./web-ui/src/lib/contracts.ts)
+- Backend payload normalization lives in [web-ui/src/lib/api.ts](./web-ui/src/lib/api.ts)
+- Dashboard loading, error, refresh, and empty states are handled in [web-ui/src/App.tsx](./web-ui/src/App.tsx) and [web-ui/src/components/signals/SignalGrid.tsx](./web-ui/src/components/signals/SignalGrid.tsx)
 
 The main frontend contract-sensitive endpoints are:
 - `/api/stocks`
@@ -135,24 +135,24 @@ npm run build
 ```
 
 The frontend test harness is powered by Vitest and Testing Library. The most important current UI contract tests live in:
-- [web-ui/src/lib/api.test.ts](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/web-ui/src/lib/api.test.ts)
-- [web-ui/src/App.test.tsx](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/web-ui/src/App.test.tsx)
+- [web-ui/src/lib/api.test.ts](./web-ui/src/lib/api.test.ts)
+- [web-ui/src/App.test.tsx](./web-ui/src/App.test.tsx)
 
 `pytest.ini` is the single source of truth for pytest behavior in this repo.
 
 ## Repo Layout
 
-- [main.py](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/main.py): active FastAPI app
-- [app_routes](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/app_routes): extracted API routers and response contracts
-- [modules](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/modules): **Nexus Alpha** scoring, data ingestion, and domain services
-- [db](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/db): repository layer and PIT snapshot logic
-- [worker](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/worker): background runtime jobs
-- [web-ui](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/web-ui): **Technical Brutalist** UI
-- [tests](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/tests): regression and contract coverage
-- [src](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/src): [DEPRECATED] compatibility path
+- [main.py](./main.py): active FastAPI app
+- [app_routes](./app_routes): extracted API routers and response contracts
+- [modules](./modules): **Nexus Alpha** scoring, data ingestion, and domain services
+- [db](./db): repository layer and PIT snapshot logic
+- [worker](./worker): background runtime jobs
+- [web-ui](./web-ui): **Technical Brutalist** UI
+- [tests](./tests): regression and contract coverage
+- [src](./src): [DEPRECATED] compatibility path
 
 ## Development Notes
 
 - Prefer adding new backend behavior to the active root app and extracted router/modules, not `src/`.
 - New runtime artifacts should live in ignored output locations such as `runtime/`, `logs/`, or `reports_cache/`, not as committed source files.
-- For architectural context and runtime policy, see [ARCHITECTURE.md](/D:/Tradeidesa/Multibagger-claude/Newmultibagger-main/ARCHITECTURE.md).
+- For architectural context and runtime policy, see [ARCHITECTURE.md](./ARCHITECTURE.md).

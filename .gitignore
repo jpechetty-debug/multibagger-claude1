@@ -79,6 +79,10 @@ check_fail*.txt
 disq_fail*.txt
 final_fail*.txt
 liquidity.json
+paper_trade_signals.json
+modules/analyst_consensus.json
+delisted_candidates.txt
+tests/*_log.txt
 reports_cache/
 ops/ticker_list_*.txt
 ops/audit_result.txt
