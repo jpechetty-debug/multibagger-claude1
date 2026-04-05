@@ -19,6 +19,7 @@ from db.repository import get_connection
 from modules.scoring import calculate_institutional_score
 from modules.fundamentals import calculate_piotroski_f_score
 from modules.regime_hmm import RegimeHMM
+import config
 
 # Disable emojis for Windows terminal stability
 console = Console(force_terminal=True, emoji=False)
@@ -114,11 +115,11 @@ def calculate_risk_metrics(rets, bench_rets=None):
         metrics["IR"] = alpha / tracking_error if tracking_error > 0 else 0
     return metrics
 
-def run_backtest(years=3, universe_size=50):
-    print_header(f"Sovereign QARP Institutional Validation ({years}Y)")
+def run_backtest(years=3, universe_size=50, stress_mode=False, rebal_freq='MS'):
+    print_header(f"Sovereign QARP Institutional Validation ({'STRESS ' if stress_mode else ''}{years}Y)")
     end_date = datetime.now()
     start_date = end_date - timedelta(days=365 * years)
-    reb_dates = pd.date_range(start=start_date, end=end_date, freq='3MS')
+    reb_dates = pd.date_range(start=start_date, end=end_date, freq=rebal_freq)
     portfolio_value = 100.0
     history = []
     ticker_cache = {}
@@ -194,10 +195,15 @@ def run_backtest(years=3, universe_size=50):
             except:
                 bnch_ret = 0.0
             
-            # --- Regime-Aware Position Sizing (v4.3) ---
-            regime_hmm = hmm.predict_regime(target_date=reb_date)
+            # --- Regime-Aware Position Sizing (v5.0 Stress Test Support) ---
+            # Simulate 1-day execution lag in Stress Mode
+            regime_detect_date = reb_date - timedelta(days=1) if stress_mode else reb_date
+            regime_hmm = hmm.predict_regime(target_date=regime_detect_date)
             
-            # Enhanced Trend & Volatility Filters
+            # Exposure Multipliers (Normal vs. Stress)
+            BEAR_EXP = 0.4 if stress_mode else 0.1
+            VOL_EXP = 0.6 if stress_mode else 0.3
+            
             try:
                 # --- EMA Stability Filter (v4.4: 300D History) ---
                 start_300d = reb_date - timedelta(days=300)
@@ -208,7 +214,6 @@ def run_backtest(years=3, universe_size=50):
                 else:
                     # 1. Price vs EMA Filters (Stabilized with 300 days)
                     price_now = float(hist_long['Close'].values.flatten()[-1])
-                    # Use all data for ewm to ensure it converges
                     ema_200 = float(hist_long['Close'].ewm(span=200).mean().values.flatten()[-1])
                     ema_50 = float(hist_long['Close'].ewm(span=50).mean().values.flatten()[-1])
                     
@@ -218,9 +223,9 @@ def run_backtest(years=3, universe_size=50):
                     
                     # 3. Decision Logic
                     if price_now < ema_200 or price_now < ema_50:
-                        regime, exposure = "BEARISH", 0.1
+                        regime, exposure = "BEARISH", BEAR_EXP
                     elif vol_now > 25.0:
-                        regime, exposure = "VOLATILE", 0.3
+                        regime, exposure = "VOLATILE", VOL_EXP
                     elif regime_hmm == "BULLISH":
                         regime, exposure = "BULLISH", 1.0
                     else:
@@ -259,10 +264,13 @@ def run_backtest(years=3, universe_size=50):
     table.add_row("Annual Alpha", f"{m['Alpha']:+.2f}%")
     console.print(table)
     with open("qarp_backtest_report.md", "w") as f:
-        f.write("# QARP Institutional Validation Report (v4.4 - Regime-Aware)\n\n")
+        f.write(f"# QARP {'STRESS TEST ' if stress_mode else 'Institutional Validation'} Report (v5.0)\n\n")
         f.write(f"- Backtest Period: {start_date.date()} to {end_date.date()}\n")
+        f.write(f"- Rebalance Frequency: {rebal_freq}\n")
+        f.write(f"- Mode: {'STRESS (High Risk/Aggressive)' if stress_mode else 'Normal (Institutional/Conservative)'}\n")
         f.write(f"- Regime Detection: Gaussian HMM (Bullish/Volatile/Bearish)\n")
-        f.write(f"- Position Sizing: Dynamic Exposure (Bull=100%, Vol=50%, Bear=10%)\n")
+        f.write(f"- Exposure Tuning (Normal/Stress): Bear={0.1}/{0.4}, Volatile={0.3}/{0.6}\n")
+        f.write(f"- Execution Lag: {'1 Day (Simulated)' if stress_mode else 'None (Day-Of)'}\n")
         f.write(f"- Slippage Modeling: Tiered (0.2% - 2.0%)\n")
         f.write(f"- Transaction Costs: 0.2% per round-trip\n\n")
         
@@ -280,7 +288,9 @@ def run_backtest(years=3, universe_size=50):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--years", type=int, default=2)
-    parser.add_argument("--universe", type=int, default=50)
+    parser.add_argument("--years", type=int, default=5)
+    parser.add_argument("--universe", type=int, default=60)
+    parser.add_argument("--stress", action="store_true", help="Enable Stress Test Mode (higher BEAR exposure)")
+    parser.add_argument("--rebal", type=str, default="MS", help="Rebalance frequency (e.g., MS, 3MS, W)")
     args = parser.parse_args()
-    run_backtest(years=args.years, universe_size=args.universe)
+    run_backtest(years=args.years, universe_size=args.universe, stress_mode=args.stress, rebal_freq=args.rebal)
