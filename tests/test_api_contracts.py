@@ -9,7 +9,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import main
-import modules.data_manager as data_manager_module
+import modules.data_service as data_manager_module
 from app_routes import public as public_routes
 
 

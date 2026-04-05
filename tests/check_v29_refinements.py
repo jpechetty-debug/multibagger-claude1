@@ -1,7 +1,7 @@
 import pandas as pd
 import unittest
 from unittest.mock import MagicMock, patch
-from modules.market_data import MarketDataProvider
+from modules.data_service import MarketDataProvider
 from modules.risk import RiskGovernor
 
 class TestV29Refinements(unittest.TestCase):

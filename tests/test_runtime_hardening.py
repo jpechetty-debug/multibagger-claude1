@@ -34,13 +34,14 @@ def test_lifespan_skips_embedded_price_updater_when_disabled(monkeypatch):
         nonlocal called
         called = True
 
+    import modules.dependencies as deps
     monkeypatch.setattr(
-        main.runtime_settings,
+        deps.runtime_settings,
         "embed_price_updater_in_web",
         False,
         raising=False,
     )
-    monkeypatch.setattr(main, "update_prices_background", fake_update_prices_background)
+    monkeypatch.setattr(deps, "update_prices_background", fake_update_prices_background)
 
     with TestClient(main.app):
         pass

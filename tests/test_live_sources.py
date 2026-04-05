@@ -1,4 +1,4 @@
-from modules.data_manager import data_manager
+from modules.data_service import data_manager
 import logging
 
 # Enable logging to see which source is processing

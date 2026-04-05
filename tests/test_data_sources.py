@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 import pandas as pd
-from modules.data_manager import DataSourceManager
+from modules.data_service import DataSourceManager
 from modules.sources.yfinance_source import YFinanceSource
 from modules.sources.nse_source import NSESource
 from modules.sources.groww_source import GrowwSource

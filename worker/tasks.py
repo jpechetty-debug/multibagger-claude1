@@ -58,7 +58,7 @@ def scan_single_stock(self, symbol: str, regime: str = "SIDEWAYS"):
             record_scan_result("cached")
             return {"symbol": symbol, "cached": True, **cached}
 
-        from modules.data_manager import DataManager
+        from modules.data_service import DataManager
         dm = DataManager()
         stock_data = dm.get_stock_data(symbol)
 
@@ -209,7 +209,7 @@ def prune_pit_data():
 @celery_task_timer("refresh_regime_cache")
 def refresh_regime_cache():
     try:
-        from modules.market_data import get_market_regime
+        from modules.data_service import get_market_regime
         regime_data = get_market_regime()
         cache.cache_regime(regime_data)
         set_regime(regime_data.get("regime", "SIDEWAYS"))
