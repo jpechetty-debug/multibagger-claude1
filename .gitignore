@@ -116,3 +116,7 @@ test_results.txt
 schema_output.txt
 alpha_report.md
 qarp_backtest_report.md
+ 
+git_files.txt
+tests_out.txt
+refactor_script.py
