@@ -23,7 +23,7 @@ api_logger = SovereignLogger("sovereign.api")
 app_logger = SovereignLogger("sovereign.app")
 
 DB_NAME = "stocks.db"
-DB_PATH = DB_NAME
+DB_PATH = os.path.join("runtime", DB_NAME)
 
 DB_BUSY_TIMEOUT_MS = runtime_settings.sqlite_busy_timeout_ms
 SQLITE_WRITE_RETRIES = runtime_settings.sqlite_write_retries
@@ -97,7 +97,7 @@ def _run_sqlite_write_with_retry_sync(write_fn: Callable[[], Any], operation_nam
             raise
 
 def get_connection():
-    _db_url = os.getenv('DATABASE_URL', f'sqlite:///./{DB_NAME}')
+    _db_url = os.getenv('DATABASE_URL', f'sqlite:///{DB_PATH}')
     if _db_url.startswith('postgresql'):
         try:
             from sqlalchemy import create_engine
@@ -105,7 +105,7 @@ def get_connection():
             return engine.raw_connection()
         except Exception as exc:
             runtime_logger.warning("PostgreSQL connection failed; falling back to SQLite", error=str(exc))
-    conn = sqlite3.connect(DB_NAME, timeout=5, check_same_thread=False)
+    conn = sqlite3.connect(DB_PATH, timeout=5, check_same_thread=False)
     conn.execute(f'PRAGMA busy_timeout={DB_BUSY_TIMEOUT_MS}')
     conn.execute('PRAGMA journal_mode=WAL')
     return conn

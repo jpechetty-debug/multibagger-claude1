@@ -15,7 +15,7 @@ import pickle
 import threading
 import time
 from abc import ABC, abstractmethod
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 import pandas_market_calendars as mcal
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
@@ -116,10 +116,31 @@ def _fundamental_coverage(info: Any) -> int:
     return covered
 
 
-def _is_payload_skeletal(payload: Any, *, min_coverage: int = 2) -> bool:
+def _is_payload_skeletal(payload: Any, *, min_coverage: int = 3) -> bool:
     if not isinstance(payload, dict):
         return True
-    coverage = _fundamental_coverage(payload.get("info", {}))
+    
+    # Critical Hardening: Any payload missing a valid, non-zero price is skeletal
+    price = payload.get("price")
+    if price is None:
+        return True
+    
+    try:
+        price_val = float(price)
+        if price_val <= 0:
+            return True
+    except (ValueError, TypeError):
+        return True
+
+    info = payload.get("info", {})
+    if not isinstance(info, dict) or not info:
+        return True
+
+    # Strict Fundamental Requirement: Market Cap and Sector must exist
+    if _is_missing_or_zero(info.get("marketCap")) or not _has_value(info.get("sector")):
+        return True
+
+    coverage = _fundamental_coverage(info)
     return coverage < int(min_coverage)
 
 
@@ -283,9 +304,9 @@ class PNSEAProvider(DataProvider):
         )
 
         yf_t = yf.Ticker(symbol)
-        fin = await _run_executor_safe(loop, self.executor, lambda: yf_t.financials, pd.DataFrame())
-        bs = await _run_executor_safe(loop, self.executor, lambda: yf_t.balance_sheet, pd.DataFrame())
-        cf = await _run_executor_safe(loop, self.executor, lambda: yf_t.cash_flow, pd.DataFrame())
+        fin = await _run_executor_safe(loop, self.executor, lambda: getattr(yf_t, "financials", pd.DataFrame()), pd.DataFrame())
+        bs = await _run_executor_safe(loop, self.executor, lambda: getattr(yf_t, "balance_sheet", pd.DataFrame()), pd.DataFrame())
+        cf = await _run_executor_safe(loop, self.executor, lambda: getattr(yf_t, "cash_flow", pd.DataFrame()), pd.DataFrame())
         info = _normalize_info(raw.get("info", {}), alias_map=_PNSEA_INFO_ALIASES)
 
         cfo_pat = 0.0
@@ -343,9 +364,9 @@ class NSEPythonProvider(DataProvider):
         shareholding = await _run_executor_safe(loop, self.executor, lambda: self.api_share(sym), {})
 
         yf_t = yf.Ticker(symbol)
-        fin = await _run_executor_safe(loop, self.executor, lambda: yf_t.financials, pd.DataFrame())
-        bs = await _run_executor_safe(loop, self.executor, lambda: yf_t.balance_sheet, pd.DataFrame())
-        cf = await _run_executor_safe(loop, self.executor, lambda: yf_t.cash_flow, pd.DataFrame())
+        fin = await _run_executor_safe(loop, self.executor, lambda: getattr(yf_t, "financials", pd.DataFrame()), pd.DataFrame())
+        bs = await _run_executor_safe(loop, self.executor, lambda: getattr(yf_t, "balance_sheet", pd.DataFrame()), pd.DataFrame())
+        cf = await _run_executor_safe(loop, self.executor, lambda: getattr(yf_t, "cash_flow", pd.DataFrame()), pd.DataFrame())
         info = _normalize_info(fundamentals, alias_map=_NSEPYTHON_INFO_ALIASES)
 
         return {
@@ -376,11 +397,27 @@ class YFinanceProvider(DataProvider):
     async def fetch_fundamentals(self, symbol: str) -> Dict:
         loop = asyncio.get_running_loop()
         ticker = yf.Ticker(symbol)
-        info = await _run_executor_safe(loop, self.executor, lambda: ticker.info, {})
+        
+        # Robust attribute access for ticker.info
+        try:
+            info = await _run_executor_safe(loop, self.executor, lambda: ticker.info, {})
+        except AttributeError:
+            info = {}
+            
         if not isinstance(info, dict):
             info = {}
-        if _is_payload_skeletal({"info": info}, min_coverage=1):
-            fast = await _run_executor_safe(loop, self.executor, lambda: dict(getattr(ticker, "fast_info", {}) or {}), {})
+            
+        if _is_payload_skeletal({"info": info, "price": info.get("currentPrice")}, min_coverage=1):
+            # Safe attribute access for fast_info which may be missing in older yfinance versions
+            try:
+                if hasattr(ticker, "fast_info"):
+                    fast = await _run_executor_safe(loop, self.executor, 
+                        lambda: dict(ticker.fast_info) if ticker.fast_info is not None else {}, {})
+                else:
+                    fast = {}
+            except (AttributeError, TypeError):
+                fast = {}
+                
             if isinstance(fast, dict) and fast:
                 if not _has_value(info.get("currentPrice")) and _has_value(fast.get("lastPrice")):
                     info["currentPrice"] = fast.get("lastPrice")
@@ -390,14 +427,16 @@ class YFinanceProvider(DataProvider):
                     info["fiftyTwoWeekHigh"] = fast.get("yearHigh")
                 if not _has_value(info.get("fiftyTwoWeekLow")) and _has_value(fast.get("yearLow")):
                     info["fiftyTwoWeekLow"] = fast.get("yearLow")
-        fin = await _run_executor_safe(loop, self.executor, lambda: ticker.financials, pd.DataFrame())
-        bs = await _run_executor_safe(loop, self.executor, lambda: ticker.balance_sheet, pd.DataFrame())
-        cf = await _run_executor_safe(loop, self.executor, lambda: ticker.cash_flow, pd.DataFrame())
+        
+        # Financials access hardening
+        fin = await _run_executor_safe(loop, self.executor, lambda: getattr(ticker, "financials", pd.DataFrame()), pd.DataFrame())
+        bs = await _run_executor_safe(loop, self.executor, lambda: getattr(ticker, "balance_sheet", pd.DataFrame()), pd.DataFrame())
+        cf = await _run_executor_safe(loop, self.executor, lambda: getattr(ticker, "cash_flow", pd.DataFrame()), pd.DataFrame())
         
         return {
             "symbol": symbol,
             "source": self.name,
-            "price": info.get("currentPrice"),
+            "price": info.get("currentPrice") or info.get("regularMarketPrice"),
             "roe": info.get("returnOnEquity"),
             "sales_growth": info.get("revenueGrowth"),
             "pledge_percent": 0,
@@ -472,9 +511,9 @@ class DataManager:
         self.max_concurrency = int(max_concurrency)
         self.semaphore = asyncio.Semaphore(max_concurrency)
         self.executor = ThreadPoolExecutor(max_workers=max_concurrency)
-        self.provider_timeout_seconds = 16
-        self.yfinance_timeout_seconds = 22
-        self.history_timeout_seconds = 18
+        self.provider_timeout_seconds = 3 # Optimized from 4
+        self.yfinance_timeout_seconds = 8 # Optimized from 10
+        self.history_timeout_seconds = 6 # Optimized from 8
         self.provider_fail_streak = {}
         self.provider_cooldown_until = {}
         
@@ -782,7 +821,6 @@ def analyze_sector_rotation(stock_list):
 # --- FROM market_data.py ---
 import yfinance as yf
 import pandas as pd
-import datetime
 import logging
 from modules.regime_hmm import RegimeHMM
 
@@ -830,7 +868,7 @@ class MarketDataProvider:
             threshold = vix_series.quantile(percentile)
             current_vix = vix_series.iloc[-1]
             
-            print(f"📊 Market Regime: VIX 75th Percentile = {threshold:.2f} (Current: {current_vix:.2f})")
+            print(f"--- Market Regime: VIX 75th Percentile = {threshold:.2f} (Current: {current_vix:.2f}) ---")
             return float(threshold), float(current_vix)
             
         except Exception as e:
@@ -856,7 +894,7 @@ class MarketDataProvider:
         ] # Top 30 is sufficient proxy
         
         try:
-            print("📊 Checking Market Breadth (Nifty 30 Proxy)...")
+            print("--- Checking Market Breadth (Nifty 30 Proxy) ---")
             data = self.get_batch_history(nifty_50_tickers, period="3mo")
             if data.empty:
                 return 0.5, 15 # Neutral fallback
@@ -878,7 +916,7 @@ class MarketDataProvider:
                 return 0.5, 0
                 
             ratio = above_sma / valid_tickers
-            print(f"   👉 Breadth: {above_sma}/{valid_tickers} ({ratio:.1%}) stocks > SMA50")
+            print(f"   [INFO] Breadth: {above_sma}/{valid_tickers} ({ratio:.1%}) stocks > SMA50")
             return ratio, above_sma
             
         except Exception as e:
@@ -935,7 +973,7 @@ class MarketDataProvider:
                     if accel_norm > 0.5:
                         votes['SIDEWAYS'] += 1
                         details['trend_vote'] = 'RECOVERY_SIDEWAYS'
-                        print(f"📈 Recovery Shield: Accel {accel_norm:.2f} > 0.5. Softening BEAR offset {offset:.1%}")
+                        print(f"--- Recovery Shield: Accel {accel_norm:.2f} > 0.5. Softening BEAR offset {offset:.1%}")
                     else:
                         votes['BEAR'] += 1
                         details['trend_vote'] = 'BEAR'
@@ -1002,7 +1040,7 @@ class MarketDataProvider:
             # 1. VIX Auto-Override (Panic Shield)
             # If VIX > 25, we force BEAR regardless of other factors to preserve capital.
             if current_vix > 25:
-                print(f"🚨 Panic Shield: VIX {current_vix:.2f} > 25. Forcing BEAR regime.")
+                print(f"!!! Panic Shield: VIX {current_vix:.2f} > 25. Forcing BEAR regime. !!!")
                 winner = 'BEAR'
             
             # Strategy Mapping
@@ -1012,7 +1050,7 @@ class MarketDataProvider:
                 'SIDEWAYS': 'VALUE'
             }
             
-            print(f"🗳️ Regime Votes: {votes} -> Winner: {winner}")
+            print(f"--- Regime Votes: {votes} -> Winner: {winner} ---")
 
             
             return {
@@ -1044,7 +1082,7 @@ class MarketDataProvider:
         try:
             # yfinance expects space-separated string for batch
             tickers_str = " ".join(tickers)
-            print(f"📥 Fetching history for {len(tickers)} stocks...")
+            print(f"--- Fetching history for {len(tickers)} stocks ---")
             
             data = yf.download(tickers_str, period=period, progress=False)
             

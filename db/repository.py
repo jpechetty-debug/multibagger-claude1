@@ -10,6 +10,7 @@ All public functions maintain identical signatures to the legacy module
 for backwards compatibility.
 """
 import sqlite3
+import os
 import time
 import pandas as pd
 from datetime import datetime
@@ -17,7 +18,11 @@ from db.engine import engine, IS_SQLITE, init_tables
 from modules.runtime_settings import runtime_settings
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-DB_NAME = str(getattr(engine.url, "database", "stocks.db") or "stocks.db")
+_db_raw = str(getattr(engine.url, "database", "stocks.db") or "stocks.db")
+if IS_SQLITE and not _db_raw.startswith("runtime") and not os.path.isabs(_db_raw):
+    DB_NAME = os.path.join("runtime", _db_raw)
+else:
+    DB_NAME = _db_raw
 DB_BUSY_TIMEOUT_MS = runtime_settings.sqlite_busy_timeout_ms
 SQLITE_WRITE_RETRIES = runtime_settings.sqlite_write_retries
 SQLITE_RETRY_BASE_SECONDS = runtime_settings.sqlite_retry_base_seconds
@@ -664,7 +669,7 @@ def init_db():
 
 # ── Bulk Save Functions ──────────────────────────────────────────────────────
 
-def save_multibaggers(df):
+def save_multibaggers(df, *, replace_existing: bool = False):
     """Save Multibagger Screener results to DB."""
     if df.empty:
         return
@@ -794,7 +799,9 @@ def save_multibaggers(df):
         try:
             cursor = conn_write.cursor()
             symbols_to_update = df_db['symbol'].tolist()
-            if symbols_to_update:
+            if replace_existing:
+                cursor.execute("DELETE FROM multibaggers")
+            elif symbols_to_update:
                 placeholders = ', '.join(['?'] * len(symbols_to_update))
                 cursor.execute(
                     f"DELETE FROM multibaggers WHERE symbol IN ({placeholders})",

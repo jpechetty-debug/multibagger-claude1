@@ -156,6 +156,12 @@ def _is_present_metric(value):
     return float(value) != 0.0
 
 
+def _finite_or_default(value, default=0.0):
+    if not _is_finite_number(value):
+        return default
+    return float(value)
+
+
 def _freshness_score(price_age_days):
     if price_age_days is None:
         return 20.0
@@ -540,8 +546,14 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         # --- Fetch data via DataManager (PNSEA -> nsepython -> yf fallback) ---
         _dm = dm if dm else data_manager
         raw = await _dm.async_fetch_fundamentals(ticker_symbol)
+
+        # Critical Hardening: Check for error payloads or skeletal data immediately.
         if not isinstance(raw, dict):
             return {"Symbol": ticker_symbol, "_fetch_error": "fetch_failed", "Data_Source": "unknown"}
+        if raw.get("_fetch_error") or raw.get("error"):
+            reason = raw.get("_fetch_error") or raw.get("error") or "fetch_failed"
+            return {"Symbol": ticker_symbol, "_fetch_error": reason, "Data_Source": str(raw.get("source", "unknown"))}
+
         info = raw.get("info", {}) if isinstance(raw.get("info", {}), dict) else {}
         data_source = str(raw.get("source", "unknown"))
 
@@ -552,18 +564,20 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             cashflow=raw.get("cash_flow", pd.DataFrame()),
         )
 
-        # Quarterly financials: fetch separately (not part of fundamentals bundle)
+        # Quarterly financials: fetch separately
         info_backfill = {}
         if include_quarterly or _needs_info_backfill(info):
             try:
                 import yfinance as _yf
                 _t = _yf.Ticker(ticker_symbol)
+                # Ensure _t is valid by checking info access
+                _ = _t.info
                 if include_quarterly:
-                    ticker.quarterly_financials = _t.quarterly_financials
+                    ticker.quarterly_financials = getattr(_t, "quarterly_financials", pd.DataFrame())
                 else:
                     ticker.quarterly_financials = pd.DataFrame()
                 if _needs_info_backfill(info):
-                    candidate_info = _t.info
+                    candidate_info = getattr(_t, "info", {})
                     if isinstance(candidate_info, dict):
                         info_backfill = candidate_info
             except Exception:
@@ -574,7 +588,7 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
 
         # --- Technicals (Price & Moving Averages) ---
         hist = await _dm.async_fetch_history(ticker_symbol, period="1y")
-        if hist.empty:
+        if hist.empty or "Close" not in hist.columns:
             return {
                 "Symbol": ticker_symbol,
                 "_fetch_error": "no_price_history",
@@ -595,7 +609,7 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         if not _is_finite_number(current_price) or float(current_price) <= 0:
             return {
                 "Symbol": ticker_symbol,
-                "_fetch_error": "invalid_price",
+                "_fetch_error": "invalid_price_in_history",
                 "Data_Source": data_source,
                 "History_Bars_1Y": history_bars,
                 "Last_Price_Date": last_price_date_iso,
@@ -917,9 +931,9 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             "ROE%": round(roe * 100, 2),
             "Avg_ROE_5Y%": avg_roe_5y,
             "Profit_Margin%": round(profit_margin * 100, 2),
-            "Debt_Equity": round(debt_equity, 2) if debt_equity is not None else None,
-            "PEG_Ratio": peg_ratio,
-            "PE_Ratio": trailing_pe,
+            "Debt_Equity": round(_finite_or_default(debt_equity), 2),
+            "PEG_Ratio": _finite_or_default(peg_ratio),
+            "PE_Ratio": _finite_or_default(trailing_pe),
             "Down_From_52W_High%": down_from_high_pct,
             "Smart_Money%": round(total_smart_money * 100, 2),
             "Free_Cashflow": free_cashflow,
@@ -1096,20 +1110,25 @@ def analyze_market_regime(symbol="^NSEI"):
     except Exception:
         return "Unknown"
 
-def main():
+def main(argv=None):
     import argparse
     parser = argparse.ArgumentParser(description="Institutional Screener v3.0")
     parser.add_argument("--mode", type=str, default="balanced", choices=["balanced", "momentum", "value", "quality", "auto"], help="Scoring Strategy Mode")
     parser.add_argument("--symbols", type=str, default=None, help="Comma-separated list of symbols to scan (e.g. TCS.NS,RELIANCE.NS)")
     parser.add_argument("--smoke", action="store_true", help="Run a quick smoke test on 10 symbols")
     parser.add_argument("--universe", type=str, default="STANDARD", help="Custom universe name (e.g. SECTORS)")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     import config
     from ticker_list import TICKERS, MULTIBAGGER_HUNT, SECTORS
 
     targeted_symbols = {s.strip().upper() for s in args.symbols.split(",")} if args.symbols else set()
     is_full_scan = len(targeted_symbols) == 0
+    is_standard_full_scan = (
+        is_full_scan
+        and not args.smoke
+        and args.universe.upper() == "STANDARD"
+    )
     
     # Process universe and symbols override
     scan_tickers = TICKERS
@@ -1132,7 +1151,7 @@ def main():
     flags_path = str(getattr(config, "UNIVERSE_FLAGS_PATH", "data/universe_flags.json"))
     flag_whitelist = {str(s).upper() for s in getattr(config, "AUTO_FLAG_WHITELIST", [])}
     universe_flags = None
-    if is_full_scan and auto_flag_enable:
+    if is_standard_full_scan and auto_flag_enable:
         universe_flags = load_universe_flags(flags_path)
         blocked = refresh_and_get_blocked_symbols(universe_flags, date.today())
         blocked_effective = blocked - flag_whitelist
@@ -1545,14 +1564,8 @@ def main():
 
     results = asyncio.run(run_scanner())
 
-    # --- Phase 2: ML Ranking ---
-    if results:
-        print("\nApplying LightGBM Ranking Engine...")
-        ranker = LightGBMRanker()
-        results = ranker.rank_stocks(results)
-
     # Persist fetch-failure flags for full-universe hygiene.
-    if is_full_scan and auto_flag_enable and universe_flags is not None:
+    if is_standard_full_scan and auto_flag_enable and universe_flags is not None:
         flag_summary = update_universe_flags(
             universe_flags,
             failed_reason_by_symbol=scan_failed_reason_by_symbol,
@@ -1683,6 +1696,12 @@ def main():
             
             # Trade Setup
             calculate_trade_setup(stock)
+
+        # Phase 2: ML Ranking. Run this after final scoring so the ranker sees
+        # the computed institutional Score instead of a zero-filled placeholder.
+        print("\nApplying LightGBM Ranking Engine...")
+        ranker = LightGBMRanker()
+        results = ranker.rank_stocks(results)
             
     # V3.1: Score Distribution Validation
     validate_score_distribution(results)
@@ -1735,7 +1754,7 @@ def main():
         # Save to SQLite
         try:
             import db.repository as database
-            database.save_multibaggers(df)
+            database.save_multibaggers(df, replace_existing=is_standard_full_scan)
         except Exception as e:
             import logging
             from modules.exceptions import DatabaseConcurrencyError
@@ -1816,11 +1835,9 @@ def main():
     except Exception as e:
         print(f"Logging Error: {e}")
 
+def run_screener(argv=None):
+    """Programmatic entry point for one-shot screener runs."""
+    return main(argv)
+
 if __name__ == "__main__":
-    # screener.py is a library module — the canonical entry point is main.py.
-    # Start the app:  uvicorn main:app --host 0.0.0.0 --port 8000
-    # One-shot scan:  python -c "from screener import run_screener; run_screener()"
-    raise SystemExit(
-        "screener.py is a library, not an entry point.\n"
-        "Start the application with: uvicorn main:app --reload"
-    )
+    main()

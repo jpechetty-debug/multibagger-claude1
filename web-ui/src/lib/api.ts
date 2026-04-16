@@ -70,10 +70,11 @@ function normalizeAction(rating: unknown, score: number): SignalAction {
     return normalizedRating
   }
 
-  if (score >= 90) return 'BUY'
-  if (score >= 75) return 'WATCH'
-  if (score >= 50) return 'REJECT'
-  return 'DISQUALIFIED'
+  // Institutional Grade Thresholds (v3.5 Hardening)
+  if (score >= 92) return 'BUY'           // Radical High Conviction
+  if (score >= 80) return 'WATCH'         // Potential Candidates
+  if (score >= 60) return 'REJECT'        // Neutral/Weak
+  return 'DISQUALIFIED'                   // Junk/Incomplete
 }
 
 export function normalizeStockRecord(record: BackendStockRecord): SignalData {

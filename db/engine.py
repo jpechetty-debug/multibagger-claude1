@@ -15,7 +15,7 @@ from db.models import Base
 # --- Configuration ---
 # Production: DATABASE_URL=postgresql+psycopg://user:pass@host:5432/sovereign_db
 # Local Dev:  DATABASE_URL=sqlite:///stocks.db  (or unset for default)
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///stocks.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///runtime/stocks.db")
 IS_SQLITE = DATABASE_URL.startswith("sqlite")
 
 # --- Engine Factory ---

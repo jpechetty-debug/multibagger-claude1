@@ -1,5 +1,10 @@
 import pandas as pd
 import config
+import os
+import csv
+from datetime import datetime
+
+REJECTED_TRADES_LOG = os.path.join("logs", "rejected_trades.csv")
 
 class RiskGovernor:
     """
@@ -253,20 +258,12 @@ class RiskGovernor:
     def log_rejected_trade(self, symbol, reason, price=0.0):
         """
         Phase 7: Black Box Recorder.
-        Logs rejected trades/allocations to 'rejected_trades.csv'.
-        
-        Args:
-            symbol (str): Ticker symbol or 'PORTFOLIO'
-            reason (str): Why it was rejected (e.g., "Sector Cap", "Kill Switch")
-            price (float): Price at rejection time (or generic value)
+        Logs rejected trades/allocations to standardized 'logs/' location.
         """
-        import csv
-        import os
-        from datetime import datetime
         
-        file_exists = os.path.isfile('rejected_trades.csv')
+        file_exists = os.path.isfile(REJECTED_TRADES_LOG)
         
-        with open('rejected_trades.csv', 'a', newline='', encoding='utf-8') as f:
+        with open(REJECTED_TRADES_LOG, 'a', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             if not file_exists:
                 writer.writerow(['Timestamp', 'Symbol', 'Reason', 'Price_Context'])

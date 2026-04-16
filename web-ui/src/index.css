@@ -10,7 +10,23 @@
 
 @layer components {
   .brutalist-card {
-    @apply bg-brand-card border border-brand-border relative overflow-hidden;
+    @apply bg-brand-card border-2 border-brand-border relative overflow-hidden transition-all duration-300;
+    box-shadow: 4px 4px 0px 0px theme('colors.brand.border');
+  }
+  
+  .brutalist-card:hover {
+    box-shadow: 8px 8px 0px 0px theme('colors.brand.accent');
+    transform: translate(-2px, -2px);
+  }
+
+  .hazard-pattern {
+    background: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 10px,
+      rgba(255, 171, 0, 0.05) 10px,
+      rgba(255, 171, 0, 0.05) 20px
+    );
   }
   
   .glass-panel {
@@ -18,7 +34,9 @@
   }
   
   .floor-dock {
-    @apply fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 p-2 glass-panel rounded-2xl shadow-2xl;
+    @apply fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 p-2 glass-panel shadow-2xl;
+    border-radius: 0; /* Brutalist: no rounded corners on primary navigation */
+    border: 2px solid theme('colors.brand.border');
   }
 }
 

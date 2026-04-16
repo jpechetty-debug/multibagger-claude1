@@ -96,6 +96,16 @@ async def get_hrp_allocation():
         if data.empty: raise HTTPException(status_code=502, detail="Failed to fetch data")
         prices = data["Close"] if "Close" in data else data.xs('Close', axis=1, level=0)
         returns = prices.pct_change().dropna(how='all').fillna(0)
+        # Black Zone Gate: Halt allocation if market is in total kill-switch mode
+        zone, cap = deps.risk_governor.get_regime_zone(data["Close"].iloc[-1] if "Close" in data else 0.0) # Placeholder, need real VIX
+        # Actually, let's fetch real VIX from the regime cache
+        regime_data = await deps._run_blocking(deps.regime_cache.get, "payload")
+        if regime_data:
+            current_vix = regime_data.get('vix', 0.0)
+            zone, cap = deps.risk_governor.get_regime_zone(current_vix)
+            if zone == "BLACK":
+                 return {"error": "HRP ALLOCATION HALTED: Market is in BLACK zone (VIX > 35). High probability of capital destruction.", "weights": {}, "timestamp": datetime.now().isoformat()}
+
         weights = HRPAllocator().allocate(returns)
         return {"weights": {k: float(v) for k, v in sorted(weights.items(), key=lambda x: x[1], reverse=True)}, "timestamp": datetime.now().isoformat()}
     except Exception as e: return {"error": str(e)}

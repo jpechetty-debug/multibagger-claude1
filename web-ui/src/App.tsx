@@ -78,6 +78,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-brand-bg text-brand-text font-sans selection:bg-brand-accent/30 selection:text-brand-accent grainy">
+      {regime?.regime === 'BLACK' && (
+        <div className="hazard-pattern border-b-2 border-brand-rose p-2 text-center text-[10px] font-black uppercase tracking-[0.2em] text-brand-rose animate-pulse">
+          ⚠️ CRITICAL VOLATILITY: Market Halted by Risk Governor (VIX {regime.vix}) ⚠️
+        </div>
+      )}
+
       <Header
         regime={regime?.regime}
         acceleration={regime?.momentumAccel ?? 0}
