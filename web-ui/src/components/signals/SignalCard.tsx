@@ -1,5 +1,6 @@
 import { forwardRef } from 'react'
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 
 import type { SignalData } from '../../lib/contracts'
 
@@ -12,6 +13,7 @@ export const SignalCard = forwardRef<HTMLDivElement, SignalCardProps>(function S
   { signal, index },
   ref,
 ) {
+  const navigate = useNavigate()
   const isHighConviction = signal.score > 85
   const isMultibagger = signal.action === 'BUY' && signal.score > 90
   const scoreWidth = Math.max(0, Math.min(signal.score, 100))
@@ -19,6 +21,7 @@ export const SignalCard = forwardRef<HTMLDivElement, SignalCardProps>(function S
   return (
     <motion.div
       ref={ref}
+      onClick={() => navigate(`/stock/${signal.symbol}`)}
       layout
       initial={{ opacity: 0, scale: 0.9, y: 30 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}

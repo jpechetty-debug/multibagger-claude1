@@ -804,6 +804,18 @@ def calculate_institutional_score(
     if conviction["institutional_interest"]:
         base_score += 10
 
+    # --- Sprint 1: CAGR Consistency Bonus ---
+    cagr_consistency = data.get("CAGR_Consistency", "UNKNOWN")
+    if cagr_consistency == "HIGH":
+        base_score += 5
+        factor_audit.append({"name": "CAGR Consistency (HIGH)", "value": 5})
+    elif cagr_consistency == "MEDIUM":
+        base_score += 2
+        factor_audit.append({"name": "CAGR Consistency (MEDIUM)", "value": 2})
+    elif cagr_consistency == "LOW":
+        base_score -= 3
+        factor_audit.append({"name": "CAGR Consistency (LOW)", "value": -3})
+
     score_ceiling, disqualifiers = _apply_score_ceiling_rules(data, state)
     extra_bonus, extra_penalty, score_ceiling, disqualifiers = _apply_optional_intel_adjustments(
         data,

@@ -19,6 +19,7 @@ from modules.fundamentals import (
     calculate_roce,
     calculate_median_pat_growth
 )
+from modules.cagr_engine import calculate_all_cagrs, classify_market_cap, extract_dividend_metrics
 from modules.estimates import get_estimate_data
 from modules.data_service import DataManager, data_manager
 from backtest.engine import VectorBTEngine
@@ -755,6 +756,15 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         roce = calculate_roce(ticker)
         median_pat_growth_5y = calculate_median_pat_growth(ticker, years=5)
         
+        # --- Sprint 1: Multi-Period CAGRs ---
+        cagr_metrics = calculate_all_cagrs(ticker)
+        
+        # --- Sprint 1: Dividend Metrics ---
+        div_metrics = extract_dividend_metrics(info)
+        
+        # --- Sprint 1: Market Cap Classification ---
+        cap_category = classify_market_cap(market_cap_crore)
+        
         # Earnings Acceleration is now calculated via check_earnings_inflection below
 
         # 3. CFO / PAT Ratio
@@ -969,6 +979,17 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             "Ret_6M": mom_features.get("ret_6m", 0),
             "Vol_Breakout": mom_features.get("vol_breakout", 1.0),
             "Dist_From_52W_High": mom_features.get("dist_from_52w_high", 0),
+            # --- Sprint 1: Compounding Lens ---
+            "Revenue_CAGR_3Y": cagr_metrics.get("Revenue_CAGR_3Y"),
+            "Revenue_CAGR_5Y": cagr_metrics.get("Revenue_CAGR_5Y"),
+            "PAT_CAGR_3Y": cagr_metrics.get("PAT_CAGR_3Y"),
+            "PAT_CAGR_5Y": cagr_metrics.get("PAT_CAGR_5Y"),
+            "EPS_CAGR_3Y": cagr_metrics.get("EPS_CAGR_3Y"),
+            "EPS_CAGR_5Y": cagr_metrics.get("EPS_CAGR_5Y"),
+            "CAGR_Consistency": cagr_metrics.get("CAGR_Consistency", "UNKNOWN"),
+            "Dividend_Yield": div_metrics.get("Dividend_Yield", 0),
+            "Dividend_Payout": div_metrics.get("Dividend_Payout", 0),
+            "Cap_Category": cap_category,
             "_dq_flags": dq_flags,
         }
         

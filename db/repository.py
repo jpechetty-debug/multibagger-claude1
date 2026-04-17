@@ -211,6 +211,17 @@ def _ensure_runtime_schema():
             _ensure_column(conn, "multibaggers", "median_pat_growth", "REAL")
             # ML Rank Score
             _ensure_column(conn, "multibaggers", "ml_rank_score", "REAL")
+            # Sprint 1: Compounding Lens columns
+            _ensure_column(conn, "multibaggers", "revenue_cagr_3y", "REAL")
+            _ensure_column(conn, "multibaggers", "revenue_cagr_5y", "REAL")
+            _ensure_column(conn, "multibaggers", "pat_cagr_3y", "REAL")
+            _ensure_column(conn, "multibaggers", "pat_cagr_5y", "REAL")
+            _ensure_column(conn, "multibaggers", "eps_cagr_3y", "REAL")
+            _ensure_column(conn, "multibaggers", "eps_cagr_5y", "REAL")
+            _ensure_column(conn, "multibaggers", "cagr_consistency", "TEXT")
+            _ensure_column(conn, "multibaggers", "dividend_yield", "REAL")
+            _ensure_column(conn, "multibaggers", "dividend_payout", "REAL")
+            _ensure_column(conn, "multibaggers", "cap_category", "TEXT")
 
         _ensure_fundamentals_pit_table(conn)
         conn.commit()
@@ -709,7 +720,10 @@ def save_multibaggers(df, *, replace_existing: bool = False):
         "ML_Predicted_Return", "SHAP_Breakdown",
         "High_52W", "Low_52W", "Pledge_Pct", "Piotroski_Score",
         "ROCE_pct", "Median_PAT_Growth_5Y_pct", "ml_rank_score",
-        "Ret_1M", "Ret_3M", "Ret_6M", "Vol_Breakout", "Dist_From_52W_High"
+        "Ret_1M", "Ret_3M", "Ret_6M", "Vol_Breakout", "Dist_From_52W_High",
+        "Revenue_CAGR_3Y", "Revenue_CAGR_5Y", "PAT_CAGR_3Y", "PAT_CAGR_5Y",
+        "EPS_CAGR_3Y", "EPS_CAGR_5Y", "CAGR_Consistency",
+        "Dividend_Yield", "Dividend_Payout", "Cap_Category"
     ]
 
     available_cols = [c for c in cols if c in df.columns]
@@ -760,7 +774,17 @@ def save_multibaggers(df, *, replace_existing: bool = False):
         "Ret_3M": "ret_3m",
         "Ret_6M": "ret_6m",
         "Vol_Breakout": "vol_breakout",
-        "Dist_From_52W_High": "dist_from_52w_high"
+        "Dist_From_52W_High": "dist_from_52w_high",
+        "Revenue_CAGR_3Y": "revenue_cagr_3y",
+        "Revenue_CAGR_5Y": "revenue_cagr_5y",
+        "PAT_CAGR_3Y": "pat_cagr_3y",
+        "PAT_CAGR_5Y": "pat_cagr_5y",
+        "EPS_CAGR_3Y": "eps_cagr_3y",
+        "EPS_CAGR_5Y": "eps_cagr_5y",
+        "CAGR_Consistency": "cagr_consistency",
+        "Dividend_Yield": "dividend_yield",
+        "Dividend_Payout": "dividend_payout",
+        "Cap_Category": "cap_category"
     }
 
     df_db.rename(columns=mapping, inplace=True)

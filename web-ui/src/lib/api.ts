@@ -6,6 +6,10 @@ import {
   type MarketRegimeData,
   type SignalAction,
   type SignalData,
+  type HistoryPoint,
+  type ThesisResponse,
+  type ValuationData,
+  type QuarterlyTimeline,
 } from './contracts'
 
 const BASE_URL = ''
@@ -146,6 +150,22 @@ export const api = {
 
   getReport: async (symbol: string): Promise<MarkdownReportResponse> => {
     return fetchJson<MarkdownReportResponse>(`/api/reports/${symbol}`)
+  },
+
+  getThesis: async (symbol: string): Promise<ThesisResponse> => {
+    return fetchJson<ThesisResponse>(`/api/thesis/${symbol}`)
+  },
+
+  getHistory: async (symbol: string): Promise<HistoryPoint[]> => {
+    return fetchJson<HistoryPoint[]>(`/api/history/${symbol}`)
+  },
+
+  getValuation: async (symbol: string): Promise<ValuationData> => {
+    return fetchJson<ValuationData>(`/api/valuation/${symbol}`)
+  },
+
+  getQuarterlyTimeline: async (symbol: string): Promise<QuarterlyTimeline> => {
+    return fetchJson<QuarterlyTimeline>(`/api/quarterly-results/${symbol}`)
   },
 }
 

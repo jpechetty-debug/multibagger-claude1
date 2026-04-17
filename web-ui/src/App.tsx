@@ -6,8 +6,10 @@ import {
   useState,
 } from 'react'
 import { Header } from './components/layout/Header'
+import { Routes, Route } from 'react-router-dom'
 import { SignalGrid } from './components/signals/SignalGrid'
 import { FloorDock } from './components/layout/FloorDock'
+import { StockDetail } from './pages/StockDetail'
 import { api, getApiErrorMessage } from './lib/api'
 import type { MarketRegimeData, SignalData } from './lib/contracts'
 
@@ -92,22 +94,28 @@ export default function App() {
         lastUpdated={regime?.timestamp || lastUpdated}
       />
 
-      <SignalGrid
-        signals={filteredSignals}
-        totalSignalCount={signals.length}
-        searchTerm={searchTerm}
-        loading={loading}
-        isRefreshing={refreshing}
-        error={errorMessage}
-        lastUpdated={lastUpdated}
-        onRetry={() => void loadData('initial')}
-        onSearch={setSearchTerm}
-      />
-
-      <FloorDock
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
+      <Routes>
+        <Route path="/" element={
+          <>
+            <SignalGrid
+              signals={filteredSignals}
+              totalSignalCount={signals.length}
+              searchTerm={searchTerm}
+              loading={loading}
+              isRefreshing={refreshing}
+              error={errorMessage}
+              lastUpdated={lastUpdated}
+              onRetry={() => void loadData('initial')}
+              onSearch={setSearchTerm}
+            />
+            <FloorDock
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+            />
+          </>
+        } />
+        <Route path="/stock/:symbol" element={<StockDetail />} />
+      </Routes>
 
       <div className="fixed top-[40%] -left-8 w-32 h-32 bg-brand-accent/5 rounded-full blur-[100px] pointer-events-none" />
       <div className="fixed bottom-0 right-0 w-64 h-64 bg-brand-rose/5 rounded-full blur-[150px] pointer-events-none" />

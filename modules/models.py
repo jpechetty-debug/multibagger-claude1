@@ -71,6 +71,17 @@ class StockDataPayload(BaseModel):
     Ret_6M: float = 0.0
     Vol_Breakout: float = 1.0
     Dist_From_52W_High: float = 0.0
+    # --- Sprint 1: Compounding Lens ---
+    Revenue_CAGR_3Y: Optional[float] = None
+    Revenue_CAGR_5Y: Optional[float] = None
+    PAT_CAGR_3Y: Optional[float] = None
+    PAT_CAGR_5Y: Optional[float] = None
+    EPS_CAGR_3Y: Optional[float] = None
+    EPS_CAGR_5Y: Optional[float] = None
+    CAGR_Consistency: str = "UNKNOWN"
+    Dividend_Yield: float = 0.0
+    Dividend_Payout: float = 0.0
+    Cap_Category: str = "Unknown"
     dq_flags: Optional[DataQualityFlags] = Field(None, alias="_dq_flags")
     
     # Catch-all for extra fields
