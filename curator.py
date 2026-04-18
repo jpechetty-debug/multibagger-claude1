@@ -1,0 +1,68 @@
+import ticker_list
+from nsepython import nse_eq_symbols
+import random
+
+def get_candidates():
+    all_syms = set(nse_eq_symbols())
+    current = set(ticker_list.TICKERS)
+    current_base = set(t.replace('.NS', '') for t in current)
+    missing = list(all_syms - current_base)
+    
+    themes = [
+        'AETHER', 'MTARTECH', 'DATAATTNS', 'LATENTVIEW', 'CEINFO', 'TARSONS', 'TEJASNET', 'ANANDTHI',
+        'CLEAN', 'AWL', 'ROUTE', 'RATEGAIN', 'KPITTECH', 'TATVA', 'NEOGEN', 'ROSSARI', 'CAMS',
+        'UTIAMC', 'SUVIDHAA', 'ZOMATO', 'NYKAA', 'PAYTM', 'POLICYBZR', 'CARTRADE', 'DELHIVERY', 
+        'AWHCL', 'HOMEFIRST', 'CRAFTSMAN', 'LXCHEM', 'EASYTRIP', 'PARAS', 'APTUS', 'AMIORG',
+        'VIJAYA', 'METROBRAND', 'MEDPLUS', 'CMSINFO', 'ROLEXRINGS', 'GLS', 'NURECA', 'HERANBA',
+        'KALYANKJIL', 'BARBEQUE', 'MACROTECH', 'PRINCEPIPE', 'CSBBANK', 'UJJIVANSFB', 'SPANDANA',
+        'AFFLE', 'INDIAMART', 'POLYCAB', 'DIXON', 'AMBER', 'GMMPFAUDLR', 'ALKALI', 'BALAMINES',
+        'ALKYLAMINE', 'LAURUSLABS', 'GRANULES', 'JBCHEPHARM', 'NATCOPHARM', 'SUVENPHAR', 'CAPLIPOINT',
+        'IPCALAB', 'AJANTPHARM', 'ALEMBICLTD', 'FDC', 'UNICHEMLAB', 'MARKSANS', 'NEULANDLAB',
+        'SUPRIYA', 'TARSONS', 'TATVA', 'YATHARTH', 'MEDANTA', 'KIMS', 'RAINBOW', 'MAXHEALTH',
+        'APOLLOHOSP', 'FORTIS', 'ASTERDM', 'NARAYANA', 'HCG', 'SHALBY', 'ARTEMISMED', 'KOVAI',
+        'OLECTRA', 'JBMMA', 'SONACOMS', 'MINDA', 'FIEMIND', 'LUMAXTECH', 'SHARDAMOTR', 'SUPRAJIT',
+        'VARROC', 'GABRIEL', 'JAMNAAUTO', 'ASAHIINDIA', 'SUNDRMFAST', 'ENDURANCE', 'TIINDIA',
+        'SUZLON', 'INOXWIND', 'GENSOL', 'WAAREE', 'PREMIERENE', 'WEBSOL', 'SJVN', 'NHPC',
+        'NTPC', 'POWERGRID', 'TATAPOWER', 'TORNTPOWER', 'JSWENERGY', 'ADANIGREEN', 'ADANIPOWER',
+        'HAL', 'BEL', 'MAZDOC', 'COCHINSHIP', 'GRSE', 'BDL', 'ZENITH', 'APOLLOMICRO',
+        'RVNL', 'IRFC', 'IRCON', 'JWL', 'TITAGARH', 'TEXRAIL', 'RITES', 'KEC', 'KALPATPOWR',
+        'TRIVENI', 'ISGEC', 'PRAJIND', 'ACTIONCONST', 'ESCORTS', 'BEML', 'BHEL', 'L&T', 'CUMMINSIND',
+        'THERMAX', 'ABB', 'SIEMENS', 'CGPOWER', 'HONAUT', 'AIAENG', 'TIMKEN', 'SKFINDIA',
+        'SYNGENE', 'DIVISLAB', 'TRENT', 'VARUNBEV', 'VBL', 'KPIGREEN',
+        'KAYNES', 'SYRMA', 'AVALON', 'CYIENTDLM', 'CENTUM', 'SGIL', 'ELEARN', 'IREDA',
+        'ZENTEC', 'IDEAFORGE', 'AEROFLEX', 'EMS', 'CEIGALL', 'JSWINFR', 'CLLOPS', 'PLASTIBLEN',
+        'SANGHVIMOV', 'HONDAPOWER', 'KIRLPNU', 'ELECON', 'TDPOWERSYS', 'TRITURBINE', 'INOXCVA', 'SCHAEFFLER',
+        'APARINDS', 'HBLPOWER', 'EXIDEIND', 'AMARAJABAT', 'NEO', 'BOSCHLTD', 'FIE', 'EPL', 'GARFIBRES',
+        'KPRMILL', 'WELSPUNIND', 'GOKEX', 'VARDHMAN', 'LUXIND', 'PAGEIND', 'BATAINDIA', 'RELAXO'
+    ]
+
+    curated = [s + '.NS' for s in themes if s in missing]
+    curated = list(set(curated))
+    
+    needed = 147 - len(curated)
+    if needed > 0:
+        missing_clean = [s for s in missing if not any(c in s for c in '-& ')]
+        missing_clean = [s for s in missing_clean if s + '.NS' not in curated]
+        missing_clean.sort()
+        # To avoid junk at the start of alphabet like A2ZINFRA, take from end or random
+        random.seed(42)
+        random.shuffle(missing_clean)
+        curated.extend([s + '.NS' for s in missing_clean[:needed]])
+    elif needed < 0:
+        curated = curated[:147]
+        
+    print(f"Curated list length: {len(curated)}")
+    
+    with open('ticker_list.py', 'r', encoding='utf-8') as f:
+        text = f.read()
+
+    addition = ',\n    ' + ', '.join([f'"{s}"' for s in curated])
+    new_text = text.replace('\n]\n\n# --- MULTIBAGGER', addition + '\n]\n\n# --- MULTIBAGGER')
+
+    with open('ticker_list.py', 'w', encoding='utf-8') as f:
+        f.write(new_text)
+
+    print("Done! Added 147 tickers.")
+
+if __name__ == '__main__':
+    get_candidates()

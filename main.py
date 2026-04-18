@@ -9,6 +9,7 @@ import csv
 import asyncio
 import yfinance as yf
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import socket
 socket.setdefaulttimeout(20.0)
@@ -42,6 +43,9 @@ from app_routes.analysis import router as analysis_router
 from app_routes.regime import router as regime_router
 from app_routes.trading import router as trading_router
 from app_routes.system import router as system_router
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+WEB_UI_DIR = PROJECT_ROOT / "web-ui"
 
 # Background Task for Periodic Price Updates
 @asynccontextmanager
@@ -95,7 +99,7 @@ app.include_router(analysis_router)
 app.include_router(regime_router)
 app.include_router(trading_router)
 app.include_router(system_router)
-app.mount("/static", StaticFiles(directory="web-ui"), name="static")
+app.mount("/static", StaticFiles(directory=str(WEB_UI_DIR)), name="static")
 
 if __name__ == "__main__":
     import uvicorn

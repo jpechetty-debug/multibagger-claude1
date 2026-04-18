@@ -7,6 +7,7 @@ Provides dual-mode database connectivity:
 Controlled by DATABASE_URL environment variable.
 """
 import os
+from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -15,7 +16,13 @@ from db.models import Base
 # --- Configuration ---
 # Production: DATABASE_URL=postgresql+psycopg://user:pass@host:5432/sovereign_db
 # Local Dev:  DATABASE_URL=sqlite:///stocks.db  (or unset for default)
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///runtime/stocks.db")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_SQLITE_PATH = (PROJECT_ROOT / "runtime" / "stocks.db").resolve()
+DEFAULT_SQLITE_PATH.parent.mkdir(parents=True, exist_ok=True)
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    f"sqlite:///{DEFAULT_SQLITE_PATH.as_posix()}",
+)
 IS_SQLITE = DATABASE_URL.startswith("sqlite")
 
 # --- Engine Factory ---

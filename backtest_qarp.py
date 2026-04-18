@@ -15,6 +15,7 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from ticker_list import TICKERS
+from backtest.survivorship_adjusted_loader import SurvivorshipAdjustedLoader
 from db.repository import get_connection
 from modules.scoring import calculate_institutional_score
 from modules.fundamentals import calculate_piotroski_f_score
@@ -28,6 +29,18 @@ def print_header(text):
     console.print(f"\n[bold cyan]{'='*80}[/bold cyan]")
     console.print(f" [bold white]{text}[/bold white]")
     console.print(f"[bold cyan]{'='*80}[/bold cyan]\n")
+
+
+def _base_symbol(symbol):
+    return str(symbol or "").replace(".NS", "").replace(".BO", "").strip().upper()
+
+
+def _filter_symbols_for_date(loader, symbols, target_date):
+    candidates = [_base_symbol(symbol) for symbol in symbols if _base_symbol(symbol)]
+    valid = set(loader.get_universe(str(pd.Timestamp(target_date).date()), candidates))
+    if not valid:
+        return list(symbols)
+    return [symbol for symbol in symbols if _base_symbol(symbol) in valid]
 
 def get_pit_factors(symbol, target_date, cache=None):
     try:
@@ -124,6 +137,7 @@ def run_backtest(years=3, universe_size=50, stress_mode=False, rebal_freq='MS'):
     history = []
     ticker_cache = {}
     hmm = RegimeHMM()
+    survivorship_loader = SurvivorshipAdjustedLoader(data_dir="data")
     test_universe = list(TICKERS[:universe_size])
     if os.path.exists("delisted_candidates.txt"):
         with open("delisted_candidates.txt", "r") as f:
@@ -141,7 +155,8 @@ def run_backtest(years=3, universe_size=50, stress_mode=False, rebal_freq='MS'):
         for i, reb_date in enumerate(reb_dates):
             progress.update(main_task, description=f"Processing {reb_date.date()}...")
             universe_metrics = []
-            for symbol in test_universe:
+            active_universe = _filter_symbols_for_date(survivorship_loader, test_universe, reb_date)
+            for symbol in active_universe:
                 f = get_pit_factors(symbol, reb_date, cache=ticker_cache)
                 if f:
                     f['backtest'] = True
@@ -179,8 +194,13 @@ def run_backtest(years=3, universe_size=50, stress_mode=False, rebal_freq='MS'):
                 try:
                     price_data = yf.download(symbol, start=reb_date, end=next_date, progress=False)
                     if not price_data.empty:
-                        p_start = float(price_data['Close'].iloc[0])
-                        p_end = float(price_data['Close'].iloc[-1])
+                        closes = price_data['Close'].dropna()
+                        if closes.empty:
+                            period_returns.append(-0.5)
+                            continue
+                        entry_idx = 1 if len(closes) > 1 else 0
+                        p_start = float(closes.iloc[entry_idx])
+                        p_end = float(closes.iloc[-1])
                         g_ret = (p_end - p_start) / p_start
                         net_ret = g_ret - (slip/100 * 2) - 0.002 
                         period_returns.append(net_ret)

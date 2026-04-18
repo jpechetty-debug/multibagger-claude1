@@ -1,6 +1,13 @@
 import unittest
+import sys
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 import pandas as pd
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from modules.data_service import DataSourceManager
 from modules.sources.yfinance_source import YFinanceSource
 from modules.sources.nse_source import NSESource

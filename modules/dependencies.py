@@ -9,6 +9,7 @@ import asyncio
 import yfinance as yf
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Callable
 
 from pydantic import BaseModel, Field
@@ -22,8 +23,10 @@ runtime_logger = SovereignLogger("sovereign.runtime")
 api_logger = SovereignLogger("sovereign.api")
 app_logger = SovereignLogger("sovereign.app")
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+RUNTIME_DIR = PROJECT_ROOT / "runtime"
 DB_NAME = "stocks.db"
-DB_PATH = os.path.join("runtime", DB_NAME)
+DB_PATH = str(RUNTIME_DIR / DB_NAME)
 
 DB_BUSY_TIMEOUT_MS = runtime_settings.sqlite_busy_timeout_ms
 SQLITE_WRITE_RETRIES = runtime_settings.sqlite_write_retries
@@ -105,6 +108,7 @@ def get_connection():
             return engine.raw_connection()
         except Exception as exc:
             runtime_logger.warning("PostgreSQL connection failed; falling back to SQLite", error=str(exc))
+    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH, timeout=5, check_same_thread=False)
     conn.execute(f'PRAGMA busy_timeout={DB_BUSY_TIMEOUT_MS}')
     conn.execute('PRAGMA journal_mode=WAL')

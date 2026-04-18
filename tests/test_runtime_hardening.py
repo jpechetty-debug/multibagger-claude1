@@ -1,3 +1,4 @@
+import importlib.util
 import sqlite3
 import sys
 from pathlib import Path
@@ -9,6 +10,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import main
+import app_routes.stocks as stocks_route_module
 from modules.runtime_settings import load_runtime_settings
 from worker.background_jobs import run_weekly_audit_loop
 
@@ -47,6 +49,27 @@ def test_lifespan_skips_embedded_price_updater_when_disabled(monkeypatch):
         pass
 
     assert called is False
+
+
+def test_main_loads_from_parent_cwd_and_stocks_endpoint_still_works(monkeypatch):
+    monkeypatch.chdir(ROOT.parent)
+    monkeypatch.setattr(stocks_route_module.deps, "_read_records", lambda _query: [])
+
+    module_name = "main_outside_project_cwd"
+    spec = importlib.util.spec_from_file_location(module_name, ROOT / "main.py")
+    assert spec is not None and spec.loader is not None
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    assert module.WEB_UI_DIR.is_absolute()
+    assert module.WEB_UI_DIR.exists()
+
+    with TestClient(module.app) as client:
+        response = client.get("/api/stocks")
+
+    assert response.status_code == 200
+    assert response.json() == []
 
 
 def test_weekly_audit_loop_marks_stale_rows_in_run_once_mode(tmp_path):

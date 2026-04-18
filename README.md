@@ -1,6 +1,6 @@
-# Sovereign Research Terminal v3.0
+   # Sovereign Research Terminal v3.0
 
-Sovereign is an institutional-grade quantitative screening and research platform for Indian equities. It integrates the **Nexus Alpha (v11.0)** scoring engine, a **Technical Brutalist** React/Vite dashboard, and a hardened **QARP (v4.4)** quantitative model with 200-day trend filters and portfolio concentration controls.
+Sovereign is an institutional-grade quantitative screening and research platform for Indian equities. It integrates the **Nexus Alpha (v11.0)** scoring engine, a **Technical Brutalist** React/Vite dashboard, a normalized regime/risk API, and a hardened **QARP (v4.4)** research stack with trend filters, survivorship-aware backtesting, and portfolio concentration controls.
 
 This README is the operational entrypoint for running the terminal locally. For a deeper layout overview, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
@@ -16,15 +16,15 @@ This README is the operational entrypoint for running the terminal locally. For 
 
 ## Core Intelligence & Hardening (v4.4)
 
-- **QARP Strategy**: Hardened Quality at a Reasonable Price model with regime-aware weights.
-- **Trend Filtering**: Integrated EMA-200 / 300-day lookback filters to mitigate drawdowns.
-- **Concentration Controls**: Enforced 2-quarter consecutive-hold constraints for statistical robustness.
-- **Sector RS High-Conviction**: Automated ingestion of ~200 top-performing stocks via `RS_Top10_Per_Sector.xlsx`.
-- **Pure Data Model**: Fully purged Alpha Vantage dependencies; now utilizing pure `yfinance` and local NSE data.
+- **Nexus Alpha Scoring**: Sigmoid-normalized multi-factor scoring with spline caps, sector-relative adjustments, and deterministic tie-breaking.
+- **Regime Layer**: `/api/regime_status` is backed by the active `MarketDataProvider` contract and returns normalized regime payloads for both the frontend and terminal clients.
+- **Allocator Ranking**: GARP proposals now use a Nexus-led composite rank rather than relying on conviction score alone.
+- **Backtest Hardening**: QARP backtests include regime-aware exposure, 1-day execution lag, and survivorship-aware universe filtering.
+- **Data Pipeline Resilience**: Lazy provider initialization prevents import-time network failures and makes offline testing/CI more stable.
 
 ## Canonical Entry Points
 
-- Backend API: `uvicorn main:app --reload`
+- Backend API: `uvicorn main:app --reload --port 9005`
 - Runtime worker: `python -m worker.runtime`
 - CLI: `python sovereign_cli.py ...`
 - Frontend dev server: `cd web-ui && npm run dev`
@@ -55,10 +55,10 @@ Notes:
 ### Start The Backend
 
 ```powershell
-uvicorn main:app --reload
+uvicorn main:app --reload --port 9005
 ```
 
-The API will be available on `http://localhost:8000`.
+The API will be available on `http://localhost:9005`.
 
 ### Start The Runtime Worker
 
@@ -82,7 +82,7 @@ npm install
 npm run dev
 ```
 
-The Vite dev server proxies `/api` requests to `http://localhost:8000`.
+The Vite dev server proxies `/api` and `/ws` requests to `http://localhost:9005`.
 
 ## Common CLI Commands
 
@@ -118,6 +118,18 @@ The main frontend contract-sensitive endpoints are:
 - `/api/health`
 - `/api/reports/{symbol}`
 
+Regime API notes:
+- `/api/regime_status` returns normalized regime labels such as `BULL`, `BEAR`, `SIDEWAYS`, and `BLACK`
+- `/api/regime_status` includes `vix`, `vix_threshold`, `momentum_accel`, `votes`, `is_forced`, `details`, `timestamp`, and optional `stale` / `error`
+- `/api/admin/force_regime?regime=BULL|BEAR|SIDEWAYS|AUTO` is the supported manual override contract
+
+## Research / Backtest Notes
+
+- The primary ranking engine lives in [modules/scoring.py](./modules/scoring.py)
+- The GARP allocator consumes DB output but now uses a Nexus-led composite rank in [brain/garp_strategy.py](./brain/garp_strategy.py)
+- The QARP backtest runner in [backtest_qarp.py](./backtest_qarp.py) applies survivorship filtering via [backtest/survivorship_adjusted_loader.py](./backtest/survivorship_adjusted_loader.py)
+- The lightweight vectorized batch engine in [backtest/engine.py](./backtest/engine.py) is still useful for screening-scale momentum validation, but it is not the full institutional QARP simulator
+
 ## Testing
 
 Backend:
@@ -139,6 +151,14 @@ The frontend test harness is powered by Vitest and Testing Library. The most imp
 - [web-ui/src/App.test.tsx](./web-ui/src/App.test.tsx)
 
 `pytest.ini` is the single source of truth for pytest behavior in this repo.
+
+Useful backend regression slices:
+- `tests/test_regime_api.py`
+- `tests/test_api_v96.py`
+- `tests/test_garp_strategy.py`
+- `tests/test_backtest_engine.py`
+- `tests/test_survivorship_loader.py`
+- `tests/test_data_service_lazy.py`
 
 ## Repo Layout
 

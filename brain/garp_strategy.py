@@ -27,6 +27,51 @@ class GarpStrategy:
         self.db_path = db_path
         self.candidates = []
 
+    @staticmethod
+    def _safe_float(value, default=0.0):
+        try:
+            parsed = float(value)
+        except (TypeError, ValueError):
+            return float(default)
+        if pd.isna(parsed):
+            return float(default)
+        return float(parsed)
+
+    @classmethod
+    def _normalize_rs_score(cls, rs_value):
+        rs = cls._safe_float(rs_value)
+        if rs <= 0:
+            return 0.0
+        if rs <= 3.05:
+            return min(rs * (100.0 / 3.0), 100.0)
+        return min(rs, 100.0)
+
+    @classmethod
+    def _build_rank_components(cls, stock):
+        nexus_score = cls._safe_float(stock.get("score") or stock.get("Score"))
+        conviction = cls._safe_float(stock.get("conviction_score") or stock.get("Conviction_Score"))
+        rs_score = cls._normalize_rs_score(stock.get("rs_rating") or stock.get("RS_Rating"))
+        data_quality = cls._safe_float(stock.get("data_quality") or stock.get("Data_Quality"))
+
+        # Nexus Alpha is the primary engine. Conviction/RS/DQ refine the ordering.
+        if nexus_score > 0:
+            final_rank_score = (
+                nexus_score * 0.60
+                + conviction * 0.25
+                + rs_score * 0.10
+                + data_quality * 0.05
+            )
+        else:
+            final_rank_score = (conviction * 0.70) + (rs_score * 0.30)
+
+        return {
+            "rank_score": round(final_rank_score, 1),
+            "nexus_score": round(nexus_score, 1),
+            "conviction": round(conviction, 1),
+            "rs_score": round(rs_score, 1),
+            "data_quality": round(data_quality, 1),
+        }
+
     def load_universe(self):
         """Loads latest scanned data from DB."""
         conn = database.get_connection()
@@ -62,22 +107,17 @@ class GarpStrategy:
             is_valid, reason = validate_garp_criteria(stock)
             
             if is_valid:
-                # Calculate Composite Rank
-                # 70% Conviction Score + 30% RS Rating
-                conviction = stock.get("conviction_score", 0) or 0
-                rs = stock.get("rs_rating", 0) or 0
-                
-                # Normalize RS (0-3 usually) -> 0-100
-                rs_score = min(rs * 33, 100)
-                
-                final_rank_score = (conviction * 0.7) + (rs_score * 0.3)
+                components = self._build_rank_components(stock)
                 
                 qualified.append({
                     "Symbol": stock.get("symbol"),
-                    "Rank_Score": round(final_rank_score, 1),
-                    "Conviction": conviction,
+                    "Rank_Score": components["rank_score"],
+                    "Nexus_Score": components["nexus_score"],
+                    "Conviction": components["conviction"],
+                    "RS_Score": components["rs_score"],
+                    "Data_Quality": components["data_quality"],
                     "Price": stock.get("price"),
-                    "Reason": "GARP Qualified"
+                    "Reason": "GARP Qualified | Nexus-led composite rank",
                 })
         
         # Sort by Rank

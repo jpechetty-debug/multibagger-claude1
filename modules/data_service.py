@@ -282,24 +282,38 @@ class PNSEAProvider(DataProvider):
     @property
     def name(self): return "pnsea"
     
-    def __init__(self, executor):
+    def __init__(self, executor, nse_factory=None):
         self.executor = executor
+        self.nse = None
+        self._nse_factory = nse_factory
         try:
-            from pnsea import NSE
-            self.nse = NSE()
+            if self._nse_factory is None:
+                from pnsea import NSE
+                self._nse_factory = NSE
             self.available = True
         except ImportError:
             self.available = False
+        except Exception as exc:
+            logger.warning("PNSEA bootstrap failed during import; provider disabled: %s", exc)
+            self.available = False
+
+    def _get_nse_client(self):
+        if self.nse is None:
+            if self._nse_factory is None:
+                raise ImportError("PNSEA not available")
+            self.nse = self._nse_factory()
+        return self.nse
 
     async def fetch_fundamentals(self, symbol: str) -> Dict:
         if not self.available:
             raise ImportError("PNSEA not available")
         loop = asyncio.get_running_loop()
-        raw = await loop.run_in_executor(self.executor, lambda: self.nse.equity.info(symbol.replace(".NS", "")))
+        nse_client = await loop.run_in_executor(self.executor, self._get_nse_client)
+        raw = await loop.run_in_executor(self.executor, lambda: nse_client.equity.info(symbol.replace(".NS", "")))
         pledged = await _run_executor_safe(
             loop,
             self.executor,
-            lambda: self.nse.insider.getPledgedData(symbol.replace(".NS", "")),
+            lambda: nse_client.insider.getPledgedData(symbol.replace(".NS", "")),
             {},
         )
 
@@ -846,8 +860,8 @@ class MarketDataProvider:
             float: The VIX threshold (e.g., 18.5).
         """
         try:
-            end_date = datetime.datetime.now()
-            start_date = end_date - datetime.timedelta(days=lookback_days + 10) # Buffer
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=lookback_days + 10) # Buffer
             
             # Fetch Data
             # Note: yfinance might fail on some corporate firewalls or if ticker invalid.
@@ -988,6 +1002,7 @@ class MarketDataProvider:
             # Let's map roughly: < 13 Bull, > 18 Bear
             
             details['vix'] = current_vix
+            details['vix_threshold'] = float(vix_threshold)
             if current_vix < 13.5: # Approx 30th percentile
                 votes['BULL'] += 1
                 details['vix_vote'] = 'BULL'
