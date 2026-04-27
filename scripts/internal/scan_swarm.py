@@ -24,7 +24,6 @@ logger = logging.getLogger("scan_swarm")
 from modules.mirofish_client import MiroFishClient
 from modules.news_sentiment import engine as news_engine
 
-import sqlite3
 import os
 
 def get_real_context(ticker: str) -> str:
@@ -45,31 +44,30 @@ def get_real_context(ticker: str) -> str:
         return f"Context for {ticker}: No database found. {sentiment_context}"
         
     try:
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
+        from db.db_core import duck_conn
         
-        # Fetch latest metrics from multibaggers table
-        cursor.execute("SELECT * FROM multibaggers WHERE symbol = ?", (ticker,))
-        row = cursor.fetchone()
+        # Fetch latest metrics natively through DuckDB's SQLite scanner
+        # This replaces legacy raw sqlite3 fetching for faster vectorized access
+        result = duck_conn.execute("SELECT * FROM sqlite_db.multibaggers WHERE symbol = ?", (ticker,)).df()
         
-        if not row:
+        if result.empty:
             return f"Context for {ticker}: Ticker not found in institutional database. {sentiment_context}"
             
+        row = result.iloc[0].to_dict()
+        
         context = f"""
         # Institutional Context for {ticker}
-        - **Sector**: {row['sector']}
-        - **Sovereign Score**: {row['score']}/100
-        - **Valuation**: PE Ratio of {row['pe_ratio'] if row['pe_ratio'] else 'N/A'}, PEG Ratio of {row['peg_ratio'] if row['peg_ratio'] else 'N/A'}
-        - **Profitability**: ROE of {row['roe']}% , CFO/PAT Ratio of {row['cfo_pat_ratio'] if row['cfo_pat_ratio'] else 'N/A'}
-        - **Growth**: Sales Growth (TTM) of {row['sales_growth']}% , 5Y Sales CAGR of {row['sales_cagr_5y']}%
-        - **Momentum**: 52W High distance: {row['down_from_52w']}% , RSI: {row['rsi']}
-        - **Risk**: Debt/Equity of {row['debt_equity']}
-        - **Thesis Summary**: {row['rating']} rating with a current conviction boost of {row['conviction_boost']}.
+        - **Sector**: {row.get('sector', 'Unknown')}
+        - **Sovereign Score**: {row.get('score', 0)}/100
+        - **Valuation**: PE Ratio of {row.get('pe_ratio', 'N/A')}, PEG Ratio of {row.get('peg_ratio', 'N/A')}
+        - **Profitability**: ROE of {row.get('roe', 'N/A')}% , CFO/PAT Ratio of {row.get('cfo_pat_ratio', 'N/A')}
+        - **Growth**: Sales Growth (TTM) of {row.get('sales_growth', 'N/A')}% , 5Y Sales CAGR of {row.get('sales_cagr_5y', 'N/A')}%
+        - **Momentum**: 52W High distance: {row.get('down_from_52w', 'N/A')}% , RSI: {row.get('rsi', 'N/A')}
+        - **Risk**: Debt/Equity of {row.get('debt_equity', 'N/A')}
+        - **Thesis Summary**: {row.get('rating', 'N/A')} rating with a current conviction boost of {row.get('conviction_boost', 0)}.
         
         {sentiment_context}
         """
-        conn.close()
         return context
     except Exception as e:
         logger.warning(f"Failed to fetch real context for {ticker}: {e}")

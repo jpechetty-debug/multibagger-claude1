@@ -122,6 +122,7 @@ def _run_sqlite_write_with_retry_sync(write_fn: Callable[[], Any], operation_nam
             raise
 
 def get_connection():
+    """Legacy raw DBAPI connection. Pending removal during PostgreSQL migration."""
     _db_url = os.getenv('DATABASE_URL', f'sqlite:///{DB_PATH}')
     if _db_url.startswith('postgresql'):
         try:
@@ -136,6 +137,13 @@ def get_connection():
     conn.execute('PRAGMA journal_mode=WAL')
     return conn
 
+# -- NEW: SQLAlchemy Connection Abstraction --
+from db.db_core import get_db_connection, execute_sql, db_engine
+
+def get_sqla_connection():
+    """Returns a new SQLAlchemy Connection block."""
+    return get_db_connection()
+
 def _cache_is_fresh(cache: dict, ttl_seconds: int) -> bool:
     payload = cache.get("payload")
     ts = float(cache.get("timestamp", 0.0) or 0.0)
@@ -148,13 +156,12 @@ def _cache_set(cache: dict, payload: Any):
 def _cache_invalidate(cache: dict):
     cache["timestamp"] = 0.0
 
-def _read_records(query: str):
-    conn = get_connection()
-    try:
-        df = pd.read_sql(query, conn)
+def _read_records(query: str, params: dict = None):
+    """Executes a SQL query using SQLAlchemy and returns JSON-friendly dictionary list."""
+    with get_sqla_connection() as conn:
+        from sqlalchemy import text
+        df = pd.read_sql(text(query), conn, params=params)
         return json.loads(df.to_json(orient="records", double_precision=2))
-    finally:
-        conn.close()
 
 def _json_safe_clean(obj):
     if isinstance(obj, list): return [_json_safe_clean(x) for x in obj]

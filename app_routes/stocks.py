@@ -11,8 +11,9 @@ router = APIRouter()
 
 @router.get("/api/stocks")
 async def get_multibaggers(as_of_date: str | None = None):
-    """Fetch Top Multibagger Picks"""
+    """Fetch Top Multibagger Picks using DuckDB for rapid sorting and filtering"""
     try:
+        from db.db_core import duck_conn
         if as_of_date:
             from db.repository import load_fundamentals_universe_as_of
 
@@ -29,11 +30,16 @@ async def get_multibaggers(as_of_date: str | None = None):
 
             return await deps._run_blocking(_read_as_of_records)
 
-        # deterministic Tie-Breaker Sorting
-        records = await deps._run_blocking(
-            deps._read_records, 
-            "SELECT * FROM multibaggers ORDER BY score DESC, rs_rating DESC, market_cap_cr DESC"
-        )
+        # Vectorized DuckDB Sorting
+        def _run_duckdb_sort():
+            df = duck_conn.execute("SELECT * FROM sqlite_db.multibaggers ORDER BY CAST(score AS DOUBLE) DESC, CAST(rs_rating AS DOUBLE) DESC, CAST(market_cap_cr AS DOUBLE) DESC").df()
+            if df.empty:
+                return []
+            import json
+            df = df.replace([np.inf, -np.inf], np.nan).replace({np.nan: None})
+            return json.loads(df.to_json(orient="records", double_precision=2))
+
+        records = await deps._run_blocking(_run_duckdb_sort)
 
         if not records:
             return []
@@ -44,21 +50,32 @@ async def get_multibaggers(as_of_date: str | None = None):
 
 @router.get("/api/multibagger-hunt")
 async def get_multibagger_hunt():
-    """Fetch stocks meeting the strict Multibagger Hunt criteria"""
+    """Fetch stocks meeting the strict Multibagger Hunt criteria using DuckDB for speed"""
     try:
         query = """
-            SELECT * FROM multibaggers
-            WHERE sales_cagr_5y >= 0.15
-              AND avg_roe_5y >= 0.15
-              AND debt_equity <= 0.5
-              AND cfo_pat_ratio >= 0.80
-              AND promoter_holding >= 50.0
-              AND (pledge_pct = 0.0 OR pledge_pct IS NULL)
-              AND (piotroski_score >= 6 OR (piotroski_score IS NULL AND f_score >= 6))
-              AND market_cap_cr <= 5000
-            ORDER BY ml_rank_score DESC, score DESC
+            SELECT * FROM sqlite_db.multibaggers
+            WHERE CAST(sales_cagr_5y AS DOUBLE) >= 0.15
+              AND CAST(avg_roe_5y AS DOUBLE) >= 0.15
+              AND CAST(debt_equity AS DOUBLE) <= 0.5
+              AND CAST(cfo_pat_ratio AS DOUBLE) >= 0.80
+              AND CAST(promoter_holding AS DOUBLE) >= 50.0
+              AND (CAST(pledge_pct AS DOUBLE) = 0.0 OR pledge_pct IS NULL)
+              AND (CAST(piotroski_score AS DOUBLE) >= 6 OR (piotroski_score IS NULL AND CAST(f_score AS DOUBLE) >= 6))
+              AND CAST(market_cap_cr AS DOUBLE) <= 5000
+            ORDER BY CAST(ml_rank_score AS DOUBLE) DESC, CAST(score AS DOUBLE) DESC
         """
-        records = await deps._run_blocking(deps._read_records, query)
+        def _run_duckdb_query():
+            from db.db_core import duck_conn
+            # Execute natively in DuckDB and fetch as Pandas DataFrame
+            df = duck_conn.execute(query).df()
+            if df.empty:
+                return []
+            import numpy as np
+            import json
+            df = df.replace([np.inf, -np.inf], np.nan).replace({np.nan: None})
+            return json.loads(df.to_json(orient="records", double_precision=2))
+
+        records = await deps._run_blocking(_run_duckdb_query)
         
         if not records:
             return []
@@ -72,14 +89,12 @@ async def get_llm_thesis(symbol: str):
     """Generate concise AI investment thesis via local Ollama."""
     try:
         from modules.llm_engine import generate_thesis
-        conn = deps.get_connection()
-        try:
-            target = pd.read_sql("SELECT * FROM multibaggers WHERE symbol = ?", conn, params=(symbol,))
+        from sqlalchemy import text
+        with deps.get_sqla_connection() as conn:
+            target = pd.read_sql(text("SELECT * FROM multibaggers WHERE symbol = :symbol"), conn, params={"symbol": symbol})
             if target.empty:
                 return {"thesis": "Stock not found in database to generate thesis."}
             stock_data = target.iloc[0].to_dict()
-        finally:
-            conn.close()
             
         thesis = await deps._run_blocking(generate_thesis, stock_data)
         return {"thesis": thesis}
@@ -88,34 +103,30 @@ async def get_llm_thesis(symbol: str):
 
 @router.get("/api/history/{symbol}")
 async def get_stock_history(symbol: str):
-    """Fetch historical score data for a stock."""
+    """Fetch historical score data for a stock using DuckDB."""
     try:
-        import sqlite3
-        conn = deps.get_connection()
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
+        from db.db_core import duck_conn
         
         if not symbol.endswith(".NS"):
             symbol = f"{symbol}.NS"
             
-        cursor.execute("""
-            SELECT as_of_date, score, price 
-            FROM fundamentals_pit 
-            WHERE symbol = ? 
-            ORDER BY as_of_date ASC
-        """, (symbol,))
+        def _fetch_history():
+            # DuckDB is highly optimized for point-in-time aggregations
+            return duck_conn.execute("""
+                SELECT as_of_date as date, CAST(score AS DOUBLE) as score, CAST(price AS DOUBLE) as price 
+                FROM sqlite_db.fundamentals_pit 
+                WHERE symbol = ? 
+                ORDER BY as_of_date ASC
+            """, (symbol,)).df()
+            
+        df = await deps._run_blocking(_fetch_history)
+        if df.empty:
+            return []
+            
+        import json
+        df = df.replace([np.inf, -np.inf], np.nan).replace({np.nan: None})
+        return json.loads(df.to_json(orient="records", double_precision=2))
         
-        rows = cursor.fetchall()
-        conn.close()
-        
-        return [
-            {
-                "date": row["as_of_date"],
-                "score": row["score"],
-                "price": row["price"]
-            }
-            for row in rows
-        ]
     except Exception as e:
         deps.api_logger.warning("Failed to load stock history", symbol=symbol, error=str(e))
         return []
@@ -188,27 +199,32 @@ async def get_valuation(symbol: str, as_of_date: str | None = None):
             }
 
         def _ensure_valuation_table():
-            conn = deps.get_connection()
-            try:
-                conn.execute("CREATE TABLE IF NOT EXISTS valuation_metrics (symbol TEXT PRIMARY KEY, dcf_value REAL, graham_value REAL, epv_value REAL, intrinsic_value REAL, margin_of_safety REAL, verdict TEXT, confidence_score INTEGER, as_of_date TEXT, calculated_at TIMESTAMP)")
-                columns = [row[1] for row in conn.execute("PRAGMA table_info(valuation_metrics)").fetchall()]
-                if "as_of_date" not in columns: conn.execute("ALTER TABLE valuation_metrics ADD COLUMN as_of_date TEXT")
+            from sqlalchemy import text
+            with deps.get_sqla_connection() as conn:
+                conn.execute(text("CREATE TABLE IF NOT EXISTS valuation_metrics (symbol TEXT PRIMARY KEY, dcf_value REAL, graham_value REAL, epv_value REAL, intrinsic_value REAL, margin_of_safety REAL, verdict TEXT, confidence_score INTEGER, as_of_date TEXT, calculated_at TIMESTAMP)"))
+                
+                # SQLAlchemy agnostic column check
+                if deps.db_engine.dialect.name == "sqlite":
+                    columns = [row[1] for row in conn.execute(text("PRAGMA table_info(valuation_metrics)")).fetchall()]
+                else:
+                    columns = [row[0] for row in conn.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='valuation_metrics'")).fetchall()]
+                
+                if "as_of_date" not in columns:
+                    conn.execute(text("ALTER TABLE valuation_metrics ADD COLUMN as_of_date TEXT"))
                 conn.commit()
-            finally: conn.close()
 
         await deps._run_sqlite_write_with_retry(_ensure_valuation_table, "valuation table init")
 
         def _read_cached():
-            conn = deps.get_connection()
-            try:
+            from sqlalchemy import text
+            with deps.get_sqla_connection() as conn:
                 if as_of_date:
-                    query = "SELECT * FROM valuation_metrics WHERE symbol = ? AND as_of_date <= ? ORDER BY as_of_date DESC, calculated_at DESC LIMIT 1"
-                    existing_local = pd.read_sql(query, conn, params=(symbol, valuation_as_of))
+                    query = "SELECT * FROM valuation_metrics WHERE symbol = :symbol AND as_of_date <= :as_of_date ORDER BY as_of_date DESC, calculated_at DESC LIMIT 1"
+                    existing_local = pd.read_sql(text(query), conn, params={"symbol": symbol, "as_of_date": valuation_as_of})
                 else:
-                    query = "SELECT * FROM valuation_metrics WHERE symbol = ? ORDER BY calculated_at DESC LIMIT 1"
-                    existing_local = pd.read_sql(query, conn, params=(symbol,))
+                    query = "SELECT * FROM valuation_metrics WHERE symbol = :symbol ORDER BY calculated_at DESC LIMIT 1"
+                    existing_local = pd.read_sql(text(query), conn, params={"symbol": symbol})
                 return existing_local.iloc[0].to_dict() if not existing_local.empty else None
-            finally: conn.close()
 
         cached = await deps._run_blocking(_read_cached)
         if cached: return _normalize_valuation_payload(cached)
@@ -231,12 +247,17 @@ async def get_valuation(symbol: str, as_of_date: str | None = None):
         metrics = engine.get_intrinsic_value()
 
         def _write_valuation():
-            conn = deps.get_connection()
-            try:
-                cursor = conn.cursor()
-                cursor.execute("INSERT OR REPLACE INTO valuation_metrics (symbol, dcf_value, graham_value, epv_value, intrinsic_value, margin_of_safety, verdict, confidence_score, as_of_date, calculated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (symbol, metrics["components"]["dcf"], metrics["components"]["graham"], metrics["components"]["epv"], metrics["intrinsic_value"], metrics["margin_of_safety"], metrics["verdict"], 85, valuation_as_of, datetime.now()))
+            from sqlalchemy import text
+            with deps.get_sqla_connection() as conn:
+                # Use standard insert since 'INSERT OR REPLACE' is SQLite specific
+                # For PostgreSQL compatibility we'd use ON CONFLICT but for now delete and insert works generically
+                conn.execute(text("DELETE FROM valuation_metrics WHERE symbol = :symbol"), {"symbol": symbol})
+                conn.execute(text("INSERT INTO valuation_metrics (symbol, dcf_value, graham_value, epv_value, intrinsic_value, margin_of_safety, verdict, confidence_score, as_of_date, calculated_at) VALUES (:symbol, :dcf, :graham, :epv, :intrinsic, :margin, :verdict, :confidence, :as_of, :calc)"), {
+                    "symbol": symbol, "dcf": metrics["components"]["dcf"], "graham": metrics["components"]["graham"],
+                    "epv": metrics["components"]["epv"], "intrinsic": metrics["intrinsic_value"], "margin": metrics["margin_of_safety"],
+                    "verdict": metrics["verdict"], "confidence": 85, "as_of": valuation_as_of, "calc": datetime.now()
+                })
                 conn.commit()
-            finally: conn.close()
 
         await deps._run_sqlite_write_with_retry(_write_valuation, "valuation upsert")
         metrics["symbol"] = symbol
@@ -281,19 +302,36 @@ async def get_governance_data(symbol: str):
 
 @router.get("/api/peers/{symbol}")
 async def get_stock_peers(symbol: str):
-    """Sector Peers Comparison"""
+    """Sector Peers Comparison via DuckDB Aggregations"""
     try:
         if not symbol.endswith(".NS") and not symbol.endswith(".BO"): symbol += ".NS"
         def _get_peers():
-            conn = deps.get_connection()
-            try:
-                target = pd.read_sql("SELECT symbol, sector, price as current_price, score as terminal_score, pe_ratio as pe, roe, debt_equity, rs_rating as price_change_3m FROM multibaggers WHERE symbol = ?", conn, params=(symbol,))
-                if target.empty: raise HTTPException(status_code=404, detail="Stock not found")
-                sector = target.iloc[0]['sector']
-                peers = pd.read_sql("SELECT symbol, symbol as name, price as current_price, score as terminal_score, pe_ratio as pe, roe, debt_equity, rs_rating as price_change_3m FROM multibaggers WHERE sector = ? AND symbol != ? ORDER BY score DESC LIMIT 5", conn, params=(sector, symbol)).to_dict(orient="records")
-                avgs = pd.read_sql("SELECT AVG(pe_ratio) as pe, AVG(roe) as roe, AVG(score) as terminal_score FROM multibaggers WHERE sector = ?", conn, params=(sector,)).iloc[0].to_dict()
-                return {"sector": sector, "peers": peers, "sector_avg": avgs, "stock_metrics": target.iloc[0].to_dict(), "rankings": {"score_rank_desc": "Top 10"}}
-            finally: conn.close()
+            from db.db_core import duck_conn
+            import json
+            
+            # Fetch target stock
+            target_df = duck_conn.execute("SELECT symbol, sector, CAST(price AS DOUBLE) as current_price, CAST(score AS DOUBLE) as terminal_score, CAST(pe_ratio AS DOUBLE) as pe, CAST(roe AS DOUBLE) as roe, CAST(debt_equity AS DOUBLE) as debt_equity, CAST(rs_rating AS DOUBLE) as price_change_3m FROM sqlite_db.multibaggers WHERE symbol = ?", (symbol,)).df()
+            if target_df.empty: raise HTTPException(status_code=404, detail="Stock not found")
+            sector = target_df.iloc[0]['sector']
+            
+            # Vectorized peer selection
+            peers_df = duck_conn.execute("SELECT symbol, symbol as name, CAST(price AS DOUBLE) as current_price, CAST(score AS DOUBLE) as terminal_score, CAST(pe_ratio AS DOUBLE) as pe, CAST(roe AS DOUBLE) as roe, CAST(debt_equity AS DOUBLE) as debt_equity, CAST(rs_rating AS DOUBLE) as price_change_3m FROM sqlite_db.multibaggers WHERE sector = ? AND symbol != ? ORDER BY CAST(score AS DOUBLE) DESC LIMIT 5", (sector, symbol)).df()
+            
+            # Lightning fast sector aggregation
+            avgs_df = duck_conn.execute("SELECT AVG(CAST(pe_ratio AS DOUBLE)) as pe, AVG(CAST(roe AS DOUBLE)) as roe, AVG(CAST(score AS DOUBLE)) as terminal_score FROM sqlite_db.multibaggers WHERE sector = ?", (sector,)).df()
+            
+            # Cleanup for JSON
+            target_df = target_df.replace([np.inf, -np.inf], np.nan).replace({np.nan: None})
+            peers_df = peers_df.replace([np.inf, -np.inf], np.nan).replace({np.nan: None})
+            avgs_df = avgs_df.replace([np.inf, -np.inf], np.nan).replace({np.nan: None})
+            
+            return {
+                "sector": sector, 
+                "peers": json.loads(peers_df.to_json(orient="records")), 
+                "sector_avg": avgs_df.iloc[0].to_dict(), 
+                "stock_metrics": target_df.iloc[0].to_dict(), 
+                "rankings": {"score_rank_desc": "Top 10"}
+            }
         return await deps._run_blocking(_get_peers)
     except Exception as e: return {"error": str(e)}
 
@@ -362,13 +400,12 @@ async def get_swarm_report_simulation(symbol: str):
         from modules.mirofish_client import MiroFishClient
         client = MiroFishClient()
         def _fetch_context():
-            conn = deps.get_connection()
-            try:
-                row = pd.read_sql("SELECT symbol, sector, score, pe_ratio as pe, roe, sales_cagr_5y FROM multibaggers WHERE symbol = ?", conn, params=(symbol,))
+            from sqlalchemy import text
+            with deps.get_sqla_connection() as conn:
+                row = pd.read_sql(text("SELECT symbol, sector, score, pe_ratio as pe, roe, sales_cagr_5y FROM multibaggers WHERE symbol = :symbol"), conn, params={"symbol": symbol})
                 if row.empty: return None
                 d = row.iloc[0].to_dict()
                 return f"Stock {symbol} in {d['sector']}. Score: {d['score']}. PE: {d['pe']}. ROE: {d['roe']}. Growth: {d['sales_cagr_5y']}."
-            finally: conn.close()
         context = await deps._run_blocking(_fetch_context)
         if not context: raise HTTPException(status_code=404, detail="Stock not found")
         report = await deps._run_blocking(client.simulate_ticker, symbol, context)
