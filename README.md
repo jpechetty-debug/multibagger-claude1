@@ -1,389 +1,110 @@
-# Sovereign Research Terminal v12.0
+# Sovereign Research Terminal v4.0.0
+## // The Sovereign Hybrid: Institutional Alpha Architecture //
 
-## // Institutional-Grade Hybrid Analytical Engine //
+Sovereign v4.0.0 represents a significant technical debt remediation and architectural leap. It integrates a **Modular Data Service (v4.0)**, a **Sigmoid-Normalized Nexus Alpha (v12.0)** scoring engine, and a **SQLite + DuckDB Hybrid** analytical layer for institutional-grade research.
 
-Sovereign is a high-conviction screening and research platform designed for structural alpha in Indian equities. It integrates the **Nexus Alpha (v12.0)** scoring system, a **Technical Brutalist** analytical dashboard, and a state-of-the-art **SQLite + DuckDB Hybrid** architecture for lightning-fast quantitative research without external infrastructure.
-
-> [!NOTE]
-> **Sovereign is not a black box.** Every score is explainable via the "Why This Score?" panel, every metric is auditable through the Integrated Explainer system, and data freshness is surfaced on every screen — stale data is never hidden.
+> [!IMPORTANT]
+> **Sovereign is built for reliability.** v4.0.0 introduces a modular adapter layer, hard-fail security dependencies, and a robust Celery worker architecture that eliminates event-loop anti-patterns.
 
 ---
 
-## 🧠 Core Intelligence: Nexus Alpha v11.0
+## 🏗️ v4.0 Architecture: Modular & Resilient
 
-The heart of the terminal is the Nexus Alpha engine, which replaces binary screening cliffs with **Sigmoid-Normalized** multi-factor scoring.
+The "God-Module" technical debt has been eliminated. The system is now decomposed into specialized layers:
 
-### The 9-Factor Scoring Protocol
+### 1. Modular Data Service (`modules/data_service.py`)
+Orchestrates data fetching through a prioritized fallback chain:
+- **`modules/adapters/nse.py`**: High-fidelity PNSEA and NSEPython adapters.
+- **`modules/adapters/yfinance.py`**: Robust yfinance fallback with fast-info recovery.
+- **`modules/normalization/cleaner.py`**: Centralized data quality gates and skeletal payload detection.
+
+### 2. Security & Resource Hub
+- **`modules/auth.py`**: Hard-fail `SOVEREIGN_API_KEY` enforcement. REFUSES to start if not configured.
+- **`modules/connections.py`**: Centralized SQLite WAL-mode management and I/O semaphores.
+- **`modules/cache.py`**: High-speed in-memory TTL caching for market regimes and sector medians.
+
+### 3. ML-Ops & Meta-Scoring
+- **`scripts/train_hybrid_model.py`**: Reproducible XGBoost training entry point.
+- **`models/schema.json`**: Feature contract documentation for the forward-return meta-model.
+- **`modules/hybrid_scoring.py`**: Decoupled ML inference layer with data-fetching isolation.
+
+---
+
+## 🔬 Scoring Protocol: Nexus Alpha v12.0
 
 Every stock is audited across nine distinct vectors, dynamically weighted by **Market Regime**:
 
-| Factor | Description |
-|--------|-------------|
-| **Growth** | 5Y Sales and EPS Expansion |
-| **Quality** | Multibagger ROE/ROCE splines and Asset-Light CFO/PAT ratios |
-| **Value** | Sigmoid-normalized PE/PEG gaps with sector-relative adjustments |
-| **Risk** | Institutional **F-Score** floor and Debt/Equity constraints |
-| **Momentum** | Composite Relative Strength (RS) + 52-Week High Proximity |
-| **Sentiment** | Integrated NLP news sentiment with local LLM fallbacks |
-| **Smart Money** | Promoter buying patterns and Institutional anchor analysis |
-| **Estimates** | Forward earnings momentum and upgrade/downgrade velocity |
-
-### Institutional Quality Gate
-
-A strict **12-point checklist** enforces a quality floor for long-term compounding candidates. Stocks failing the gate are capped at a maximum "Neutral" score regardless of sheer growth numbers.
-
-### Score Explainability
-
-Every stock score can be decomposed into:
-- **Top 3 Positive Drivers** — what's pushing the score up
-- **Top 3 Penalties** — what's holding it back
-- **Active Score Ceilings** — which spline caps are binding
-- **Checklist Grade (A–D)** — pass/fail across 8 institutional criteria
-- **Score Delta** — change from previous scan with direction and reason
+| Factor | Description | Weight (Balanced) |
+|--------|-------------|-------------------|
+| **Growth** | 5Y Sales and EPS Expansion | 15% |
+| **Quality** | ROE/ROCE splines + Asset-Light CFO/PAT | 15% |
+| **Value** | Sigmoid-normalized sector-relative PE/PEG | 15% |
+| **Momentum** | Composite RS + 52-Week High Proximity | 10% |
+| **Risk** | Institutional F-Score floor + D/E Constraints | 10% |
 
 ---
 
-## 📊 Data Freshness & Quality Engine
+## ⚡ Analytical Performance (DuckDB Optimized)
 
-> [!IMPORTANT]
-> **Stale data is never hidden.** The terminal enforces hard freshness rules across the entire pipeline.
-
-### Freshness Status
-
-| Status | Age | Color | Effect |
-|--------|-----|-------|--------|
-| **FRESH** | ≤ 3 days | 🟢 Green | Full signal confidence |
-| **STALE** | 4–7 days | 🟡 Amber | Warning badge, elevated caution |
-| **EXPIRED** | > 7 days | 🔴 Red | **BUY signals blocked** — downgraded to WATCH |
-
-### Provider Health Monitoring
-
-Real-time success rate tracking for each data provider:
-- **yfinance** — primary fundamental + price data
-- **pnsea** — alternate fundamental source
-- **nsepython** — NSE-native corporate actions and shareholding
-
-### Universe Quality Alerts
-
-Automated monitoring triggers alerts when >20% of the tracked universe has stale or incomplete fundamentals, surfacing data degradation before it affects research decisions.
-
-### API Endpoints
-
-| Endpoint | Purpose |
-|----------|---------|
-| `GET /api/data-freshness` | Badge data: status, age, quality score, refresh status |
-| `GET /api/provider-health` | Per-provider success rates and call counts |
-| `GET /api/universe-quality` | Staleness metrics and alert status |
+Sovereign v4.0.0 continues the **SQLite + DuckDB** hybrid approach for lightning-fast quantitative research.
+- **Sorting 2k Tickers**: <5ms (Vectorized SIMD)
+- **Historical Aggregation**: ~30ms (In-memory OLAP)
+- **Zero Infrastructure**: Native C++ extensions attached to the SQLite file.
 
 ---
 
-## 🔬 Scoring Calibration & Diagnostics
+## 🚀 Operations & Deployment
 
-The terminal includes a built-in scoring intelligence layer to detect and diagnose calibration issues:
-
-- **Decile Distribution Histogram** — visualize score spread across 0–100
-- **Graveyard Detection** — flags clustering at 59–61 (ceiling convergence)
-- **Sector Score Ranges** — per-sector min/max/median with visual range bars
-- **Calibration Health** — GOOD / NEEDS_ATTENTION / POOR with specific fix recommendations
-- **Top 5% Rarity** — tracks how selective the scoring engine is
-
-### API Endpoints
-
-| Endpoint | Purpose |
-|----------|---------|
-| `GET /api/score-distribution` | Deciles, stats, sector breakdown |
-| `GET /api/score-explain/{symbol}` | Full per-stock explanation |
-| `GET /api/calibration-report` | Overall calibration health |
-
----
-
-## 🔍 Multibagger Compounding Lens (v4.1)
-
-Designed to identify "structural survivors," this lens applies deep-dive fundamental auditing:
-
-- **Quarterly Results Timeline**: Visual drift analysis of P&L and Balance Sheet integrity over time.
-- **10-Year CAGR Engine**: Rolling returns and compounding consistency scores.
-- **Survivorship-Aware Backtesting**: QARP results that account for delistings and universe changes.
-- **Earnings Inflection Detection**: Automated alerts for margin breakouts and volume-led growth shifts.
-
-## ⚡ Analytical Performance Engine (v12.5)
-
-> [!TIP]
-> **Zero Infrastructure, Infinite Speed.** Sovereign now uses a high-performance hybrid engine that combines the ACID reliability of SQLite with the vectorized analytical power of DuckDB.
-
-### Why SQLite + DuckDB?
-
-Traditional stock screeners either suffer from SQLite's slow analytical scans or require a complex PostgreSQL/TimescaleDB setup. Sovereign v12.5 solves this by using **DuckDB** as an in-process analytical layer that natively attaches to the SQLite database.
-
-| Feature | Legacy SQLite | **Hybrid v12.5 (DuckDB)** |
-|---------|---------------|---------------------------|
-| **Sorting 2k Tickers** | ~250ms | **<5ms** |
-| **Historical Aggregation** | 1.2s | **~30ms** |
-| **Multi-Column Filter** | Sequential | **Vectorized (SIMD)** |
-| **Concurrency** | Write-Locked | **Thread-Safe Factory** |
-
-### Hardened Architectural Logic
-
-To ensure production-grade reliability, the hybrid engine implements three critical guardrails:
-
-1.  **Thread-Safe Factory**: A `_DuckConnProxy` using `threading.local()` ensures that every concurrent FastAPI worker or background task gets its own isolated DuckDB connection, preventing race conditions.
-2.  **Canonical Data Resolution**: DuckDB attaches to the high-density `runtime/stocks.db` exclusively, ensuring analytics always read the latest uncommitted WAL data.
-3.  **Dynamic Type Casting**: Using `sqlite_all_varchar=true` mode, the engine bypasses SQLite's flexible typing issues by performing explicit SIMD-accelerated `CAST()` operations during query time for perfect numeric accuracy.
-
-### Vectorized Research Endpoints
-
-The following routes are now 100% powered by the DuckDB vectorized engine:
-- `GET /api/multibagger-hunt` — Complex 10-factor filtering and sorting
-- `GET /api/history/{symbol}` — Lightning-fast point-in-time trend extraction
-- `GET /api/peers/{symbol}` — Real-time sector-relative valuation averages
-- `GET /api/stocks` — Core universe exploration and ranking
-
----
-
-## 🛡️ Research UX
-
-### Red Flag Detection
-
-Automated risk alerts with severity levels (CRITICAL / WARNING):
-
-| Flag | Trigger |
-|------|---------|
-| High Promoter Pledge | > 10% pledged |
-| Dangerous Debt | D/E > 1.0 |
-| Low Promoter Holding | < 40% |
-| Weak Cash Quality | CFO/PAT < 0.7 |
-| Stretched Valuation | PE > 50 |
-
-### Personal Watchlist
-
-Browser-persistent watchlist with `localStorage`:
-- Add/remove stocks from any detail page
-- Orphaned symbol detection (saved but no longer in universe)
-- Watchlist count badge in the header
-
-### Score Report Dashboard
-
-Accessible at `/score-report` — a dedicated page for scoring engine health:
-- Decile histogram with graveyard highlighting
-- Sector score range visualization
-- Calibration health panel with issue severity
-- Provider health integration
-
----
-
-## 🏗️ System Architecture
-
-```mermaid
-graph TD
-    UI[Technical Brutalist Dashboard] --> API[FastAPI Orchestrator]
-    API --> Scoring[Nexus Alpha Engine]
-    API --> DuckDB[DuckDB Analytical Engine]
-    API --> Freshness[Data Freshness Engine]
-    API --> Diagnostics[Score Diagnostics]
-    API --> DB[(SQLite — runtime/stocks.db)]
-    DuckDB -- Thread-Safe Proxy --> DB
-    Scoring --> Data[yfinance / pnsea / nsepython]
-    Freshness --> Cache[(data_cache.db)]
-    Worker[Runtime Worker] --> Scoring
-    Worker --> Maintenance[Audit & Cleanup]
-    CLI[Sovereign CLI] --> API
-    Health[/api/health/deep] --> DB
-    Health --> Cache
-    Health --> Freshness
-```
-
-### Stack Components
-
-| Layer | Technology |
-|-------|-----------|
-| **Backend** | Python 3.11+, FastAPI, SQLAlchemy, Pydantic v2 |
-| **Analytical Engine** | **DuckDB (Thread-Safe In-Process OLAP)** |
-| **Database** | SQLite (WAL mode) with PIT snapshots in `fundamentals_pit` |
-| **Caching** | File-backed SQLite cache (`data_cache.db`) |
-| **Observability** | Structured JSON logging with `structlog` |
-| **CI/CD** | GitHub Actions (Lint, Type-Check, Pytest, Syntax Gate) |
-
----
-
-## 🚀 Quickstart
-
-### 1. Backend API
-
-```powershell
-pip install -r requirements.txt
+### Quickstart (Local)
+```bash
+# 1. Start Backend (Port 9005)
 uvicorn main:app --reload --port 9005
+
+# 2. Start Worker (Celery)
+celery -A worker.celery_app worker --loglevel=info
+
+# 3. Start Frontend
+cd web-ui && npm run dev
 ```
 
-### 2. Frontend Dashboard
-
-```powershell
-cd web-ui
-npm install
-npm run dev
-```
-
-Accessible at `http://localhost:5173`. Proxies API requests to port 9005.
-
-### 3. Runtime Worker
-
-```powershell
-python -m worker.runtime
-```
-
-Background price updates, liquidity audits, and scheduled PIT maintenance.
-
-### 4. Sovereign CLI
-
-```powershell
-python sovereign_cli.py scan quick          # Immediate market pulse
-python sovereign_cli.py sys health          # Integrity check
-python sovereign_cli.py research update-rs  # Refresh momentum signals
-```
-
-### 5. Database Backup
-
-```powershell
-python scripts/backup_restore.py backup           # Create timestamped backup
-python scripts/backup_restore.py list              # List available backups
-python scripts/backup_restore.py restore <path>    # Restore from backup
-python scripts/backup_restore.py prune --keep 5    # Retain only 5 most recent
-```
+### Critical Environment Variables
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `SOVEREIGN_API_KEY` | REQUIRED in production | None (Fails if missing) |
+| `SOVEREIGN_ENV` | `production` / `local` | `local` |
+| `SOVEREIGN_RELOAD` | Enable uvicorn auto-reload | `false` |
+| `OLLAMA_MODEL` | LLM model for thesis gen | `llama3.2:3b-instruct-fp16` |
 
 ---
 
-## 📈 Operational Universe
+## 🧪 Testing Suite
 
-The terminal tracks **2,000+ NSE Equities** with automated expansion and curation:
+Sovereign v4.0.0 enforces a strict **Testing Pyramid**:
 
-- **High-Conviction Sectors**: Special coverage for Defense, EMS, Renewables, and Niche Tech.
-- **Universe Expansion**: Managed via `add_tickers.py` and `curator.py`.
-- **Data Hardening**: Lazy-loaded providers with cache fallbacks ensure 99.9% uptime.
-
----
-
-## 🔒 Production Hardening
-
-### Deep Health Check
-
-`GET /api/health/deep` validates all subsystems in a single call:
-
-| Check | What It Validates |
-|-------|-------------------|
-| **Database** | SQLite connectivity + stock count |
-| **Cache** | `data_cache.db` existence and integrity |
-| **Data Freshness** | Latest snapshot age + quality score |
-| **Providers** | yfinance/pnsea/nsepython success rates |
-| **Background Worker** | Price updater task status |
-
-Returns `"healthy"` or `"degraded"` with per-check details.
-
-### Structured Error Responses
-
-All API errors use a consistent `SovereignError` shape:
-
-```json
-{
-  "error_code": "STALE_DATA",
-  "message": "Data for RELIANCE.NS is 12 days old — exceeds freshness threshold",
-  "details": { "symbol": "RELIANCE.NS", "age_days": 12 },
-  "timestamp": "2026-04-27T12:00:00"
-}
-```
-
-### Environment-Gated Security
-
-| Mode | `SOVEREIGN_ENV` | API Key Enforcement |
-|------|-----------------|---------------------|
-| **Production** | `production` | `X-API-Key` header required on every request |
-| **Local** | `local` (default) | Permissive — no key required |
+1. **Unit Tests**: `pytest -m "not live"` — Logic and math validation.
+2. **E2E Integration**: `pytest tests/e2e_scoring_pipeline.py` — Verifies full Fetch -> Score -> Result pipe.
+3. **Frontend (Vitest)**: `npm test` inside `web-ui`.
+4. **CI Pipeline**: GitHub Actions enforces Lint (Ruff), Types (Mypy), and Syntax Parsing.
 
 ---
 
-## 🧪 Testing & CI
-
-### Backend (Pytest)
-
-```powershell
-python -m pytest tests/ -q
+## 🗂️ File Landscape (v4.0)
 ```
-
-### Frontend (Vitest)
-
-```powershell
-cd web-ui
-npm test
-```
-
-### CI Pipeline (GitHub Actions)
-
-| Job | What It Runs |
-|-----|-------------|
-| **Lint** | `ruff check` + `ruff format --check` |
-| **Type Check** | `mypy --config-file pyproject.toml` |
-| **Tests** | `pytest` with coverage reporting |
-| **Frontend** | `npm ci` → `npm run build` → `npm test` |
-| **Syntax Gate** | BOM detection + AST parse validation |
-
----
-
-## 🗂️ Key File Map
-
-```
-├── main.py                         # FastAPI entry point
-├── config.py                       # Scoring weights, thresholds, universe config
-├── sovereign_cli.py                # CLI entry point
-├── db/
-│   ├── db_core.py                  # Dual-Engine: SQLite (OLTP) + DuckDB (OLAP) Hub
-│   ├── repository.py               # Data access patterns
-│   └── engine.py                   # Legacy engine factory (deprecated)
 ├── modules/
-│   ├── scoring.py                  # Nexus Alpha scoring engine
-│   ├── hybrid_scoring.py           # XGBoost meta-model layer
-│   ├── data_freshness.py           # Freshness status, provider health, BUY gating
-│   ├── score_diagnostics.py        # Distribution analysis, explanations, calibration
-│   ├── errors.py                   # Structured error responses
-│   ├── data_service.py             # Data fetching and caching
-│   ├── dependencies.py             # Runtime config and security
-│   └── services.py                 # Service layer abstractions
-├── app_routes/
-│   ├── stocks.py                   # Stock CRUD and thesis endpoints (DuckDB Optimized)
-│   ├── freshness.py                # Data freshness API
-│   ├── score_report.py             # Score distribution API
-│   ├── public.py                   # Health checks (shallow + deep)
-│   ├── regime.py                   # Market regime status
-│   └── system.py                   # System admin endpoints
-├── web-ui/src/
-│   ├── App.tsx                     # Router and layout
-│   ├── pages/
-│   │   ├── StockDetail.tsx         # Detail view + ScoreExplainer + RedFlags
-│   │   ├── Watchlist.tsx           # Personal watchlist page
-│   │   └── ScoreReport.tsx         # Scoring intelligence dashboard
-│   ├── components/
-│   │   ├── metrics/DataFreshnessBadge.tsx
-│   │   ├── metrics/ProviderHealthPanel.tsx
-│   │   ├── signals/ScoreExplainer.tsx
-│   │   ├── signals/RedFlagPanel.tsx
-│   │   └── signals/SignalGrid.tsx
-│   └── lib/
-│       ├── api.ts                  # API client + BUY-label stale gating
-│       ├── contracts.ts            # TypeScript data contracts
-│       └── useWatchlist.ts         # localStorage watchlist hook
+│   ├── adapters/          # Source-specific data fetchers
+│   ├── normalization/     # Data cleaning and quality gates
+│   ├── auth.py            # Security dependencies
+│   ├── connections.py     # DB & I/O Orchestration
+│   ├── cache.py           # In-memory volatile state
+│   ├── data_utils.py      # Sync/Async compatibility layers
+│   └── hybrid_scoring.py  # ML Meta-Model inference
 ├── scripts/
-│   └── backup_restore.py          # DB backup, restore, prune
-└── .github/workflows/ci.yml       # Full-stack CI pipeline
+│   ├── internal/          # Core operational scripts
+│   └── train_hybrid_model.py # ML training canonical entry
+└── worker/
+    └── tasks.py           # Hardened Celery task definitions
 ```
 
 ---
 
-## 🛠️ Development Philosophy
-
-- **Technical Brutalism**: Data density, clarity, and performance over decorative fluff.
-- **Hybrid Performance**: DuckDB for vectorized analysis, SQLite for row-level persistence.
-- **Deterministic Logic**: Scoring lives in pure modules ([modules/scoring.py](./modules/scoring.py)) for backtest parity.
-- **Stale Data is Obvious**: Freshness badges, BUY-label blocking, and universe alerts ensure data quality is always visible.
-- **Score Transparency**: Every score is decomposable into drivers, penalties, ceilings, and checklist grades.
-- **Explicit Ownership**: Repo-root [main.py](./main.py) is the source of truth.
-
----
-
-*Built for institutions, accessible for individuals. Sovereign Terminal v12.5.*
+*Sovereign Terminal v4.0.0 — Built for structural alpha.*

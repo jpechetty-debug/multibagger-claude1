@@ -11,8 +11,7 @@ import yfinance as yf
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-import socket
-socket.setdefaulttimeout(20.0)
+
 
 import time
 from datetime import datetime
@@ -131,6 +130,6 @@ if __name__ == "__main__":
         "main:app", 
         host="127.0.0.1", 
         port=9005, 
-        reload=True,
+        reload=os.getenv("SOVEREIGN_RELOAD", "false").lower() == "true",
         reload_excludes=["*.db", "*.db-journal", "*.db-wal", "*.log", "*.txt"]
     )

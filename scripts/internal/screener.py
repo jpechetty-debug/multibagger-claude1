@@ -1029,6 +1029,11 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             "Data_Source": "unknown",
         }
 
+def get_stock_data_sync(ticker_symbol, dm=None, include_quarterly=True):
+    """Synchronous wrapper for get_stock_data for Celery workers and legacy scripts."""
+    from modules.data_utils import run_coroutine_sync
+    return run_coroutine_sync(get_stock_data(ticker_symbol, dm=dm, include_quarterly=include_quarterly))
+
 # ============== V6.0: SECTOR-RELATIVE SCORING ==============
 # calculate_sector_medians moved to modules/scoring.py
 

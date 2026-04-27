@@ -47,27 +47,18 @@ def _sanitize_features(df: pd.DataFrame) -> pd.DataFrame:
     return out[FEATURES]
 
 
-def _get_current_prices(symbols):
-    """Fetch current prices to calculate forward returns from the PIT data."""
-    import yfinance as yf
-
-    try:
-        tickers_str = " ".join(symbols)
-        data = yf.download(tickers_str, period="1d", progress=False)
-        if data.empty:
-            return {}
-        if "Close" in data:
-            if isinstance(data.columns, pd.MultiIndex):
-                return data["Close"].iloc[-1].to_dict()
-            return (
-                {symbols[0]: float(data["Close"].iloc[-1])}
-                if len(symbols) == 1
-                else data["Close"].iloc[-1].to_dict()
-            )
-    except Exception as exc:
-        print(f"Error fetching current prices for ML target: {exc}")
-        return {}
-    return {}
+def _get_historical_targets(symbols: list):
+    """Refactored forward-return target construction using modular data manager."""
+    from modules.data_service import data_manager
+    import asyncio
+    
+    async def _fetch():
+        return await data_manager.fetch_batch(symbols)
+    
+    # Use sync wrapper for ML training context
+    from modules.data_utils import run_coroutine_sync
+    data = run_coroutine_sync(_fetch())
+    return {s: d.get("price") for s, d in data.items() if "price" in d}
 
 
 def train_hybrid_model():
@@ -101,7 +92,7 @@ def train_hybrid_model():
     # 2. Get current prices to calculate forward returns.
     symbols = df["symbol"].unique().tolist()
     print(f"Fetching current prices for {len(symbols)} symbols to construct target (Y)...")
-    current_prices = _get_current_prices(symbols)
+    current_prices = _get_historical_targets(symbols)
 
     # Calculate Y (forward return).
     df["current_price"] = df["symbol"].map(current_prices)

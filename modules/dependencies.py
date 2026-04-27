@@ -1,160 +1,39 @@
-__all__ = ['BLOCKING_IO_CONCURRENCY', 'CACHE_AUDIT_TTL', 'CACHE_FUNDAMENTALS', 'CACHE_PEERS', 'CACHE_QUARTERLY', 'ConnectionManager', 'DB_BUSY_TIMEOUT_MS', 'DB_NAME', 'DB_PATH', 'MOVERS_CACHE_TTL_SECONDS', 'OrderRequest', 'REGIME_CACHE_TTL_SECONDS', 'SQLITE_RETRY_BASE_SECONDS', 'SQLITE_WRITE_RETRIES', '_cache_invalidate', '_cache_is_fresh', '_cache_set', '_is_sqlite_lock_error', '_json_safe_clean', '_read_records', '_run_blocking', '_run_sqlite_write_with_retry', '_run_sqlite_write_with_retry_sync', '_run_ticker_blocking', 'api_logger', 'app_logger', 'blocking_io_semaphore', 'get_connection', 'manager', 'movers_cache', 'movers_cache_lock', 'portfolio_tracker', 'regime_cache', 'regime_cache_lock', 'risk_governor', 'runtime_logger', 'ticker_io_semaphore', 'update_prices_background', 'get_api_key']
-
-import sqlite3
-import pandas as pd
-import numpy as np
+# modules/dependencies.py
+"""
+Sovereign Terminal — Dependency Facade
+Modularized into: auth.py, connections.py, cache.py, models.py
+"""
 import json
-import os
-import asyncio
-import yfinance as yf
-import time
-from datetime import datetime
-from pathlib import Path
-from typing import Any, Callable
+import pandas as pd
+from typing import Any
 
-from pydantic import BaseModel, Field
-from fastapi.security import APIKeyHeader
-from fastapi import Depends, HTTPException, status
-
-from modules.risk import RiskGovernor
-from modules.tracker import PortfolioTracker
-from modules.runtime_settings import runtime_settings
 from modules.structured_logger import SovereignLogger
 from worker.background_jobs import run_price_update_loop
 
+# -- Re-exporting from Modular Components --
+from modules.auth import get_api_key
+from modules.connections import (
+    get_connection, get_sqla_connection, _run_blocking, _run_ticker_blocking,
+    _run_sqlite_write_with_retry, _run_sqlite_write_with_retry_sync,
+    DB_NAME, DB_PATH, blocking_io_semaphore, ticker_io_semaphore
+)
+from modules.cache import (
+    regime_cache, movers_cache, regime_cache_lock, movers_cache_lock,
+    CACHE_QUARTERLY, CACHE_FUNDAMENTALS, CACHE_PEERS, CACHE_AUDIT_TTL,
+    _cache_is_fresh, _cache_set, _cache_invalidate
+)
+from modules.models import OrderRequest
+
+# Legacy Loggers (Prefer direct import from structured_logger in new code)
 runtime_logger = SovereignLogger("sovereign.runtime")
 api_logger = SovereignLogger("sovereign.api")
 app_logger = SovereignLogger("sovereign.app")
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-RUNTIME_DIR = PROJECT_ROOT / "runtime"
-DB_NAME = "stocks.db"
-DB_PATH = str(RUNTIME_DIR / DB_NAME)
-
-DB_BUSY_TIMEOUT_MS = runtime_settings.sqlite_busy_timeout_ms
-SQLITE_WRITE_RETRIES = runtime_settings.sqlite_write_retries
-SQLITE_RETRY_BASE_SECONDS = runtime_settings.sqlite_retry_base_seconds
-BLOCKING_IO_CONCURRENCY = runtime_settings.blocking_io_concurrency
-REGIME_CACHE_TTL_SECONDS = runtime_settings.regime_cache_ttl_seconds
-MOVERS_CACHE_TTL_SECONDS = runtime_settings.movers_cache_ttl_seconds
-blocking_io_semaphore = asyncio.Semaphore(BLOCKING_IO_CONCURRENCY)
-ticker_io_semaphore = asyncio.Semaphore(runtime_settings.ticker_io_concurrency)
+# Remaining Domain Instances
+from modules.risk import RiskGovernor
+from modules.tracker import PortfolioTracker
 portfolio_tracker = PortfolioTracker()
 risk_governor = RiskGovernor()
-regime_cache = {"payload": None, "timestamp": 0.0}
-movers_cache = {"payload": None, "timestamp": 0.0}
-regime_cache_lock = asyncio.Lock()
-movers_cache_lock = asyncio.Lock()
-
-# Caches for Audit Reports
-CACHE_QUARTERLY = {}
-CACHE_FUNDAMENTALS = {}
-CACHE_PEERS = {}
-CACHE_AUDIT_TTL = runtime_settings.audit_cache_ttl_seconds
-
-# Security Config
-API_KEY_NAME = "X-API-Key"
-api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
-
-def get_api_key(api_key: str = Depends(api_key_header)):
-    """Dependency to validate the X-API-Key header."""
-    expected_key = os.getenv("SOVEREIGN_API_KEY")
-    # If no key is set in ENV, we allow access in local dev mode (warning logged)
-    if not expected_key:
-        api_logger.warning("SOVEREIGN_API_KEY not set in environment. Running in unsecured mode.")
-        return None
-    
-    if api_key != expected_key:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Could not validate Sovereign API Key",
-        )
-    return api_key
-
-class OrderRequest(BaseModel):
-    symbol: str = Field(min_length=1)
-    side: str = Field(description="BUY or SELL")
-    quantity: int = Field(default=1, ge=1)
-    price: float = Field(gt=0)
-    score: float = 0.0
-    reason: str = "MANUAL"
-    current_vix: float | None = None
-    drawdown_rate_weekly: float | None = None
-    portfolio_correlation: float | None = None
-    projected_var_pct: float | None = None
-    max_var_pct: float = 20.0
-
-def _is_sqlite_lock_error(exc: Exception) -> bool:
-    msg = str(exc).lower()
-    return "database is locked" in msg or "database table is locked" in msg
-
-async def _run_blocking(fn: Callable[..., Any], *args, **kwargs):
-    async with blocking_io_semaphore:
-        return await asyncio.to_thread(fn, *args, **kwargs)
-
-async def _run_ticker_blocking(fn: Callable[..., Any], *args, **kwargs):
-    async with ticker_io_semaphore:
-        async with blocking_io_semaphore:
-            return await asyncio.to_thread(fn, *args, **kwargs)
-
-async def _run_sqlite_write_with_retry(write_fn: Callable[[], Any], operation_name: str):
-    for attempt in range(SQLITE_WRITE_RETRIES):
-        try:
-            return await _run_blocking(write_fn)
-        except sqlite3.OperationalError as exc:
-            if _is_sqlite_lock_error(exc) and attempt < SQLITE_WRITE_RETRIES - 1:
-                wait = SQLITE_RETRY_BASE_SECONDS * (2 ** attempt)
-                runtime_logger.warning("SQLite lock during async write; retrying", operation=operation_name, wait_seconds=round(wait, 2), attempt=attempt + 1)
-                await asyncio.sleep(wait)
-                continue
-            raise
-
-def _run_sqlite_write_with_retry_sync(write_fn: Callable[[], Any], operation_name: str):
-    for attempt in range(SQLITE_WRITE_RETRIES):
-        try:
-            return write_fn()
-        except sqlite3.OperationalError as exc:
-            if _is_sqlite_lock_error(exc) and attempt < SQLITE_WRITE_RETRIES - 1:
-                wait = SQLITE_RETRY_BASE_SECONDS * (2 ** attempt)
-                runtime_logger.warning("SQLite lock during sync write; retrying", operation=operation_name, wait_seconds=round(wait, 2), attempt=attempt + 1)
-                time.sleep(wait)
-                continue
-            raise
-
-def get_connection():
-    """Legacy raw DBAPI connection. Pending removal during PostgreSQL migration."""
-    _db_url = os.getenv('DATABASE_URL', f'sqlite:///{DB_PATH}')
-    if _db_url.startswith('postgresql'):
-        try:
-            from sqlalchemy import create_engine
-            engine = create_engine(_db_url, pool_pre_ping=True)
-            return engine.raw_connection()
-        except Exception as exc:
-            runtime_logger.warning("PostgreSQL connection failed; falling back to SQLite", error=str(exc))
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH, timeout=5, check_same_thread=False)
-    conn.execute(f'PRAGMA busy_timeout={DB_BUSY_TIMEOUT_MS}')
-    conn.execute('PRAGMA journal_mode=WAL')
-    return conn
-
-# -- NEW: SQLAlchemy Connection Abstraction --
-from db.db_core import get_db_connection, execute_sql, db_engine
-
-def get_sqla_connection():
-    """Returns a new SQLAlchemy Connection block."""
-    return get_db_connection()
-
-def _cache_is_fresh(cache: dict, ttl_seconds: int) -> bool:
-    payload = cache.get("payload")
-    ts = float(cache.get("timestamp", 0.0) or 0.0)
-    return payload is not None and (time.time() - ts) < ttl_seconds
-
-def _cache_set(cache: dict, payload: Any):
-    cache["payload"] = payload
-    cache["timestamp"] = time.time()
-
-def _cache_invalidate(cache: dict):
-    cache["timestamp"] = 0.0
 
 def _read_records(query: str, params: dict = None):
     """Executes a SQL query using SQLAlchemy and returns JSON-friendly dictionary list."""
@@ -164,13 +43,14 @@ def _read_records(query: str, params: dict = None):
         return json.loads(df.to_json(orient="records", double_precision=2))
 
 def _json_safe_clean(obj):
+    import numpy as np
     if isinstance(obj, list): return [_json_safe_clean(x) for x in obj]
     if isinstance(obj, dict): return {k: _json_safe_clean(v) for k, v in obj.items()}
     if isinstance(obj, float):
         if np.isnan(obj) or np.isinf(obj): return None
     return obj
 
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket
 class ConnectionManager:
     def __init__(self):
         self.active_connections: list[WebSocket] = []

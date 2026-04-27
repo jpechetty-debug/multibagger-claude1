@@ -59,15 +59,12 @@ def scan_single_stock(self, symbol: str, regime: str = "SIDEWAYS"):
             record_scan_result("cached")
             return {"symbol": symbol, "cached": True, **cached}
 
-        from modules.data_service import DataManager
+        # Use sync wrapper to avoid asyncio.run() loop-per-task anti-pattern
+        from modules.data_service import data_manager
+        from scripts.internal.screener import get_stock_data_sync
         from modules.scoring import calculate_institutional_score
-        from scripts.internal.screener import get_stock_data
-
-        async def _fetch_stock_data():
-            async with DataManager() as dm:
-                return await get_stock_data(symbol, dm=dm, include_quarterly=False)
-
-        stock_data = asyncio.run(_fetch_stock_data())
+        
+        stock_data = get_stock_data_sync(symbol, dm=data_manager, include_quarterly=False)
 
         if not stock_data or stock_data.get("_fetch_error"):
             record_scan_result("skipped")
@@ -246,8 +243,8 @@ def run_paper_trade():
         args = Args()
         args.regime = None # Auto-detect
         
-        import asyncio
-        result = asyncio.run(cmd_paper_trade(args))
+        from modules.data_utils import run_coroutine_sync
+        result = run_coroutine_sync(cmd_paper_trade(args))
         return {
             "status": "success",
             "executed_at": datetime.now().isoformat(),

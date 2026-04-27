@@ -19,13 +19,14 @@ CORS_ALLOWED_ORIGINS: list[str] = [o.strip() for o in _cors_env.split(",") if o.
 
 # ── Ollama / LLM ──────────────────────────────────────────────────────────────
 OLLAMA_URL: str = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
+OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "llama3.2:3b-instruct-fp16")
 
 # ── Manual Regime Override ────────────────────────────────────────────────────
 # Options: 'BULL', 'BEAR', 'SIDEWAYS', or None (Auto-Pilot)
 FORCED_REGIME = os.getenv("FORCED_REGIME") or None
 
 # ── System Settings ───────────────────────────────────────────────────────────
-VERSION = "v3.5.0"
+VERSION = "v4.0.0"
 CAPITAL_LIMIT = 50_000_000  # 5 Cr pilot limit
 
 # ── Model Integrity ───────────────────────────────────────────────────────────

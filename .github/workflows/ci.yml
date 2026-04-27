@@ -67,7 +67,6 @@ jobs:
       - run: npm run build
       - name: Run frontend tests
         run: npm test -- --passWithNoTests
-        continue-on-error: true
 
   syntax-check:
     name: Syntax Gate (no BOM / parse errors)
