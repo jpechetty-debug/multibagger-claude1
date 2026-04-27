@@ -7,6 +7,7 @@ import os
 import sys
 import time
 import traceback
+import asyncio
 from datetime import datetime
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -59,21 +60,37 @@ def scan_single_stock(self, symbol: str, regime: str = "SIDEWAYS"):
             return {"symbol": symbol, "cached": True, **cached}
 
         from modules.data_service import DataManager
-        dm = DataManager()
-        stock_data = dm.get_stock_data(symbol)
+        from modules.scoring import calculate_institutional_score
+        from scripts.internal.screener import get_stock_data
 
-        if stock_data is None:
+        async def _fetch_stock_data():
+            async with DataManager() as dm:
+                return await get_stock_data(symbol, dm=dm, include_quarterly=False)
+
+        stock_data = asyncio.run(_fetch_stock_data())
+
+        if not stock_data or stock_data.get("_fetch_error"):
             record_scan_result("skipped")
-            return {"symbol": symbol, "error": "No data available", "score": 0}
+            return {
+                "symbol": symbol,
+                "error": stock_data.get("_fetch_error", "No data available") if stock_data else "No data available",
+                "score": 0,
+            }
+
+        score_payload = calculate_institutional_score(stock_data, market_regime=regime)
+        score = float(score_payload.get("total_score", 0.0) or 0.0)
+        stock_data["Score"] = score
+        stock_data["Data_Confidence"] = score_payload.get("data_confidence", 0.0)
 
         result = {
-            "symbol": symbol,
-            "score": stock_data.get("score", 0),
-            "price": stock_data.get("price"),
-            "sector": stock_data.get("sector"),
-            "pe_ratio": stock_data.get("pe_ratio"),
-            "roe": stock_data.get("roe"),
-            "data_quality": stock_data.get("data_quality", 0),
+            **stock_data,
+            "symbol": stock_data.get("Symbol", symbol),
+            "score": score,
+            "price": stock_data.get("Price"),
+            "sector": stock_data.get("Sector"),
+            "pe_ratio": stock_data.get("PE_Ratio"),
+            "roe": stock_data.get("ROE%"),
+            "data_quality": stock_data.get("Data_Quality", stock_data.get("Data_Confidence", 0)),
             "scanned_at": datetime.now().isoformat(),
             "regime": regime,
         }
@@ -183,7 +200,7 @@ def generate_thesis(stock_data: dict):
 @celery_task_timer("run_backtest_refresh")
 def run_backtest_refresh():
     try:
-        from backtest_engine import run_backtest
+        from scripts.internal.backtest_engine import run_backtest
         result = run_backtest()
         return {"status": "success", "refreshed_at": datetime.now().isoformat(), "result": str(result)}
     except Exception as e:
@@ -209,8 +226,8 @@ def prune_pit_data():
 @celery_task_timer("refresh_regime_cache")
 def refresh_regime_cache():
     try:
-        from modules.data_service import get_market_regime
-        regime_data = get_market_regime()
+        from modules.data_service import MarketDataProvider
+        regime_data = MarketDataProvider().get_market_regime()
         cache.cache_regime(regime_data)
         set_regime(regime_data.get("regime", "SIDEWAYS"))
         return {"status": "success", "regime": regime_data.get("regime"), "cached_at": datetime.now().isoformat()}

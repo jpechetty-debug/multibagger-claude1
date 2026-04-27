@@ -1,8 +1,9 @@
+import os
 """Quick diagnostic of current scores in DB."""
 import sqlite3
 import pandas as pd
 
-conn = sqlite3.connect("stocks.db")
+conn = sqlite3.connect("runtime/stocks.db" if os.path.exists("runtime/stocks.db") else "stocks.db")
 
 # 1. Check columns
 cols = [row[1] for row in conn.execute("PRAGMA table_info(multibaggers)").fetchall()]

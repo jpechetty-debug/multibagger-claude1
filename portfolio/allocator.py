@@ -19,7 +19,7 @@ import os
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from brain.news_gate import NewsGate
+from modules.news_gate import NewsGate
 # We need to fetch news for the gate. Assuming we have a way or will mock it for now.
 # Realistically, we need `modules.news.get_stock_news` but that's async.
 # For the Allocator (sync), we might need a synchronous wrapper or assume news is pre-fetched.
@@ -155,4 +155,3 @@ class PortfolioAllocator:
                 })
                 
         return allocations
-

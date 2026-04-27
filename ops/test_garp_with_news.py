@@ -6,7 +6,7 @@ import pandas as pd
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from brain.garp_strategy import GarpStrategy
+from modules.strategies.garp_strategy import GarpStrategy
 from portfolio.allocator import PortfolioAllocator
 
 def test_garp_news_integration():

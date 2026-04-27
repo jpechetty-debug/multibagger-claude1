@@ -10,9 +10,16 @@ import {
   type ThesisResponse,
   type ValuationData,
   type QuarterlyTimeline,
+  type DataFreshnessResponse,
+  type ProviderHealthResponse,
+  type UniverseQualityResponse,
+  type ScoreDistributionResponse,
+  type ScoreExplanationResponse,
+  type CalibrationReportResponse,
 } from './contracts'
 
 const BASE_URL = ''
+const API_KEY_HEADER = 'X-API-Key'
 
 export class ApiError extends Error {
   status: number
@@ -47,7 +54,13 @@ function readErrorMessage(payload: unknown, fallback: string): string {
 }
 
 async function fetchJson<T>(path: string): Promise<T> {
-  const response = await fetch(`${BASE_URL}${path}`)
+  const apiKey = import.meta.env.VITE_SOVEREIGN_API_KEY?.trim()
+  const requestInit = apiKey
+    ? { headers: { [API_KEY_HEADER]: apiKey } }
+    : undefined
+  const response = requestInit
+    ? await fetch(`${BASE_URL}${path}`, requestInit)
+    : await fetch(`${BASE_URL}${path}`)
   const contentType = response.headers.get('content-type') ?? ''
   const payload = contentType.includes('application/json')
     ? await response.json()
@@ -63,7 +76,7 @@ async function fetchJson<T>(path: string): Promise<T> {
   return payload as T
 }
 
-function normalizeAction(rating: unknown, score: number): SignalAction {
+function normalizeAction(rating: unknown, score: number, record?: BackendStockRecord): SignalAction {
   const normalizedRating = asString(rating).toUpperCase()
   if (
     normalizedRating === 'BUY' ||
@@ -71,6 +84,16 @@ function normalizeAction(rating: unknown, score: number): SignalAction {
     normalizedRating === 'REJECT' ||
     normalizedRating === 'DISQUALIFIED'
   ) {
+    // Block BUY label if data is stale (> 5 days old)
+    if (normalizedRating === 'BUY' && record) {
+      const asOfDate = record.as_of_date ?? record.As_Of_Date
+      if (asOfDate) {
+        const ageDays = Math.floor(
+          (Date.now() - new Date(String(asOfDate)).getTime()) / 86400000
+        )
+        if (ageDays > 5) return 'WATCH'
+      }
+    }
     return normalizedRating
   }
 
@@ -99,7 +122,7 @@ export function normalizeStockRecord(record: BackendStockRecord): SignalData {
     price,
     changePct,
     score,
-    action: normalizeAction(record.rating ?? record.Rating, score),
+    action: normalizeAction(record.rating ?? record.Rating, score, record),
     sector,
     convictionScore,
     asOfDate,
@@ -166,6 +189,30 @@ export const api = {
 
   getQuarterlyTimeline: async (symbol: string): Promise<QuarterlyTimeline> => {
     return fetchJson<QuarterlyTimeline>(`/api/quarterly-results/${symbol}`)
+  },
+
+  getDataFreshness: async (): Promise<DataFreshnessResponse> => {
+    return fetchJson<DataFreshnessResponse>('/api/data-freshness')
+  },
+
+  getProviderHealth: async (): Promise<ProviderHealthResponse> => {
+    return fetchJson<ProviderHealthResponse>('/api/provider-health')
+  },
+
+  getUniverseQuality: async (): Promise<UniverseQualityResponse> => {
+    return fetchJson<UniverseQualityResponse>('/api/universe-quality')
+  },
+
+  getScoreDistribution: async (): Promise<ScoreDistributionResponse> => {
+    return fetchJson<ScoreDistributionResponse>('/api/score-distribution')
+  },
+
+  getScoreExplanation: async (symbol: string): Promise<ScoreExplanationResponse> => {
+    return fetchJson<ScoreExplanationResponse>(`/api/score-explain/${symbol}`)
+  },
+
+  getCalibrationReport: async (): Promise<CalibrationReportResponse> => {
+    return fetchJson<CalibrationReportResponse>('/api/calibration-report')
   },
 }
 

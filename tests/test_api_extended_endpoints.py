@@ -27,6 +27,20 @@ import modules.valuation as valuation_module
 import report_generator
 
 
+def test_global_api_key_enforcement(monkeypatch):
+    monkeypatch.setenv("SOVEREIGN_API_KEY", "server-secret")
+
+    with TestClient(main.app) as client:
+        missing = client.get("/api/health")
+        wrong = client.get("/api/health", headers={"X-API-Key": "wrong-secret"})
+        allowed = client.get("/api/health", headers={"X-API-Key": "server-secret"})
+
+    assert missing.status_code == 403
+    assert wrong.status_code == 403
+    assert allowed.status_code == 200
+    assert allowed.json()["status"] == "ok"
+
+
 def test_stocks_endpoint_supports_as_of_date(monkeypatch):
     calls = []
 

@@ -1,80 +1,186 @@
-   # Sovereign Research Terminal v3.0
+# Sovereign Research Terminal v9.5
 
-Sovereign is an institutional-grade quantitative screening and research platform for Indian equities. It integrates the **Nexus Alpha (v11.0)** scoring engine, a **Technical Brutalist** React/Vite dashboard, a normalized regime/risk API, and a hardened **QARP (v4.4)** research stack with trend filters, survivorship-aware backtesting, and portfolio concentration controls.
+## // Institutional-Grade Multibagger Engine //
 
-This README is the operational entrypoint for running the terminal locally. For a deeper layout overview, see [ARCHITECTURE.md](./ARCHITECTURE.md).
+Sovereign is a high-conviction screening and research platform designed for structural alpha in Indian equities. It integrates the **Nexus Alpha (v11.0)** scoring system, a **Technical Brutalist** analytical dashboard, the **Multibagger Compounding Lens** (v4.1), and a full-stack **Data Quality & Scoring Intelligence** layer for institutional-grade fundamental auditing.
 
-## What Is In The Repo
+> [!NOTE]
+> **Sovereign is not a black box.** Every score is explainable via the "Why This Score?" panel, every metric is auditable through the Integrated Explainer system, and data freshness is surfaced on every screen — stale data is never hidden.
 
-- FastAPI API in [main.py](./main.py)
-- Extracted route modules in [app_routes](./app_routes)
-- **Nexus Alpha (v11.0)** core scoring and data logic in [modules](./modules)
-- Repository and PIT persistence code in [db](./db)
-- Standalone background jobs in [worker](./worker)
-- **Technical Brutalist** React frontend in [web-ui](./web-ui)
-- Regression and contract tests in [tests](./tests)
+---
 
-## Core Intelligence & Hardening (v4.4)
+## 🧠 Core Intelligence: Nexus Alpha v11.0
 
-- **Nexus Alpha Scoring**: Sigmoid-normalized multi-factor scoring with spline caps, sector-relative adjustments, and deterministic tie-breaking.
-- **Regime Layer**: `/api/regime_status` is backed by the active `MarketDataProvider` contract and returns normalized regime payloads for both the frontend and terminal clients.
-- **Allocator Ranking**: GARP proposals now use a Nexus-led composite rank rather than relying on conviction score alone.
-- **Backtest Hardening**: QARP backtests include regime-aware exposure, 1-day execution lag, and survivorship-aware universe filtering.
-- **Data Pipeline Resilience**: Lazy provider initialization prevents import-time network failures and makes offline testing/CI more stable.
+The heart of the terminal is the Nexus Alpha engine, which replaces binary screening cliffs with **Sigmoid-Normalized** multi-factor scoring.
 
-## Canonical Entry Points
+### The 9-Factor Scoring Protocol
 
-- Backend API: `uvicorn main:app --reload --port 9005`
-- Runtime worker: `python -m worker.runtime`
-- CLI: `python sovereign_cli.py ...`
-- Frontend dev server: `cd web-ui && npm run dev`
+Every stock is audited across nine distinct vectors, dynamically weighted by **Market Regime**:
 
-The repo-root [main.py](./main.py) is the only active web application entrypoint. The `src/` tree is deprecated compatibility scaffolding and should not be used for new work.
+| Factor | Description |
+|--------|-------------|
+| **Growth** | 5Y Sales and EPS Expansion |
+| **Quality** | Multibagger ROE/ROCE splines and Asset-Light CFO/PAT ratios |
+| **Value** | Sigmoid-normalized PE/PEG gaps with sector-relative adjustments |
+| **Risk** | Institutional **F-Score** floor and Debt/Equity constraints |
+| **Momentum** | Composite Relative Strength (RS) + 52-Week High Proximity |
+| **Sentiment** | Integrated NLP news sentiment with local LLM fallbacks |
+| **Smart Money** | Promoter buying patterns and Institutional anchor analysis |
+| **Estimates** | Forward earnings momentum and upgrade/downgrade velocity |
 
-## Quick Start
+### Institutional Quality Gate
 
-### Prerequisites
+A strict **12-point checklist** enforces a quality floor for long-term compounding candidates. Stocks failing the gate are capped at a maximum "Neutral" score regardless of sheer growth numbers.
 
-- Python 3.11+
-- Node.js 18+
-- npm
+### Score Explainability
 
-### Backend Setup
+Every stock score can be decomposed into:
+- **Top 3 Positive Drivers** — what's pushing the score up
+- **Top 3 Penalties** — what's holding it back
+- **Active Score Ceilings** — which spline caps are binding
+- **Checklist Grade (A–D)** — pass/fail across 8 institutional criteria
+- **Score Delta** — change from previous scan with direction and reason
 
-```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-Copy-Item .env.example .env
+---
+
+## 📊 Data Freshness & Quality Engine
+
+> [!IMPORTANT]
+> **Stale data is never hidden.** The terminal enforces hard freshness rules across the entire pipeline.
+
+### Freshness Status
+
+| Status | Age | Color | Effect |
+|--------|-----|-------|--------|
+| **FRESH** | ≤ 3 days | 🟢 Green | Full signal confidence |
+| **STALE** | 4–7 days | 🟡 Amber | Warning badge, elevated caution |
+| **EXPIRED** | > 7 days | 🔴 Red | **BUY signals blocked** — downgraded to WATCH |
+
+### Provider Health Monitoring
+
+Real-time success rate tracking for each data provider:
+- **yfinance** — primary fundamental + price data
+- **pnsea** — alternate fundamental source
+- **nsepython** — NSE-native corporate actions and shareholding
+
+### Universe Quality Alerts
+
+Automated monitoring triggers alerts when >20% of the tracked universe has stale or incomplete fundamentals, surfacing data degradation before it affects research decisions.
+
+### API Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/data-freshness` | Badge data: status, age, quality score, refresh status |
+| `GET /api/provider-health` | Per-provider success rates and call counts |
+| `GET /api/universe-quality` | Staleness metrics and alert status |
+
+---
+
+## 🔬 Scoring Calibration & Diagnostics
+
+The terminal includes a built-in scoring intelligence layer to detect and diagnose calibration issues:
+
+- **Decile Distribution Histogram** — visualize score spread across 0–100
+- **Graveyard Detection** — flags clustering at 59–61 (ceiling convergence)
+- **Sector Score Ranges** — per-sector min/max/median with visual range bars
+- **Calibration Health** — GOOD / NEEDS_ATTENTION / POOR with specific fix recommendations
+- **Top 5% Rarity** — tracks how selective the scoring engine is
+
+### API Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/score-distribution` | Deciles, stats, sector breakdown |
+| `GET /api/score-explain/{symbol}` | Full per-stock explanation |
+| `GET /api/calibration-report` | Overall calibration health |
+
+---
+
+## 🔍 Multibagger Compounding Lens (v4.1)
+
+Designed to identify "structural survivors," this lens applies deep-dive fundamental auditing:
+
+- **Quarterly Results Timeline**: Visual drift analysis of P&L and Balance Sheet integrity over time.
+- **10-Year CAGR Engine**: Rolling returns and compounding consistency scores.
+- **Survivorship-Aware Backtesting**: QARP results that account for delistings and universe changes.
+- **Earnings Inflection Detection**: Automated alerts for margin breakouts and volume-led growth shifts.
+
+---
+
+## 🛡️ Research UX
+
+### Red Flag Detection
+
+Automated risk alerts with severity levels (CRITICAL / WARNING):
+
+| Flag | Trigger |
+|------|---------|
+| High Promoter Pledge | > 10% pledged |
+| Dangerous Debt | D/E > 1.0 |
+| Low Promoter Holding | < 40% |
+| Weak Cash Quality | CFO/PAT < 0.7 |
+| Stretched Valuation | PE > 50 |
+
+### Personal Watchlist
+
+Browser-persistent watchlist with `localStorage`:
+- Add/remove stocks from any detail page
+- Orphaned symbol detection (saved but no longer in universe)
+- Watchlist count badge in the header
+
+### Score Report Dashboard
+
+Accessible at `/score-report` — a dedicated page for scoring engine health:
+- Decile histogram with graveyard highlighting
+- Sector score range visualization
+- Calibration health panel with issue severity
+- Provider health integration
+
+---
+
+## 🏗️ System Architecture
+
+```mermaid
+graph TD
+    UI[Technical Brutalist Dashboard] --> API[FastAPI Orchestrator]
+    API --> Scoring[Nexus Alpha Engine]
+    API --> Freshness[Data Freshness Engine]
+    API --> Diagnostics[Score Diagnostics]
+    API --> DB[(SQLite — WAL Mode)]
+    Scoring --> Data[yfinance / pnsea / nsepython]
+    Freshness --> Cache[(data_cache.db)]
+    Worker[Runtime Worker] --> Scoring
+    Worker --> Maintenance[Audit & Cleanup]
+    CLI[Sovereign CLI] --> API
+    Health[/api/health/deep] --> DB
+    Health --> Cache
+    Health --> Freshness
 ```
 
-Notes:
-- Local development can run against SQLite without extra database setup.
-- See [.env.example](./.env.example) for database, Redis, and risk-governor settings.
+### Stack Components
 
-### Start The Backend
+| Layer | Technology |
+|-------|-----------|
+| **Backend** | Python 3.11+, FastAPI, SQLAlchemy, Pydantic v2 |
+| **Frontend** | React 18, Vite, TailwindCSS, Framer Motion, Recharts, Lucide |
+| **Database** | SQLite (WAL mode) with PIT snapshots in `fundamentals_pit` |
+| **Caching** | File-backed SQLite cache (`data_cache.db`) |
+| **Observability** | Prometheus + structured JSON logging |
+| **CI/CD** | GitHub Actions (lint, type-check, pytest, frontend build, syntax gate) |
+
+---
+
+## 🚀 Quickstart
+
+### 1. Backend API
 
 ```powershell
+pip install -r requirements.txt
 uvicorn main:app --reload --port 9005
 ```
 
-The API will be available on `http://localhost:9005`.
-
-### Start The Runtime Worker
-
-```powershell
-python -m worker.runtime
-```
-
-Use the worker when you want background price updates and scheduled maintenance outside the web app process.
-
-Optional:
-
-```powershell
-python -m worker.runtime --skip-audit
-```
-
-### Start The Frontend
+### 2. Frontend Dashboard
 
 ```powershell
 cd web-ui
@@ -82,97 +188,163 @@ npm install
 npm run dev
 ```
 
-The Vite dev server proxies `/api` and `/ws` requests to `http://localhost:9005`.
+Accessible at `http://localhost:5173`. Proxies API requests to port 9005.
 
-## Common CLI Commands
-
-```powershell
-python sovereign_cli.py scan quick
-python sovereign_cli.py scan swarm --tickers INFY.NS,TCS.NS --deep
-python sovereign_cli.py sys health
-python sovereign_cli.py sys regime
-python sovereign_cli.py research rs-sector  # Ingest Sector RS signals
-python sovereign_cli.py paper-trade --universe 50
-```
-
-CLI groups currently available:
-- `db`
-- `scan`
-- `ml`
-- `research`
-- `backtest`
-- `sys`
-- `paper-trade`
-
-## Frontend/API Contract Notes
-
-The dashboard now relies on a normalized contract layer instead of consuming backend payloads directly:
-
-- Shared frontend-facing types live in [web-ui/src/lib/contracts.ts](./web-ui/src/lib/contracts.ts)
-- Backend payload normalization lives in [web-ui/src/lib/api.ts](./web-ui/src/lib/api.ts)
-- Dashboard loading, error, refresh, and empty states are handled in [web-ui/src/App.tsx](./web-ui/src/App.tsx) and [web-ui/src/components/signals/SignalGrid.tsx](./web-ui/src/components/signals/SignalGrid.tsx)
-
-The main frontend contract-sensitive endpoints are:
-- `/api/stocks`
-- `/api/regime_status`
-- `/api/health`
-- `/api/reports/{symbol}`
-
-Regime API notes:
-- `/api/regime_status` returns normalized regime labels such as `BULL`, `BEAR`, `SIDEWAYS`, and `BLACK`
-- `/api/regime_status` includes `vix`, `vix_threshold`, `momentum_accel`, `votes`, `is_forced`, `details`, `timestamp`, and optional `stale` / `error`
-- `/api/admin/force_regime?regime=BULL|BEAR|SIDEWAYS|AUTO` is the supported manual override contract
-
-## Research / Backtest Notes
-
-- The primary ranking engine lives in [modules/scoring.py](./modules/scoring.py)
-- The GARP allocator consumes DB output but now uses a Nexus-led composite rank in [brain/garp_strategy.py](./brain/garp_strategy.py)
-- The QARP backtest runner in [backtest_qarp.py](./backtest_qarp.py) applies survivorship filtering via [backtest/survivorship_adjusted_loader.py](./backtest/survivorship_adjusted_loader.py)
-- The lightweight vectorized batch engine in [backtest/engine.py](./backtest/engine.py) is still useful for screening-scale momentum validation, but it is not the full institutional QARP simulator
-
-## Testing
-
-Backend:
+### 3. Runtime Worker
 
 ```powershell
-python -m pytest -q -m "not live"
+python -m worker.runtime
 ```
 
-Frontend:
+Background price updates, liquidity audits, and scheduled PIT maintenance.
+
+### 4. Sovereign CLI
+
+```powershell
+python sovereign_cli.py scan quick          # Immediate market pulse
+python sovereign_cli.py sys health          # Integrity check
+python sovereign_cli.py research update-rs  # Refresh momentum signals
+```
+
+### 5. Database Backup
+
+```powershell
+python scripts/backup_restore.py backup           # Create timestamped backup
+python scripts/backup_restore.py list              # List available backups
+python scripts/backup_restore.py restore <path>    # Restore from backup
+python scripts/backup_restore.py prune --keep 5    # Retain only 5 most recent
+```
+
+---
+
+## 📈 Operational Universe
+
+The terminal tracks **1,500+ NSE Equities** with automated expansion and curation:
+
+- **High-Conviction Sectors**: Special coverage for Defense, EMS, Renewables, and Niche Tech.
+- **Universe Expansion**: Managed via `add_tickers.py` and `curator.py`.
+- **Data Hardening**: Lazy-loaded providers with cache fallbacks ensure 99.9% uptime.
+
+---
+
+## 🔒 Production Hardening
+
+### Deep Health Check
+
+`GET /api/health/deep` validates all subsystems in a single call:
+
+| Check | What It Validates |
+|-------|-------------------|
+| **Database** | SQLite connectivity + stock count |
+| **Cache** | `data_cache.db` existence and integrity |
+| **Data Freshness** | Latest snapshot age + quality score |
+| **Providers** | yfinance/pnsea/nsepython success rates |
+| **Background Worker** | Price updater task status |
+
+Returns `"healthy"` or `"degraded"` with per-check details.
+
+### Structured Error Responses
+
+All API errors use a consistent `SovereignError` shape:
+
+```json
+{
+  "error_code": "STALE_DATA",
+  "message": "Data for RELIANCE.NS is 12 days old — exceeds freshness threshold",
+  "details": { "symbol": "RELIANCE.NS", "age_days": 12 },
+  "timestamp": "2026-04-27T12:00:00"
+}
+```
+
+### Environment-Gated Security
+
+| Mode | `SOVEREIGN_ENV` | API Key Enforcement |
+|------|-----------------|---------------------|
+| **Production** | `production` | `X-API-Key` header required on every request |
+| **Local** | `local` (default) | Permissive — no key required |
+
+---
+
+## 🧪 Testing & CI
+
+### Backend (Pytest)
+
+```powershell
+python -m pytest tests/ -q
+```
+
+### Frontend (Vitest)
 
 ```powershell
 cd web-ui
 npm test
-npm run build
 ```
 
-The frontend test harness is powered by Vitest and Testing Library. The most important current UI contract tests live in:
-- [web-ui/src/lib/api.test.ts](./web-ui/src/lib/api.test.ts)
-- [web-ui/src/App.test.tsx](./web-ui/src/App.test.tsx)
+### CI Pipeline (GitHub Actions)
 
-`pytest.ini` is the single source of truth for pytest behavior in this repo.
+| Job | What It Runs |
+|-----|-------------|
+| **Lint** | `ruff check` + `ruff format --check` |
+| **Type Check** | `mypy --config-file pyproject.toml` |
+| **Tests** | `pytest` with coverage reporting |
+| **Frontend** | `npm ci` → `npm run build` → `npm test` |
+| **Syntax Gate** | BOM detection + AST parse validation |
 
-Useful backend regression slices:
-- `tests/test_regime_api.py`
-- `tests/test_api_v96.py`
-- `tests/test_garp_strategy.py`
-- `tests/test_backtest_engine.py`
-- `tests/test_survivorship_loader.py`
-- `tests/test_data_service_lazy.py`
+---
 
-## Repo Layout
+## 🗂️ Key File Map
 
-- [main.py](./main.py): active FastAPI app
-- [app_routes](./app_routes): extracted API routers and response contracts
-- [modules](./modules): **Nexus Alpha** scoring, data ingestion, and domain services
-- [db](./db): repository layer and PIT snapshot logic
-- [worker](./worker): background runtime jobs
-- [web-ui](./web-ui): **Technical Brutalist** UI
-- [tests](./tests): regression and contract coverage
-- [src](./src): [DEPRECATED] compatibility path
+```
+├── main.py                         # FastAPI entry point
+├── config.py                       # Scoring weights, thresholds, universe config
+├── sovereign_cli.py                # CLI entry point
+├── modules/
+│   ├── scoring.py                  # Nexus Alpha scoring engine
+│   ├── hybrid_scoring.py           # XGBoost meta-model layer
+│   ├── data_freshness.py           # Freshness status, provider health, BUY gating
+│   ├── score_diagnostics.py        # Distribution analysis, explanations, calibration
+│   ├── errors.py                   # Structured error responses
+│   ├── data_service.py             # Data fetching and caching
+│   ├── dependencies.py             # Runtime config and security
+│   └── services.py                 # Service layer abstractions
+├── app_routes/
+│   ├── stocks.py                   # Stock CRUD and thesis endpoints
+│   ├── freshness.py                # Data freshness API
+│   ├── score_report.py             # Score distribution API
+│   ├── public.py                   # Health checks (shallow + deep)
+│   ├── regime.py                   # Market regime status
+│   └── system.py                   # System admin endpoints
+├── web-ui/src/
+│   ├── App.tsx                     # Router and layout
+│   ├── pages/
+│   │   ├── StockDetail.tsx         # Detail view + ScoreExplainer + RedFlags
+│   │   ├── Watchlist.tsx           # Personal watchlist page
+│   │   └── ScoreReport.tsx         # Scoring intelligence dashboard
+│   ├── components/
+│   │   ├── metrics/DataFreshnessBadge.tsx
+│   │   ├── metrics/ProviderHealthPanel.tsx
+│   │   ├── signals/ScoreExplainer.tsx
+│   │   ├── signals/RedFlagPanel.tsx
+│   │   └── signals/SignalGrid.tsx
+│   └── lib/
+│       ├── api.ts                  # API client + BUY-label stale gating
+│       ├── contracts.ts            # TypeScript data contracts
+│       └── useWatchlist.ts         # localStorage watchlist hook
+├── scripts/
+│   └── backup_restore.py          # DB backup, restore, prune
+└── .github/workflows/ci.yml       # Full-stack CI pipeline
+```
 
-## Development Notes
+---
 
-- Prefer adding new backend behavior to the active root app and extracted router/modules, not `src/`.
-- New runtime artifacts should live in ignored output locations such as `runtime/`, `logs/`, or `reports_cache/`, not as committed source files.
-- For architectural context and runtime policy, see [ARCHITECTURE.md](./ARCHITECTURE.md).
+## 🛠️ Development Philosophy
+
+- **Technical Brutalism**: Data density, clarity, and performance over decorative fluff.
+- **Deterministic Logic**: Scoring lives in pure modules ([modules/scoring.py](./modules/scoring.py)) for backtest parity.
+- **Stale Data is Obvious**: Freshness badges, BUY-label blocking, and universe alerts ensure data quality is always visible.
+- **Score Transparency**: Every score is decomposable into drivers, penalties, ceilings, and checklist grades.
+- **Explicit Ownership**: Repo-root [main.py](./main.py) is the source of truth.
+
+---
+
+*Built for institutions, accessible for individuals. Sovereign Terminal v9.5.*

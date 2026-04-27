@@ -132,3 +132,102 @@ export interface QuarterlyTimeline {
   alerts: QuarterlyAlert[]
   timestamp: string
 }
+
+export interface DataFreshnessResponse {
+  status: 'FRESH' | 'STALE' | 'EXPIRED' | 'UNKNOWN'
+  latest_as_of_date: string | null
+  age_days: number
+  source: string
+  data_quality: number
+  scheduled_refresh: {
+    status: string
+    last_scan?: string | null
+    age_hours?: number
+    next_expected?: string
+  }
+}
+
+export interface ProviderHealthItem {
+  name: string
+  success_rate: number
+  total_calls: number
+  last_success: string | null
+  last_failure: string | null
+  status: 'healthy' | 'degraded' | 'down' | 'unknown'
+}
+
+export interface ProviderHealthResponse {
+  providers: ProviderHealthItem[]
+}
+
+export interface UniverseQualityResponse {
+  total_stocks: number
+  fresh_count: number
+  stale_count: number
+  expired_count: number
+  incomplete_count: number
+  stale_pct: number
+  alert_active: boolean
+  alert_message: string | null
+}
+
+export interface ScoreDistributionResponse {
+  deciles: Record<string, number>
+  stats: {
+    mean: number
+    median: number
+    std: number
+    min: number
+    max: number
+    p5: number
+    p25: number
+    p75: number
+    p95: number
+  }
+  graveyard_count: number
+  graveyard_pct: number
+  top5_threshold: number
+  total: number
+  sector_breakdown: Record<string, {
+    count: number
+    mean: number
+    median: number
+    min: number
+    max: number
+    std: number
+  }>
+}
+
+export interface ScoreExplanationResponse {
+  symbol: string
+  score: number
+  sector: string
+  top_positive_drivers: Array<{ factor: string; value: string; impact: string }>
+  top_penalties: Array<{ factor: string; value: string; impact: string }>
+  active_ceilings: Array<{ name: string; cap: number; active: boolean }>
+  checklist_status: {
+    items: Record<string, boolean>
+    passed: number
+    total: number
+    grade: string
+  }
+  missing_factors: string[]
+  data_quality: number
+  score_delta: {
+    previous_score: number
+    delta: number
+    previous_date: string
+    direction: 'UP' | 'DOWN' | 'FLAT'
+    reason: string
+  } | null
+}
+
+export interface CalibrationReportResponse {
+  distribution: ScoreDistributionResponse
+  sector_distribution: { sectors: Record<string, unknown> }
+  calibration_issues: Array<{ severity: string; issue: string; fix: string }>
+  top5_rarity_pct: number
+  effective_range: string
+  health: 'GOOD' | 'NEEDS_ATTENTION' | 'POOR'
+  timestamp: string
+}

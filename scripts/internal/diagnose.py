@@ -5,11 +5,12 @@ import os
 
 def check_system():
     print("--- Checking Database ---")
-    if not os.path.exists("stocks.db"):
-        print("ERROR: stocks.db not found!")
+    db_path = "runtime/stocks.db" if os.path.exists("runtime/stocks.db") else "stocks.db"
+    if not os.path.exists(db_path):
+        print(f"ERROR: {db_path} not found!")
     else:
         try:
-            conn = sqlite3.connect("stocks.db")
+            conn = sqlite3.connect(db_path)
             res = pd.read_sql("SELECT * FROM multibaggers LIMIT 5", conn)
             print(f"DB Read Successful. Columns: {res.columns.tolist()}")
             if 'market_cap_cr' in res.columns:

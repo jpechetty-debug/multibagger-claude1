@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
 import pandas as pd
@@ -34,7 +34,8 @@ from modules.dependencies import (
     _run_ticker_blocking,
     _run_sqlite_write_with_retry,
     _json_safe_clean,
-    manager
+    manager,
+    get_api_key
 )
 
 from app_routes import public_router
@@ -43,6 +44,8 @@ from app_routes.analysis import router as analysis_router
 from app_routes.regime import router as regime_router
 from app_routes.trading import router as trading_router
 from app_routes.system import router as system_router
+from app_routes.freshness import router as freshness_router
+from app_routes.score_report import router as score_report_router
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 WEB_UI_DIR = PROJECT_ROOT / "web-ui"
@@ -75,7 +78,7 @@ async def lifespan(app: FastAPI):
             except asyncio.CancelledError:
                 runtime_logger.info("Embedded background price updater stopped")
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, dependencies=[Depends(get_api_key)])
 
 # Setup CORS
 app.add_middleware(
@@ -99,6 +102,8 @@ app.include_router(analysis_router)
 app.include_router(regime_router)
 app.include_router(trading_router)
 app.include_router(system_router)
+app.include_router(freshness_router)
+app.include_router(score_report_router)
 app.mount("/static", StaticFiles(directory=str(WEB_UI_DIR)), name="static")
 
 if __name__ == "__main__":
@@ -129,6 +134,3 @@ if __name__ == "__main__":
         reload=True,
         reload_excludes=["*.db", "*.db-journal", "*.db-wal", "*.log", "*.txt"]
     )
-
-
-

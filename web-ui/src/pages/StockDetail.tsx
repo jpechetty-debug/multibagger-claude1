@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, BrainCircuit, Activity, BarChart4 } from 'lucide-react'
+import { ArrowLeft, BrainCircuit, Activity, BarChart4, Heart, Printer } from 'lucide-react'
 import {
   LineChart,
   Line,
@@ -15,6 +15,9 @@ import { api } from '../lib/api'
 import type { SignalData, HistoryPoint } from '../lib/contracts'
 import { MetricExplainer } from '../components/metrics/MetricExplainer'
 import QuarterlyTimeline from '../components/signals/QuarterlyTimeline'
+import { ScoreExplainer } from '../components/signals/ScoreExplainer'
+import { RedFlagPanel } from '../components/signals/RedFlagPanel'
+import { useWatchlist } from '../lib/useWatchlist'
 
 function formatVal(val: unknown, fallback: string = '-'): string {
   if (val === null || val === undefined) return fallback
@@ -29,6 +32,7 @@ function formatNum(val: unknown, digits: number = 2): string {
 
 export function StockDetail() {
   const { symbol } = useParams<{ symbol: string }>()
+  const { isInWatchlist, toggleWatchlist } = useWatchlist()
   
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -88,17 +92,40 @@ export function StockDetail() {
 
   const raw = stock.raw
   const isHighConviction = stock.score > 85
-
+  const watched = isInWatchlist(stock.symbol)
   return (
     <div className="min-h-screen bg-brand-bg text-brand-text p-4 md:p-8 pb-32">
       {/* Navigation */}
-      <Link 
-        to="/" 
-        className="inline-flex items-center gap-2 mb-8 font-mono text-sm tracking-widest text-brand-text-dim hover:text-brand-accent transition-colors uppercase border border-transparent hover:border-brand-accent/20 px-3 py-1.5 rounded"
-      >
-        <ArrowLeft size={16} /> 
-        Back to Dashboard
-      </Link>
+      <div className="flex items-center gap-4 mb-8">
+        <Link 
+          to="/" 
+          className="inline-flex items-center gap-2 font-mono text-sm tracking-widest text-brand-text-dim hover:text-brand-accent transition-colors uppercase border border-transparent hover:border-brand-accent/20 px-3 py-1.5 rounded"
+        >
+          <ArrowLeft size={16} /> 
+          Back to Dashboard
+        </Link>
+        <div className="flex-1" />
+        <button
+          type="button"
+          onClick={() => toggleWatchlist(stock.symbol)}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono font-bold uppercase tracking-widest transition-all ${
+            watched
+              ? 'border-brand-rose/30 bg-brand-rose/10 text-brand-rose hover:bg-brand-rose/20'
+              : 'border-brand-border text-brand-text-dim hover:border-brand-accent/40 hover:text-brand-accent'
+          }`}
+        >
+          <Heart size={14} className={watched ? 'fill-brand-rose' : ''} />
+          {watched ? 'Watchlisted' : 'Watch'}
+        </button>
+        <button
+          type="button"
+          onClick={() => window.print()}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-border text-xs font-mono font-bold uppercase tracking-widest text-brand-text-dim hover:border-brand-accent/40 hover:text-brand-accent transition-colors"
+        >
+          <Printer size={14} />
+          Export
+        </button>
+      </div>
 
       {/* Header Section */}
       <div className="brutalist-card p-6 md:p-8 mb-8 border-brand-accent/30 group">
@@ -296,10 +323,19 @@ export function StockDetail() {
             <QuarterlyTimeline symbol={symbol!} />
           </div>
 
+          {/* Why This Score? */}
+          <div className="brutalist-card p-6">
+            <ScoreExplainer symbol={symbol!} />
+          </div>
+
         </div>
 
-        {/* Right Column: AI Thesis */}
-        <div className="xl:col-span-1">
+        {/* Right Column: AI Thesis + Red Flags */}
+        <div className="xl:col-span-1 space-y-6">
+          {/* Red Flags */}
+          <RedFlagPanel stock={raw} />
+
+          {/* AI Thesis */}
           <div className="brutalist-card p-6 h-full border-brand-accent shadow-[4px_4px_0_0_#00ffa3]/20 bg-brand-accent/5">
             <div className="flex items-center gap-2 mb-6 pb-4 border-b border-brand-accent/20">
               <BrainCircuit className="text-brand-accent" size={20} />

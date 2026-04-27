@@ -27,10 +27,10 @@ async def websocket_signals(websocket: WebSocket):
 
 @router.post("/api/scan")
 async def run_scan():
-    """Trigger full market scan (screener.py)"""
+    """Trigger full market scan."""
     try:
         process = await asyncio.create_subprocess_exec(
-            sys.executable, "screener.py",
+            sys.executable, os.path.join("scripts", "internal", "screener.py"),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )

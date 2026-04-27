@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Bar,
   Line,
@@ -11,15 +11,15 @@ import {
   ComposedChart,
   LineChart,
 } from 'recharts';
-import { AlertTriangle, TrendingUp, TrendingDown, Info, Zap, BarChart3, PieChart, Activity } from 'lucide-react';
+import { AlertTriangle, TrendingUp, TrendingDown, Info, Zap, Activity } from 'lucide-react';
 import { api } from '../../lib/api';
-import { QuarterlyTimeline as QuarterlyTimelineType, QuarterlyData } from '../../lib/contracts';
+import type { QuarterlyTimeline as QuarterlyTimelineType } from '../../lib/contracts';
 
 interface QuarterlyTimelineProps {
   symbol: string;
 }
 
-const QuarterlyTimeline: React.FC<QuarterlyTimelineProps> = ({ symbol }) => {
+function QuarterlyTimeline({ symbol }: QuarterlyTimelineProps) {
   const [data, setData] = useState<QuarterlyTimelineType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -310,15 +310,15 @@ const QuarterlyTimeline: React.FC<QuarterlyTimelineProps> = ({ symbol }) => {
                   {quarters.map((q, idx) => (
                     <tr key={idx} className="hover:bg-white/5 transition-colors group">
                        <td className="p-3 font-bold group-hover:text-brand-accent">{q.quarter}</td>
-                       <td className="p-3 text-right">₹{q.revenue.toLocaleString()}</td>
+                       <td className="p-3 text-right">Rs {q.revenue.toLocaleString()}</td>
                        <td className={`p-3 text-right font-bold ${
                          (q.revenue_growth_qoq ?? 0) > 0 ? 'text-brand-accent' : (q.revenue_growth_qoq ?? 0) < 0 ? 'text-brand-rose' : 'text-brand-text-dim'
                        }`}>
-                         {q.revenue_growth_qoq !== null ? `${q.revenue_growth_qoq > 0 ? '+' : ''}${q.revenue_growth_qoq}%` : '—'}
+                         {q.revenue_growth_qoq !== null ? `${q.revenue_growth_qoq > 0 ? '+' : ''}${q.revenue_growth_qoq}%` : '-'}
                        </td>
-                       <td className="p-3 text-right">₹{q.profit.toLocaleString()}</td>
+                       <td className="p-3 text-right">Rs {q.profit.toLocaleString()}</td>
                        <td className="p-3 text-right font-bold">{q.margin}%</td>
-                       <td className="p-3 text-right text-brand-text-dim">{q.eps ?? '—'}</td>
+                       <td className="p-3 text-right text-brand-text-dim">{q.eps ?? '-'}</td>
                     </tr>
                   ))}
                </tbody>
@@ -327,6 +327,6 @@ const QuarterlyTimeline: React.FC<QuarterlyTimelineProps> = ({ symbol }) => {
       </div>
     </div>
   );
-};
+}
 
 export default QuarterlyTimeline;

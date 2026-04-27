@@ -1,4 +1,4 @@
-import { LayoutGrid, Briefcase, Bell, Settings, Menu } from 'lucide-react'
+import { LayoutGrid, Menu } from 'lucide-react'
 
 interface FloorDockProps {
   activeTab: string

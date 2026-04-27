@@ -5,6 +5,7 @@ import csv
 from datetime import datetime
 
 REJECTED_TRADES_LOG = os.path.join("logs", "rejected_trades.csv")
+LEGACY_REJECTED_TRADES_LOG = "rejected_trades.csv"
 
 class RiskGovernor:
     """
@@ -260,19 +261,26 @@ class RiskGovernor:
         Phase 7: Black Box Recorder.
         Logs rejected trades/allocations to standardized 'logs/' location.
         """
-        
-        file_exists = os.path.isfile(REJECTED_TRADES_LOG)
-        
-        with open(REJECTED_TRADES_LOG, 'a', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            if not file_exists:
-                writer.writerow(['Timestamp', 'Symbol', 'Reason', 'Price_Context'])
-                
-            writer.writerow([datetime.now().strftime("%Y-%m-%d %H:%M:%S"), symbol, reason, price])
+
+        row = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), symbol, reason, price]
+        targets = [REJECTED_TRADES_LOG]
+        if os.path.abspath(LEGACY_REJECTED_TRADES_LOG) != os.path.abspath(REJECTED_TRADES_LOG):
+            targets.append(LEGACY_REJECTED_TRADES_LOG)
+
+        for log_path in targets:
+            log_dir = os.path.dirname(log_path)
+            if log_dir:
+                os.makedirs(log_dir, exist_ok=True)
+
+            file_exists = os.path.isfile(log_path)
+            with open(log_path, 'a', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                if not file_exists:
+                    writer.writerow(['Timestamp', 'Symbol', 'Reason', 'Price_Context'])
+                writer.writerow(row)
         
         # Also print to console for immediate visibility
         try:
             print(f"[BLACK BOX] Rejected {symbol} -> {reason}")
         except:
             pass
-

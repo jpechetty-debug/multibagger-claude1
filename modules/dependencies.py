@@ -1,4 +1,4 @@
-__all__ = ['BLOCKING_IO_CONCURRENCY', 'CACHE_AUDIT_TTL', 'CACHE_FUNDAMENTALS', 'CACHE_PEERS', 'CACHE_QUARTERLY', 'ConnectionManager', 'DB_BUSY_TIMEOUT_MS', 'DB_NAME', 'DB_PATH', 'MOVERS_CACHE_TTL_SECONDS', 'OrderRequest', 'REGIME_CACHE_TTL_SECONDS', 'SQLITE_RETRY_BASE_SECONDS', 'SQLITE_WRITE_RETRIES', '_cache_invalidate', '_cache_is_fresh', '_cache_set', '_is_sqlite_lock_error', '_json_safe_clean', '_read_records', '_run_blocking', '_run_sqlite_write_with_retry', '_run_sqlite_write_with_retry_sync', '_run_ticker_blocking', 'api_logger', 'app_logger', 'blocking_io_semaphore', 'get_connection', 'manager', 'movers_cache', 'movers_cache_lock', 'portfolio_tracker', 'regime_cache', 'regime_cache_lock', 'risk_governor', 'runtime_logger', 'ticker_io_semaphore', 'update_prices_background']
+__all__ = ['BLOCKING_IO_CONCURRENCY', 'CACHE_AUDIT_TTL', 'CACHE_FUNDAMENTALS', 'CACHE_PEERS', 'CACHE_QUARTERLY', 'ConnectionManager', 'DB_BUSY_TIMEOUT_MS', 'DB_NAME', 'DB_PATH', 'MOVERS_CACHE_TTL_SECONDS', 'OrderRequest', 'REGIME_CACHE_TTL_SECONDS', 'SQLITE_RETRY_BASE_SECONDS', 'SQLITE_WRITE_RETRIES', '_cache_invalidate', '_cache_is_fresh', '_cache_set', '_is_sqlite_lock_error', '_json_safe_clean', '_read_records', '_run_blocking', '_run_sqlite_write_with_retry', '_run_sqlite_write_with_retry_sync', '_run_ticker_blocking', 'api_logger', 'app_logger', 'blocking_io_semaphore', 'get_connection', 'manager', 'movers_cache', 'movers_cache_lock', 'portfolio_tracker', 'regime_cache', 'regime_cache_lock', 'risk_governor', 'runtime_logger', 'ticker_io_semaphore', 'update_prices_background', 'get_api_key']
 
 import sqlite3
 import pandas as pd
@@ -13,6 +13,9 @@ from pathlib import Path
 from typing import Any, Callable
 
 from pydantic import BaseModel, Field
+from fastapi.security import APIKeyHeader
+from fastapi import Depends, HTTPException, status
+
 from modules.risk import RiskGovernor
 from modules.tracker import PortfolioTracker
 from modules.runtime_settings import runtime_settings
@@ -48,6 +51,25 @@ CACHE_QUARTERLY = {}
 CACHE_FUNDAMENTALS = {}
 CACHE_PEERS = {}
 CACHE_AUDIT_TTL = runtime_settings.audit_cache_ttl_seconds
+
+# Security Config
+API_KEY_NAME = "X-API-Key"
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+
+def get_api_key(api_key: str = Depends(api_key_header)):
+    """Dependency to validate the X-API-Key header."""
+    expected_key = os.getenv("SOVEREIGN_API_KEY")
+    # If no key is set in ENV, we allow access in local dev mode (warning logged)
+    if not expected_key:
+        api_logger.warning("SOVEREIGN_API_KEY not set in environment. Running in unsecured mode.")
+        return None
+    
+    if api_key != expected_key:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Could not validate Sovereign API Key",
+        )
+    return api_key
 
 class OrderRequest(BaseModel):
     symbol: str = Field(min_length=1)

@@ -1,4 +1,6 @@
 import {
+  Suspense,
+  lazy,
   startTransition,
   useCallback,
   useDeferredValue,
@@ -9,9 +11,28 @@ import { Header } from './components/layout/Header'
 import { Routes, Route } from 'react-router-dom'
 import { SignalGrid } from './components/signals/SignalGrid'
 import { FloorDock } from './components/layout/FloorDock'
-import { StockDetail } from './pages/StockDetail'
 import { api, getApiErrorMessage } from './lib/api'
 import type { MarketRegimeData, SignalData } from './lib/contracts'
+
+const StockDetail = lazy(() =>
+  import('./pages/StockDetail').then((module) => ({ default: module.StockDetail })),
+)
+
+const WatchlistPage = lazy(() =>
+  import('./pages/Watchlist').then((module) => ({ default: module.Watchlist })),
+)
+
+const ScoreReportPage = lazy(() =>
+  import('./pages/ScoreReport').then((module) => ({ default: module.ScoreReport })),
+)
+
+function RouteFallback() {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center p-8 font-mono text-xs font-bold uppercase tracking-widest text-brand-accent">
+      Loading terminal node...
+    </div>
+  )
+}
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('Signals')
@@ -82,7 +103,7 @@ export default function App() {
     <div className="min-h-screen bg-brand-bg text-brand-text font-sans selection:bg-brand-accent/30 selection:text-brand-accent grainy">
       {regime?.regime === 'BLACK' && (
         <div className="hazard-pattern border-b-2 border-brand-rose p-2 text-center text-[10px] font-black uppercase tracking-[0.2em] text-brand-rose animate-pulse">
-          ⚠️ CRITICAL VOLATILITY: Market Halted by Risk Governor (VIX {regime.vix}) ⚠️
+          CRITICAL VOLATILITY: Market halted by Risk Governor (VIX {regime.vix})
         </div>
       )}
 
@@ -114,7 +135,30 @@ export default function App() {
             />
           </>
         } />
-        <Route path="/stock/:symbol" element={<StockDetail />} />
+        <Route
+          path="/stock/:symbol"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <StockDetail />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/watchlist"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <WatchlistPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/score-report"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <ScoreReportPage />
+            </Suspense>
+          }
+        />
       </Routes>
 
       <div className="fixed top-[40%] -left-8 w-32 h-32 bg-brand-accent/5 rounded-full blur-[100px] pointer-events-none" />

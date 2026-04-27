@@ -1,5 +1,8 @@
 import { motion } from 'framer-motion'
-import { TrendingUp } from 'lucide-react'
+import { TrendingUp, Heart, BarChart3 } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { DataFreshnessBadge } from '../metrics/DataFreshnessBadge'
+import { useWatchlist } from '../../lib/useWatchlist'
 
 interface HeaderProps {
   regime?: string
@@ -88,7 +91,32 @@ export function Header({
             <TrendingUp className="h-4 w-4 text-brand-accent" />
           </div>
         </div>
+
+        <DataFreshnessBadge />
+
+        <HeaderNavLinks />
       </motion.div>
     </header>
+  )
+}
+
+function HeaderNavLinks() {
+  const { count } = useWatchlist()
+  return (
+    <div className="flex items-center gap-2">
+      <Link
+        to="/watchlist"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-brand-border px-2.5 py-1.5 text-[10px] font-mono font-bold uppercase tracking-widest text-brand-text-dim hover:border-brand-accent/40 hover:text-brand-accent transition-colors"
+      >
+        <Heart className="h-3 w-3" />
+        {count > 0 && <span className="text-brand-accent">{count}</span>}
+      </Link>
+      <Link
+        to="/score-report"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-brand-border px-2.5 py-1.5 text-[10px] font-mono font-bold uppercase tracking-widest text-brand-text-dim hover:border-brand-accent/40 hover:text-brand-accent transition-colors"
+      >
+        <BarChart3 className="h-3 w-3" />
+      </Link>
+    </div>
   )
 }

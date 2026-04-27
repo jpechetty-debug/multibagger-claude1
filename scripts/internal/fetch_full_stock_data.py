@@ -1,8 +1,9 @@
+import os
 import sqlite3
 import json
 
 def get_stock_details(symbol):
-    conn = sqlite3.connect('stocks.db')
+    conn = sqlite3.connect("runtime/stocks.db" if os.path.exists("runtime/stocks.db") else "stocks.db")
     cursor = conn.cursor()
     
     # Get all tables

@@ -1,3 +1,4 @@
+import os
 import sqlite3
 import pandas as pd
 import re
@@ -834,7 +835,7 @@ def parse_elite_data(data):
     return stocks
 
 def upsert_to_db(stocks):
-    conn = sqlite3.connect('stocks.db')
+    conn = sqlite3.connect("runtime/stocks.db" if os.path.exists("runtime/stocks.db") else "stocks.db")
     cursor = conn.cursor()
     
     count = 0

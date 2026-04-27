@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, beforeEach, vi } from 'vitest'
 
 import App from './App'
@@ -73,6 +74,14 @@ const sampleSignals: SignalData[] = [
   },
 ]
 
+function renderApp() {
+  return render(
+    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <App />
+    </MemoryRouter>,
+  )
+}
+
 describe('App', () => {
   const getStocksMock = vi.mocked(api.getStocks)
   const getRegimeMock = vi.mocked(api.getRegime)
@@ -93,7 +102,7 @@ describe('App', () => {
     getStocksMock.mockResolvedValue(sampleSignals)
     getRegimeMock.mockResolvedValue(sampleRegime)
 
-    render(<App />)
+    renderApp()
 
     expect(await screen.findByText('Infosys')).toBeInTheDocument()
     expect(screen.getByText('HDFC Bank')).toBeInTheDocument()
@@ -108,7 +117,7 @@ describe('App', () => {
       .mockResolvedValueOnce(sampleSignals)
     getRegimeMock.mockResolvedValue(sampleRegime)
 
-    render(<App />)
+    renderApp()
 
     expect(await screen.findByText('Backend offline')).toBeInTheDocument()
 
@@ -124,7 +133,7 @@ describe('App', () => {
     getStocksMock.mockResolvedValue(sampleSignals)
     getRegimeMock.mockResolvedValue(sampleRegime)
 
-    render(<App />)
+    renderApp()
 
     expect(await screen.findByText('Infosys')).toBeInTheDocument()
 

@@ -330,7 +330,7 @@ async def quarterly_results_endpoint(symbol: str, quarters: int = 12):
         if symbol not in deps.CACHE_QUARTERLY: deps.CACHE_QUARTERLY[symbol] = {}
         deps._cache_set(deps.CACHE_QUARTERLY[symbol], cleaned)
         return cleaned
-    except Exception as e: raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e: raise HTTPException(status_code=500, detail=f"Failed to fetch quarterly results: {e}")
 
 @router.get("/api/price-fundamentals/{symbol}")
 async def price_fundamentals_endpoint(symbol: str, years: int = 5):
@@ -345,7 +345,7 @@ async def price_fundamentals_endpoint(symbol: str, years: int = 5):
         if cache_key not in deps.CACHE_FUNDAMENTALS: deps.CACHE_FUNDAMENTALS[cache_key] = {}
         deps._cache_set(deps.CACHE_FUNDAMENTALS[cache_key], cleaned)
         return cleaned
-    except Exception as e: raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e: raise HTTPException(status_code=500, detail=f"Failed to fetch price vs fundamentals: {e}")
 
 @router.get("/api/estimates/{symbol}")
 async def get_estimates(symbol: str):

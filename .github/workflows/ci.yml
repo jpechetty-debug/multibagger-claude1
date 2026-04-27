@@ -44,10 +44,29 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt -r requirements-dev.txt
       - name: Run unit tests (exclude live/integration)
-        run: pytest -m "not live and not integration" --cov-report=xml
+        run: pytest -m "not live and not integration" --cov-report=xml --cov-report=term-missing -q
       - uses: codecov/codecov-action@v4
         with:
           files: coverage.xml
+        continue-on-error: true
+
+  frontend:
+    name: Frontend (build + test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web-ui
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: web-ui/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: Run frontend tests
+        run: npm test -- --passWithNoTests
         continue-on-error: true
 
   syntax-check:
@@ -82,3 +101,4 @@ jobs:
               sys.exit(1)
           print(f"All Python files OK.")
           PYEOF
+

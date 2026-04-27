@@ -5,7 +5,6 @@ import type {
   BackendStockRecord,
 } from './contracts'
 import {
-  ApiError,
   api,
   normalizeRegimeResponse,
   normalizeStockRecord,
@@ -26,6 +25,7 @@ describe('api contract normalization', () => {
   const fetchMock = vi.fn<typeof fetch>()
 
   beforeEach(() => {
+    vi.unstubAllEnvs()
     fetchMock.mockReset()
     globalThis.fetch = fetchMock
   })
@@ -153,5 +153,16 @@ describe('api contract normalization', () => {
       }),
     ])
     expect(fetchMock).toHaveBeenCalledWith('/api/stocks')
+  })
+
+  it('attaches the configured API key header to backend requests', async () => {
+    vi.stubEnv('VITE_SOVEREIGN_API_KEY', 'frontend-secret')
+    fetchMock.mockResolvedValueOnce(jsonResponse([]))
+
+    await api.getStocks()
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/stocks', {
+      headers: { 'X-API-Key': 'frontend-secret' },
+    })
   })
 })

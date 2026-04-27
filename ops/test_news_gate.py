@@ -5,7 +5,7 @@ import os
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from brain.news_gate import NewsGate
+from modules.news_gate import NewsGate
 from portfolio.allocator import PortfolioAllocator
 
 def test_news_gate():

@@ -1,5 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from datetime import datetime
+import csv
+import json
+import os
 import pandas as pd
 import modules.dependencies as deps
 from modules.symbol_utils import normalize_symbol
@@ -7,10 +10,23 @@ from modules.drift_monitor import monitor_drift
 
 router = APIRouter()
 
+
+def _read_json_file(path: str):
+    with open(path, "r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def _read_rejections_csv(path: str, limit: int = 20):
+    with open(path, "r", newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    return list(reversed(rows[-limit:]))
+
 @router.get("/api/liquidity")
 async def get_liquidity_forensics():
     """Fetch stocks with suspicious liquidity-to-volatility ratios"""
     try:
+        if os.path.exists("liquidity.json"):
+            return _read_json_file("liquidity.json")
         return await deps._run_blocking(deps._read_records, "SELECT * FROM liquidity_forensics ORDER BY score DESC")
     except Exception as e: return {"error": str(e)}
 
@@ -18,6 +34,8 @@ async def get_liquidity_forensics():
 async def get_drawdown_recovery():
     """Fetch stocks showing V-shaped recovery from 52W lows"""
     try:
+        if os.path.exists("recovery.json"):
+            return _read_json_file("recovery.json")
         return await deps._run_blocking(deps._read_records, "SELECT * FROM recovery_plays ORDER BY score DESC")
     except Exception as e: return {"error": str(e)}
 
@@ -25,6 +43,10 @@ async def get_drawdown_recovery():
 async def get_rejection_logs():
     """Fetch recent trade rejections by the Risk Governor"""
     try:
+        if os.path.exists("rejected_trades.csv"):
+            return _read_rejections_csv("rejected_trades.csv")
+        if os.path.exists(os.path.join("logs", "rejected_trades.csv")):
+            return _read_rejections_csv(os.path.join("logs", "rejected_trades.csv"), limit=50)
         return await deps._run_blocking(deps._read_records, "SELECT * FROM trade_rejections ORDER BY timestamp DESC LIMIT 50")
     except Exception as e: return {"error": str(e)}
 
@@ -32,6 +54,11 @@ async def get_rejection_logs():
 async def get_thesis_breaks():
     """Fetch stocks where the fundamental investment thesis has potentially broken"""
     try:
+        if os.path.exists("thesis_break.json"):
+            payload = _read_json_file("thesis_break.json")
+            if isinstance(payload, dict):
+                return {"status": "success", **payload}
+            return {"status": "success", "items": payload}
         return await deps._run_blocking(deps._read_records, "SELECT * FROM thesis_breaks ORDER BY severity DESC, detected_at DESC")
     except Exception as e: return {"error": str(e)}
 

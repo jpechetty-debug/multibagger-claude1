@@ -1,3 +1,4 @@
+import os
 
 import sqlite3
 import pandas as pd
@@ -9,7 +10,7 @@ def analyze_vif():
     
     # 1. Load Data
     try:
-        conn = sqlite3.connect('stocks.db')
+        conn = sqlite3.connect("runtime/stocks.db" if os.path.exists("runtime/stocks.db") else "stocks.db")
         df = pd.read_sql("SELECT * FROM multibaggers", conn)
         conn.close()
     except Exception as e:

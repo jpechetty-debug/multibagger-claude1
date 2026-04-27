@@ -47,6 +47,8 @@ _TRANSIENT_ERROR_HINTS = (
     "connection reset",
     "ssl",
     "name resolution",
+    "401",
+    "unauthorized",
 )
 
 
@@ -635,7 +637,7 @@ class DataManager:
         """Synchronous compatibility wrapper for older callers."""
         return _run_coroutine_sync(self.async_fetch_fundamentals(symbol))
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=5))
+    @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=1, max=3), reraise=False)
     async def async_fetch_history(self, symbol: str, period: str = "1y") -> pd.DataFrame:
         """Fetch historical price data with quality checks"""
         async with self.semaphore:

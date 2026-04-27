@@ -70,6 +70,7 @@ ops/daily_reports/
 ops/institutional_daily_scorecard.json
 
 # ── Debug / scratch outputs (never commit these) ─────────────────────────────
+scratch/
 backup.bat
 health_check*.txt
 checklist_output.txt
@@ -121,3 +122,9 @@ liquidity_report.md
 git_files.txt
 tests_out.txt
 refactor_script.py
+
+# AI Scaffolding & Bloat
+.agent/
+.pytest_tmp/
+*.bak
+extracted_*/
