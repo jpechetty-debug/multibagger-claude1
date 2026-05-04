@@ -799,24 +799,20 @@ def calculate_institutional_score(
     base_score = _apply_sector_relative_adjustment(base_score, state, sector_medians)
 
     factor_audit: list[dict[str, Any]] = []
-    base_score += _calculate_bonus_total(data, state, sector_boost)
-    base_score = _apply_penalty_rules(base_score, data, state, factor_audit)
+    # 2. Global Bonus Collection (Issue 6)
+    bonus_accumulated = _calculate_bonus_total(data, state, sector_boost)
 
     conviction = calculate_conviction_score(_build_conviction_input(data))
     if conviction["institutional_interest"]:
-        base_score += 10
+        bonus_accumulated += 10
 
-    # --- Sprint 1: CAGR Consistency Bonus ---
     cagr_consistency = data.get("CAGR_Consistency", "UNKNOWN")
     if cagr_consistency == "HIGH":
-        base_score += 5
+        bonus_accumulated += 5
         factor_audit.append({"name": "CAGR Consistency (HIGH)", "value": 5})
     elif cagr_consistency == "MEDIUM":
-        base_score += 2
+        bonus_accumulated += 2
         factor_audit.append({"name": "CAGR Consistency (MEDIUM)", "value": 2})
-    elif cagr_consistency == "LOW":
-        base_score -= 3
-        factor_audit.append({"name": "CAGR Consistency (LOW)", "value": -3})
 
     score_ceiling, disqualifiers = _apply_score_ceiling_rules(data, state)
     extra_bonus, extra_penalty, score_ceiling, disqualifiers = _apply_optional_intel_adjustments(
@@ -825,7 +821,18 @@ def calculate_institutional_score(
         score_ceiling,
         disqualifiers,
     )
-    base_score += extra_bonus
+    bonus_accumulated += extra_bonus
+
+    # Apply Global Bonus Cap (Issue 6 Resolution)
+    # Total bonus points cannot exceed 20.0 to prevent fundamental distortion
+    final_bonus = min(bonus_accumulated, 20.0)
+    base_score += final_bonus
+
+    # 3. Apply Penalties (Not capped by bonus limit)
+    base_score = _apply_penalty_rules(base_score, data, state, factor_audit)
+    if cagr_consistency == "LOW":
+        base_score -= 3
+        factor_audit.append({"name": "CAGR Consistency (LOW)", "value": -3})
     base_score -= extra_penalty
 
     checklist_pass, checklist_total, base_score, score_ceiling = _apply_checklist_gate(
