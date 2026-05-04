@@ -9,6 +9,7 @@ import config
 from modules.estimates import get_estimate_data
 from modules.news_sentiment import engine as news_engine
 from modules.promoter_intel import calculate_promoter_score
+from modules.structured_logger import logger
 from research.conviction_engine import calculate_conviction_score
 
 # Type aliases
@@ -120,7 +121,8 @@ def _calculate_sentiment_factor(
     try:
         sentiment_data = news_engine.get_alpha_signal(data.get("Symbol", ""))
         score_sentiment = (sentiment_data["sentiment_score"] + 1.0) / 2.0 * 100.0
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Sentiment analysis failed for {data.get('Symbol')}: {e}", exc_info=True)
         score_sentiment = 50.0
 
     return score_sentiment, w_sentiment
@@ -704,8 +706,8 @@ def _apply_optional_intel_adjustments(
         elif promoter_adjustment < 0:
             total_penalty += abs(promoter_adjustment)
             factor_audit.append({"name": "Promoter Selling Penalty", "value": promoter_adjustment})
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Promoter score adjustment failed for {symbol}: {e}", exc_info=True)
 
     try:
         estimate_result = get_estimate_data(symbol) or {}
@@ -730,8 +732,8 @@ def _apply_optional_intel_adjustments(
             factor_audit.append(
                 {"name": "Estimate Downgrade Penalty", "value": estimate_adjustment}
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Estimate data adjustment failed for {symbol}: {e}", exc_info=True)
 
     return total_bonus, total_penalty, score_ceiling, disqualifiers
 
@@ -833,8 +835,8 @@ def calculate_institutional_score(
         disqualifiers,
     )
 
+    base_score += _calculate_tiebreak_epsilon(data.get("Symbol", ""))
     final_score = min(base_score, score_ceiling)
-    final_score += _calculate_tiebreak_epsilon(data.get("Symbol", ""))
 
     for disqualifier in disqualifiers:
         factor_audit.append({"name": disqualifier, "value": round(score_ceiling - 100, 1)})
@@ -842,7 +844,7 @@ def calculate_institutional_score(
     raw_score = round(base_score, 1)
 
     return {
-        "total_score": round(max(0, min(final_score, 100.1)), 5),
+        "total_score": round(max(0, min(final_score, 100.0)), 5),
         "raw_score": raw_score,
         "checklist_score": f"{checklist_pass}/{checklist_total}",
         "data_confidence": data_confidence,

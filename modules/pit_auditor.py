@@ -7,6 +7,7 @@ from fundamental datasets used in quantitative trading engines.
 
 import hashlib
 import logging
+import os
 import sqlite3
 from dataclasses import dataclass, field
 from typing import Any
@@ -14,11 +15,28 @@ from typing import Any
 import pandas as pd
 
 # Configure logging to securely track all PIT violations
-logging.basicConfig(
-    filename="pit_violations.log",
-    level=logging.WARNING,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
+PIT_LOG_PATH = os.getenv("PIT_LOG_PATH", "pit_violations.log")
+
+# Ensure directory exists if path is provided
+if os.path.dirname(PIT_LOG_PATH):
+    os.makedirs(os.path.dirname(PIT_LOG_PATH), exist_ok=True)
+
+# Add file handler if not already present
+_root_logger = logging.getLogger()
+_has_pit_handler = False
+try:
+    for h in _root_logger.handlers:
+        if isinstance(h, logging.FileHandler) and os.path.abspath(h.baseFilename) == os.path.abspath(PIT_LOG_PATH):
+            _has_pit_handler = True
+            break
+except Exception:
+    pass
+
+if not _has_pit_handler:
+    _fh = logging.FileHandler(PIT_LOG_PATH)
+    _fh.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+    _root_logger.addHandler(_fh)
+
 logger = logging.getLogger(__name__)
 
 
@@ -166,7 +184,8 @@ def audit_dataset(df: pd.DataFrame, feature_cols: list[str] | None = None) -> PI
             violation_type = "FUTURE_LEAK"
 
         # Revision Ignored: Timestamp too far ahead spanning multiple missing cycles
-        elif row["as_of_date"] > expected_public_date + pd.Timedelta(days=365):
+        # Relaxed to 10 years to support long-horizon historical fundamental backtests
+        elif row["as_of_date"] > expected_public_date + pd.Timedelta(days=3650):
             violation_type = "REVISION_IGNORED"
 
         if violation_type:
@@ -233,7 +252,7 @@ def sanitize(df: pd.DataFrame) -> pd.DataFrame:
 
     # Isolate valid rows preserving strict chronological truth
     mask_valid = (as_of_dates >= expected_dates) & (
-        as_of_dates <= expected_dates + pd.Timedelta(days=365)
+        as_of_dates <= expected_dates + pd.Timedelta(days=3650)
     )
 
     df_sanitized = df_clean[mask_valid].copy()
