@@ -248,7 +248,8 @@ def sanitize(df: pd.DataFrame) -> pd.DataFrame:
     if "metric_name" in df_clean.columns:
         lags = df_clean["metric_name"].apply(_get_lag_for_metric)
     else:
-        lags = release_lag_map["default"]
+        # Avoid fragile broadcasting by creating an explicit lag series
+        lags = pd.Series([release_lag_map["default"]] * len(df_clean), index=df_clean.index)
 
     expected_dates = report_dates + lags
 
