@@ -4,7 +4,6 @@ import argparse
 import sqlite3
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DB_PATH = PROJECT_ROOT / "stocks.db"
 
@@ -56,7 +55,9 @@ def cleanup_symbols(symbols: list[str], db_path: str | Path = DEFAULT_DB_PATH) -
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Delete RS signal records for specific symbols.")
-    parser.add_argument("--symbols", nargs="+", required=True, help="Symbols to delete from RS tables.")
+    parser.add_argument(
+        "--symbols", nargs="+", required=True, help="Symbols to delete from RS tables."
+    )
     parser.add_argument("--db-path", default=str(DEFAULT_DB_PATH), help="SQLite database path.")
     return parser
 

@@ -141,6 +141,7 @@ async def cmd_scan_run(args):
     
     if args.type in ["quick", "microcap"]:
         if args.smoke: cmd.append("--smoke")
+        if args.tickers: cmd.extend(["--symbols", args.tickers])
     else:
         if args.tickers:
             cmd.extend(["--tickers", args.tickers])

@@ -1,5 +1,2 @@
 # Separate list for Commodities (ETFs)
-COMMODITIES = [
-    "GOLDBEES.NS",
-    "SILVERBEES.NS"
-]
+COMMODITIES = ["GOLDBEES.NS", "SILVERBEES.NS"]

@@ -1,10 +1,7 @@
-import sys
 import os
-import json
 import sqlite3
-import pandas as pd
+import sys
 from pathlib import Path
-from datetime import datetime
 
 # Add root to sys.path
 ROOT = Path(__file__).resolve().parents[1]
@@ -12,26 +9,26 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-from modules.thesis_monitor import record_buy_thesis, check_thesis, check_all_thesis_breaks
-from modules.promoter_intel import calculate_promoter_score
 from modules.estimates import analyze_estimate_momentum, compute_own_estimate
+from modules.promoter_intel import calculate_promoter_score
+from modules.thesis_monitor import check_thesis, record_buy_thesis
+
 
 class TestNewFeatures(unittest.TestCase):
-    
     def setUp(self):
         # Set up a temporary test database
         self.test_db = "test_stocks.db"
         if os.path.exists(self.test_db):
             os.remove(self.test_db)
-            
+
         # Patch the DB_NAME in the modules to use the test database
         self.patcher1 = patch("modules.thesis_monitor.DB_NAME", self.test_db)
         self.patcher2 = patch("modules.promoter_intel.DB_NAME", self.test_db)
         self.patcher1.start()
         self.patcher2.start()
-        
+
         # Initialize the test database schema
         conn = sqlite3.connect(self.test_db)
         conn.execute("""
@@ -84,53 +81,56 @@ class TestNewFeatures(unittest.TestCase):
             "F_Score": 8,
             "Value_Gap%": 30,
             "Promoter_Holding%": 70,
-            "EPS_Growth%": 20
+            "EPS_Growth%": 20,
         }
-        
+
         # 1. Record Thesis
         record_buy_thesis(symbol, stock_data, score=85, checklist_passes=10, regime="BULL")
-        
+
         # Verify it's in the DB
         conn = sqlite3.connect(self.test_db)
         row = conn.execute("SELECT * FROM buy_thesis WHERE symbol = ?", (symbol,)).fetchone()
         conn.close()
         self.assertIsNotNone(row)
         self.assertEqual(row[0], symbol)
-        self.assertEqual(row[3], 20 * 0.8) # revenue_growth_min
-        
+        self.assertEqual(row[3], 20 * 0.8)  # revenue_growth_min
+
         # 2. Check Thesis (Intact)
         # Insert "current" data into multibaggers table
         conn = sqlite3.connect(self.test_db)
-        conn.execute("""
+        conn.execute(
+            """
             INSERT INTO multibaggers (symbol, price, score, sales_growth, roe, f_score, debt_equity, promoter_holding)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (symbol, 110, 85, 20, 25, 8, 0.2, 70))
+        """,
+            (symbol, 110, 85, 20, 25, 8, 0.2, 70),
+        )
         conn.commit()
         conn.close()
-        
+
         status = check_thesis(symbol)
         self.assertEqual(status.status, "INTACT")
         self.assertEqual(status.badge_color, "green")
-        
+
         # 3. Check Thesis (Break - Revenue Collapse)
         conn = sqlite3.connect(self.test_db)
         conn.execute("UPDATE multibaggers SET sales_growth = 5 WHERE symbol = ?", (symbol,))
         conn.commit()
         conn.close()
-        
+
         status = check_thesis(symbol)
-        self.assertEqual(status.status, "WARNING") # 1 break is warning
+        self.assertEqual(status.status, "WARNING")  # 1 break is warning
         self.assertEqual(len(status.breaks), 1)
         self.assertIn("Revenue Growth", status.breaks[0]["metric"])
-        
+
         # 4. Check Thesis (Total Break - Revenue + Score Collapse)
         conn = sqlite3.connect(self.test_db)
         conn.execute("UPDATE multibaggers SET score = 50 WHERE symbol = ?", (symbol,))
         conn.commit()
         conn.close()
-        
+
         status = check_thesis(symbol)
-        self.assertEqual(status.status, "THESIS_BREAK") # 2 breaks
+        self.assertEqual(status.status, "THESIS_BREAK")  # 2 breaks
         self.assertEqual(status.badge_color, "red")
         self.assertEqual(len(status.breaks), 2)
 
@@ -147,7 +147,7 @@ class TestNewFeatures(unittest.TestCase):
             "insider_deals": [],
             "institutional_holding_current": 10,
             "promoter_change_direction": "STABLE",
-            "data_sources": ["test"]
+            "data_sources": ["test"],
         }
 
         # Case 1: Neutral
@@ -156,7 +156,7 @@ class TestNewFeatures(unittest.TestCase):
             score = calculate_promoter_score("TEST.NS")
             self.assertEqual(score["score_adjustment"], 0)
             self.assertFalse(score["is_disqualified"])
-            self.assertEqual(score["signal"], "🟢") # Green by default for 0
+            self.assertEqual(score["signal"], "🟢")  # Green by default for 0
 
         # Case 2: Promoter Buying (Bonus)
         with patch("modules.promoter_intel.get_promoter_trend") as mock_trend:
@@ -184,37 +184,59 @@ class TestNewFeatures(unittest.TestCase):
         # Mock AV earnings data
         earnings_data = {
             "quarterly": [
-                {"date": "2023-12-31", "estimated_eps": "100", "reported_eps": "110", "surprise_pct": "10"}, # Most recent beat
-                {"date": "2023-09-30", "estimated_eps": "90", "reported_eps": "95", "surprise_pct": "5"}, # Beat
-                {"date": "2023-06-30", "estimated_eps": "80", "reported_eps": "85", "surprise_pct": "6"}, # Beat
-                {"date": "2023-03-31", "estimated_eps": "70", "reported_eps": "75", "surprise_pct": "7"}, # Beat (4Q beat streak)
+                {
+                    "date": "2023-12-31",
+                    "estimated_eps": "100",
+                    "reported_eps": "110",
+                    "surprise_pct": "10",
+                },  # Most recent beat
+                {
+                    "date": "2023-09-30",
+                    "estimated_eps": "90",
+                    "reported_eps": "95",
+                    "surprise_pct": "5",
+                },  # Beat
+                {
+                    "date": "2023-06-30",
+                    "estimated_eps": "80",
+                    "reported_eps": "85",
+                    "surprise_pct": "6",
+                },  # Beat
+                {
+                    "date": "2023-03-31",
+                    "estimated_eps": "70",
+                    "reported_eps": "75",
+                    "surprise_pct": "7",
+                },  # Beat (4Q beat streak)
             ]
         }
-        
+
         # Test 4Q Beat Streak
         momentum = analyze_estimate_momentum(earnings_data)
-        self.assertEqual(momentum["momentum_signal"], "STRONG_UP") # because QoQ estimates are rising (100 > 90 > 80 > 70)
-        self.assertEqual(momentum["score_adjustment"], 8) # 5 (upgrades) + 3 (beat streak)
+        self.assertEqual(
+            momentum["momentum_signal"], "STRONG_UP"
+        )  # because QoQ estimates are rising (100 > 90 > 80 > 70)
+        self.assertEqual(momentum["score_adjustment"], 8)  # 5 (upgrades) + 3 (beat streak)
         self.assertIn("4Q consecutive earnings beat", momentum["display_text"])
-        
+
         # Test Estimate Upgrades (3Q consecutive)
         earnings_data["quarterly"] = [
-            {"date": "Q1", "estimated_eps": "120", "reported_eps": "120"}, # 120
-            {"date": "Q2", "estimated_eps": "110", "reported_eps": "110"}, # 110
-            {"date": "Q3", "estimated_eps": "100", "reported_eps": "100"}, # 100
+            {"date": "Q1", "estimated_eps": "120", "reported_eps": "120"},  # 120
+            {"date": "Q2", "estimated_eps": "110", "reported_eps": "110"},  # 110
+            {"date": "Q3", "estimated_eps": "100", "reported_eps": "100"},  # 100
             {"date": "Q4", "estimated_eps": "90", "reported_eps": "90"},  # 90
         ]
         # Estimates: 120 > 110 > 100 > 90 (3 consecutive upgrades)
         momentum = analyze_estimate_momentum(earnings_data)
         self.assertEqual(momentum["momentum_signal"], "STRONG_UP")
-        self.assertEqual(momentum["score_adjustment"], 5) # +5 for 3 upgrades
-        
+        self.assertEqual(momentum["score_adjustment"], 5)  # +5 for 3 upgrades
+
         # Test Estimate Downgrades (3Q consecutive - D16)
         earnings_data["quarterly"] = [
-            {"date": "Q1", "estimated_eps": "80", "reported_eps": "80"}, 
-            {"date": "Q2", "estimated_eps": "90", "reported_eps": "90"}, 
-            {"date": "Q3", "estimated_eps": "100", "reported_eps": "100"}, 
-            {"date": "Q4", "estimated_eps": "110", "reported_eps": "110"}, 
+            {"date": "Q1", "estimated_eps": "80", "reported_eps": "80"},
+            {"date": "Q2", "estimated_eps": "90", "reported_eps": "90"},
+            {"date": "Q3", "estimated_eps": "100", "reported_eps": "100"},
+            {"date": "Q4", "estimated_eps": "110", "reported_eps": "110"},
         ]
         # Estimates: 80 < 90 < 100 < 110 (3 consecutive downgrades)
         momentum = analyze_estimate_momentum(earnings_data)
@@ -223,15 +245,12 @@ class TestNewFeatures(unittest.TestCase):
 
     def test_compute_own_estimate(self):
         """Test fallback EPS estimate computation."""
-        info = {
-            "trailingEps": 10,
-            "earningsGrowth": 0.20,
-            "revenueGrowth": 0.15
-        }
+        info = {"trailingEps": 10, "earningsGrowth": 0.20, "revenueGrowth": 0.15}
         est = compute_own_estimate(info)
         # 10 * (1 + (0.2 + 0.02)) = 10 * 1.22 = 12.2
         self.assertEqual(est["current_fy_eps_estimate"], 12.2)
         self.assertEqual(est["next_fy_eps_estimate"], round(12.2 * 1.22, 2))
+
 
 if __name__ == "__main__":
     unittest.main()

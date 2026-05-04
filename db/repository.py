@@ -9,12 +9,15 @@ while preserving the pandas-based data pipeline interface.
 All public functions maintain identical signatures to the legacy module
 for backwards compatibility.
 """
-import sqlite3
+
 import os
+import sqlite3
 import time
-import pandas as pd
 from datetime import datetime
-from db.engine import engine, IS_SQLITE, init_tables
+
+import pandas as pd
+
+from db.engine import IS_SQLITE, engine
 from modules.runtime_settings import runtime_settings
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -30,6 +33,7 @@ PIT_RETENTION_DAYS = 365 * 3
 
 
 # ── Internal Utilities ────────────────────────────────────────────────────────
+
 
 def _normalize_as_of_date(value=None):
     """
@@ -70,7 +74,7 @@ def _run_sqlite_write_with_retry(write_fn, operation_name):
             return write_fn()
         except Exception as exc:
             if _is_sqlite_lock_error(exc) and attempt < SQLITE_WRITE_RETRIES - 1:
-                wait = SQLITE_RETRY_BASE_SECONDS * (2 ** attempt)
+                wait = SQLITE_RETRY_BASE_SECONDS * (2**attempt)
                 print(f"SQLite lock during {operation_name}; retrying in {wait:.2f}s.")
                 time.sleep(wait)
                 continue
@@ -78,6 +82,7 @@ def _run_sqlite_write_with_retry(write_fn, operation_name):
 
 
 # ── Connection Factory ────────────────────────────────────────────────────────
+
 
 def get_connection():
     """
@@ -98,6 +103,7 @@ def get_connection():
 
 
 # ── Schema Introspection (SQLite-specific) ────────────────────────────────────
+
 
 def _table_columns(conn, table_name):
     """Return set of column names for a table (SQLite PRAGMA)."""
@@ -122,6 +128,7 @@ def _ensure_column(conn, table_name, column_name, column_type):
 
 
 # ── PIT Table DDL ─────────────────────────────────────────────────────────────
+
 
 def _ensure_fundamentals_pit_table(conn):
     conn.execute(
@@ -163,6 +170,7 @@ def _ensure_fundamentals_pit_table(conn):
 
 
 # ── Runtime Schema Migration ─────────────────────────────────────────────────
+
 
 def _ensure_runtime_schema():
     """
@@ -230,6 +238,7 @@ def _ensure_runtime_schema():
 
 
 # ── PIT Snapshot Functions ────────────────────────────────────────────────────
+
 
 def _write_fundamentals_snapshot(df_db):
     """
@@ -314,6 +323,7 @@ def _write_fundamentals_snapshot(df_db):
     # --- PIT Auditor Integration ---
     try:
         from modules.pit_auditor import PITDataStore
+
         pit_store = PITDataStore()
         for _, row in df_db.iterrows():
             sym = row.get("symbol")
@@ -330,7 +340,7 @@ def _write_fundamentals_snapshot(df_db):
                 "pe_ratio": row.get("pe_ratio"),
                 "debt_equity": row.get("debt_equity"),
                 "cfo_pat_ratio": row.get("cfo_pat_ratio"),
-                "market_cap_cr": row.get("market_cap_cr")
+                "market_cap_cr": row.get("market_cap_cr"),
             }
 
             for m_name, m_val in metrics.items():
@@ -496,13 +506,14 @@ def prune_fundamentals_pit_retention(keep_days=PIT_RETENTION_DAYS):
 
 # ── Database Initialization ──────────────────────────────────────────────────
 
+
 def init_db():
     """Initialize the database tables."""
     conn = get_connection()
     cursor = conn.cursor()
 
     # Multibagger Table
-    cursor.execute('''
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS multibaggers (
             symbol TEXT PRIMARY KEY,
             price REAL,
@@ -558,10 +569,10 @@ def init_db():
             CHECK(roe >= -500 AND roe <= 500),
             CHECK(score >= 0 AND score <= 100)
         )
-    ''')
+    """)
 
     # Score History
-    cursor.execute('''
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS score_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             symbol TEXT,
@@ -571,10 +582,10 @@ def init_db():
             pe_ratio REAL,
             FOREIGN KEY (symbol) REFERENCES multibaggers (symbol)
         )
-    ''')
+    """)
 
     # Factor Penalties
-    cursor.execute('''
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS factor_penalties (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             symbol TEXT,
@@ -583,10 +594,10 @@ def init_db():
             penalty_value REAL,
             FOREIGN KEY (symbol) REFERENCES multibaggers (symbol)
         )
-    ''')
+    """)
 
     # Valuation Metrics
-    cursor.execute('''
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS valuation_metrics (
             symbol TEXT PRIMARY KEY,
             dcf_value REAL,
@@ -600,10 +611,10 @@ def init_db():
             calculated_at TIMESTAMP,
             FOREIGN KEY (symbol) REFERENCES multibaggers (symbol)
         )
-    ''')
+    """)
 
     # Microcap Table
-    cursor.execute('''
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS microcaps (
             symbol TEXT PRIMARY KEY,
             price REAL,
@@ -617,10 +628,10 @@ def init_db():
             target_2 REAL,
             updated_at TIMESTAMP
         )
-    ''')
+    """)
 
     # Executions
-    cursor.execute('''
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS executions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             symbol TEXT,
@@ -634,10 +645,10 @@ def init_db():
             timestamp TIMESTAMP,
             source TEXT
         )
-    ''')
+    """)
 
     # Slippage Metrics
-    cursor.execute('''
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS slippage_metrics (
             tier TEXT,
             time_window TEXT,
@@ -649,13 +660,13 @@ def init_db():
             updated_at TIMESTAMP,
             PRIMARY KEY (tier, time_window, regime)
         )
-    ''')
+    """)
 
     # PIT table
     _ensure_fundamentals_pit_table(conn)
 
     # Thesis Break Detection
-    cursor.execute('''
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS buy_thesis (
             symbol TEXT PRIMARY KEY,
             buy_date TEXT,
@@ -668,7 +679,7 @@ def init_db():
             raw_thesis_json TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-    ''')
+    """)
 
     conn.commit()
     conn.close()
@@ -679,6 +690,7 @@ def init_db():
 
 
 # ── Bulk Save Functions ──────────────────────────────────────────────────────
+
 
 def save_multibaggers(df, *, replace_existing: bool = False):
     """Save Multibagger Screener results to DB."""
@@ -702,28 +714,77 @@ def save_multibaggers(df, *, replace_existing: bool = False):
 
     # Select cols matching schema
     cols = [
-        "Symbol", "Price", "Sector", "Score", "F_Score", "Rating",
-        "Buy_Below", "Stop_Loss", "Target_1",
-        "Sales_Growth_TTM%", "ROE%", "PEG_Ratio", "Debt_Equity",
-        "RSI", "Smart_Money%",
-        "Market_Cap_Cr", "CFO_PAT_Ratio", "Sales_Growth_5Y%", "Avg_ROE_5Y%",
-        "PE_Ratio", "Down_From_52W_High%", "RS_Rating", "Earnings_Accel", "Sector_Leader",
-        "Graham_Number", "Value_Gap%", "Technical_Signal",
-        "Analyst_Rating", "Analyst_Upside%",
-        "Promoter_Holding%", "Inst_Holding%",
-        "ATR", "Stop_Loss_ATR", "Max_Qty_1L",
+        "Symbol",
+        "Price",
+        "Sector",
+        "Score",
+        "F_Score",
+        "Rating",
+        "Buy_Below",
+        "Stop_Loss",
+        "Target_1",
+        "Sales_Growth_TTM%",
+        "ROE%",
+        "PEG_Ratio",
+        "Debt_Equity",
+        "RSI",
+        "Smart_Money%",
+        "Market_Cap_Cr",
+        "CFO_PAT_Ratio",
+        "Sales_Growth_5Y%",
+        "Avg_ROE_5Y%",
+        "PE_Ratio",
+        "Down_From_52W_High%",
+        "RS_Rating",
+        "Earnings_Accel",
+        "Sector_Leader",
+        "Graham_Number",
+        "Value_Gap%",
+        "Technical_Signal",
+        "Analyst_Rating",
+        "Analyst_Upside%",
+        "Promoter_Holding%",
+        "Inst_Holding%",
+        "ATR",
+        "Stop_Loss_ATR",
+        "Max_Qty_1L",
         "As_Of_Date",
         "updated_at",
-        "Conviction_Score", "Conviction_Boost", "Institutional_Interest", "Super_Investors",
-        "Data_Quality", "Data_Confidence", "F_Score_Method",
-        "Backtest_CAGR", "Backtest_Win_Rate", "Backtest_Max_DD", "Backtest_Sharpe",
-        "ML_Predicted_Return", "SHAP_Breakdown",
-        "High_52W", "Low_52W", "Pledge_Pct", "Piotroski_Score",
-        "ROCE_pct", "Median_PAT_Growth_5Y_pct", "ml_rank_score",
-        "Ret_1M", "Ret_3M", "Ret_6M", "Vol_Breakout", "Dist_From_52W_High",
-        "Revenue_CAGR_3Y", "Revenue_CAGR_5Y", "PAT_CAGR_3Y", "PAT_CAGR_5Y",
-        "EPS_CAGR_3Y", "EPS_CAGR_5Y", "CAGR_Consistency",
-        "Dividend_Yield", "Dividend_Payout", "Cap_Category"
+        "Conviction_Score",
+        "Conviction_Boost",
+        "Institutional_Interest",
+        "Super_Investors",
+        "Data_Quality",
+        "Data_Confidence",
+        "F_Score_Method",
+        "Backtest_CAGR",
+        "Backtest_Win_Rate",
+        "Backtest_Max_DD",
+        "Backtest_Sharpe",
+        "ML_Predicted_Return",
+        "SHAP_Breakdown",
+        "High_52W",
+        "Low_52W",
+        "Pledge_Pct",
+        "Piotroski_Score",
+        "ROCE_pct",
+        "Median_PAT_Growth_5Y_pct",
+        "ml_rank_score",
+        "Ret_1M",
+        "Ret_3M",
+        "Ret_6M",
+        "Vol_Breakout",
+        "Dist_From_52W_High",
+        "Revenue_CAGR_3Y",
+        "Revenue_CAGR_5Y",
+        "PAT_CAGR_3Y",
+        "PAT_CAGR_5Y",
+        "EPS_CAGR_3Y",
+        "EPS_CAGR_5Y",
+        "CAGR_Consistency",
+        "Dividend_Yield",
+        "Dividend_Payout",
+        "Cap_Category",
     ]
 
     available_cols = [c for c in cols if c in df.columns]
@@ -732,22 +793,40 @@ def save_multibaggers(df, *, replace_existing: bool = False):
 
     # Mapping to DB names
     mapping = {
-        "Symbol": "symbol", "Price": "price", "Sector": "sector", "Score": "score",
-        "F_Score": "f_score", "Rating": "rating",
-        "Buy_Below": "buy_below", "Stop_Loss": "stop_loss", "Target_1": "target_1",
-        "Sales_Growth_TTM%": "sales_growth", "ROE%": "roe", "PEG_Ratio": "peg_ratio",
+        "Symbol": "symbol",
+        "Price": "price",
+        "Sector": "sector",
+        "Score": "score",
+        "F_Score": "f_score",
+        "Rating": "rating",
+        "Buy_Below": "buy_below",
+        "Stop_Loss": "stop_loss",
+        "Target_1": "target_1",
+        "Sales_Growth_TTM%": "sales_growth",
+        "ROE%": "roe",
+        "PEG_Ratio": "peg_ratio",
         "Debt_Equity": "debt_equity",
-        "RSI": "rsi", "Smart_Money%": "smart_money",
-        "Market_Cap_Cr": "market_cap_cr", "CFO_PAT_Ratio": "cfo_pat_ratio",
-        "Sales_Growth_5Y%": "sales_cagr_5y", "Avg_ROE_5Y%": "avg_roe_5y",
-        "PE_Ratio": "pe_ratio", "Down_From_52W_High%": "down_from_52w",
-        "RS_Rating": "rs_rating", "Earnings_Accel": "earnings_accel",
+        "RSI": "rsi",
+        "Smart_Money%": "smart_money",
+        "Market_Cap_Cr": "market_cap_cr",
+        "CFO_PAT_Ratio": "cfo_pat_ratio",
+        "Sales_Growth_5Y%": "sales_cagr_5y",
+        "Avg_ROE_5Y%": "avg_roe_5y",
+        "PE_Ratio": "pe_ratio",
+        "Down_From_52W_High%": "down_from_52w",
+        "RS_Rating": "rs_rating",
+        "Earnings_Accel": "earnings_accel",
         "Sector_Leader": "sector_leader",
-        "Graham_Number": "graham_number", "Value_Gap%": "value_gap",
+        "Graham_Number": "graham_number",
+        "Value_Gap%": "value_gap",
         "Technical_Signal": "technical_signal",
-        "Analyst_Rating": "analyst_rating", "Analyst_Upside%": "analyst_upside",
-        "Promoter_Holding%": "promoter_holding", "Inst_Holding%": "inst_holding",
-        "ATR": "atr", "Stop_Loss_ATR": "stop_loss_atr", "Max_Qty_1L": "max_qty_1l",
+        "Analyst_Rating": "analyst_rating",
+        "Analyst_Upside%": "analyst_upside",
+        "Promoter_Holding%": "promoter_holding",
+        "Inst_Holding%": "inst_holding",
+        "ATR": "atr",
+        "Stop_Loss_ATR": "stop_loss_atr",
+        "Max_Qty_1L": "max_qty_1l",
         "As_Of_Date": "as_of_date",
         "updated_at": "updated_at",
         "Conviction_Score": "conviction_score",
@@ -784,7 +863,7 @@ def save_multibaggers(df, *, replace_existing: bool = False):
         "CAGR_Consistency": "cagr_consistency",
         "Dividend_Yield": "dividend_yield",
         "Dividend_Payout": "dividend_payout",
-        "Cap_Category": "cap_category"
+        "Cap_Category": "cap_category",
     }
 
     df_db.rename(columns=mapping, inplace=True)
@@ -793,16 +872,14 @@ def save_multibaggers(df, *, replace_existing: bool = False):
     try:
         conn_read = get_connection()
         try:
-            existing_audit = pd.read_sql(
-                "SELECT symbol, last_audited FROM multibaggers", conn_read
-            )
+            existing_audit = pd.read_sql("SELECT symbol, last_audited FROM multibaggers", conn_read)
         finally:
             conn_read.close()
         if "last_audited" not in df_db.columns:
             df_db = df_db.merge(existing_audit, on="symbol", how="left")
         else:
-            if df_db['last_audited'].isnull().all():
-                df_db = df_db.drop(columns=['last_audited'])
+            if df_db["last_audited"].isnull().all():
+                df_db = df_db.drop(columns=["last_audited"])
                 df_db = df_db.merge(existing_audit, on="symbol", how="left")
     except Exception as e:
         print(f"Warning preserving audit logs: {e}")
@@ -816,20 +893,19 @@ def save_multibaggers(df, *, replace_existing: bool = False):
         df_db["score"] = df_db["score"].clip(lower=0, upper=100)
 
     # De-duplicate
-    df_db = df_db.drop_duplicates(subset=['symbol'], keep='first')
+    df_db = df_db.drop_duplicates(subset=["symbol"], keep="first")
 
     def _write_all():
         conn_write = get_connection()
         try:
             cursor = conn_write.cursor()
-            symbols_to_update = df_db['symbol'].tolist()
+            symbols_to_update = df_db["symbol"].tolist()
             if replace_existing:
                 cursor.execute("DELETE FROM multibaggers")
             elif symbols_to_update:
-                placeholders = ', '.join(['?'] * len(symbols_to_update))
+                placeholders = ", ".join(["?"] * len(symbols_to_update))
                 cursor.execute(
-                    f"DELETE FROM multibaggers WHERE symbol IN ({placeholders})",
-                    symbols_to_update
+                    f"DELETE FROM multibaggers WHERE symbol IN ({placeholders})", symbols_to_update
                 )
 
             conn_write.commit()
@@ -839,20 +915,21 @@ def save_multibaggers(df, *, replace_existing: bool = False):
             if "score" in df_db.columns and "symbol" in df_db.columns:
                 history_records = []
                 for _, row in df_db.iterrows():
-                    history_records.append((
-                        row["symbol"],
-                        row.get("score"),
-                        row.get("price"),
-                        row.get("pe_ratio")
-                    ))
-                cursor.executemany('''
+                    history_records.append(
+                        (row["symbol"], row.get("score"), row.get("price"), row.get("pe_ratio"))
+                    )
+                cursor.executemany(
+                    """
                     INSERT INTO score_history (symbol, total_score, close_price, pe_ratio)
                     VALUES (?, ?, ?, ?)
-                ''', history_records)
+                """,
+                    history_records,
+                )
 
             # Persist Factor Penalties
             if "factor_penalties" in df.columns and "Symbol" in df.columns:
                 import ast
+
                 penalty_records = []
                 for _, row in df.iterrows():
                     symbol = row["Symbol"]
@@ -866,16 +943,15 @@ def save_multibaggers(df, *, replace_existing: bool = False):
 
                     if isinstance(penalties, list):
                         for p in penalties:
-                            penalty_records.append((
-                                symbol,
-                                p.get("name"),
-                                p.get("value")
-                            ))
+                            penalty_records.append((symbol, p.get("name"), p.get("value")))
                 if penalty_records:
-                    cursor.executemany('''
+                    cursor.executemany(
+                        """
                         INSERT INTO factor_penalties (symbol, penalty_name, penalty_value)
                         VALUES (?, ?, ?)
-                    ''', penalty_records)
+                    """,
+                        penalty_records,
+                    )
 
             conn_write.commit()
         finally:
@@ -899,14 +975,32 @@ def save_microcaps(df):
     df["updated_at"] = datetime.now()
 
     cols = [
-        "Symbol", "Price", "Score", "MarketCap_Cr", "Sales_Growth%",
-        "Promoter_Hol%", "Buy_Zone", "Stop_Loss", "Target_1", "Target_2", "updated_at"
+        "Symbol",
+        "Price",
+        "Score",
+        "MarketCap_Cr",
+        "Sales_Growth%",
+        "Promoter_Hol%",
+        "Buy_Zone",
+        "Stop_Loss",
+        "Target_1",
+        "Target_2",
+        "updated_at",
     ]
 
     df_db = df[cols].copy()
     df_db.columns = [
-        "symbol", "price", "score", "market_cap", "sales_growth",
-        "promoter_holding", "buy_zone", "stop_loss", "target_1", "target_2", "updated_at"
+        "symbol",
+        "price",
+        "score",
+        "market_cap",
+        "sales_growth",
+        "promoter_holding",
+        "buy_zone",
+        "stop_loss",
+        "target_1",
+        "target_2",
+        "updated_at",
     ]
 
     df_db.to_sql("microcaps", conn, if_exists="replace", index=False)

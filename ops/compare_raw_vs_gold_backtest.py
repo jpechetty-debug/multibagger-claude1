@@ -3,7 +3,7 @@ import json
 import re
 import sqlite3
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -16,7 +16,6 @@ if str(ROOT) not in sys.path:
 
 from backtest.engine import VectorBTEngine
 
-
 VALID_IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
@@ -28,7 +27,7 @@ def validate_identifier(name: str, label: str) -> str:
 
 def normalize_symbol(symbol: str) -> str:
     s = str(symbol).strip().upper()
-    if s.endswith(".NS") or s.endswith(".BO"):
+    if s.endswith((".NS", ".BO")):
         return s
     return f"{s}.NS"
 
@@ -58,7 +57,7 @@ def load_top_universe(
         f'SELECT "{symbol}" AS symbol, CAST("{score}" AS REAL) AS score '
         f'FROM "{table}" '
         f'WHERE "{symbol}" IS NOT NULL '
-        f'ORDER BY score DESC '
+        f"ORDER BY score DESC "
         f"LIMIT ?"
     )
     df = pd.read_sql_query(query, conn, params=[limit])
@@ -103,7 +102,9 @@ def summarize_universe(metrics_df: pd.DataFrame, total_symbols: int) -> dict[str
     return out
 
 
-def compute_metric_deltas(raw_metrics: dict[str, Any], gold_metrics: dict[str, Any]) -> dict[str, Any]:
+def compute_metric_deltas(
+    raw_metrics: dict[str, Any], gold_metrics: dict[str, Any]
+) -> dict[str, Any]:
     keys = [
         "symbols_in_universe",
         "symbols_with_backtest",
@@ -137,8 +138,12 @@ def build_symbol_comparison(
     gold_universe: pd.DataFrame,
     results_map: dict[str, dict[str, Any]],
 ) -> pd.DataFrame:
-    raw_view = raw_universe.rename(columns={"score": "raw_score", "rank": "raw_rank"})[["symbol", "raw_score", "raw_rank"]]
-    gold_view = gold_universe.rename(columns={"score": "gold_score", "rank": "gold_rank"})[["symbol", "gold_score", "gold_rank"]]
+    raw_view = raw_universe.rename(columns={"score": "raw_score", "rank": "raw_rank"})[
+        ["symbol", "raw_score", "raw_rank"]
+    ]
+    gold_view = gold_universe.rename(columns={"score": "gold_score", "rank": "gold_rank"})[
+        ["symbol", "gold_score", "gold_rank"]
+    ]
     merged = pd.merge(raw_view, gold_view, on="symbol", how="outer")
     merged["in_raw"] = merged["raw_rank"].notna()
     merged["in_gold"] = merged["gold_rank"].notna()
@@ -149,35 +154,33 @@ def build_symbol_comparison(
 
     for prefix in ("raw", "gold"):
         side_mask = merged[f"in_{prefix}"]
-        merged[f"{prefix}_status"] = np.where(
-            side_mask,
-            merged["symbol"].map(lambda s: extract(s, "status")),
-            None,
+        merged[f"{prefix}_status"] = (
+            merged["symbol"].map(lambda s: extract(s, "status")).where(side_mask, None)
         )
-        merged[f"{prefix}_cagr"] = np.where(
-            side_mask,
-            merged["symbol"].map(lambda s: _safe_float(extract(s, "cagr"))),
-            np.nan,
+        merged[f"{prefix}_cagr"] = (
+            merged["symbol"].map(lambda s: _safe_float(extract(s, "cagr"))).where(side_mask, np.nan)
         )
-        merged[f"{prefix}_win_rate"] = np.where(
-            side_mask,
-            merged["symbol"].map(lambda s: _safe_float(extract(s, "win_rate"))),
-            np.nan,
+        merged[f"{prefix}_win_rate"] = (
+            merged["symbol"]
+            .map(lambda s: _safe_float(extract(s, "win_rate")))
+            .where(side_mask, np.nan)
         )
-        merged[f"{prefix}_max_drawdown"] = np.where(
-            side_mask,
-            merged["symbol"].map(lambda s: _safe_float(extract(s, "max_drawdown"))),
-            np.nan,
+        merged[f"{prefix}_max_drawdown"] = (
+            merged["symbol"]
+            .map(lambda s: _safe_float(extract(s, "max_drawdown")))
+            .where(side_mask, np.nan)
         )
-        merged[f"{prefix}_sharpe"] = np.where(
-            side_mask,
-            merged["symbol"].map(lambda s: _safe_float(extract(s, "sharpe_ratio"))),
-            np.nan,
+        merged[f"{prefix}_sharpe"] = (
+            merged["symbol"]
+            .map(lambda s: _safe_float(extract(s, "sharpe_ratio")))
+            .where(side_mask, np.nan)
         )
 
     merged["delta_cagr_gold_minus_raw"] = merged["gold_cagr"] - merged["raw_cagr"]
     merged["delta_sharpe_gold_minus_raw"] = merged["gold_sharpe"] - merged["raw_sharpe"]
-    merged = merged.sort_values(["in_raw", "raw_rank", "in_gold", "gold_rank"], ascending=[False, True, False, True])
+    merged = merged.sort_values(
+        ["in_raw", "raw_rank", "in_gold", "gold_rank"], ascending=[False, True, False, True]
+    )
     return merged.reset_index(drop=True)
 
 
@@ -201,7 +204,9 @@ def persist_comparison_to_db(
         "gold_metrics_json": json.dumps(summary["gold_metrics"], separators=(",", ":")),
         "delta_metrics_json": json.dumps(summary["delta_metrics"], separators=(",", ":")),
     }
-    pd.DataFrame([run_row]).to_sql("backtest_comparison_runs", conn, if_exists="append", index=False)
+    pd.DataFrame([run_row]).to_sql(
+        "backtest_comparison_runs", conn, if_exists="append", index=False
+    )
 
     if symbol_df.empty:
         return
@@ -226,7 +231,9 @@ def persist_comparison_to_db(
     out.to_sql("backtest_comparison_symbols", conn, if_exists="append", index=False)
 
 
-def build_report_markdown(summary: dict[str, Any], top_improve: pd.DataFrame, top_decline: pd.DataFrame) -> str:
+def build_report_markdown(
+    summary: dict[str, Any], top_improve: pd.DataFrame, top_decline: pd.DataFrame
+) -> str:
     raw = summary["raw_metrics"]
     gold = summary["gold_metrics"]
     delta = summary["delta_metrics"]
@@ -288,12 +295,16 @@ def main() -> None:
     parser.add_argument("--as-of-date", default=None, help="Optional YYYY-MM-DD metadata only.")
     parser.add_argument("--out-dir", default="reports/backtest_compare")
     parser.add_argument("--run-id", default=None)
-    parser.add_argument("--write-db", action="store_true", help="Persist comparison run and symbol deltas to SQLite.")
+    parser.add_argument(
+        "--write-db",
+        action="store_true",
+        help="Persist comparison run and symbol deltas to SQLite.",
+    )
     args = parser.parse_args()
 
-    run_id = args.run_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    as_of_date = args.as_of_date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    run_ts_utc = datetime.now(timezone.utc).isoformat()
+    run_id = args.run_id or datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    as_of_date = args.as_of_date or datetime.now(UTC).strftime("%Y-%m-%d")
+    run_ts_utc = datetime.now(UTC).isoformat()
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -345,7 +356,14 @@ def main() -> None:
     )
     gold_metrics = summarize_universe(
         symbol_df[symbol_df["in_gold"]][
-            ["symbol", "gold_status", "gold_cagr", "gold_win_rate", "gold_max_drawdown", "gold_sharpe"]
+            [
+                "symbol",
+                "gold_status",
+                "gold_cagr",
+                "gold_win_rate",
+                "gold_max_drawdown",
+                "gold_sharpe",
+            ]
         ].rename(
             columns={
                 "gold_status": "status",
@@ -375,12 +393,20 @@ def main() -> None:
         "delta_metrics": delta_metrics,
     }
 
-    top_improve = symbol_df.dropna(subset=["delta_cagr_gold_minus_raw"]).sort_values(
-        "delta_cagr_gold_minus_raw", ascending=False
-    )[["symbol", "raw_cagr", "gold_cagr", "delta_cagr_gold_minus_raw"]].head(10)
-    top_decline = symbol_df.dropna(subset=["delta_cagr_gold_minus_raw"]).sort_values(
-        "delta_cagr_gold_minus_raw", ascending=True
-    )[["symbol", "raw_cagr", "gold_cagr", "delta_cagr_gold_minus_raw"]].head(10)
+    top_improve = (
+        symbol_df.dropna(subset=["delta_cagr_gold_minus_raw"])
+        .sort_values("delta_cagr_gold_minus_raw", ascending=False)[
+            ["symbol", "raw_cagr", "gold_cagr", "delta_cagr_gold_minus_raw"]
+        ]
+        .head(10)
+    )
+    top_decline = (
+        symbol_df.dropna(subset=["delta_cagr_gold_minus_raw"])
+        .sort_values("delta_cagr_gold_minus_raw", ascending=True)[
+            ["symbol", "raw_cagr", "gold_cagr", "delta_cagr_gold_minus_raw"]
+        ]
+        .head(10)
+    )
 
     summary_path = out_dir / "raw_vs_gold_backtest_summary.json"
     csv_path = out_dir / "raw_vs_gold_backtest_symbols.csv"

@@ -145,6 +145,13 @@ export interface DataFreshnessResponse {
     age_hours?: number
     next_expected?: string
   }
+  universe_counts: {
+    fresh: number
+    stale: number
+    expired: number
+    incomplete: number
+    total: number
+  }
 }
 
 export interface ProviderHealthItem {
@@ -230,4 +237,30 @@ export interface CalibrationReportResponse {
   effective_range: string
   health: 'GOOD' | 'NEEDS_ATTENTION' | 'POOR'
   timestamp: string
+}
+
+export interface SwingTrade {
+  symbol: string
+  status: string
+  type: string
+  risk: string
+  date: string
+  entry_range: [number, number]
+  target: number
+  target_pct: number
+  sl: number
+  potential_left_pct: number
+  ltp: number
+  ltp_change_pct: number
+  analysis: string
+  score: number
+  reward_risk_ratio: number
+}
+
+export interface PortfolioState {
+  available_capital: number
+  total_deployed: number
+  risk_per_trade_pct: number
+  active_trades_count: number
+  max_positions: number
 }

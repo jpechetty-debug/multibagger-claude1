@@ -1,5 +1,6 @@
 import pandas as pd
 
+
 def _safe_div(numerator, denominator, default=0.0):
     try:
         if denominator in (0, None):
@@ -29,11 +30,7 @@ def calculate_piotroski_f_score(ticker):
         if roa > 0:
             f_score += 1
 
-        cfo = (
-            cf.loc["Operating Cash Flow"].iloc[0]
-            if "Operating Cash Flow" in cf.index
-            else 0
-        )
+        cfo = cf.loc["Operating Cash Flow"].iloc[0] if "Operating Cash Flow" in cf.index else 0
         if cfo > 0:
             f_score += 1
 
@@ -64,13 +61,9 @@ def calculate_piotroski_f_score(ticker):
         if _safe_div(ltd, total_assets) <= _safe_div(ltd_prev, total_assets_prev):
             f_score += 1
 
-        current_assets = (
-            bs.loc["Current Assets"].iloc[0] if "Current Assets" in bs.index else 0
-        )
+        current_assets = bs.loc["Current Assets"].iloc[0] if "Current Assets" in bs.index else 0
         current_liab = (
-            bs.loc["Current Liabilities"].iloc[0]
-            if "Current Liabilities" in bs.index
-            else 1
+            bs.loc["Current Liabilities"].iloc[0] if "Current Liabilities" in bs.index else 1
         )
         curr_ratio = _safe_div(current_assets, current_liab)
 
@@ -90,9 +83,7 @@ def calculate_piotroski_f_score(ticker):
             f_score += 1
 
         shares = (
-            bs.loc["Ordinary Shares Number"].iloc[0]
-            if "Ordinary Shares Number" in bs.index
-            else 0
+            bs.loc["Ordinary Shares Number"].iloc[0] if "Ordinary Shares Number" in bs.index else 0
         )
         shares_prev = (
             bs.loc["Ordinary Shares Number"].iloc[1]
@@ -137,14 +128,14 @@ def extract_financial_metric(df, keys, default=0):
     """
     if df.empty:
         return default
-    
+
     # 1. Try exact matches first
     for key in keys:
         if key in df.index:
             val = df.loc[key].iloc[0]
             if val is not None and not (isinstance(val, float) and pd.isna(val)):
                 return val
-                
+
     # 2. Try partial/fuzzy matches if no exact match found
     for key in keys:
         for index_name in df.index:
@@ -170,7 +161,8 @@ def calculate_current_roe(ticker):
             fin, ["Net Income", "Net Profit", "PAT", "Profit After Tax"]
         )
         equity = extract_financial_metric(
-            bs, ["Stockholders Equity", "Common Stock Equity", "Total Equity", "Shareholders Equity"]
+            bs,
+            ["Stockholders Equity", "Common Stock Equity", "Total Equity", "Shareholders Equity"],
         )
 
         roe = _safe_div(net_income, equity)
@@ -191,20 +183,16 @@ def calculate_roce(ticker):
             return 0
 
         # EBIT or Operating Income
-        ebit = extract_financial_metric(
-            fin, ["EBIT", "Operating Income", "Operating Profit"]
-        )
-        
+        ebit = extract_financial_metric(fin, ["EBIT", "Operating Income", "Operating Profit"])
+
         # Capital Employed = Total Assets - Current Liabilities
-        total_assets = extract_financial_metric(
-            bs, ["Total Assets"]
-        )
+        total_assets = extract_financial_metric(bs, ["Total Assets"])
         current_liabilities = extract_financial_metric(
             bs, ["Current Liabilities", "Total Current Liabilities"]
         )
-        
+
         capital_employed = total_assets - current_liabilities
-        
+
         roce = _safe_div(ebit, capital_employed)
         return round(roce * 100, 2)
     except Exception:
@@ -230,30 +218,32 @@ def calculate_median_pat_growth(ticker, years=5):
                 if key.lower() in index_name.lower():
                     row_key = index_name
                     break
-            if row_key: break
-            
+            if row_key:
+                break
+
         if not row_key:
             return 0
 
         pats = fin.loc[row_key]
         if isinstance(pats, pd.DataFrame):
             pats = pats.iloc[0]
-            
-        pats = pats.iloc[::-1] # Oldest to newest
+
+        pats = pats.iloc[::-1]  # Oldest to newest
         if len(pats) < 2:
             return 0
 
         growths = []
         for i in range(1, len(pats)):
-            prev = pats.iloc[i-1]
+            prev = pats.iloc[i - 1]
             curr = pats.iloc[i]
             if prev != 0 and pd.notna(prev) and pd.notna(curr):
                 growths.append((curr - prev) / abs(prev))
-        
+
         if not growths:
             return 0
-            
+
         import numpy as np
+
         median_growth = np.median(growths)
         return round(float(median_growth) * 100, 2)
     except Exception:
@@ -270,8 +260,13 @@ def calculate_recent_sales_growth(ticker):
             return 0
 
         # financials.iloc[0] is most recent, iloc[1] is previous
-        revenue_keys = ["Total Revenue", "Operating Revenue", "Revenue From Operations", "Net Sales"]
-        
+        revenue_keys = [
+            "Total Revenue",
+            "Operating Revenue",
+            "Revenue From Operations",
+            "Net Sales",
+        ]
+
         # Fuzzy match for the row key
         row_key = None
         for key in revenue_keys:
@@ -284,15 +279,16 @@ def calculate_recent_sales_growth(ticker):
                 if key.lower() in index_name.lower():
                     row_key = index_name
                     break
-            if row_key: break
-        
+            if row_key:
+                break
+
         if not row_key:
             return 0
 
         revs = fin.loc[row_key]
-        if isinstance(revs, pd.DataFrame): # safety for multi-row matches
+        if isinstance(revs, pd.DataFrame):  # safety for multi-row matches
             revs = revs.iloc[0]
-            
+
         if len(revs) < 2:
             return 0
 

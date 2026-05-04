@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 # Add root to sys.path
@@ -11,6 +12,7 @@ from main import app
 
 client = TestClient(app)
 
+
 def test_api_v96_health():
     """Verify that /api/health is online and returns actual timestamp metadata."""
     response = client.get("/api/health")
@@ -19,6 +21,7 @@ def test_api_v96_health():
     assert data["status"] == "ok"
     assert "timestamp" in data
     assert "latency_reference" in data
+
 
 def test_api_v96_momentum_accel_sync():
     """Verify that /api/regime_status includes the momentum_accel field for terminal sync."""

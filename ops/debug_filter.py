@@ -1,6 +1,5 @@
-
-import sys
 import os
+import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -11,7 +10,7 @@ mock_data = {
     "Price": 3500,
     "Sector": "IT Services",
     "Score": 90,
-    "Sales_Growth_5Y%": 20, 
+    "Sales_Growth_5Y%": 20,
     "Sales_Growth_TTM%": 18,
     "Avg_ROE_5Y%": 30,
     "ROE%": 35,
@@ -20,7 +19,7 @@ mock_data = {
     "Promoter_Holding%": 72,
     "Inst_Holding%": 20,
     "conviction_score": 80,
-    "rs_rating": 2.0
+    "rs_rating": 2.0,
 }
 
 try:
@@ -30,4 +29,5 @@ try:
 except Exception as e:
     print(f"CRASH: {e}")
     import traceback
+
     traceback.print_exc()

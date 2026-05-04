@@ -3,12 +3,12 @@
 Sovereign AI Trading Engine v4.0 — Celery Task Definitions
 Patched: all tasks decorated with celery_task_timer for Prometheus metrics.
 """
+
 import os
 import sys
-import time
 import traceback
-import asyncio
 from datetime import datetime
+from typing import Any
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
@@ -19,32 +19,48 @@ from worker.redis_cache import cache
 
 try:
     from monitoring.metrics import (
+        LLM_THESIS_FALLBACK,
         celery_task_timer,
         record_scan_result,
         set_regime,
         timed_scan,
-        LLM_THESIS_FALLBACK,
     )
 except ImportError:
     # Graceful degradation if prometheus_client not installed
-    def celery_task_timer(name):
-        def decorator(fn): return fn
+    from collections.abc import Callable
+
+    def celery_task_timer(task_name: str) -> Callable:
+        def decorator(fn):
+            return fn
+
         return decorator
-    def record_scan_result(*a, **kw): pass
-    def set_regime(*a): pass
+
+    def record_scan_result(outcome: str, score: float | None = None, dq: float | None = None):
+        pass
+
+    def set_regime(regime: str):
+        pass
+
     def timed_scan():
         from contextlib import contextmanager
+
         @contextmanager
-        def _noop(): yield
+        def _noop():
+            yield
+
         return _noop()
+
     class _Noop:
-        def inc(self): pass
-    LLM_THESIS_FALLBACK = _Noop()
+        def inc(self):
+            pass
+
+    LLM_THESIS_FALLBACK: Any = _Noop()  # type: ignore[no-redef]
 
 
 # ════════════════════════════════════════════════════════════════════════════
 # SCREENING TASKS
 # ════════════════════════════════════════════════════════════════════════════
+
 
 @app.task(bind=True, name="worker.tasks.scan_single_stock", max_retries=3, rate_limit="20/m")
 @celery_task_timer("scan_single_stock")
@@ -61,16 +77,18 @@ def scan_single_stock(self, symbol: str, regime: str = "SIDEWAYS"):
 
         # Use sync wrapper to avoid asyncio.run() loop-per-task anti-pattern
         from modules.data_service import data_manager
-        from scripts.internal.screener import get_stock_data_sync
         from modules.scoring import calculate_institutional_score
-        
+        from scripts.internal.screener import get_stock_data_sync
+
         stock_data = get_stock_data_sync(symbol, dm=data_manager, include_quarterly=False)
 
         if not stock_data or stock_data.get("_fetch_error"):
             record_scan_result("skipped")
             return {
                 "symbol": symbol,
-                "error": stock_data.get("_fetch_error", "No data available") if stock_data else "No data available",
+                "error": stock_data.get("_fetch_error", "No data available")
+                if stock_data
+                else "No data available",
                 "score": 0,
             }
 
@@ -103,7 +121,7 @@ def scan_single_stock(self, symbol: str, regime: str = "SIDEWAYS"):
     except Exception as exc:
         record_scan_result("error")
         print(f"Task scan_single_stock failed for {symbol}: {exc}")
-        raise self.retry(exc=exc, countdown=30 * (self.request.retries + 1))
+        raise self.retry(exc=exc, countdown=30 * (self.request.retries + 1)) from exc
 
 
 @app.task(bind=True, name="worker.tasks.run_full_scan", time_limit=3600)
@@ -117,6 +135,7 @@ def run_full_scan(self):
 
     try:
         from ticker_list import STOCK_LIST
+
         symbols = STOCK_LIST if isinstance(STOCK_LIST, list) else list(STOCK_LIST)
 
         regime = "SIDEWAYS"
@@ -138,7 +157,9 @@ def run_full_scan(self):
 
         if successful:
             import pandas as pd
+
             from db.repository import save_multibaggers
+
             df = pd.DataFrame(successful)
             save_multibaggers(df)
 
@@ -160,13 +181,19 @@ def run_full_scan(self):
 # ML INFERENCE TASKS
 # ════════════════════════════════════════════════════════════════════════════
 
+
 @app.task(name="worker.tasks.retrain_xgboost", time_limit=1800)
 @celery_task_timer("retrain_xgboost")
 def retrain_xgboost():
     try:
         from modules.hybrid_scoring import train_hybrid_model
+
         result = train_hybrid_model()
-        return {"status": "success", "retrained_at": datetime.now().isoformat(), "result": str(result)}
+        return {
+            "status": "success",
+            "retrained_at": datetime.now().isoformat(),
+            "result": str(result),
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -175,7 +202,8 @@ def retrain_xgboost():
 @celery_task_timer("generate_thesis")
 def generate_thesis(stock_data: dict):
     try:
-        from modules.llm_engine import generate_thesis as _gen, generate_rule_based_thesis
+        from modules.llm_engine import generate_thesis as _gen
+
         # Detect whether the response is the rule-based fallback
         thesis = _gen(stock_data)
         if "Rule-Based Engine" in thesis:
@@ -193,13 +221,19 @@ def generate_thesis(stock_data: dict):
 # BACKTEST TASKS
 # ════════════════════════════════════════════════════════════════════════════
 
+
 @app.task(name="worker.tasks.run_backtest_refresh", time_limit=3600)
 @celery_task_timer("run_backtest_refresh")
 def run_backtest_refresh():
     try:
         from scripts.internal.backtest_engine import run_backtest
+
         result = run_backtest()
-        return {"status": "success", "refreshed_at": datetime.now().isoformat(), "result": str(result)}
+        return {
+            "status": "success",
+            "refreshed_at": datetime.now().isoformat(),
+            "result": str(result),
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -208,13 +242,19 @@ def run_backtest_refresh():
 # MAINTENANCE TASKS
 # ════════════════════════════════════════════════════════════════════════════
 
+
 @app.task(name="worker.tasks.prune_pit_data")
 @celery_task_timer("prune_pit_data")
 def prune_pit_data():
     try:
         from db.repository import prune_fundamentals_pit_retention
+
         deleted = prune_fundamentals_pit_retention()
-        return {"status": "success", "rows_pruned": deleted, "pruned_at": datetime.now().isoformat()}
+        return {
+            "status": "success",
+            "rows_pruned": deleted,
+            "pruned_at": datetime.now().isoformat(),
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -224,10 +264,15 @@ def prune_pit_data():
 def refresh_regime_cache():
     try:
         from modules.data_service import MarketDataProvider
+
         regime_data = MarketDataProvider().get_market_regime()
         cache.cache_regime(regime_data)
         set_regime(regime_data.get("regime", "SIDEWAYS"))
-        return {"status": "success", "regime": regime_data.get("regime"), "cached_at": datetime.now().isoformat()}
+        return {
+            "status": "success",
+            "regime": regime_data.get("regime"),
+            "cached_at": datetime.now().isoformat(),
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -237,19 +282,18 @@ def refresh_regime_cache():
 def run_paper_trade():
     try:
         from sovereign_cli import cmd_paper_trade
+
         # Create a dummy args object for the command
         class Args:
             pass
+
         args = Args()
-        args.regime = None # Auto-detect
-        
+        args.regime = None  # Auto-detect
+
         from modules.data_utils import run_coroutine_sync
+
         result = run_coroutine_sync(cmd_paper_trade(args))
-        return {
-            "status": "success",
-            "executed_at": datetime.now().isoformat(),
-            "signal": result
-        }
+        return {"status": "success", "executed_at": datetime.now().isoformat(), "signal": result}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -259,6 +303,7 @@ def run_paper_trade():
 def run_stress_test(portfolio: dict):
     try:
         from modules.stress_tester import run_all_scenarios
+
         reports = run_all_scenarios(portfolio)
         return {
             "status": "success",

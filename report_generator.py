@@ -8,7 +8,6 @@ import yfinance as yf
 
 from modules.retry_utils import run_with_exponential_backoff
 
-
 CACHE_DIR = "reports_cache"
 
 
@@ -69,7 +68,7 @@ def _build_report(symbol: str, info: dict[str, Any]) -> str:
         [
             f"# Sovereign Analyst Report: {symbol}",
             "",
-            f"## Company",
+            "## Company",
             f"- Name: {_fmt(name)}",
             f"- Current Price: {_fmt(price)}",
             f"- Market Cap Cr: {_fmt(market_cap_cr)}",
@@ -114,4 +113,3 @@ async def generate_analyst_report(symbol: str) -> str:
     report = _build_report(normalized_symbol, info)
     _write_signed_cache(cache_path, report)
     return report
-

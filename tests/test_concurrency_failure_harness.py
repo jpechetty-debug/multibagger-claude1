@@ -55,4 +55,3 @@ def test_failure_injection_respects_retry_budget():
 
     # Initial call + 2 retries
     assert attempts["count"] == 3
-

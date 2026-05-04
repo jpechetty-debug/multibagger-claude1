@@ -1,6 +1,7 @@
 # config.py
 # Global Configuration State
 import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -49,8 +50,11 @@ MAX_VECTORBT_SYMBOLS = 250
 MIN_HISTORY_BARS = 120
 MIN_FETCH_CORE_FIELDS = 2
 MIN_FETCH_CORE_FIELDS_BY_SOURCE = {
-    "pnsea": 1, "nsepython": 2, "yfinance": 2,
-    "unknown": 2, "fallback_failed": 3,
+    "pnsea": 1,
+    "nsepython": 2,
+    "yfinance": 2,
+    "unknown": 2,
+    "fallback_failed": 3,
 }
 SPARSE_FUNDAMENTAL_SOURCES = ["pnsea"]
 SPARSE_SOURCE_MIN_CORE_FIELDS = 1
@@ -63,8 +67,10 @@ FULL_SCAN_RETRY_MIN_CONCURRENCY = 4
 FULL_SCAN_RETRY_MAX_CONCURRENCY = 10
 FULL_SCAN_RETRY_BACKOFF_SECONDS = 2.0
 FULL_SCAN_RETRY_TRANSIENT_REASONS = [
-    "fetch_failed", "fetch_exception",
-    "no_price_history", "invalid_price",
+    "fetch_failed",
+    "fetch_exception",
+    "no_price_history",
+    "invalid_price",
 ]
 IPO_SHORT_HISTORY_POLICY_ENABLE = True
 IPO_SHORT_HISTORY_MIN_BARS = 90
@@ -81,13 +87,22 @@ AUTO_FLAG_COOLDOWN_DAYS = 14
 AUTO_FLAG_MIN_SUCCESS_RATIO = 0.40
 AUTO_FLAG_MAX_NEW_INACTIVE_PER_RUN = 300
 AUTO_FLAG_REASON_THRESHOLDS = {
-    "no_price_history": 1, "no_fundamentals": 1, "invalid_price": 2,
-    "short_history": 4, "missing_core_fields": 2,
-    "incomplete_fundamentals": 3, "zero_valuation_fields": 1,
-    "fetch_exception": 3, "fetch_failed": 2,
+    "no_price_history": 1,
+    "no_fundamentals": 1,
+    "invalid_price": 2,
+    "short_history": 4,
+    "missing_core_fields": 2,
+    "incomplete_fundamentals": 3,
+    "zero_valuation_fields": 1,
+    "fetch_exception": 3,
+    "fetch_failed": 2,
 }
 AUTO_FLAG_WHITELIST = [
-    "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "SBIN.NS",
+    "RELIANCE.NS",
+    "TCS.NS",
+    "HDFCBANK.NS",
+    "ICICIBANK.NS",
+    "SBIN.NS",
 ]
 
 # ── MiroFish Swarm Intelligence ───────────────────────────────────────────────
@@ -97,23 +112,47 @@ MIROFISH_URL: str = os.getenv("MIROFISH_API_URL", "http://localhost:5001/api")
 # ── Scoring Weights ───────────────────────────────────────────────────────────
 SCORING_WEIGHTS = {
     "balanced": {
-        "w_sales": 0.15, "w_roe": 0.15, "w_cfo": 0.05, "w_val": 0.15,
-        "w_eps": 0.10, "w_fscore": 0.10, "w_de": 0.10, "w_mom": 0.10,
-        "w_sentiment": 0.10, # Alternative Data Factor (v11.0)
+        "w_sales": 0.15,
+        "w_roe": 0.15,
+        "w_cfo": 0.05,
+        "w_val": 0.15,
+        "w_eps": 0.10,
+        "w_fscore": 0.10,
+        "w_de": 0.10,
+        "w_mom": 0.10,
+        "w_sentiment": 0.10,  # Alternative Data Factor (v11.0)
     },
     "momentum": {
-        "w_sales": 0.10, "w_roe": 0.00, "w_cfo": 0.00, "w_val": 0.00,
-        "w_eps": 0.35, "w_fscore": 0.10, "w_de": 0.05, "w_mom": 0.25,
-        "w_sentiment": 0.15, # Aggressive news follow
+        "w_sales": 0.10,
+        "w_roe": 0.00,
+        "w_cfo": 0.00,
+        "w_val": 0.00,
+        "w_eps": 0.35,
+        "w_fscore": 0.10,
+        "w_de": 0.05,
+        "w_mom": 0.25,
+        "w_sentiment": 0.15,  # Aggressive news follow
     },
     "value": {
-        "w_sales": 0.10, "w_roe": 0.15, "w_cfo": 0.10, "w_val": 0.30,
-        "w_eps": 0.10, "w_fscore": 0.10, "w_de": 0.10, "w_mom": 0.00,
-        "w_sentiment": 0.05, # Conservative filtering
+        "w_sales": 0.10,
+        "w_roe": 0.15,
+        "w_cfo": 0.10,
+        "w_val": 0.30,
+        "w_eps": 0.10,
+        "w_fscore": 0.10,
+        "w_de": 0.10,
+        "w_mom": 0.00,
+        "w_sentiment": 0.05,  # Conservative filtering
     },
     "quality": {
-        "w_sales": 0.10, "w_roe": 0.20, "w_cfo": 0.15, "w_val": 0.10,
-        "w_eps": 0.10, "w_fscore": 0.15, "w_de": 0.10, "w_mom": 0.00,
+        "w_sales": 0.10,
+        "w_roe": 0.20,
+        "w_cfo": 0.15,
+        "w_val": 0.10,
+        "w_eps": 0.10,
+        "w_fscore": 0.15,
+        "w_de": 0.10,
+        "w_mom": 0.00,
         "w_sentiment": 0.10,
     },
 }

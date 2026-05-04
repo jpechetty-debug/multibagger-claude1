@@ -46,7 +46,9 @@ def run_attribution():
     print("Initiating Alpha Source Attribution (Phase 49)...")
 
     try:
-        conn = sqlite3.connect("runtime/stocks.db" if os.path.exists("runtime/stocks.db") else "stocks.db")
+        conn = sqlite3.connect(
+            "runtime/stocks.db" if os.path.exists("runtime/stocks.db") else "stocks.db"
+        )
         df = pd.read_sql("SELECT * FROM multibaggers", conn)
         conn.close()
     except Exception as e:
@@ -68,12 +70,16 @@ def run_attribution():
         "Value (Low PE)": {
             "col": "pe_ratio",
             "ascending": True,
-            "filter": (df["pe_ratio"] > 0) if "pe_ratio" in df.columns else pd.Series(False, index=df.index),
+            "filter": (df["pe_ratio"] > 0)
+            if "pe_ratio" in df.columns
+            else pd.Series(False, index=df.index),
         },
         "Momentum (High RS)": {
             "col": "rs_rating",
             "ascending": False,
-            "filter": (df["rs_rating"] > 0) if "rs_rating" in df.columns else pd.Series(False, index=df.index),
+            "filter": (df["rs_rating"] > 0)
+            if "rs_rating" in df.columns
+            else pd.Series(False, index=df.index),
         },
         "Quality (High ROE)": {
             "col": "roe",
@@ -83,7 +89,9 @@ def run_attribution():
         "Growth (High Sales)": {
             "col": "sales_cagr_5y",
             "ascending": False,
-            "filter": (df["sales_cagr_5y"] > 0) if "sales_cagr_5y" in df.columns else pd.Series(False, index=df.index),
+            "filter": (df["sales_cagr_5y"] > 0)
+            if "sales_cagr_5y" in df.columns
+            else pd.Series(False, index=df.index),
         },
         "Low Volatility (Low ATR)": {
             "col": "atr",
@@ -121,7 +129,9 @@ def run_attribution():
             print(f"No stocks found for {name}")
             continue
 
-        tickers_list = [str(t).strip().upper() for t in portfolio["symbol"].tolist() if str(t).strip()]
+        tickers_list = [
+            str(t).strip().upper() for t in portfolio["symbol"].tolist() if str(t).strip()
+        ]
         if not tickers_list:
             print(f"No valid symbols for {name}")
             continue
@@ -179,14 +189,10 @@ def run_attribution():
     with open("alpha_report.md", "w", encoding="utf-8") as f:
         f.write("# Phase 49: Alpha Attribution Report\n\n")
         f.write("## Which Factor is Winning? (1-Year Lookback)\n")
-        f.write(
-            f"Dominant Regime: {winner['Factor']} ({winner['Return_1Y']:.2f}% Return)\n\n"
-        )
+        f.write(f"Dominant Regime: {winner['Factor']} ({winner['Return_1Y']:.2f}% Return)\n\n")
         f.write(results_df.to_markdown(index=False))
         f.write("\n\n### Analysis\n")
-        f.write(
-            f"- {winner['Factor']} is the current leader for trailing 1-year performance.\n"
-        )
+        f.write(f"- {winner['Factor']} is the current leader for trailing 1-year performance.\n")
         f.write("- Track rotations by comparing Value vs Momentum vs Quality each full scan.\n")
 
     print("\nReport saved to alpha_report.md")

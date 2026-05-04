@@ -1,4 +1,3 @@
-
 import yfinance as yf
 
 tickers = ["TATAMOTORS.NS", "RECLTD.NS", "REC.NS", "RELIANCE.NS", "HBLPOWER.NS"]
@@ -17,12 +16,12 @@ for t in tickers:
             # Try info
             try:
                 info = dat.info
-                if info and 'regularMarketPrice' in info:
-                     print(f"✅ {t} Info Works! Price: {info['regularMarketPrice']}")
-                else: 
-                     print(f"❌ {t} No Info either")
+                if info and "regularMarketPrice" in info:
+                    print(f"✅ {t} Info Works! Price: {info['regularMarketPrice']}")
+                else:
+                    print(f"❌ {t} No Info either")
             except Exception as e:
                 print(f"❌ {t} Info Error: {e}")
-                
+
     except Exception as e:
         print(f"❌ {t} Error: {e}")

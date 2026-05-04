@@ -1,5 +1,5 @@
-from datetime import date
 import sys
+from datetime import date
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -17,11 +17,21 @@ def test_openapi_exposes_public_response_models():
     with TestClient(main.app) as client:
         spec = client.get("/openapi.json").json()
 
-    health_schema = spec["paths"]["/api/health"]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
-    news_schema = spec["paths"]["/api/news/{symbol}"]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
-    report_schema = spec["paths"]["/api/reports/{symbol}"]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
-    performance_schema = spec["paths"]["/api/performance"]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
-    regime_schema = spec["paths"]["/api/regime_status"]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
+    health_schema = spec["paths"]["/api/health"]["get"]["responses"]["200"]["content"][
+        "application/json"
+    ]["schema"]
+    news_schema = spec["paths"]["/api/news/{symbol}"]["get"]["responses"]["200"]["content"][
+        "application/json"
+    ]["schema"]
+    report_schema = spec["paths"]["/api/reports/{symbol}"]["get"]["responses"]["200"]["content"][
+        "application/json"
+    ]["schema"]
+    performance_schema = spec["paths"]["/api/performance"]["get"]["responses"]["200"]["content"][
+        "application/json"
+    ]["schema"]
+    regime_schema = spec["paths"]["/api/regime_status"]["get"]["responses"]["200"]["content"][
+        "application/json"
+    ]["schema"]
 
     assert health_schema["$ref"].endswith("/HealthResponse")
     assert news_schema["$ref"].endswith("/NewsSignalResponse")

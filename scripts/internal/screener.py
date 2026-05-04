@@ -1,41 +1,46 @@
-import sys
 import os
+import sys
+
 # Ensure root directory is in path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
+import asyncio
+import json
+from dataclasses import dataclass, field
+from datetime import date, datetime, timedelta
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
 import yfinance as yf  # Kept for Nifty benchmark index only (^NSEI)
 
-import pandas as pd
-import numpy as np
-import time
-import json
-from pathlib import Path
-from dataclasses import dataclass, field
-from typing import Dict
-from ticker_list import TICKERS
-from modules.logger import ScanLogger
-import db.repository as database
-from research.conviction_engine import calculate_conviction_score
+from modules.cagr_engine import calculate_all_cagrs, classify_market_cap, extract_dividend_metrics
+from modules.data_service import DataManager, data_manager
+from modules.estimates import get_estimate_data
 from modules.fundamentals import (
-    calculate_piotroski_f_score, 
-    check_earnings_inflection,
     calculate_current_roe,
+    calculate_median_pat_growth,
+    calculate_piotroski_f_score,
     calculate_recent_sales_growth,
     calculate_roce,
-    calculate_median_pat_growth
+    check_earnings_inflection,
 )
-from modules.cagr_engine import calculate_all_cagrs, classify_market_cap, extract_dividend_metrics
-from modules.estimates import get_estimate_data
-from modules.data_service import DataManager, data_manager
-from backtest.engine import VectorBTEngine
-import asyncio
-from datetime import datetime, date, timedelta
-from modules.sector_mapping import get_refined_sector
-
-from modules.scoring import normalize_metric, calculate_sector_medians, calculate_institutional_score
-from modules.technicals import calculate_rsi, calculate_macd, calculate_bollinger_bands, calculate_atr, calculate_momentum_features
-from modules.models import StockDataPayload
+from modules.logger import ScanLogger
 from modules.ml_ranker import LightGBMRanker
+from modules.models import StockDataPayload
+from modules.scoring import (
+    calculate_institutional_score,
+    calculate_sector_medians,
+)
+from modules.sector_mapping import get_refined_sector
+from modules.technicals import (
+    calculate_atr,
+    calculate_bollinger_bands,
+    calculate_macd,
+    calculate_momentum_features,
+    calculate_rsi,
+)
+from ticker_list import TICKERS
 
 
 @dataclass
@@ -45,17 +50,27 @@ class TickerShim:
     Allows fundamentals.py functions (calculate_piotroski_f_score, etc.) to work
     without modification while benefiting from the fallback chain.
     """
+
     financials: pd.DataFrame = field(default_factory=pd.DataFrame)
     balance_sheet: pd.DataFrame = field(default_factory=pd.DataFrame)
     cashflow: pd.DataFrame = field(default_factory=pd.DataFrame)
     quarterly_financials: pd.DataFrame = field(default_factory=pd.DataFrame)
 
+
 # --- Utils ---
 
 # --- V3.1: Data Quality Gate ---
 _DATA_QUALITY_FIELDS = [
-    'PE_Ratio', 'PEG_Ratio', 'ROE%', 'Avg_ROE_5Y%', 'Debt_Equity',
-    'EPS_Growth%', 'Sales_Growth_5Y%', 'CFO_PAT_Ratio', 'F_Score', 'Market_Cap_Cr'
+    "PE_Ratio",
+    "PEG_Ratio",
+    "ROE%",
+    "Avg_ROE_5Y%",
+    "Debt_Equity",
+    "EPS_Growth%",
+    "Sales_Growth_5Y%",
+    "CFO_PAT_Ratio",
+    "F_Score",
+    "Market_Cap_Cr",
 ]
 _DATA_QUALITY_WEIGHTS = {
     "PE_Ratio": 12,
@@ -139,7 +154,9 @@ def _merge_info(primary_info, fallback_info):
         for key, value in primary_info.items():
             if not _is_missing_info_value(value):
                 merged[key] = value
-    if _is_missing_info_value(merged.get("sector")) and not _is_missing_info_value(merged.get("industry")):
+    if _is_missing_info_value(merged.get("sector")) and not _is_missing_info_value(
+        merged.get("industry")
+    ):
         merged["sector"] = merged.get("industry")
     return merged
 
@@ -181,6 +198,7 @@ def _freshness_score(price_age_days):
         return 45.0
     return 20.0
 
+
 def calculate_data_quality(data, *, zero_valuation_cap=20.0):
     """Weighted data quality score (0-100): completeness + source confidence + freshness."""
     flags = data.get("_dq_flags")
@@ -189,9 +207,9 @@ def calculate_data_quality(data, *, zero_valuation_cap=20.0):
 
     total_weight = float(sum(_DATA_QUALITY_WEIGHTS.values()) or 100.0)
     completeness_points = 0.0
-    for field in _DATA_QUALITY_FIELDS:
-        if bool(flags.get(field, False)):
-            completeness_points += float(_DATA_QUALITY_WEIGHTS.get(field, 0))
+    for f_name in _DATA_QUALITY_FIELDS:
+        if bool(flags.get(f_name, False)):
+            completeness_points += float(_DATA_QUALITY_WEIGHTS.get(f_name, 0))
     completeness_score = (completeness_points / total_weight) * 100.0
 
     source = str(data.get("Data_Source", "unknown")).strip().lower()
@@ -205,7 +223,9 @@ def calculate_data_quality(data, *, zero_valuation_cap=20.0):
     freshness = _freshness_score(price_age_days)
 
     final = (0.70 * completeness_score) + (0.20 * source_score) + (0.10 * freshness)
-    valuation_missing = not _is_present_metric(data.get("Market_Cap_Cr")) and not _is_present_metric(data.get("PE_Ratio"))
+    valuation_missing = not _is_present_metric(
+        data.get("Market_Cap_Cr")
+    ) and not _is_present_metric(data.get("PE_Ratio"))
     if valuation_missing:
         final = min(final, float(zero_valuation_cap))
     data["_dq_breakdown"] = {
@@ -249,7 +269,9 @@ def validate_fetch_payload(
 
     policy = short_history_policy or {}
     short_history_enabled = bool(policy.get("enabled", False))
-    short_history_soft_flag = str(policy.get("soft_flag", "short_history_ipo")).strip() or "short_history_ipo"
+    short_history_soft_flag = (
+        str(policy.get("soft_flag", "short_history_ipo")).strip() or "short_history_ipo"
+    )
     try:
         short_history_min_bars = int(policy.get("min_bars", min_history_bars))
     except Exception:
@@ -260,7 +282,9 @@ def validate_fetch_payload(
         short_history_min_core_fields = int(required_core_fields)
     try:
         max_price_age_days = policy.get("max_price_age_days", None)
-        short_history_max_price_age_days = int(max_price_age_days) if max_price_age_days is not None else None
+        short_history_max_price_age_days = (
+            int(max_price_age_days) if max_price_age_days is not None else None
+        )
     except Exception:
         short_history_max_price_age_days = None
 
@@ -462,80 +486,93 @@ def update_universe_flags(
         "guarded_by_outage": attempted > 0 and success_ratio < min_success_ratio,
     }
 
+
 def validate_score_distribution(results):
     """Validate score distribution and warn about potential inflation."""
     if not results:
         return {}
-    scores = [s.get('Score', 0) for s in results if s.get('Score', 0) > 0]
+    scores = [s.get("Score", 0) for s in results if s.get("Score", 0) > 0]
     total = len(scores)
     if total == 0:
         return {}
-    
+
     dist = {
-        '90-100': len([s for s in scores if s >= 90]),
-        '80-89':  len([s for s in scores if 80 <= s < 90]),
-        '70-79':  len([s for s in scores if 70 <= s < 80]),
-        '60-69':  len([s for s in scores if 60 <= s < 70]),
-        '<60':    len([s for s in scores if s < 60]),
+        "90-100": len([s for s in scores if s >= 90]),
+        "80-89": len([s for s in scores if 80 <= s < 90]),
+        "70-79": len([s for s in scores if 70 <= s < 80]),
+        "60-69": len([s for s in scores if 60 <= s < 70]),
+        "<60": len([s for s in scores if s < 60]),
     }
-    
-    pct_90 = (dist['90-100'] / total) * 100
-    pct_80_plus = ((dist['90-100'] + dist['80-89']) / total) * 100
-    
-    print(f"\n{'='*50}")
-    print(f" SCORE DISTRIBUTION (V3.1 Validation)")
-    print(f"{'='*50}")
+
+    pct_90 = (dist["90-100"] / total) * 100
+    pct_80_plus = ((dist["90-100"] + dist["80-89"]) / total) * 100
+
+    print(f"\n{'=' * 50}")
+    print(" SCORE DISTRIBUTION (V3.1 Validation)")
+    print(f"{'=' * 50}")
     for bracket, count in dist.items():
         pct = (count / total) * 100
-        bar = '' * int(pct / 2)
+        bar = "" * int(pct / 2)
         print(f"  {bracket:>6}: {count:>4} ({pct:5.1f}%) {bar}")
     print(f"  Total: {total}")
-    
+
     if pct_90 > 10:
         print(f"    WARNING: {pct_90:.1f}% scored 90+ (expect <10%)  possible grade inflation")
     if pct_80_plus > 30:
         print(f"    WARNING: {pct_80_plus:.1f}% scored 80+ (expect <30%)  review scoring weights")
-    
+
     if pct_90 <= 10 and pct_80_plus <= 30:
-        print(f"   Distribution looks healthy")
-    print(f"{'='*50}")
-    
+        print("   Distribution looks healthy")
+    print(f"{'=' * 50}")
+
     return dist
+
 
 # Global Cache for Benchmark
 BENCHMARK_6M_RETURN = None
+
 
 def get_benchmark_return():
     """Fetches Nifty 50 6M Return once per run."""
     global BENCHMARK_6M_RETURN
     if BENCHMARK_6M_RETURN is not None:
         return BENCHMARK_6M_RETURN
-    
+
     try:
         nifty = yf.Ticker("^NSEI")
-        hist = nifty.history(period="1y") # Get 1y to be safe
-        
+        hist = nifty.history(period="1y")  # Get 1y to be safe
+
         # --- MARKET CLOSED FIX (Dynamic) ---
         today = datetime.now().date()
         from modules.data_service import data_manager
+
         is_valid_trading_day = today in data_manager.valid_trading_days
         is_holiday_or_weekend = not is_valid_trading_day
-        
-        if not hist.empty and 'Close' in hist.columns:
-            hist = hist.dropna(subset=['Close'])
-            if len(hist) >= 2 and 'Volume' in hist.columns and (pd.isna(hist['Volume'].iloc[-1]) or hist['Volume'].iloc[-1] == 0 or is_holiday_or_weekend):
+
+        if not hist.empty and "Close" in hist.columns:
+            hist = hist.dropna(subset=["Close"])
+            if (
+                len(hist) >= 2
+                and "Volume" in hist.columns
+                and (
+                    pd.isna(hist["Volume"].iloc[-1])
+                    or hist["Volume"].iloc[-1] == 0
+                    or is_holiday_or_weekend
+                )
+            ):
                 hist = hist.iloc[:-1]
 
-        if len(hist) > 126: # Approx 6 months trading days
-            price_6m_ago = hist['Close'].iloc[-126]
-            price_now = hist['Close'].iloc[-1]
+        if len(hist) > 126:  # Approx 6 months trading days
+            price_6m_ago = hist["Close"].iloc[-126]
+            price_now = hist["Close"].iloc[-1]
             BENCHMARK_6M_RETURN = ((price_now - price_6m_ago) / price_6m_ago) * 100
             print(f"Benchmark (Nifty) 6M Return: {BENCHMARK_6M_RETURN:.2f}%")
         else:
-            BENCHMARK_6M_RETURN = 10.0 # Default fallback
+            BENCHMARK_6M_RETURN = 10.0  # Default fallback
     except Exception:
         BENCHMARK_6M_RETURN = 10.0
     return BENCHMARK_6M_RETURN
+
 
 async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
     """
@@ -548,17 +585,25 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         peg_ratio = 100
         debt_equity = 0
         eps_growth = 0
-        
+
         # --- Fetch data via DataManager (PNSEA -> nsepython -> yf fallback) ---
         _dm = dm if dm else data_manager
         raw = await _dm.async_fetch_fundamentals(ticker_symbol)
 
         # Critical Hardening: Check for error payloads or skeletal data immediately.
         if not isinstance(raw, dict):
-            return {"Symbol": ticker_symbol, "_fetch_error": "fetch_failed", "Data_Source": "unknown"}
+            return {
+                "Symbol": ticker_symbol,
+                "_fetch_error": "fetch_failed",
+                "Data_Source": "unknown",
+            }
         if raw.get("_fetch_error") or raw.get("error"):
             reason = raw.get("_fetch_error") or raw.get("error") or "fetch_failed"
-            return {"Symbol": ticker_symbol, "_fetch_error": reason, "Data_Source": str(raw.get("source", "unknown"))}
+            return {
+                "Symbol": ticker_symbol,
+                "_fetch_error": reason,
+                "Data_Source": str(raw.get("source", "unknown")),
+            }
 
         info = raw.get("info", {}) if isinstance(raw.get("info", {}), dict) else {}
         data_source = str(raw.get("source", "unknown"))
@@ -575,11 +620,14 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         if include_quarterly or _needs_info_backfill(info):
             try:
                 import yfinance as _yf
+
                 _t = _yf.Ticker(ticker_symbol)
                 # Ensure _t is valid by checking info access
                 _ = _t.info
                 if include_quarterly:
-                    ticker.quarterly_financials = getattr(_t, "quarterly_financials", pd.DataFrame())
+                    ticker.quarterly_financials = getattr(
+                        _t, "quarterly_financials", pd.DataFrame()
+                    )
                 else:
                     ticker.quarterly_financials = pd.DataFrame()
                 if _needs_info_backfill(info):
@@ -597,6 +645,7 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             hist = await _dm.async_fetch_history(ticker_symbol, period="1y")
         except Exception as e:
             from modules.data_service import logger as ds_logger
+
             ds_logger.warning(f"History fetch failed for {ticker_symbol}: {e}")
             hist = pd.DataFrame()
 
@@ -616,8 +665,8 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         except Exception:
             price_age_days = None
             last_price_date_iso = None
-        
-        current_price = hist['Close'].iloc[-1]
+
+        current_price = hist["Close"].iloc[-1]
         if not _is_finite_number(current_price) or float(current_price) <= 0:
             return {
                 "Symbol": ticker_symbol,
@@ -627,16 +676,16 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
                 "Last_Price_Date": last_price_date_iso,
                 "Price_Age_Days": price_age_days,
             }
-        
+
         # Relative Strength (RS)
         # Compare 6M Stock Return vs Nifty 6M Return
         rs_rating = 0
         try:
             if len(hist) > 126:
-                price_6m_ago = hist['Close'].iloc[-126]
+                price_6m_ago = hist["Close"].iloc[-126]
                 stock_6m_ret = ((current_price - price_6m_ago) / price_6m_ago) * 100
                 nifty_6m_ret = get_benchmark_return()
-                
+
                 # RS Ratio
                 if nifty_6m_ret != 0 and price_6m_ago != 0:
                     rs_rating = round(stock_6m_ret / nifty_6m_ret, 2)
@@ -646,33 +695,35 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
                 rs_rating = 0
         except Exception:
             rs_rating = 0
-        
-        dma_200 = hist['Close'].tail(200).mean() if len(hist) >= 200 else hist['Close'].mean()
-        dma_50 = hist['Close'].tail(50).mean() if len(hist) >= 50 else hist['Close'].mean()
-        
-        rsi_series = calculate_rsi(hist['Close'])
+
+        dma_200 = hist["Close"].tail(200).mean() if len(hist) >= 200 else hist["Close"].mean()
+        dma_50 = hist["Close"].tail(50).mean() if len(hist) >= 50 else hist["Close"].mean()
+
+        rsi_series = calculate_rsi(hist["Close"])
         rsi_current = rsi_series.iloc[-1]
-        
+
         # --- Phase 6: Advanced Technicals ---
         # --- Phase 12: Momentum Ranking Features ---
         mom_features = calculate_momentum_features(hist)
-        
+
         # MACD
-        macd, signal, macd_hist = calculate_macd(hist['Close'])
+        macd, signal, macd_hist = calculate_macd(hist["Close"])
         macd_val = macd.iloc[-1]
         signal_val = signal.iloc[-1]
         macd_bullish = macd_val > signal_val
-        
+
         # Bollinger Bands
-        bb_upper, bb_mid, bb_lower = calculate_bollinger_bands(hist['Close'])
-        bb_up_val = bb_upper.iloc[-1]
-        bb_low_val = bb_lower.iloc[-1]
-        
+        bb_upper, bb_mid, bb_lower = calculate_bollinger_bands(hist["Close"])
+        bb_upper.iloc[-1]
+        bb_lower.iloc[-1]
+
         # --- Phase 9: Risk Management ---
-        atr_series = calculate_atr(hist['High'], hist['Low'], hist['Close'])
+        atr_series = calculate_atr(hist["High"], hist["Low"], hist["Close"])
         atr_current = atr_series.iloc[-1]
-        stop_loss, max_qty = calculate_risk_params(current_price, atr_current, capital=100000, risk_per_trade=0.02) # 2% risk standard
-        
+        stop_loss, max_qty = calculate_risk_params(
+            current_price, atr_current, capital=100000, risk_per_trade=0.02
+        )  # 2% risk standard
+
         # Technical Signal
         if macd_bullish and rsi_current > 50:
             tech_signal = "Bullish"
@@ -680,18 +731,18 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             tech_signal = "Bearish"
         else:
             tech_signal = "Neutral"
-        
+
         # --- Fundamentals ---
-        roe = info.get('returnOnEquity', 0)
+        roe = info.get("returnOnEquity", 0)
         roe = 0 if roe is None else roe
-        
-        sales_growth = info.get('revenueGrowth', 0)
+
+        sales_growth = info.get("revenueGrowth", 0)
         sales_growth = 0 if sales_growth is None else sales_growth
-        
-        profit_margin = info.get('profitMargins', 0)
+
+        profit_margin = info.get("profitMargins", 0)
         profit_margin = 0 if profit_margin is None else profit_margin
-        
-        eps_growth = info.get('earningsGrowth', 0)
+
+        eps_growth = info.get("earningsGrowth", 0)
         eps_growth = 0 if eps_growth is None else eps_growth
 
         # --- Phase 68: Robust Fundamental Fallbacks ---
@@ -699,94 +750,101 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         if roe == 0:
             roe_derived = calculate_current_roe(ticker)
             if roe_derived > 0:
-                roe = roe_derived / 100.0 # Convert back to decimal to match yf logic
+                roe = roe_derived / 100.0  # Convert back to decimal to match yf logic
 
         if sales_growth == 0:
             sales_growth_derived = calculate_recent_sales_growth(ticker)
             if sales_growth_derived > 0:
                 sales_growth = sales_growth_derived / 100.0
 
-        debt_equity = info.get('debtToEquity', 0) or 0
-        if debt_equity > 10: debt_equity = debt_equity / 100
-        
-        peg_ratio = info.get('pegRatio')
-        if peg_ratio is not None:
-             peg_ratio = round(float(peg_ratio), 2)
+        debt_equity = info.get("debtToEquity", 0) or 0
+        if debt_equity > 10:
+            debt_equity = debt_equity / 100
 
-        promoter_holding = (info.get('heldPercentInsiders', 0) or 0) * 100
-        inst_holding = (info.get('heldPercentInstitutions', 0) or 0) * 100
-        
+        peg_ratio = info.get("pegRatio")
+        if peg_ratio is not None:
+            peg_ratio = round(float(peg_ratio), 2)
+
+        promoter_holding = (info.get("heldPercentInsiders", 0) or 0) * 100
+        inst_holding = (info.get("heldPercentInstitutions", 0) or 0) * 100
+
         # Pledge Percentage (NSE specific often found in 'pledgedPercent' or similar)
-        pledge_pct = info.get('pledgedPercent', 0) or 0
-        if pledge_pct > 1: pledge_pct = pledge_pct # already in pct 
-        else: pledge_pct = pledge_pct * 100 # convert from decimal
-        
+        pledge_pct = info.get("pledgedPercent", 0) or 0
+        if pledge_pct > 1:
+            pledge_pct = pledge_pct  # already in pct
+        else:
+            pledge_pct = pledge_pct * 100  # convert from decimal
+
         total_smart_money = promoter_holding + inst_holding
 
         # Cashflow
-        free_cashflow = info.get('freeCashflow', 0)
-        operating_cashflow = info.get('operatingCashflow', 0)
-        
+        free_cashflow = info.get("freeCashflow", 0)
+        info.get("operatingCashflow", 0)
+
         # 2. Sales Growth & ROE (5-Year) & Earnings Acceleration
         financials = ticker.financials
         revenue_cagr_5y = 0
         avg_roe_5y = 0
         earnings_accel = False
-        
+
         if not financials.empty:
             try:
-                revs = financials.loc['Total Revenue'].iloc[::-1]
-                if len(revs) >= 4 and revs.iloc[0] != 0:
-                    try:
-                        cagr_rev = (revs.iloc[-1] / revs.iloc[0]) ** (1/(len(revs)-1)) - 1
+                revs = financials.loc["Total Revenue"].dropna().iloc[::-1] # Oldest to newest
+                if len(revs) >= 2:
+                    start_rev = revs.iloc[0]
+                    end_rev = revs.iloc[-1]
+                    years = len(revs) - 1
+                    if start_rev > 0 and end_rev > 0:
+                        cagr_rev = (end_rev / start_rev) ** (1 / years) - 1
                         revenue_cagr_5y = round(cagr_rev * 100, 2)
-                    except ZeroDivisionError:
+                    else:
                         revenue_cagr_5y = round(sales_growth * 100, 2)
                 else:
                     revenue_cagr_5y = round(sales_growth * 100, 2)
-                
+
                 # Avg ROE
-                net_income_series = financials.loc['Net Income'].iloc[::-1]
+                net_income_series = financials.loc["Net Income"].iloc[::-1]
                 bs = ticker.balance_sheet
-                if not bs.empty and 'Stockholders Equity' in bs.index:
-                    equity_series = bs.loc['Stockholders Equity'].iloc[::-1]
+                if not bs.empty and "Stockholders Equity" in bs.index:
+                    equity_series = bs.loc["Stockholders Equity"].iloc[::-1]
                     roes = []
                     common_dates = net_income_series.index.intersection(equity_series.index)
-                    for date in common_dates:
-                        ni = net_income_series[date]
-                        eq = equity_series[date]
-                        if eq > 0: roes.append(ni / eq)
-                    if roes: avg_roe_5y = round(float(np.median(roes)) * 100, 2)
+                    for dt in common_dates:
+                        ni = net_income_series[dt]
+                        eq = equity_series[dt]
+                        if not pd.isna(ni) and not pd.isna(eq) and eq > 0:
+                            roes.append(ni / eq)
+                    if roes:
+                        avg_roe_5y = round(float(np.median(roes)) * 100, 2)
                 else:
                     avg_roe_5y = round(roe * 100, 2)
             except Exception:
                 revenue_cagr_5y = round(sales_growth * 100, 2)
                 avg_roe_5y = round(roe * 100, 2)
-        
+
         # --- Multibagger Framework: ROCE & Median PAT Growth ---
         roce = calculate_roce(ticker)
         median_pat_growth_5y = calculate_median_pat_growth(ticker, years=5)
-        
+
         # --- Sprint 1: Multi-Period CAGRs ---
         cagr_metrics = calculate_all_cagrs(ticker)
-        
+
         # --- Sprint 1: Dividend Metrics ---
         div_metrics = extract_dividend_metrics(info)
-        
+
         # --- Sprint 1: Market Cap Classification ---
-        market_cap_crore = (info.get('marketCap', 0) or 0) / 10000000
+        market_cap_crore = (info.get("marketCap", 0) or 0) / 10000000
         cap_category = classify_market_cap(market_cap_crore)
-        
+
         # Earnings Acceleration is now calculated via check_earnings_inflection below
 
         # 3. CFO / PAT Ratio
         try:
-            cfo = info.get('operatingCashflow')
-            pat = info.get('netIncomeToCommon') or (info.get('trailingEps',0) * info.get('sharesOutstanding',0))
-            if cfo and pat and pat > 0:
-                cfo_pat_ratio = round(cfo / pat, 2)
-            else:
-                cfo_pat_ratio = 0
+            cfo = info.get("operatingCashflow")
+            pat = info.get("netIncomeToCommon") or (
+                info.get("trailingEps", 0) * info.get("sharesOutstanding", 0)
+            )
+            cfo_pat_ratio = round(cfo / pat, 2) if cfo and pat and pat > 0 else 0
         except Exception:
             cfo_pat_ratio = 0
 
@@ -796,56 +854,64 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             f_score = calculate_piotroski_f_score(ticker)
         except Exception:
             f_score = 0
-        
+
         # Fallback: If 9pt F-Score returns 0 (empty financials), use inline estimate
         if f_score == 0:
             f_score_method = "5pt_inline"
-            f_roa = 1 if info.get('returnOnAssets', 0) and info.get('returnOnAssets', 0) > 0 else 0
-            f_cfo = 1 if info.get('operatingCashflow', 0) and info.get('operatingCashflow', 0) > 0 else 0
-            net_income_f = info.get('netIncomeToCommon', 0)
-            op_cash_f = info.get('operatingCashflow', 0)
-            f_quality = 1 if (op_cash_f is not None and net_income_f is not None and op_cash_f > net_income_f) else 0
+            f_roa = 1 if info.get("returnOnAssets", 0) and info.get("returnOnAssets", 0) > 0 else 0
+            f_cfo = (
+                1
+                if info.get("operatingCashflow", 0) and info.get("operatingCashflow", 0) > 0
+                else 0
+            )
+            net_income_f = info.get("netIncomeToCommon", 0)
+            op_cash_f = info.get("operatingCashflow", 0)
+            f_quality = (
+                1
+                if (op_cash_f is not None and net_income_f is not None and op_cash_f > net_income_f)
+                else 0
+            )
             f_leverage = 1 if debt_equity < 0.4 else 0
-            f_margin = 1 if info.get('grossMargins', 0) and info.get('grossMargins', 0) > 0 else 0
+            f_margin = 1 if info.get("grossMargins", 0) and info.get("grossMargins", 0) > 0 else 0
             f_score = f_roa + f_cfo + f_quality + f_leverage + f_margin
 
         # --- Earnings Inflection (Rich 0-5 Score) ---
         try:
             inflection = check_earnings_inflection(ticker)
-            earnings_inflection_score = inflection.get('score', 0)
-            earnings_accel = inflection.get('status', False)
+            earnings_inflection_score = inflection.get("score", 0)
+            earnings_accel = inflection.get("status", False)
         except Exception:
             earnings_inflection_score = 0
             earnings_accel = False
 
         # Sector Refinement
         sector = get_refined_sector(
-            ticker_symbol, 
-            info.get('longName', ''), 
-            info.get('sector', 'Unknown'), 
-            info.get('industry', 'Unknown')
+            ticker_symbol,
+            info.get("longName", ""),
+            info.get("sector", "Unknown"),
+            info.get("industry", "Unknown"),
         )
-        industry = info.get('industry', 'Unknown')
+        industry = info.get("industry", "Unknown")
 
         # --- 8-Point Metrics ---
-        trailing_pe = info.get('trailingPE')
+        trailing_pe = info.get("trailingPE")
         if trailing_pe is not None:
             trailing_pe = round(float(trailing_pe), 2)
-        
+
         # 52W Range Extraction
-        high_52w = info.get('fiftyTwoWeekHigh', current_price) or current_price
-        low_52w = info.get('fiftyTwoWeekLow', current_price) or current_price
-        
+        high_52w = info.get("fiftyTwoWeekHigh", current_price) or current_price
+        low_52w = info.get("fiftyTwoWeekLow", current_price) or current_price
+
         down_from_high_pct = 0
         if high_52w > 0:
             down_from_high_pct = round(((high_52w - current_price) / high_52w) * 100, 2)
-            
+
         # --- Phase 2: Valuation Rigidity Fixes & Cyclical EPS Normalization ---
-        book_value = info.get('bookValue', 0)
-        eps_ttm = info.get('trailingEps', 0)
+        book_value = info.get("bookValue", 0)
+        eps_ttm = info.get("trailingEps", 0)
         graham_num = 0
         value_gap = 0
-        
+
         if book_value and book_value > 0:
             try:
                 # 1. Cyclical PE Normalization & Growth Capping
@@ -857,7 +923,7 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
                     safe_eps = min(eps_ttm, normalized_eps * 1.5) if eps_ttm > 0 else normalized_eps
                 else:
                     safe_eps = eps_ttm
-                
+
                 # If STILL negative after normalization, trigger Asset Floor fallback
                 if safe_eps <= 0:
                     # Asset/Book Value fallback for negative EPS stocks (preventing zero-collapse)
@@ -865,11 +931,11 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
                     graham_num = round(book_value * 0.8, 2)
                 else:
                     # Dynamic Graham multiplier based on growth trajectory, capped at 25
-                    fwd_pe = info.get('forwardPE', 15) or 15
-                    base_multiplier = min(25.0, max(7.0, fwd_pe * 1.5)) 
-                    
+                    fwd_pe = info.get("forwardPE", 15) or 15
+                    base_multiplier = min(25.0, max(7.0, fwd_pe * 1.5))
+
                     # Phase 5: Debt-Aware Fair Value Integration (Leverage Penalty)
-                    raw_de = info.get('debtToEquity', 0)
+                    raw_de = info.get("debtToEquity", 0)
                     debt_eq = raw_de / 100.0 if raw_de is not None else 0
                     if debt_eq > 1.0:
                         # De-rate the fair value expansion multiplier heavily for high debt
@@ -878,61 +944,68 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
                         base_multiplier *= leverage_penalty
 
                     graham_num = round((base_multiplier * safe_eps * book_value) ** 0.5, 2)
-                    
+
                 # Value Gap %: (Intrinsic - Price) / Price
                 if current_price > 0:
                     value_gap = round(((graham_num - current_price) / current_price) * 100, 2)
             except Exception:
                 graham_num = 0
-                
+
         # --- Phase 7: Institutional Analyst Estimates (V7.0) ---
         est_analysis = get_estimate_data(
             ticker_symbol,
             info=info,
         )
         m_est = est_analysis.get("momentum")
-        
+
         # Default from yfinance (kept as base if no momentum data)
-        analyst_rating = info.get('recommendationKey', 'none').replace('_', ' ').title()
-        target_mean = info.get('targetMeanPrice', 0)
-        analyst_count = info.get('numberOfAnalystOpinions', 0)
-        
+        analyst_rating = info.get("recommendationKey", "none").replace("_", " ").title()
+        target_mean = info.get("targetMeanPrice", 0)
+        analyst_count = info.get("numberOfAnalystOpinions", 0)
+
         # High-Fidelity Override Logic (from manual_seed or Alpha Vantage)
         if est_analysis.get("source") == "manual_seed":
             seed = est_analysis.get("estimates", {})
             analyst_rating = seed.get("consensus", analyst_rating)
-            target_mean = seed.get("target_high", target_mean) # We use High target for elite conviction
+            target_mean = seed.get(
+                "target_high", target_mean
+            )  # We use High target for elite conviction
             analyst_count = seed.get("analyst_count", analyst_count)
-        
+
         analyst_upside = 0
         if target_mean and target_mean > 0 and current_price > 0:
             analyst_upside = round(((target_mean - current_price) / current_price) * 100, 2)
-            
+
         # Extract Momentum Signals for scoring
         momentum_signal = m_est.get("momentum_signal", "STABLE") if m_est else "STABLE"
         estimate_score_adj = m_est.get("score_adjustment", 0) if m_est else 0
-            
+
         # Phase 22: Volume Data
-        avg_vol_10d = info.get('averageVolume10days', info.get('averageVolume', 0))
+        avg_vol_10d = info.get("averageVolume10days", info.get("averageVolume", 0))
 
         # Data-quality availability flags (presence-based, not score/value-based).
         dq_flags = {
             "PE_Ratio": trailing_pe is not None and trailing_pe > 0,
             "PEG_Ratio": peg_ratio is not None and np.isfinite(peg_ratio) and peg_ratio != 0,
-            "ROE%": _is_finite_number(info.get('returnOnEquity')) or _is_present_metric(round(roe * 100, 2)),
+            "ROE%": _is_finite_number(info.get("returnOnEquity"))
+            or _is_present_metric(round(roe * 100, 2)),
             "Avg_ROE_5Y%": _is_present_metric(avg_roe_5y),
-            "Debt_Equity": _is_finite_number(info.get('debtToEquity')),
-            "EPS_Growth%": _is_finite_number(info.get('earningsGrowth')),
-            "Sales_Growth_5Y%": _is_present_metric(revenue_cagr_5y) or _is_finite_number(info.get('revenueGrowth')),
+            "Debt_Equity": _is_finite_number(info.get("debtToEquity")),
+            "EPS_Growth%": _is_finite_number(info.get("earningsGrowth")),
+            "Sales_Growth_5Y%": _is_present_metric(revenue_cagr_5y)
+            or _is_finite_number(info.get("revenueGrowth")),
             "CFO_PAT_Ratio": _is_present_metric(cfo_pat_ratio),
-            "F_Score": (f_score_method == "9pt_piotroski") or (
-                f_score > 0 and (
-                    info.get('returnOnAssets') is not None or info.get('operatingCashflow') is not None
+            "F_Score": (f_score_method == "9pt_piotroski")
+            or (
+                f_score > 0
+                and (
+                    info.get("returnOnAssets") is not None
+                    or info.get("operatingCashflow") is not None
                 )
             ),
             "Market_Cap_Cr": _is_present_metric(market_cap_crore),
         }
-                
+
         final_data = {
             "Symbol": ticker_symbol,
             "Price": current_price,
@@ -940,7 +1013,7 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             "History_Bars_1Y": history_bars,
             "Last_Price_Date": last_price_date_iso,
             "Price_Age_Days": price_age_days,
-            "Avg_Volume_10D": avg_vol_10d, # Added for Phase 22
+            "Avg_Volume_10D": avg_vol_10d,  # Added for Phase 22
             "Sector": sector,
             "Industry": industry,
             "Market_Cap_Cr": round(market_cap_crore, 2),
@@ -1003,7 +1076,7 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             "Cap_Category": cap_category,
             "_dq_flags": dq_flags,
         }
-        
+
         # --- V7.1: FUNDAMENTALS OVERRIDE LAYER ---
         # If the analyst seed provides hard fundamentals, override the dict
         f_override = m_est.get("fundamentals_override") if m_est else None
@@ -1011,13 +1084,14 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             for k, v in f_override.items():
                 if v is not None:
                     final_data[k] = v
-        
+
         # --- Pydantic Validation ---
         try:
             payload = StockDataPayload(**final_data)
             return payload.model_dump(by_alias=True)
         except Exception as e:
             import logging
+
             logging.error(f"Pydantic Validation Error for {ticker_symbol}: {e}")
             return final_data
 
@@ -1029,15 +1103,21 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             "Data_Source": "unknown",
         }
 
+
 def get_stock_data_sync(ticker_symbol, dm=None, include_quarterly=True):
     """Synchronous wrapper for get_stock_data for Celery workers and legacy scripts."""
     from modules.data_utils import run_coroutine_sync
-    return run_coroutine_sync(get_stock_data(ticker_symbol, dm=dm, include_quarterly=include_quarterly))
+
+    return run_coroutine_sync(
+        get_stock_data(ticker_symbol, dm=dm, include_quarterly=include_quarterly)
+    )
+
 
 # ============== V6.0: SECTOR-RELATIVE SCORING ==============
 # calculate_sector_medians moved to modules/scoring.py
 
 # calculate_institutional_score moved to modules/scoring.py
+
 
 def analyze_sector_rotation(stock_list):
     """
@@ -1046,39 +1126,41 @@ def analyze_sector_rotation(stock_list):
     """
     sector_returns = {}
     sector_counts = {}
-    
+
     print("\nCalculating Sector Rotation...")
     for stock in stock_list:
         sec = stock.get("Sector", "Unknown")
         rs = stock.get("RS_Rating", 0)
-        
+
         if sec not in sector_returns:
             sector_returns[sec] = 0.0
             sector_counts[sec] = 0
-        
+
         sector_returns[sec] += rs
         sector_counts[sec] += 1
-        
+
     # Average
     avg_sector_rs = {}
     for sec, total_rs in sector_returns.items():
         if sector_counts[sec] > 0:
             avg_sector_rs[sec] = total_rs / sector_counts[sec]
-            
+
     # Sort
     sorted_sectors = sorted(avg_sector_rs.items(), key=lambda x: x[1], reverse=True)
-    
+
     print("Top 3 Leading Sectors (by RS):")
     top_3 = []
     for i, (sec, rs) in enumerate(sorted_sectors[:3]):
-        print(f"{i+1}. {sec}: Avg RS {rs:.2f}")
+        print(f"{i + 1}. {sec}: Avg RS {rs:.2f}")
         top_3.append(sec)
-        
+
     return top_3
+
 
 # NOTE: calculate_macd, calculate_bollinger_bands, calculate_atr
 # are imported from modules/technicals.py (see imports at top of file).
 # Do NOT redefine them here.
+
 
 def calculate_risk_params(price, atr, capital=100000, risk_per_trade=0.01):
     """
@@ -1087,14 +1169,15 @@ def calculate_risk_params(price, atr, capital=100000, risk_per_trade=0.01):
     """
     stop_loss = price - (2 * atr)
     risk_per_share = price - stop_loss
-    
+
     if risk_per_share <= 0:
         return stop_loss, 0
-        
+
     risk_amount = capital * risk_per_trade
     qty = int(risk_amount / risk_per_share)
-    
+
     return round(stop_loss, 2), qty
+
 
 def calculate_trade_setup(stock):
     """
@@ -1103,21 +1186,22 @@ def calculate_trade_setup(stock):
     """
     if not stock or "Price" not in stock:
         return stock
-        
+
     cmp = stock["Price"]
     if cmp and cmp > 0:
         stock["Buy_Below"] = round(cmp * 1.02, 1)
-        
+
         # Use ATR-based stop loss if available, otherwise default 10%
         atr_sl = stock.get("Stop_Loss_ATR")
         if atr_sl and atr_sl > 0:
             stock["Stop_Loss"] = round(atr_sl, 1)
         else:
             stock["Stop_Loss"] = round(cmp * 0.90, 1)
-            
+
         stock["Target_1"] = round(cmp * 1.25, 1)
-        
+
     return stock
+
 
 def analyze_market_regime(symbol="^NSEI"):
     """
@@ -1125,15 +1209,15 @@ def analyze_market_regime(symbol="^NSEI"):
     """
     try:
         ticker = yf.Ticker(symbol)
-        hist = ticker.history(period="2y") # Need 200 DMA
-        
+        hist = ticker.history(period="2y")  # Need 200 DMA
+
         if len(hist) < 200:
             return "Unknown"
-            
-        sma_50 = hist['Close'].tail(50).mean()
-        sma_200 = hist['Close'].tail(200).mean()
-        current_price = hist['Close'].iloc[-1]
-        
+
+        sma_50 = hist["Close"].tail(50).mean()
+        sma_200 = hist["Close"].tail(200).mean()
+        current_price = hist["Close"].iloc[-1]
+
         if current_price > sma_50 and sma_50 > sma_200:
             return "Bull Market"
         elif current_price < sma_50 and sma_50 < sma_200:
@@ -1147,26 +1231,39 @@ def analyze_market_regime(symbol="^NSEI"):
     except Exception:
         return "Unknown"
 
+
 def main(argv=None):
     import argparse
+
     parser = argparse.ArgumentParser(description="Institutional Screener v3.0")
-    parser.add_argument("--mode", type=str, default="balanced", choices=["balanced", "momentum", "value", "quality", "auto"], help="Scoring Strategy Mode")
-    parser.add_argument("--symbols", type=str, default=None, help="Comma-separated list of symbols to scan (e.g. TCS.NS,RELIANCE.NS)")
+    parser.add_argument(
+        "--mode",
+        type=str,
+        default="balanced",
+        choices=["balanced", "momentum", "value", "quality", "auto"],
+        help="Scoring Strategy Mode",
+    )
+    parser.add_argument(
+        "--symbols",
+        type=str,
+        default=None,
+        help="Comma-separated list of symbols to scan (e.g. TCS.NS,RELIANCE.NS)",
+    )
     parser.add_argument("--smoke", action="store_true", help="Run a quick smoke test on 10 symbols")
-    parser.add_argument("--universe", type=str, default="STANDARD", help="Custom universe name (e.g. SECTORS)")
+    parser.add_argument(
+        "--universe", type=str, default="STANDARD", help="Custom universe name (e.g. SECTORS)"
+    )
     args = parser.parse_args(argv)
 
     import config
-    from ticker_list import TICKERS, MULTIBAGGER_HUNT, SECTORS
+    from ticker_list import MULTIBAGGER_HUNT, SECTORS
 
-    targeted_symbols = {s.strip().upper() for s in args.symbols.split(",")} if args.symbols else set()
-    is_full_scan = len(targeted_symbols) == 0
-    is_standard_full_scan = (
-        is_full_scan
-        and not args.smoke
-        and args.universe.upper() == "STANDARD"
+    targeted_symbols = (
+        {s.strip().upper() for s in args.symbols.split(",")} if args.symbols else set()
     )
-    
+    is_full_scan = len(targeted_symbols) == 0
+    is_standard_full_scan = is_full_scan and not args.smoke and args.universe.upper() == "STANDARD"
+
     # Process universe and symbols override
     scan_tickers = TICKERS
     active_filters = None
@@ -1181,7 +1278,7 @@ def main(argv=None):
         print(f" Targeted Scan: {scan_tickers}")
     elif args.smoke:
         scan_tickers = scan_tickers[:10]
-        print(f" Smoke Test: Scanning first 10 symbols")
+        print(" Smoke Test: Scanning first 10 symbols")
 
     # Auto-prune/flag integration: skip currently inactive symbols for full scans.
     auto_flag_enable = bool(getattr(config, "AUTO_FLAG_INVALID_SYMBOLS", True))
@@ -1199,52 +1296,54 @@ def main(argv=None):
                 f"Universe flags: skipped {before - len(scan_tickers)} inactive symbols "
                 f"(active blocked total: {len(blocked_effective)})."
             )
-    
+
     # Auto-Regime Detection
     final_mode = args.mode
     if args.mode == "auto":
         print(" Auto-Regime: Analyzing Market Structure...")
         from modules.data_service import MarketDataProvider
+
         provider = MarketDataProvider()
         regime_data = provider.get_market_regime()
         final_mode = regime_data["strategy_suggestion"].lower()
         print(f" Auto-Selected Mode: {final_mode.upper()} (Confidence: High)")
-        
+
     print(f"Scanning {len(scan_tickers)} stocks for Institutional Analysis (Phase 10)...")
     print(f"Strategy Mode: {final_mode.upper()}")
-    
+
     # --- Model Version Check (Phase 2.2) ---
-    from modules.logger import ScanLogger
-    
+
     logger = ScanLogger()
     current_hash = logger._generate_version_hash()
-    
+
     if current_hash != config.MODEL_VERSION_HASH:
-        print("\n" + "!"*60)
-        print(f"  MODEL INTEGRITY WARNING: Version Mismatch!")
+        print("\n" + "!" * 60)
+        print("  MODEL INTEGRITY WARNING: Version Mismatch!")
         print(f"Expected: {config.MODEL_VERSION} ({config.MODEL_VERSION_HASH})")
         print(f"Actual:   {current_hash}")
         print("Code logic has changed since version freeze.")
-        print("!"*60 + "\n")
+        print("!" * 60 + "\n")
         # In Strict Mode, we would exit here. For now, just warn.
     else:
         print(f" Model Integrity Verified: {config.MODEL_VERSION} ({current_hash})")
-        
+
     results = []
-    
+
     # Phase 10: Market Regime
     market_regime = analyze_market_regime()
     print(f"Market Regime Detected: {market_regime}")
-    
+
     # 1. Fetch All Data
-    min_mcap = getattr(config, 'MIN_MARKET_CAP_CR', 500)
-    min_dq = float(getattr(config, 'MIN_DATA_QUALITY', 50))
+    min_mcap = getattr(config, "MIN_MARKET_CAP_CR", 500)
+    min_dq = float(getattr(config, "MIN_DATA_QUALITY", 50))
     min_history_bars = int(getattr(config, "MIN_HISTORY_BARS", 120))
     min_fetch_core_fields = int(getattr(config, "MIN_FETCH_CORE_FIELDS", 2))
     min_fetch_core_fields_by_source = getattr(config, "MIN_FETCH_CORE_FIELDS_BY_SOURCE", {})
     sparse_fundamental_sources = getattr(config, "SPARSE_FUNDAMENTAL_SOURCES", ["pnsea"])
     sparse_source_min_core_fields = int(getattr(config, "SPARSE_SOURCE_MIN_CORE_FIELDS", 1))
-    hard_block_zero_valuation_fields = bool(getattr(config, "HARD_BLOCK_ZERO_VALUATION_FIELDS", True))
+    hard_block_zero_valuation_fields = bool(
+        getattr(config, "HARD_BLOCK_ZERO_VALUATION_FIELDS", True)
+    )
     dq_zero_valuation_cap = float(getattr(config, "DQ_ZERO_VALUATION_CAP", 20.0))
     full_scan_base_concurrency = int(getattr(config, "FULL_SCAN_BASE_CONCURRENCY", 12))
     targeted_scan_concurrency = int(getattr(config, "TARGET_SCAN_CONCURRENCY", 20))
@@ -1261,12 +1360,22 @@ def main(argv=None):
         )
     }
     if not full_scan_retry_transient_reasons:
-        full_scan_retry_transient_reasons = {"fetch_failed", "fetch_exception", "no_price_history", "invalid_price"}
+        full_scan_retry_transient_reasons = {
+            "fetch_failed",
+            "fetch_exception",
+            "no_price_history",
+            "invalid_price",
+        }
     ipo_short_history_enabled = bool(getattr(config, "IPO_SHORT_HISTORY_POLICY_ENABLE", True))
     ipo_short_history_min_bars = int(getattr(config, "IPO_SHORT_HISTORY_MIN_BARS", 90))
     ipo_short_history_min_core_fields = int(getattr(config, "IPO_SHORT_HISTORY_MIN_CORE_FIELDS", 4))
-    ipo_short_history_max_price_age_days = getattr(config, "IPO_SHORT_HISTORY_MAX_PRICE_AGE_DAYS", 7)
-    ipo_short_history_soft_flag = str(getattr(config, "IPO_SHORT_HISTORY_SOFT_FLAG", "short_history_ipo")).strip() or "short_history_ipo"
+    ipo_short_history_max_price_age_days = getattr(
+        config, "IPO_SHORT_HISTORY_MAX_PRICE_AGE_DAYS", 7
+    )
+    ipo_short_history_soft_flag = (
+        str(getattr(config, "IPO_SHORT_HISTORY_SOFT_FLAG", "short_history_ipo")).strip()
+        or "short_history_ipo"
+    )
     ipo_short_history_dq_penalty = float(getattr(config, "IPO_SHORT_HISTORY_DQ_PENALTY", 8.0))
     ipo_short_history_policy = {
         "enabled": ipo_short_history_enabled,
@@ -1275,18 +1384,17 @@ def main(argv=None):
         "max_price_age_days": ipo_short_history_max_price_age_days,
         "soft_flag": ipo_short_history_soft_flag,
     }
-    full_scan_min_pass_ratio = float(getattr(config, 'FULL_SCAN_MIN_PASS_RATIO', 0.20))
-    full_scan_dq_floor = float(getattr(config, 'FULL_SCAN_DQ_FLOOR', 30))
+    full_scan_min_pass_ratio = float(getattr(config, "FULL_SCAN_MIN_PASS_RATIO", 0.20))
+    full_scan_dq_floor = float(getattr(config, "FULL_SCAN_DQ_FLOOR", 30))
     auto_flag_failure_threshold = int(getattr(config, "AUTO_FLAG_FAILURE_THRESHOLD", 1))
     auto_flag_cooldown_days = int(getattr(config, "AUTO_FLAG_COOLDOWN_DAYS", 14))
     auto_flag_min_success_ratio = float(getattr(config, "AUTO_FLAG_MIN_SUCCESS_RATIO", 0.40))
     auto_flag_max_new_inactive = int(getattr(config, "AUTO_FLAG_MAX_NEW_INACTIVE_PER_RUN", 300))
     auto_flag_reason_thresholds = getattr(config, "AUTO_FLAG_REASON_THRESHOLDS", {})
-    allow_alpha_vantage = False
     skipped_mcap = 0
     scan_failed_reason_by_symbol = {}
     scan_success_symbols = set()
-    
+
     # Run the async fetch loop
     async def fetch_all_data(dm):
         print(f"Fetching data for {len(scan_tickers)} stocks concurrently...")
@@ -1298,10 +1406,15 @@ def main(argv=None):
 
         def _compute_retry_concurrency(base_concurrency, fail_count, total_count):
             if total_count <= 0:
-                return max(full_scan_retry_min_concurrency, min(full_scan_retry_max_concurrency, base_concurrency))
+                return max(
+                    full_scan_retry_min_concurrency,
+                    min(full_scan_retry_max_concurrency, base_concurrency),
+                )
             fail_ratio = float(fail_count) / float(total_count)
             scaled = int(round(base_concurrency * (1.0 - min(0.75, fail_ratio) * 0.6)))
-            return max(full_scan_retry_min_concurrency, min(full_scan_retry_max_concurrency, scaled))
+            return max(
+                full_scan_retry_min_concurrency, min(full_scan_retry_max_concurrency, scaled)
+            )
 
         async def _fetch_symbol(dm_instance, symbol, include_quarterly):
             try:
@@ -1339,7 +1452,9 @@ def main(argv=None):
             if retry_attempted:
                 retry_symbols = [scan_tickers[i] for i in retry_indexes]
                 base_concurrency = max(4, int(full_scan_base_concurrency))
-                retry_concurrency = _compute_retry_concurrency(base_concurrency, retry_attempted, len(scan_tickers))
+                retry_concurrency = _compute_retry_concurrency(
+                    base_concurrency, retry_attempted, len(scan_tickers)
+                )
                 print(
                     f"Retry pass: attempting {retry_attempted} transient failures "
                     f"with concurrency={retry_concurrency}."
@@ -1347,13 +1462,15 @@ def main(argv=None):
                 if full_scan_retry_backoff_seconds > 0:
                     await asyncio.sleep(full_scan_retry_backoff_seconds)
                 async with DataManager(max_concurrency=retry_concurrency) as dm_retry:
-                    retry_results = await _run_batch(retry_symbols, dm_retry, include_quarterly=False)
-                for i, payload_retry in zip(retry_indexes, retry_results):
+                    retry_results = await _run_batch(
+                        retry_symbols, dm_retry, include_quarterly=False
+                    )
+                for i, payload_retry in zip(retry_indexes, retry_results, strict=False):
                     if _extract_hard_error(payload_retry) is None:
                         retry_recovered += 1
                         raw_results[i] = payload_retry
                 print(f"Retry pass complete: recovered={retry_recovered}/{retry_attempted}.")
-        
+
         candidate_data = []
         initial_pass = []
         fetch_failures_raw = 0
@@ -1365,22 +1482,26 @@ def main(argv=None):
         rejected_preview = []
         soft_preview = []
         nonlocal skipped_mcap
-        
-        for symbol, data in zip(scan_tickers, raw_results):
+
+        for symbol, data in zip(scan_tickers, raw_results, strict=False):
             sym_u = str(symbol).upper()
             if isinstance(data, Exception) or data is None or not isinstance(data, dict):
                 fetch_failures_raw += 1
                 scan_failed_reason_by_symbol[sym_u] = "fetch_failed"
-                failure_reason_counts["fetch_failed"] = int(failure_reason_counts.get("fetch_failed", 0)) + 1
+                failure_reason_counts["fetch_failed"] = (
+                    int(failure_reason_counts.get("fetch_failed", 0)) + 1
+                )
                 continue
 
             hard_error = str(data.get("_fetch_error", "") or "").strip()
             if hard_error:
                 fetch_failures_raw += 1
                 scan_failed_reason_by_symbol[sym_u] = hard_error
-                failure_reason_counts[hard_error] = int(failure_reason_counts.get(hard_error, 0)) + 1
+                failure_reason_counts[hard_error] = (
+                    int(failure_reason_counts.get(hard_error, 0)) + 1
+                )
                 continue
-                
+
             mcap = data.get("Market_Cap_Cr", 0)
             if mcap > 0 and mcap < min_mcap:
                 skipped_mcap += 1
@@ -1397,8 +1518,12 @@ def main(argv=None):
                 short_history_policy=ipo_short_history_policy,
             )
             data["Fetch_Core_Present"] = fetch_gate["core_fields_present"]
-            data["Fetch_Core_Required"] = fetch_gate.get("required_core_fields", min_fetch_core_fields)
-            data["Fetch_History_Required"] = fetch_gate.get("required_history_bars", min_history_bars)
+            data["Fetch_Core_Required"] = fetch_gate.get(
+                "required_core_fields", min_fetch_core_fields
+            )
+            data["Fetch_History_Required"] = fetch_gate.get(
+                "required_history_bars", min_history_bars
+            )
             if not fetch_gate["is_valid"]:
                 reason = fetch_gate["primary_reason"] or "fetch_failed"
                 if reason == "short_history":
@@ -1439,7 +1564,7 @@ def main(argv=None):
                     )
             scan_success_symbols.add(sym_u)
             data["Fetch_Valid"] = True
-                
+
             # V3.1: Data Quality Gate
             dq = calculate_data_quality(data, zero_valuation_cap=dq_zero_valuation_cap)
             if data.get("Short_History_Exempt") and ipo_short_history_dq_penalty > 0:
@@ -1451,13 +1576,15 @@ def main(argv=None):
             candidate_data.append(data)
 
             symbol = str(data.get("Symbol", "Unknown")).upper()
-            
+
             # Phase 11: Framework Filtering
             if active_filters:
                 passes_filters = True
                 if "sales_growth_5y_min" in active_filters:
                     val = data.get("Sales_Growth_5Y%", 0)
-                    if val < active_filters["sales_growth_5y_min"] * 100: # Engine uses %, Framework uses decimal
+                    if (
+                        val < active_filters["sales_growth_5y_min"] * 100
+                    ):  # Engine uses %, Framework uses decimal
                         passes_filters = False
                 if "roe_min" in active_filters:
                     val = data.get("ROE%", 0)
@@ -1500,7 +1627,7 @@ def main(argv=None):
                     val = data.get("Market_Cap_Cr", 0)
                     if val > active_filters["market_cap_max"]:
                         passes_filters = False
-                
+
                 if not passes_filters:
                     scan_failed_reason_by_symbol[symbol] = "framework_filter_reject"
                     continue
@@ -1526,7 +1653,9 @@ def main(argv=None):
                 target_threshold = sorted_dq[target_count - 1]
                 adaptive_min_dq = max(full_scan_dq_floor, min(min_dq, target_threshold))
                 if adaptive_min_dq < min_dq:
-                    valid_data = [d for d in candidate_data if d.get("Data_Quality", 0) >= adaptive_min_dq]
+                    valid_data = [
+                        d for d in candidate_data if d.get("Data_Quality", 0) >= adaptive_min_dq
+                    ]
                     effective_min_dq = adaptive_min_dq
                     print(
                         f"Adaptive DQ fallback: pass ratio {pass_ratio:.1%} below {full_scan_min_pass_ratio:.1%}. "
@@ -1547,20 +1676,32 @@ def main(argv=None):
             preview_n = 50
             for sym, dq, reason in final_skipped[:preview_n]:
                 if reason == "framework_filter_reject":
-                    print(f"   {sym}: Framework criteria not met (Targeted/Universe screen) - REJECTED")
+                    print(
+                        f"   {sym}: Framework criteria not met (Targeted/Universe screen) - REJECTED"
+                    )
                 else:
                     print(f"   {sym}: Data quality {dq}% < {effective_min_dq}%  SKIPPED")
             if len(final_skipped) > preview_n:
                 print(f"   ... {len(final_skipped) - preview_n} more skipped/rejected.")
 
         if rejected_preview:
-            for sym, reason, core_count, required_core, bars, required_bars, source in rejected_preview:
+            for (
+                sym,
+                reason,
+                core_count,
+                required_core,
+                bars,
+                required_bars,
+                source,
+            ) in rejected_preview:
                 print(
                     f"   {sym}: FETCH_REJECTED ({reason}), core_fields={core_count}/{required_core}, "
                     f"history_bars={bars}/{required_bars}, source={source}"
                 )
             if fetch_rejected > len(rejected_preview):
-                print(f"   ... {fetch_rejected - len(rejected_preview)} more rejected by fetch gate.")
+                print(
+                    f"   ... {fetch_rejected - len(rejected_preview)} more rejected by fetch gate."
+                )
         if soft_preview:
             for sym, flags, core_count, required_core, bars, required_bars, source in soft_preview:
                 print(
@@ -1568,9 +1709,13 @@ def main(argv=None):
                     f"history_bars={bars}/{required_bars}, source={source}"
                 )
             if fetch_soft_flagged > len(soft_preview):
-                print(f"   ... {fetch_soft_flagged - len(soft_preview)} more with soft fetch flags.")
+                print(
+                    f"   ... {fetch_soft_flagged - len(soft_preview)} more with soft fetch flags."
+                )
         if failure_reason_counts:
-            top_reasons = sorted(failure_reason_counts.items(), key=lambda item: item[1], reverse=True)[:8]
+            top_reasons = sorted(
+                failure_reason_counts.items(), key=lambda item: item[1], reverse=True
+            )[:8]
             reason_text = ", ".join(f"{k}={v}" for k, v in top_reasons)
             print(f"Fetch failure reasons: {reason_text}")
 
@@ -1624,7 +1769,7 @@ def main(argv=None):
             f"new_inactive={flag_summary['new_inactive']}, blocked_total={flag_summary['blocked_total']}"
             f"{guard_note} | {flags_path}"
         )
-    
+
     # 1.5 Phase 68: Batch VectorBT Optimization
     if results:
         symbols_to_backtest = [s.get("Symbol") for s in results if s.get("Symbol")]
@@ -1650,47 +1795,54 @@ def main(argv=None):
                 print(f"Running VectorBT Optimization for {len(bt_symbols)} valid stocks...")
 
             from backtest.engine import VectorBTEngine
+
             bt_engine = VectorBTEngine(period="5y")
             batch_bt_results = bt_engine.run_batch_momentum_backtest(bt_symbols)
             for stock in results:
                 sym = stock.get("Symbol", "")
-                sym_with_ns = sym if sym.endswith('.NS') or sym.endswith('.BO') else sym + '.NS'
+                sym_with_ns = sym if sym.endswith((".NS", ".BO")) else sym + ".NS"
                 bt = batch_bt_results.get(sym_with_ns, batch_bt_results.get(sym, {}))
-                
+
                 stock["Backtest_CAGR"] = bt.get("cagr", 0.0)
                 stock["Backtest_Win_Rate"] = bt.get("win_rate", 0.0)
                 stock["Backtest_Max_DD"] = bt.get("max_drawdown", 0.0)
                 stock["Backtest_Sharpe"] = bt.get("sharpe_ratio", 0.0)
-            
+
     # 2. Phase 3: Sector Analysis
     if results:
         top_sectors = analyze_sector_rotation(results)
-        
+
         # V6.0: Calculate sector medians for relative scoring
         sector_medians = calculate_sector_medians(results)
-        print(f"\n Sector Medians (V6.0):")
+        print("\n Sector Medians (V6.0):")
         for sec, med in sorted(sector_medians.items()):
-            print(f"  {sec}: ROE={med['median_roe']}%, Growth={med['median_growth']}%, PE={med['median_pe']}")
-        
+            print(
+                f"  {sec}: ROE={med['median_roe']}%, Growth={med['median_growth']}%, PE={med['median_pe']}"
+            )
+
         # 3. Calculate Final Scores
         for stock in results:
             bonus = 0
             if stock.get("Sector") in top_sectors:
-                bonus = 5 
+                bonus = 5
                 stock["Sector_Leader"] = True
             else:
                 stock["Sector_Leader"] = False
-                
+
             # Pass the selected mode as 'market_regime' (overriding the auto-detection for strategy purposes)
             # This is a temporary bridge until we separate Market Regime from Scoring Strategy in the function signature.
-            score_data = calculate_institutional_score(stock, sector_boost=bonus, market_regime=final_mode, sector_medians=sector_medians)
-            
+            score_data = calculate_institutional_score(
+                stock, sector_boost=bonus, market_regime=final_mode, sector_medians=sector_medians
+            )
+
             # Pydantic Validation
             try:
                 from modules.models import ScoringResult
+
                 score_data = ScoringResult(**score_data).model_dump()
             except Exception as e:
                 import logging
+
                 logging.error(f"ScoringResult Validation Error for {stock.get('Symbol')}: {e}")
             score = score_data["total_score"]
             stock["Score"] = score
@@ -1700,37 +1852,43 @@ def main(argv=None):
             stock["Conviction_Boost"] = score_data.get("conviction_boost", 0)
             stock["Institutional_Interest"] = score_data.get("institutional_interest", False)
             stock["Super_Investors"] = score_data.get("super_investors", "")
-            
+
             # Phase 4 Update: Rating with V6 Valuation Gate
             vg = stock.get("Value_Gap%", 0)
-            if score >= 80 and vg >= -10: stock["Rating"] = "Strong Buy (Elite)"
-            elif score >= 65: stock["Rating"] = "Buy"
-            elif score >= 50: stock["Rating"] = "Hold"
-            else: stock["Rating"] = "Avoid"
-            
+            if score >= 80 and vg >= -10:
+                stock["Rating"] = "Strong Buy (Elite)"
+            elif score >= 65:
+                stock["Rating"] = "Buy"
+            elif score >= 50:
+                stock["Rating"] = "Hold"
+            else:
+                stock["Rating"] = "Avoid"
+
             # --- Phase 88: Hybrid Scoring (ML) ---
             try:
                 from modules.hybrid_scoring import predict_and_explain
+
                 factors = {
-                    'score': score,
-                    'sales_cagr_5y': stock.get("Sales_Growth_5Y%", 0),
-                    'avg_roe_5y': stock.get("Avg_ROE_5Y%", 0),
-                    'pe_ratio': stock.get("PE_Ratio", 0),
-                    'debt_equity': stock.get("Debt_Equity", 0),
-                    'cfo_pat_ratio': stock.get("CFO_PAT_Ratio", 0),
-                    'market_cap_cr': stock.get("Market_Cap_Cr", 0)
+                    "score": score,
+                    "sales_cagr_5y": stock.get("Sales_Growth_5Y%", 0),
+                    "avg_roe_5y": stock.get("Avg_ROE_5Y%", 0),
+                    "pe_ratio": stock.get("PE_Ratio", 0),
+                    "debt_equity": stock.get("Debt_Equity", 0),
+                    "cfo_pat_ratio": stock.get("CFO_PAT_Ratio", 0),
+                    "market_cap_cr": stock.get("Market_Cap_Cr", 0),
                 }
                 ml_res = predict_and_explain(factors)
                 stock["ML_Predicted_Return"] = ml_res.get("ml_prediction")
-                
+
                 # Convert SHAP dict to JSON string for easier SQLite storage
                 import json
+
                 stock["SHAP_Breakdown"] = json.dumps(ml_res.get("shap_values", {}))
-            except Exception as e:
+            except Exception:
                 # Silent fail if ML model not ready
                 stock["ML_Predicted_Return"] = None
                 stock["SHAP_Breakdown"] = "{}"
-            
+
             # Trade Setup
             calculate_trade_setup(stock)
 
@@ -1739,32 +1897,46 @@ def main(argv=None):
         print("\nApplying LightGBM Ranking Engine...")
         ranker = LightGBMRanker()
         results = ranker.rank_stocks(results)
-            
+
     # V3.1: Score Distribution Validation
     validate_score_distribution(results)
-    
+
     # 4. Save
-    print(f"\nAnalysis Complete. Found {len(results)} stocks. (Skipped {skipped_mcap} below MCap gate)")
+    print(
+        f"\nAnalysis Complete. Found {len(results)} stocks. (Skipped {skipped_mcap} below MCap gate)"
+    )
     df = pd.DataFrame(results)
-    
+
     if not df.empty:
         pre_save_count = len(df)
         if "Fetch_Valid" in df.columns:
-            df = df[df["Fetch_Valid"] == True]
+            df = df[df["Fetch_Valid"]]
         if "Price" in df.columns:
             df["Price"] = pd.to_numeric(df["Price"], errors="coerce")
             df = df[np.isfinite(df["Price"]) & (df["Price"] > 0)]
         if "History_Bars_1Y" in df.columns:
-            df["History_Bars_1Y"] = pd.to_numeric(df["History_Bars_1Y"], errors="coerce").fillna(0).astype(int)
+            df["History_Bars_1Y"] = (
+                pd.to_numeric(df["History_Bars_1Y"], errors="coerce").fillna(0).astype(int)
+            )
             if "Fetch_History_Required" in df.columns:
-                df["Fetch_History_Required"] = pd.to_numeric(df["Fetch_History_Required"], errors="coerce").fillna(min_history_bars).astype(int)
+                df["Fetch_History_Required"] = (
+                    pd.to_numeric(df["Fetch_History_Required"], errors="coerce")
+                    .fillna(min_history_bars)
+                    .astype(int)
+                )
                 df = df[df["History_Bars_1Y"] >= df["Fetch_History_Required"]]
             else:
                 df = df[df["History_Bars_1Y"] >= min_history_bars]
         if "Fetch_Core_Present" in df.columns:
-            df["Fetch_Core_Present"] = pd.to_numeric(df["Fetch_Core_Present"], errors="coerce").fillna(0).astype(int)
+            df["Fetch_Core_Present"] = (
+                pd.to_numeric(df["Fetch_Core_Present"], errors="coerce").fillna(0).astype(int)
+            )
             if "Fetch_Core_Required" in df.columns:
-                df["Fetch_Core_Required"] = pd.to_numeric(df["Fetch_Core_Required"], errors="coerce").fillna(min_fetch_core_fields).astype(int)
+                df["Fetch_Core_Required"] = (
+                    pd.to_numeric(df["Fetch_Core_Required"], errors="coerce")
+                    .fillna(min_fetch_core_fields)
+                    .astype(int)
+                )
                 df = df[df["Fetch_Core_Present"] >= df["Fetch_Core_Required"]]
             else:
                 df = df[df["Fetch_Core_Present"] >= min_fetch_core_fields]
@@ -1775,10 +1947,12 @@ def main(argv=None):
         # Hard filter for zero-score data failures (v9.6)
         if "Score" in df.columns:
             df = df[df["Score"] > 5]
-            
+
         dropped_on_save = pre_save_count - len(df)
         if dropped_on_save > 0:
-            print(f"Pre-save fetch-validity filter dropped {dropped_on_save} stocks. Remaining: {len(df)}")
+            print(
+                f"Pre-save fetch-validity filter dropped {dropped_on_save} stocks. Remaining: {len(df)}"
+            )
 
         results = df.to_dict(orient="records")
 
@@ -1786,55 +1960,61 @@ def main(argv=None):
         # Save to CSV
         df.to_csv("screener_results.csv", index=False)
         print("Saved to csv.")
-        
+
         # Save to SQLite
         # Save to SQLite
         try:
             import db.repository as database
+
             database.save_multibaggers(df, replace_existing=is_standard_full_scan)
         except Exception as e:
             import logging
-            from modules.exceptions import DatabaseConcurrencyError
+
             logging.error(f"Database error while saving multibaggers: {e}", exc_info=True)
 
         # Phase 40 & 41: Institutional Analysis Pipeline
         try:
-            print("\n" + "="*50)
+            print("\n" + "=" * 50)
             print("  INSTITUTIONAL ANALYSIS PIPELINE")
-            print("="*50)
-            
+            print("=" * 50)
+
             import logging
-            
+
             # 1. Backtest Picks (Reads from screener_results.csv)
             try:
                 import backtest_picks
+
                 backtest_picks.backtest_picks()
-            except Exception as e: 
+            except Exception as e:
                 logging.error(f"Backtest Picks Error: {e}", exc_info=True)
-            
+
             # 2. Alpha Attribution (Reads from stocks.db)
             try:
                 import alpha_attribution
+
                 alpha_attribution.run_attribution()
-            except Exception as e: 
+            except Exception as e:
                 logging.error(f"Alpha Attribution Error: {e}", exc_info=True)
-            
+
             # 3. Liquidity Stress Test (Reads from stocks.db)
             try:
                 import liquidity_simulator
+
                 liquidity_simulator.run_liquidity_check()
-            except Exception as e: 
+            except Exception as e:
                 logging.error(f"Liquidity Check Error: {e}", exc_info=True)
-            
+
             # 4. Walk-Forward Validation (Reads from stocks.db)
             try:
                 import backtest_engine
+
                 backtest_engine.run_backtest()
-            except Exception as e: 
+            except Exception as e:
                 logging.error(f"Backtest Engine Error: {e}", exc_info=True)
-            
+
         except Exception as e:
             import logging
+
             logging.error(f"Error in Pipeline: {e}", exc_info=True)
     else:
         print("No stocks found matching criteria.")
@@ -1842,39 +2022,41 @@ def main(argv=None):
     # 5. Audit Logging (Phase 2.2)
     try:
         logger = ScanLogger()
-        
+
         # Snapshot Config (Mirroring logic in calculate_institutional_score)
         # In a future refactor, these should be loaded from a config.py
         config_snapshot = {
             "market_regime": market_regime,
             "weights_model": f"v2.2_{final_mode}",
             "risk_settings": {
-                "max_sector_exposure": config.MAX_SECTOR_EXPOSURE, 
-                "hard_kill_switch_vix": config.HARD_KILL_SWITCH_VIX
-            }
+                "max_sector_exposure": config.MAX_SECTOR_EXPOSURE,
+                "hard_kill_switch_vix": config.HARD_KILL_SWITCH_VIX,
+            },
         }
-        
+
         # Summary Stats
         elite_count = len([s for s in results if s.get("Score", 0) >= 80])
         top_pick = max(results, key=lambda x: x.get("Score", 0))["Symbol"] if results else "None"
-        
+
         results_summary = {
             "total_scanned": len(results),
             "elite_count": elite_count,
             "top_pick": top_pick,
             "market_regime": market_regime,
-            "strategy_mode": final_mode
+            "strategy_mode": final_mode,
         }
-        
+
         log_path = logger.log_scan(len(TICKERS), results_summary, config_snapshot)
         print(f"\n[AUDIT] Scan Logged: {log_path}")
-        
+
     except Exception as e:
         print(f"Logging Error: {e}")
+
 
 def run_screener(argv=None):
     """Programmatic entry point for one-shot screener runs."""
     return main(argv)
+
 
 if __name__ == "__main__":
     main()

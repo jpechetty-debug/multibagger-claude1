@@ -6,10 +6,10 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
-from app_routes.contracts import RegimeStatusResponse
 import config
 import modules.data_service as market_data_module
 import modules.dependencies as deps
+from app_routes.contracts import RegimeStatusResponse
 
 router = APIRouter()
 _REGIME_IO_TIMEOUT_SECONDS = 5.0

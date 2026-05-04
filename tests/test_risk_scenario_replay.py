@@ -37,4 +37,3 @@ def test_adversarial_replay_worst_case_is_liquidity_freeze():
     replay = run_adversarial_scenario_replay(_sample_portfolio(), base_vix=20.0)
     assert replay["worst_case"]["name"] == "Liquidity Freeze"
     assert replay["worst_case"]["estimated_drawdown_pct"] > 0
-

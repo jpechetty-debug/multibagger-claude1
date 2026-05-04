@@ -28,16 +28,19 @@ sovereign_data_quality_score      histogram — DQ scores per ticker
 
 from __future__ import annotations
 
-import time
 import functools
+import time
+from collections.abc import Callable
 from contextlib import contextmanager
-from typing import Callable
 
 try:
     from prometheus_client import (
-        Counter, Gauge, Histogram, Summary,
-        REGISTRY, CollectorRegistry,
+        REGISTRY,
+        Counter,
+        Gauge,
+        Histogram,
     )
+
     _PROMETHEUS_AVAILABLE = True
 except ImportError:
     _PROMETHEUS_AVAILABLE = False
@@ -45,17 +48,33 @@ except ImportError:
 
 # ── Helpers that degrade gracefully when prometheus_client isn't installed ───
 
+
 class _Noop:
     """No-op stand-in for any prometheus_client object."""
-    def labels(self, **_):      return self
-    def observe(self, *_):      pass
-    def inc(self, *_):          pass
-    def set(self, *_):          pass
-    def time(self):             return _noop_ctx()
+
+    def labels(self, **_):
+        return self
+
+    def observe(self, *_):
+        pass
+
+    def inc(self, *_):
+        pass
+
+    def set(self, *_):
+        pass
+
+    def time(self):
+        return _noop_ctx()
+
 
 class _noop_ctx:
-    def __enter__(self): return self
-    def __exit__(self, *_): pass
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        pass
+
 
 def _make(cls, *args, **kwargs):
     if not _PROMETHEUS_AVAILABLE:
@@ -80,7 +99,7 @@ SCAN_STOCKS_TOTAL: Counter = _make(
     Counter,
     "sovereign_stocks_scanned_total",
     "Stocks processed per scan run",
-    ["outcome"],           # labels: success | error | skipped | cached
+    ["outcome"],  # labels: success | error | skipped | cached
 )
 
 SCORE_HISTOGRAM: Histogram = _make(
@@ -94,7 +113,7 @@ REGIME_STATE: Gauge = _make(
     Gauge,
     "sovereign_regime_state",
     "Current market regime (1=active regime, 0=inactive)",
-    ["regime"],            # labels: BULL | BEAR | SIDEWAYS | QUALITY
+    ["regime"],  # labels: BULL | BEAR | SIDEWAYS | QUALITY
 )
 
 KILL_SWITCH_ACTIVE: Gauge = _make(
@@ -126,6 +145,7 @@ LLM_THESIS_FALLBACK: Counter = _make(
 
 
 # ── Convenience helpers ────────────────────────────────────────────────────────
+
 
 def record_scan_result(outcome: str, score: float | None = None, dq: float | None = None):
     """
@@ -179,6 +199,7 @@ def celery_task_timer(task_name: str) -> Callable:
         def scan_single_stock(symbol, regime="SIDEWAYS"):
             ...
     """
+
     def decorator(fn: Callable) -> Callable:
         @functools.wraps(fn)
         def wrapper(*args, **kwargs):
@@ -189,5 +210,7 @@ def celery_task_timer(task_name: str) -> Callable:
                 CELERY_TASK_DURATION.labels(task_name=task_name).observe(
                     time.perf_counter() - start
                 )
+
         return wrapper
+
     return decorator

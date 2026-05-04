@@ -16,6 +16,7 @@ vi.mock('./lib/api', () => {
     getRegime: vi.fn(),
     getHealth: vi.fn(),
     getReport: vi.fn(),
+    getDataFreshness: vi.fn(),
   }
 
   return {
@@ -86,15 +87,28 @@ describe('App', () => {
   const getStocksMock = vi.mocked(api.getStocks)
   const getRegimeMock = vi.mocked(api.getRegime)
   const getHealthMock = vi.mocked(api.getHealth)
+  const getDataFreshnessMock = vi.mocked(api.getDataFreshness)
 
   beforeEach(() => {
     getStocksMock.mockReset()
     getRegimeMock.mockReset()
     getHealthMock.mockReset()
+    getDataFreshnessMock.mockReset()
     getHealthMock.mockResolvedValue({
       status: 'ok',
       timestamp: '2026-04-03T10:00:00Z',
       latency_reference: 'stubbed',
+    })
+    getDataFreshnessMock.mockResolvedValue({
+      status: 'FRESH',
+      latest_as_of_date: '2026-04-03',
+      age_days: 0,
+      source: 'test',
+      data_quality: 98,
+      scheduled_refresh: {
+        status: 'recent',
+        age_hours: 1,
+      },
     })
   })
 

@@ -18,7 +18,7 @@ Only the changed sections are shown inline; the rest of main.py is unchanged.
 # and replace it with the block below.
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-MAIN_PY_PATCH_APP_SETUP = '''
+MAIN_PY_PATCH_APP_SETUP = """
 import config  # already imported; listed here for clarity
 
 app = FastAPI(lifespan=lifespan)
@@ -38,7 +38,7 @@ try:
     Instrumentator().instrument(app).expose(app)
 except ImportError:
     pass  # graceful degradation: add prometheus-fastapi-instrumentator to requirements.txt
-'''
+"""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # SECTION 2 — Replace the get_connection() function with the DB abstraction
@@ -82,7 +82,7 @@ def get_connection():
 # SECTION 3 — Structured startup log (replace the lifespan function)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-MAIN_PY_PATCH_LIFESPAN = '''
+MAIN_PY_PATCH_LIFESPAN = """
 import logging
 _log = logging.getLogger("sovereign.startup")
 
@@ -104,7 +104,7 @@ async def lifespan(app: FastAPI):
         await bg_task
     except asyncio.CancelledError:
         _log.info("Background price updater stopped cleanly")
-'''
+"""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # HOW TO APPLY
@@ -114,7 +114,8 @@ async def lifespan(app: FastAPI):
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 if __name__ == "__main__":
-    import pathlib, re, sys
+    import pathlib
+    import re
 
     src = pathlib.Path("main.py").read_text(encoding="utf-8")
     original = src
@@ -122,15 +123,15 @@ if __name__ == "__main__":
     # Patch 1: CORS wildcard → config-driven
     src = re.sub(
         r"app\.add_middleware\(\s*CORSMiddleware,\s*allow_origins=\[\"\\*\"\],",
-        'app.add_middleware(\n    CORSMiddleware,\n    allow_origins=config.CORS_ALLOWED_ORIGINS,',
+        "app.add_middleware(\n    CORSMiddleware,\n    allow_origins=config.CORS_ALLOWED_ORIGINS,",
         src,
     )
 
     # Patch 2: Insert Prometheus after CORSMiddleware block
     if "Instrumentator" not in src:
-        cors_end = src.find("allow_headers=[\"*\"],\n)")
+        cors_end = src.find('allow_headers=["*"],\n)')
         if cors_end != -1:
-            insert_at = cors_end + len("allow_headers=[\"*\"],\n)")
+            insert_at = cors_end + len('allow_headers=["*"],\n)')
             prometheus_snippet = (
                 "\n\n# Prometheus metrics\ntry:\n"
                 "    from prometheus_fastapi_instrumentator import Instrumentator\n"

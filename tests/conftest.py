@@ -4,6 +4,7 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -32,3 +33,28 @@ def pytest_runtest_setup(item):
         item.module.analyze_estimate_momentum = estimates.analyze_estimate_momentum
         item.module.compute_own_estimate = estimates.compute_own_estimate
         item.module.calculate_promoter_score = promoter_intel.calculate_promoter_score
+
+
+@pytest.fixture(autouse=True)
+def bypass_api_key_dependency_for_route_tests(request):
+    """
+    Most route tests exercise endpoint behavior, not authentication. Keep the
+    dedicated auth test on the real dependency and bypass the global app guard
+    elsewhere so local .env values do not make the suite order-dependent.
+    """
+    if request.node.name == "test_global_api_key_enforcement":
+        yield
+        return
+
+    try:
+        import main
+        import modules.dependencies as deps
+    except Exception:
+        yield
+        return
+
+    main.app.dependency_overrides[deps.get_api_key] = lambda: "test-api-key"
+    try:
+        yield
+    finally:
+        main.app.dependency_overrides.pop(deps.get_api_key, None)

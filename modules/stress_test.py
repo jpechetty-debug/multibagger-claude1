@@ -1,6 +1,3 @@
-import pandas as pd
-
-
 def _build_weights(portfolio_stocks, weights=None):
     if weights:
         return weights
@@ -47,7 +44,7 @@ def run_stress_test(portfolio_stocks, weights=None):
     """
     Phase 20: Risks Management Stress Testing.
     Simulates how the portfolio would behave in historical crash scenarios.
-    
+
     scenarios = {
         "2008 Global Financial Crisis": -0.55,
         "2020 Covid Crash": -0.38,
@@ -55,10 +52,10 @@ def run_stress_test(portfolio_stocks, weights=None):
         "Standard Correction": -0.10
     }
     """
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("🌪️  PHASE 20: PORTFOLIO STRESS TEST (CRASH SIMULATION)")
-    print("="*50)
-    
+    print("=" * 50)
+
     if not portfolio_stocks:
         print("Empty portfolio.")
         return
@@ -67,9 +64,9 @@ def run_stress_test(portfolio_stocks, weights=None):
     # We estimate Beta based on Sector and Volatility (ATR)
     # High Beta (>1.2) = Aggressive
     # Low Beta (<0.8) = Defensive
-    
+
     portfolio_beta = _estimate_portfolio_beta(portfolio_stocks, weights)
-    
+
     print(f"Portfolio Beta (Estimated): {portfolio_beta:.2f}")
     if portfolio_beta > 1.3:
         print("⚠️  Risk Profile: AGGRESSIVE (High Volatility)")
@@ -77,35 +74,35 @@ def run_stress_test(portfolio_stocks, weights=None):
         print("🛡️  Risk Profile: DEFENSIVE (Low Volatility)")
     else:
         print("⚖️  Risk Profile: BALANCED")
-        
+
     print("-" * 50)
     print(f"{'Scenario':<30} | {'Market Drop':<12} | {'Est. Portfolio Impact':<20}")
     print("-" * 50)
-    
+
     scenarios = [
         ("Correction (Standard)", -0.10),
         ("2022 Inflation Bear", -0.22),
         ("2020 Covid Flash Crash", -0.38),
-        ("2008 Financial Crisis", -0.55)
+        ("2008 Financial Crisis", -0.55),
     ]
-    
+
     for name, drop in scenarios:
         # Impact = Beta * Market Drop
         # But we add a 'Alpha Cushion'? No, in a crash, correlation goes to 1.
         # Often High Beta falls MORE than Beta implies during panic.
-        
+
         impact = drop * portfolio_beta
-        
+
         # formatting
-        mkt_lbl = f"{drop*100:.0f}%"
-        port_lbl = f"{impact*100:.1f}%"
-        
+        mkt_lbl = f"{drop * 100:.0f}%"
+        port_lbl = f"{impact * 100:.1f}%"
+
         # Color code (text based)
         emoji = "🩸" if impact < -0.3 else ("🔻" if impact < -0.15 else "📉")
-        
+
         print(f"{name:<30} | {mkt_lbl:<12} | {port_lbl:<20} {emoji}")
-        
-    print("="*50 + "\n")
+
+    print("=" * 50 + "\n")
 
 
 def run_adversarial_scenario_replay(portfolio_stocks, weights=None, base_vix=20.0):

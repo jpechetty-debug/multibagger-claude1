@@ -1,23 +1,22 @@
-import sqlite3
-import pandas as pd
 import json
+import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-DB_PATH = Path('d:/Tradeidesa/Multibagger/stocks.db')
+import pandas as pd
+
+import os
+DB_PATH = Path("runtime/stocks.db") if os.path.exists("runtime/stocks.db") else Path("stocks.db")
+
 
 def audit_database():
     report = {
         "timestamp": datetime.now().isoformat(),
         "database_path": str(DB_PATH),
         "tables": {},
-        "integrity": {
-            "score": "8/10",
-            "critical_issues": [],
-            "warnings": []
-        }
+        "integrity": {"score": "8/10", "critical_issues": [], "warnings": []},
     }
-    
+
     if not DB_PATH.exists():
         report["integrity"]["score"] = "0/10"
         report["integrity"]["critical_issues"].append("Database file not found.")
@@ -29,12 +28,17 @@ def audit_database():
         cursor = conn.cursor()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
         existing_tables = {row[0] for row in cursor.fetchall()}
-        
+
         required_tables = [
-            'multibaggers', 'microcaps', 'valuation_metrics', 'fundamentals_pit',
-            'score_history', 'factor_penalties', 'buy_thesis'
+            "multibaggers",
+            "microcaps",
+            "valuation_metrics",
+            "fundamentals_pit",
+            "score_history",
+            "factor_penalties",
+            "buy_thesis",
         ]
-        
+
         for table in required_tables:
             if table in existing_tables:
                 count = pd.read_sql(f"SELECT COUNT(*) FROM {table}", conn).iloc[0, 0]
@@ -44,19 +48,21 @@ def audit_database():
                 report["integrity"]["critical_issues"].append(f"Table '{table}' is missing.")
                 report["integrity"]["score"] = "4/10"
 
-        if 'multibaggers' in existing_tables:
+        if "multibaggers" in existing_tables:
             df = pd.read_sql("SELECT * FROM multibaggers", conn)
-            
+
             # Duplicates check
-            if 'symbol' in df.columns:
-                dupes = len(df) - df['symbol'].nunique()
+            if "symbol" in df.columns:
+                dupes = len(df) - df["symbol"].nunique()
                 if dupes > 0:
-                    report["integrity"]["critical_issues"].append(f"Found {dupes} duplicate symbols in 'multibaggers'.")
+                    report["integrity"]["critical_issues"].append(
+                        f"Found {dupes} duplicate symbols in 'multibaggers'."
+                    )
                     report["integrity"]["score"] = "4/10"
                 report["tables"]["multibaggers"]["duplicates"] = int(dupes)
 
             # Nulls/Zeros check
-            check_cols = ['pe_ratio', 'avg_roe_5y', 'sales_cagr_5y']
+            check_cols = ["pe_ratio", "avg_roe_5y", "sales_cagr_5y"]
             null_summary = {}
             for col in check_cols:
                 if col in df.columns:
@@ -70,6 +76,7 @@ def audit_database():
         report["integrity"]["critical_issues"].append(f"Audit failed with error: {str(e)}")
 
     print(json.dumps(report, indent=2))
+
 
 if __name__ == "__main__":
     audit_database()

@@ -8,13 +8,13 @@ Usage:
     1. Set DATABASE_URL to your PostgreSQL connection string.
     2. Run: python -m db.migrate
 """
-import sqlite3
-import os
-import pandas as pd
-from datetime import datetime
-from db.engine import engine, init_tables, IS_SQLITE
-from db.models import Base
 
+import os
+import sqlite3
+
+import pandas as pd
+
+from db.engine import IS_SQLITE, engine, init_tables
 
 SQLITE_SOURCE = os.getenv("SQLITE_SOURCE", "stocks.db")
 
@@ -88,11 +88,11 @@ def run_migration():
 
     sqlite_conn.close()
 
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f"✅ Migration Complete: {total_rows:,} total rows transferred.")
     print(f"   Source: {SQLITE_SOURCE}")
-    print(f"   Target: PostgreSQL/TimescaleDB")
-    print(f"{'='*50}")
+    print("   Target: PostgreSQL/TimescaleDB")
+    print(f"{'=' * 50}")
 
 
 if __name__ == "__main__":

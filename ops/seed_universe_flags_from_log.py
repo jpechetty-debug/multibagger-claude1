@@ -8,16 +8,16 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-import config
-from screener import load_universe_flags, save_universe_flags, refresh_and_get_blocked_symbols
+from screener import load_universe_flags, refresh_and_get_blocked_symbols, save_universe_flags
 
+import config
 
 DELISTED_RE = re.compile(r"\$([A-Z0-9&.\-]+):\s+possibly delisted; no price data found")
 NO_FUND_RE = re.compile(r"No fundamentals data found for symbol:\s*([A-Z0-9&.\-]+)")
 
 
 def parse_invalid_symbols(log_text: str) -> set[str]:
-    symbols = set()
+    symbols: set[str] = set()
     symbols.update(sym.upper() for sym in DELISTED_RE.findall(log_text))
     symbols.update(sym.upper() for sym in NO_FUND_RE.findall(log_text))
     return symbols
@@ -54,7 +54,9 @@ def main():
     payload = load_universe_flags(str(flags_path))
     whitelist = {str(s).upper() for s in getattr(config, "AUTO_FLAG_WHITELIST", [])}
     today = date.today()
-    expires_on = (today + timedelta(days=int(getattr(config, "AUTO_FLAG_COOLDOWN_DAYS", 14)))).isoformat()
+    expires_on = (
+        today + timedelta(days=int(getattr(config, "AUTO_FLAG_COOLDOWN_DAYS", 14)))
+    ).isoformat()
     threshold = int(getattr(config, "AUTO_FLAG_FAILURE_THRESHOLD", 1))
 
     updated = 0

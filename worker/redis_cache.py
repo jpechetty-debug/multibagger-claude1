@@ -7,23 +7,27 @@ High-performance in-memory cache for frequently accessed data:
   - API response deduplication
   - Rate-limit tracking
 """
-import os
-import json
+
+import contextlib
 import hashlib
+import json
+import os
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 try:
     import redis
+
+    _REDIS_AVAILABLE = True
 except ImportError:
-    redis = None
+    _REDIS_AVAILABLE = False
     print("Warning: redis package not installed. Caching disabled. Install: pip install redis")
 
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 DEFAULT_TTL = 300  # 5 minutes
-REGIME_TTL = 120   # 2 minutes
-SCORE_TTL = 600    # 10 minutes
+REGIME_TTL = 120  # 2 minutes
+SCORE_TTL = 600  # 10 minutes
 API_RESPONSE_TTL = 900  # 15 minutes
 
 
@@ -35,10 +39,10 @@ class SovereignCache:
 
     def __init__(self, namespace: str = "sovereign"):
         self.namespace = namespace
-        self._fallback_cache = {}
+        self._fallback_cache: dict[str, Any] = {}
         self._redis = None
 
-        if redis is not None:
+        if _REDIS_AVAILABLE:
             try:
                 self._redis = redis.from_url(
                     REDIS_URL,
@@ -55,7 +59,7 @@ class SovereignCache:
     def _key(self, key: str) -> str:
         return f"{self.namespace}:{key}"
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         """Retrieve a cached value. Returns None if expired or missing."""
         full_key = self._key(key)
         if self._redis:
@@ -74,10 +78,8 @@ class SovereignCache:
         """Store a value with TTL (seconds)."""
         full_key = self._key(key)
         if self._redis:
-            try:
+            with contextlib.suppress(Exception):
                 self._redis.setex(full_key, ttl, json.dumps(value, default=str))
-            except Exception:
-                pass
         else:
             self._fallback_cache[full_key] = {
                 "value": value,
@@ -88,10 +90,8 @@ class SovereignCache:
         """Invalidate a specific cache entry."""
         full_key = self._key(key)
         if self._redis:
-            try:
+            with contextlib.suppress(Exception):
                 self._redis.delete(full_key)
-            except Exception:
-                pass
         else:
             self._fallback_cache.pop(full_key, None)
 
@@ -99,14 +99,14 @@ class SovereignCache:
         """Invalidate all keys matching a glob pattern."""
         full_pattern = self._key(pattern)
         if self._redis:
-            try:
+            with contextlib.suppress(Exception):
                 keys = self._redis.keys(full_pattern)
                 if keys:
                     self._redis.delete(*keys)
-            except Exception:
-                pass
         else:
-            to_delete = [k for k in self._fallback_cache if k.startswith(full_pattern.replace("*", ""))]
+            to_delete = [
+                k for k in self._fallback_cache if k.startswith(full_pattern.replace("*", ""))
+            ]
             for k in to_delete:
                 del self._fallback_cache[k]
 
@@ -116,7 +116,7 @@ class SovereignCache:
         """Cache market regime state."""
         self.set("regime:current", regime_data, ttl=REGIME_TTL)
 
-    def get_regime(self) -> Optional[dict]:
+    def get_regime(self) -> dict | None:
         """Retrieve cached market regime."""
         return self.get("regime:current")
 
@@ -124,7 +124,7 @@ class SovereignCache:
         """Cache a stock's composite score."""
         self.set(f"score:{symbol}", score_data, ttl=SCORE_TTL)
 
-    def get_stock_score(self, symbol: str) -> Optional[dict]:
+    def get_stock_score(self, symbol: str) -> dict | None:
         """Retrieve a stock's cached composite score."""
         return self.get(f"score:{symbol}")
 
@@ -133,7 +133,7 @@ class SovereignCache:
         url_hash = hashlib.md5(url.encode()).hexdigest()[:12]
         self.set(f"api:{url_hash}", response_data, ttl=API_RESPONSE_TTL)
 
-    def get_api_response(self, url: str) -> Optional[Any]:
+    def get_api_response(self, url: str) -> Any | None:
         """Retrieve a cached API response."""
         url_hash = hashlib.md5(url.encode()).hexdigest()[:12]
         return self.get(f"api:{url_hash}")
@@ -142,7 +142,7 @@ class SovereignCache:
         """Check if Redis is available."""
         if self._redis:
             try:
-                return self._redis.ping()
+                return bool(self._redis.ping())
             except Exception:
                 return False
         return False

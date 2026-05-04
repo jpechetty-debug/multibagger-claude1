@@ -6,9 +6,13 @@ This means the Docker container correctly picks up:
     OLLAMA_URL=http://host.docker.internal:11434/api/generate
 instead of hitting localhost (which is the container itself).
 """
-import requests
+
 import logging
+
+import requests
+
 import config
+
 from .llm_validator import FactValidator, patch_thesis
 
 log = logging.getLogger(__name__)
@@ -23,14 +27,14 @@ def generate_rule_based_thesis(stock_data: dict) -> str:
     Deterministic quantitative thesis — used when Ollama is unavailable.
     No external calls; always succeeds.
     """
-    symbol     = stock_data.get("symbol") or stock_data.get("Symbol", "UNKNOWN")
-    score      = stock_data.get("Score",          stock_data.get("score", 0))
-    rating     = stock_data.get("Rating",         stock_data.get("rating", "N/A"))
-    f_score    = stock_data.get("F_Score",         stock_data.get("f_score", 0))
+    symbol = stock_data.get("symbol") or stock_data.get("Symbol", "UNKNOWN")
+    score = stock_data.get("Score", stock_data.get("score", 0))
+    rating = stock_data.get("Rating", stock_data.get("rating", "N/A"))
+    f_score = stock_data.get("F_Score", stock_data.get("f_score", 0))
     sales_cagr = stock_data.get("Sales_Growth_5Y%", stock_data.get("sales_cagr_5y", 0))
-    roe        = stock_data.get("Avg_ROE_5Y%",     stock_data.get("avg_roe_5y", 0))
-    pe         = stock_data.get("PE_Ratio",        stock_data.get("pe_ratio", 0))
-    value_gap  = stock_data.get("Value_Gap%",      stock_data.get("value_gap", 0))
+    stock_data.get("Avg_ROE_5Y%", stock_data.get("avg_roe_5y", 0))
+    pe = stock_data.get("PE_Ratio", stock_data.get("pe_ratio", 0))
+    value_gap = stock_data.get("Value_Gap%", stock_data.get("value_gap", 0))
     ml_predict = stock_data.get("ML_Predicted_Return", stock_data.get("ml_predicted_return", "N/A"))
 
     strength = "exceptional" if score > 80 else "robust" if score > 65 else "moderate"
@@ -54,14 +58,14 @@ def generate_thesis(stock_data: dict) -> str:
     if not stock_data:
         return "Insufficient data to generate thesis."
 
-    symbol     = stock_data.get("symbol") or stock_data.get("Symbol", "UNKNOWN")
-    score      = stock_data.get("Score",          stock_data.get("score", 0))
-    rating     = stock_data.get("Rating",         stock_data.get("rating", "N/A"))
-    f_score    = stock_data.get("F_Score",         stock_data.get("f_score", 0))
+    symbol = stock_data.get("symbol") or stock_data.get("Symbol", "UNKNOWN")
+    score = stock_data.get("Score", stock_data.get("score", 0))
+    rating = stock_data.get("Rating", stock_data.get("rating", "N/A"))
+    f_score = stock_data.get("F_Score", stock_data.get("f_score", 0))
     sales_cagr = stock_data.get("Sales_Growth_5Y%", stock_data.get("sales_cagr_5y", 0))
-    roe        = stock_data.get("Avg_ROE_5Y%",     stock_data.get("avg_roe_5y", 0))
-    pe         = stock_data.get("PE_Ratio",        stock_data.get("pe_ratio", 0))
-    value_gap  = stock_data.get("Value_Gap%",      stock_data.get("value_gap", 0))
+    roe = stock_data.get("Avg_ROE_5Y%", stock_data.get("avg_roe_5y", 0))
+    pe = stock_data.get("PE_Ratio", stock_data.get("pe_ratio", 0))
+    value_gap = stock_data.get("Value_Gap%", stock_data.get("value_gap", 0))
     ml_predict = stock_data.get("ML_Predicted_Return", stock_data.get("ml_predicted_return", "N/A"))
 
     prompt = f"""You are a senior equity analyst. Generate a concise 3-paragraph investment thesis.
@@ -87,14 +91,12 @@ Be specific. Avoid generic statements."""
             raise ValueError("Empty response from Ollama")
 
         # Validate factual consistency
-        validator = FactValidator(stock_data)
-        patched = patch_thesis(raw_thesis, validator)
-        return patched
+        validator = FactValidator(tolerance_pct=15.0)
+        report = validator.validate(raw_thesis, stock_data)
+        return patch_thesis(raw_thesis, report)
 
     except requests.exceptions.ConnectionError:
-        log.warning(
-            "Ollama unreachable at %s — using rule-based fallback", OLLAMA_URL
-        )
+        log.warning("Ollama unreachable at %s — using rule-based fallback", OLLAMA_URL)
         return generate_rule_based_thesis(stock_data)
     except Exception as exc:
         log.error("LLM thesis generation failed for %s: %s", symbol, exc)

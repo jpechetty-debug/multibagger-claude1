@@ -1,9 +1,10 @@
 import os
+from typing import Any, cast
+
 import joblib
-import pandas as pd
-import numpy as np
 import lightgbm as lgb
-from typing import List, Dict, Any
+import numpy as np
+import pandas as pd
 
 MODEL_PATH = "multibagger_lgbm_ranker.pkl"
 
@@ -20,13 +21,15 @@ FEATURES = [
     "Ret_6M",
     "Vol_Breakout",
     "Dist_From_52W_High",
-    "F_Score"
+    "F_Score",
 ]
+
 
 class LightGBMRanker:
     """
     LightGBM-based ranking engine for structural multibaggers.
     """
+
     def __init__(self, model_path=MODEL_PATH):
         self.model_path = model_path
         self.model = None
@@ -39,7 +42,7 @@ class LightGBMRanker:
             except Exception as e:
                 print(f"Error loading ranker model: {e}")
 
-    def rank_stocks(self, stocks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def rank_stocks(self, stocks: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
         Ranks a list of stocks using the trained LightGBM model.
         If no model is found, it falls back to a weighted heuristic ranking.
@@ -48,7 +51,7 @@ class LightGBMRanker:
             return []
 
         df = pd.DataFrame(stocks)
-        
+
         # Ensure all features exist
         for col in FEATURES:
             if col not in df.columns:
@@ -71,10 +74,10 @@ class LightGBMRanker:
                     df[col] = df["F_Score"]
                 else:
                     df[col] = 0.0
-        
+
         # Handle NAs
         df[FEATURES] = df[FEATURES].fillna(0.0)
-        
+
         if self.model:
             try:
                 # Predicting ranking score
@@ -86,10 +89,10 @@ class LightGBMRanker:
         else:
             # Fallback to heuristic ranking if no model
             self._apply_heuristic_ranking(df)
-            
+
         # Final Sort
         df = df.sort_values(by="ml_rank_score", ascending=False)
-        return df.to_dict("records")
+        return cast(list[dict[str, Any]], df.to_dict("records"))
 
     def _apply_heuristic_ranking(self, df: pd.DataFrame):
         """
@@ -101,15 +104,12 @@ class LightGBMRanker:
         - Proximity to 52W High: 15% (Leadership)
         """
         fundamental_norm = df["score"] / 100.0
-        momentum_norm = (df["Ret_6M"] * 0.6 + df["Ret_3M"] * 0.4)
+        momentum_norm = df["Ret_6M"] * 0.6 + df["Ret_3M"] * 0.4
         vol_norm = np.clip(df["Vol_Breakout"], 0, 3) / 3.0
         dist_norm = 1.0 - np.clip(df["Dist_From_52W_High"], 0, 1)
-        
+
         df["ml_rank_score"] = (
-            fundamental_norm * 0.40 +
-            momentum_norm * 0.30 +
-            vol_norm * 0.15 +
-            dist_norm * 0.15
+            fundamental_norm * 0.40 + momentum_norm * 0.30 + vol_norm * 0.15 + dist_norm * 0.15
         )
 
     def train(self, data: pd.DataFrame, target_col: str = "forward_return"):
@@ -119,12 +119,12 @@ class LightGBMRanker:
         """
         if data.empty:
             return False
-            
+
         X = data[FEATURES]
         y = data[target_col]
-        
+
         train_data = lgb.Dataset(X, label=y)
-        
+
         params = {
             "objective": "regression",
             "metric": "rmse",
@@ -133,15 +133,16 @@ class LightGBMRanker:
             "bagging_fraction": 0.8,
             "bagging_freq": 5,
             "verbose": -1,
-            "seed": 42
+            "seed": 42,
         }
-        
+
         print(f"Training LightGBM Ranker on {len(data)} samples...")
         self.model = lgb.train(params, train_data, num_boost_round=100)
-        
+
         joblib.dump(self.model, self.model_path)
         print(f"Model saved to {self.model_path}")
         return True
+
 
 if __name__ == "__main__":
     # Test/Diagnostics placeholder

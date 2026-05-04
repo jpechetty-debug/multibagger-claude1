@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import os
+from dataclasses import dataclass
 
 
 def _get_bool(name: str, default: bool) -> bool:
@@ -64,17 +64,11 @@ def load_runtime_settings() -> RuntimeSettings:
         embed_price_updater_in_web=_get_bool("EMBED_PRICE_UPDATER_IN_WEB", False),
         embed_weekly_audit_in_web=_get_bool("EMBED_WEEKLY_AUDIT_IN_WEB", False),
         price_update_batch_size=_get_int("PRICE_UPDATE_BATCH_SIZE", 50),
-        price_update_startup_delay_seconds=_get_int(
-            "PRICE_UPDATE_STARTUP_DELAY_SECONDS", 10
-        ),
-        price_update_batch_pause_seconds=_get_float(
-            "PRICE_UPDATE_BATCH_PAUSE_SECONDS", 1.0
-        ),
+        price_update_startup_delay_seconds=_get_int("PRICE_UPDATE_STARTUP_DELAY_SECONDS", 10),
+        price_update_batch_pause_seconds=_get_float("PRICE_UPDATE_BATCH_PAUSE_SECONDS", 1.0),
         price_update_interval_seconds=_get_int("PRICE_UPDATE_INTERVAL_SECONDS", 300),
         weekly_audit_stale_after_days=_get_int("WEEKLY_AUDIT_STALE_AFTER_DAYS", 7),
-        weekly_audit_poll_interval_seconds=_get_int(
-            "WEEKLY_AUDIT_POLL_INTERVAL_SECONDS", 6 * 3600
-        ),
+        weekly_audit_poll_interval_seconds=_get_int("WEEKLY_AUDIT_POLL_INTERVAL_SECONDS", 6 * 3600),
     )
 
 

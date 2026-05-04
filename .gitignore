@@ -128,3 +128,6 @@ refactor_script.py
 .pytest_tmp/
 *.bak
 extracted_*/
+
+# Local Numba cache
+numba_cache/

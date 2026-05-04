@@ -34,10 +34,9 @@ Columns required:
 from __future__ import annotations
 
 import logging
-import os
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import cast
 
 import pandas as pd
 
@@ -46,7 +45,7 @@ logger = logging.getLogger(__name__)
 _DATE_FORMATS = ["%Y-%m-%d", "%d-%b-%Y", "%d/%m/%Y", "%Y%m%d"]
 
 
-def _parse_date(value: str | None) -> Optional[pd.Timestamp]:
+def _parse_date(value: str | None) -> pd.Timestamp | None:
     """Try multiple date formats; return None if unparseable or blank."""
     if not value or str(value).strip().lower() in {"", "nan", "nat", "none", "null"}:
         return None
@@ -71,16 +70,16 @@ class SurvivorshipAdjustedLoader:
 
     def __init__(self, data_dir: str = "data") -> None:
         self.data_dir = Path(data_dir)
-        self._listing_cache: Optional[pd.DataFrame] = None
-        self._cache_path: Optional[Path] = None
+        self._listing_cache: pd.DataFrame | None = None
+        self._cache_path: Path | None = None
 
     # ── public API ─────────────────────────────────────────────────────────
 
     def get_universe(
         self,
         as_of_date: str,
-        candidates: Optional[List[str]] = None,
-    ) -> List[str]:
+        candidates: list[str] | None = None,
+    ) -> list[str]:
         """
         Return the valid universe of stocks for a specific historical date.
 
@@ -99,7 +98,8 @@ class SurvivorshipAdjustedLoader:
         if snapshot is not None:
             logger.info(
                 "[SurvivorshipLoader] Using index snapshot for %s — %d stocks",
-                as_of_date, len(snapshot),
+                as_of_date,
+                len(snapshot),
             )
             if candidates:
                 snapshot = [s for s in snapshot if s in set(candidates)]
@@ -111,7 +111,9 @@ class SurvivorshipAdjustedLoader:
             valid = self._filter_by_dates(listing_df, target, candidates)
             logger.info(
                 "[SurvivorshipLoader] Date-filtered universe for %s — %d stocks (from %d candidates)",
-                as_of_date, len(valid), len(candidates) if candidates else len(listing_df),
+                as_of_date,
+                len(valid),
+                len(candidates) if candidates else len(listing_df),
             )
             return valid
 
@@ -124,7 +126,7 @@ class SurvivorshipAdjustedLoader:
         )
         return list(candidates) if candidates else []
 
-    def load_delisted_data(self, symbol: str) -> Optional[pd.DataFrame]:
+    def load_delisted_data(self, symbol: str) -> pd.DataFrame | None:
         """
         Load OHLCV history for a delisted stock from data/delisted/.
         Returns a DataFrame if the file exists, otherwise None.
@@ -141,18 +143,18 @@ class SurvivorshipAdjustedLoader:
                     logger.warning("Failed to load delisted data for %s: %s", symbol, exc)
         return None
 
-    def get_delisted_symbols(self, as_of_date: str) -> List[str]:
+    def get_delisted_symbols(self, as_of_date: str) -> list[str]:
         """Return symbols that were delisted on or before `as_of_date`."""
         listing_df = self._load_listing_metadata()
         if listing_df is None:
             return []
         target = pd.Timestamp(as_of_date)
         mask = listing_df["Delisting_Date"].notna() & (listing_df["Delisting_Date"] <= target)
-        return listing_df.loc[mask, "Symbol"].tolist()
+        return cast(list[str], listing_df.loc[mask, "Symbol"].tolist())
 
     # ── internal ────────────────────────────────────────────────────────────
 
-    def _load_index_snapshot(self, as_of_date: str) -> Optional[List[str]]:
+    def _load_index_snapshot(self, as_of_date: str) -> list[str] | None:
         """Try to load a saved monthly Nifty 500 composition CSV."""
         month_str = as_of_date[:7]  # "YYYY-MM"
         path = self.data_dir / f"nifty500_{month_str}.csv"
@@ -163,17 +165,18 @@ class SurvivorshipAdjustedLoader:
             if "Symbol" not in df.columns:
                 logger.warning(
                     "Index snapshot %s has no 'Symbol' column — columns: %s",
-                    path, list(df.columns),
+                    path,
+                    list(df.columns),
                 )
                 return None
             symbols = df["Symbol"].dropna().str.strip().str.upper().tolist()
             logger.debug("Snapshot %s loaded — %d symbols", path, len(symbols))
-            return symbols
+            return cast(list[str], symbols)
         except Exception as exc:
             logger.warning("Failed to read index snapshot %s: %s", path, exc)
             return None
 
-    def _load_listing_metadata(self) -> Optional[pd.DataFrame]:
+    def _load_listing_metadata(self) -> pd.DataFrame | None:
         """Load (and cache) data/nse_listing_dates.csv."""
         path = self.data_dir / "nse_listing_dates.csv"
         if self._listing_cache is not None and self._cache_path == path:
@@ -185,9 +188,7 @@ class SurvivorshipAdjustedLoader:
             required = {"Symbol", "Listing_Date"}
             missing = required - set(df.columns)
             if missing:
-                logger.error(
-                    "nse_listing_dates.csv is missing required columns: %s", missing
-                )
+                logger.error("nse_listing_dates.csv is missing required columns: %s", missing)
                 return None
 
             df["Symbol"] = df["Symbol"].str.strip().str.upper()
@@ -214,16 +215,15 @@ class SurvivorshipAdjustedLoader:
         self,
         listing_df: pd.DataFrame,
         target: pd.Timestamp,
-        candidates: Optional[List[str]],
-    ) -> List[str]:
+        candidates: list[str] | None,
+    ) -> list[str]:
         """
         Return symbols that were listed and not yet delisted at `target`.
         If `candidates` is provided, restrict to that set.
         """
         mask_listed = listing_df["Listing_Date"] <= target
-        mask_not_delisted = (
-            listing_df["Delisting_Date"].isna()
-            | (listing_df["Delisting_Date"] > target)
+        mask_not_delisted = listing_df["Delisting_Date"].isna() | (
+            listing_df["Delisting_Date"] > target
         )
         valid_df = listing_df[mask_listed & mask_not_delisted]
 
@@ -231,7 +231,7 @@ class SurvivorshipAdjustedLoader:
             candidate_set = {s.strip().upper() for s in candidates}
             valid_df = valid_df[valid_df["Symbol"].isin(candidate_set)]
 
-        return valid_df["Symbol"].tolist()
+        return cast(list[str], valid_df["Symbol"].tolist())
 
     # ── convenience: data setup helper ─────────────────────────────────────
 

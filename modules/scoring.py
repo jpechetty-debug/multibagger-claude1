@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional, Union
+from typing import Any, Union
+
 import numpy as np
+
 import config
-from research.conviction_engine import calculate_conviction_score
-from modules.promoter_intel import calculate_promoter_score
 from modules.estimates import get_estimate_data
 from modules.news_sentiment import engine as news_engine
+from modules.promoter_intel import calculate_promoter_score
+from research.conviction_engine import calculate_conviction_score
 
 # Type aliases
 _Number = Union[int, float]
@@ -29,8 +31,8 @@ class FactorState:
     sg_val: float
     roe_val: float
     best_roe: float
-    pe: Optional[_Number]
-    peg: Optional[_Number]
+    pe: _Number | None
+    peg: _Number | None
     price: float
     atr: float
     stock_sector: str
@@ -39,7 +41,7 @@ class FactorState:
 
 
 def normalize_metric(
-    value: Optional[_Number],
+    value: _Number | None,
     min_val: _Number,
     max_val: _Number,
     invert: bool = False,
@@ -48,28 +50,31 @@ def normalize_metric(
     Normalizes a metric to a 0-100 scale using a Sigmoid function.
     Replaces binary step cliffs with a smooth continuous gradient.
     """
-    if value is None or not np.isfinite(float(value)): return 0.0
-    
+    if value is None or not np.isfinite(float(value)):
+        return 0.0
+
     mid = (min_val + max_val) / 2.0
     span = float(max_val - min_val)
-    if span == 0: span = 1e-5
-    
+    if span == 0:
+        span = 1e-5
+
     # Scale so min_val is approx at x=-3 (4.7%) and max_val at x=+3 (95%)
     x_scaled = (value - mid) / (span / 6.0)
-    
+
     # Cap exponent to avoid overflow warnings
     x_scaled = max(-100, min(100, x_scaled))
-    
+
     sigmoid_val = 1.0 / (1.0 + np.exp(-x_scaled))
-    
+
     if invert:
-        return (1.0 - sigmoid_val) * 100.0
+        return float((1.0 - sigmoid_val) * 100.0)
     else:
-        return sigmoid_val * 100.0
+        return float(sigmoid_val * 100.0)
+
 
 def calculate_sector_medians(results: list[_StockData]) -> _SectorMedians:
     """Compute median ROE, Sales Growth, PE per sector for relative scoring."""
-    sector_data = {}
+    sector_data: dict[str, dict[str, list[float]]] = {}
     for stock in results:
         sector = stock.get("Sector", "Unknown")
         if sector == "Unknown":
@@ -85,7 +90,7 @@ def calculate_sector_medians(results: list[_StockData]) -> _SectorMedians:
             sector_data[sector]["growth"].append(growth)
         if pe > 0:
             sector_data[sector]["pe"].append(pe)
-    
+
     medians = {}
     for sector, vals in sector_data.items():
         medians[sector] = {
@@ -164,7 +169,7 @@ def _build_factor_state(data: _StockData, score_sentiment: float) -> FactorState
 
     stock_sector = data.get("Sector", "") or ""
     if "Bank" in stock_sector or "Financial" in stock_sector:
-        score_de = 80
+        score_de = 80.0
     else:
         score_de = normalize_metric(data.get("Debt_Equity", 0), 0, 1.0, invert=True)
 
@@ -268,7 +273,7 @@ def _calculate_base_score(
 def _apply_sector_relative_adjustment(
     base_score: float,
     state: FactorState,
-    sector_medians: Optional[_SectorMedians],
+    sector_medians: _SectorMedians | None,
 ) -> float:
     if not sector_medians or state.stock_sector not in sector_medians:
         return base_score
@@ -290,7 +295,7 @@ def _apply_sector_relative_adjustment(
 
 
 def _calculate_bonus_total(data: _StockData, state: FactorState, sector_boost: _Number) -> float:
-    total_bonus = 0
+    total_bonus: float = 0.0
     inflection_score = data.get("Earnings_Inflection_Score")
     if inflection_score is None:
         inflection_score = 0
@@ -346,7 +351,11 @@ def _calculate_bonus_total(data: _StockData, state: FactorState, sector_boost: _
     if state.pe is not None and 0 < state.pe < 7 and data.get("Avg_ROE_5Y%", 0) > 15:
         total_bonus += 7
 
-    if "Utility" in state.stock_sector or "Energy" in state.stock_sector or "Power" in state.stock_sector:
+    if (
+        "Utility" in state.stock_sector
+        or "Energy" in state.stock_sector
+        or "Power" in state.stock_sector
+    ):
         de_check = data.get("Debt_Equity")
         fs_check = data.get("F_Score")
         if (de_check is not None and de_check > 1.0) and (fs_check is not None and fs_check >= 6):
@@ -359,7 +368,7 @@ def _apply_penalty_rules(
     base_score: float,
     data: _StockData,
     state: FactorState,
-    factor_audit: list[dict[str, float]],
+    factor_audit: list[dict[str, Any]],
 ) -> float:
     total_penalty = 0
 
@@ -472,7 +481,7 @@ def _build_conviction_input(data: _StockData) -> _StockData:
 
 
 def _apply_spline_cap(
-    val: Optional[_Number],
+    val: _Number | None,
     full_score_val: _Number,
     max_penalty_val: _Number,
     min_cap: _Number,
@@ -489,13 +498,13 @@ def _apply_spline_cap(
             cap = min_cap
         elif val < full_score_val:
             ratio = (full_score_val - val) / float(full_score_val - max_penalty_val)
-            cap = 100.0 - (ratio ** 1.5) * (100.0 - min_cap)
+            cap = 100.0 - (ratio**1.5) * (100.0 - min_cap)
     else:
         if val >= max_penalty_val:
             cap = min_cap
         elif val > full_score_val:
             ratio = (val - full_score_val) / float(max_penalty_val - full_score_val)
-            cap = 100.0 - (ratio ** 1.5) * (100.0 - min_cap)
+            cap = 100.0 - (ratio**1.5) * (100.0 - min_cap)
 
     if cap < 96:
         score_ceiling = min(score_ceiling, cap)
@@ -673,7 +682,7 @@ def _apply_score_ceiling_rules(
 
 def _apply_optional_intel_adjustments(
     data: _StockData,
-    factor_audit: list[dict[str, float]],
+    factor_audit: list[dict[str, Any]],
     score_ceiling: float,
     disqualifiers: list[str],
 ) -> tuple[float, float, float, list[str]]:
@@ -691,14 +700,10 @@ def _apply_optional_intel_adjustments(
         promoter_adjustment = promoter_result.get("score_adjustment", 0)
         if promoter_adjustment > 0:
             total_bonus += promoter_adjustment
-            factor_audit.append(
-                {"name": "Promoter Buying Boost", "value": promoter_adjustment}
-            )
+            factor_audit.append({"name": "Promoter Buying Boost", "value": promoter_adjustment})
         elif promoter_adjustment < 0:
             total_penalty += abs(promoter_adjustment)
-            factor_audit.append(
-                {"name": "Promoter Selling Penalty", "value": promoter_adjustment}
-            )
+            factor_audit.append({"name": "Promoter Selling Penalty", "value": promoter_adjustment})
     except Exception:
         pass
 
@@ -714,16 +719,12 @@ def _apply_optional_intel_adjustments(
         if estimate_cap is not None:
             score_ceiling = min(score_ceiling, estimate_cap)
             disqualifiers.append(f"Earnings Miss Streak (cap {estimate_cap})")
-            factor_audit.append(
-                {"name": "Earnings Miss Streak", "value": -(100 - estimate_cap)}
-            )
+            factor_audit.append({"name": "Earnings Miss Streak", "value": -(100 - estimate_cap)})
 
         estimate_adjustment = estimate_momentum.get("score_adjustment", 0)
         if estimate_adjustment > 0:
             total_bonus += estimate_adjustment
-            factor_audit.append(
-                {"name": "Estimate Momentum Bonus", "value": estimate_adjustment}
-            )
+            factor_audit.append({"name": "Estimate Momentum Bonus", "value": estimate_adjustment})
         elif estimate_adjustment < 0:
             total_penalty += abs(estimate_adjustment)
             factor_audit.append(
@@ -761,10 +762,7 @@ def _build_factor_breakdown(
         ),
         "Value": round(state.score_val * weights["w_val"], 1),
         "Risk": round(
-            (
-                state.score_fscore * weights["w_fscore"]
-                + state.score_de * weights["w_de"]
-            ),
+            (state.score_fscore * weights["w_fscore"] + state.score_de * weights["w_de"]),
             1,
         ),
         "Momentum": round(state.score_mom_combined * weights["w_mom"], 1),
@@ -773,11 +771,12 @@ def _build_factor_breakdown(
         "Sector": sector_boost,
     }
 
+
 def calculate_institutional_score(
     data: _StockData,
     sector_boost: _Number = 0,
     market_regime: str = "Neutral",
-    sector_medians: Optional[_SectorMedians] = None,
+    sector_medians: _SectorMedians | None = None,
 ) -> dict[str, Any]:
     """
     Calculates a 'Composite Institutional Score' out of 100.
@@ -796,7 +795,7 @@ def calculate_institutional_score(
     base_score, data_confidence = _calculate_base_score(data, state, weights, w_sentiment)
     base_score = _apply_sector_relative_adjustment(base_score, state, sector_medians)
 
-    factor_audit: list[dict[str, float]] = []
+    factor_audit: list[dict[str, Any]] = []
     base_score += _calculate_bonus_total(data, state, sector_boost)
     base_score = _apply_penalty_rules(base_score, data, state, factor_audit)
 

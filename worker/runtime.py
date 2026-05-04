@@ -4,10 +4,8 @@ import argparse
 import asyncio
 
 import main as app_main
-
 from modules.structured_logger import SovereignLogger
 from worker.background_jobs import run_price_update_loop, start_weekly_audit_thread
-
 
 logger = SovereignLogger("sovereign.runtime.worker")
 

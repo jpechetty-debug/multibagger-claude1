@@ -12,8 +12,6 @@ Provides:
 from __future__ import annotations
 
 import sqlite3
-from collections import Counter
-from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -137,9 +135,7 @@ def get_score_explanation(symbol: str) -> dict[str, Any]:
     conn = _get_connection()
     try:
         # Get stock data
-        row = conn.execute(
-            "SELECT * FROM multibaggers WHERE symbol = ?", (symbol,)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM multibaggers WHERE symbol = ?", (symbol,)).fetchone()
         if not row:
             return {"error": f"Stock {symbol} not found"}
 
@@ -154,7 +150,9 @@ def get_score_explanation(symbol: str) -> dict[str, Any]:
         # ROE analysis
         roe = stock.get("avg_roe_5y") or stock.get("roe")
         if roe is not None and roe > 15:
-            positive_drivers.append({"factor": "Strong ROE", "value": f"{roe:.1f}%", "impact": "high"})
+            positive_drivers.append(
+                {"factor": "Strong ROE", "value": f"{roe:.1f}%", "impact": "high"}
+            )
         elif roe is not None and roe < 5:
             penalties.append({"factor": "Weak ROE", "value": f"{roe:.1f}%", "impact": "high"})
         elif roe is None:
@@ -163,7 +161,9 @@ def get_score_explanation(symbol: str) -> dict[str, Any]:
         # Sales growth analysis
         sg = stock.get("sales_cagr_5y") or stock.get("sales_growth")
         if sg is not None and sg > 15:
-            positive_drivers.append({"factor": "Strong Revenue Growth", "value": f"{sg:.1f}%", "impact": "high"})
+            positive_drivers.append(
+                {"factor": "Strong Revenue Growth", "value": f"{sg:.1f}%", "impact": "high"}
+            )
         elif sg is not None and sg < 0:
             penalties.append({"factor": "Revenue Decline", "value": f"{sg:.1f}%", "impact": "high"})
         elif sg is None:
@@ -172,7 +172,9 @@ def get_score_explanation(symbol: str) -> dict[str, Any]:
         # Valuation
         pe = stock.get("pe_ratio")
         if pe is not None and 0 < pe < 15:
-            positive_drivers.append({"factor": "Attractive Valuation", "value": f"PE {pe:.1f}", "impact": "medium"})
+            positive_drivers.append(
+                {"factor": "Attractive Valuation", "value": f"PE {pe:.1f}", "impact": "medium"}
+            )
         elif pe is not None and pe > 60:
             penalties.append({"factor": "Overvalued", "value": f"PE {pe:.1f}", "impact": "high"})
         elif pe is None or pe == 0:
@@ -181,7 +183,9 @@ def get_score_explanation(symbol: str) -> dict[str, Any]:
         # Debt
         de = stock.get("debt_equity")
         if de is not None and 0 <= de < 0.5:
-            positive_drivers.append({"factor": "Low Debt", "value": f"D/E {de:.2f}", "impact": "medium"})
+            positive_drivers.append(
+                {"factor": "Low Debt", "value": f"D/E {de:.2f}", "impact": "medium"}
+            )
         elif de is not None and de > 2.0:
             penalties.append({"factor": "High Debt", "value": f"D/E {de:.2f}", "impact": "high"})
         elif de is None:
@@ -190,23 +194,37 @@ def get_score_explanation(symbol: str) -> dict[str, Any]:
         # CFO/PAT
         cfo = stock.get("cfo_pat_ratio")
         if cfo is not None and cfo > 1.0:
-            positive_drivers.append({"factor": "Strong Cash Generation", "value": f"CFO/PAT {cfo:.2f}", "impact": "medium"})
+            positive_drivers.append(
+                {
+                    "factor": "Strong Cash Generation",
+                    "value": f"CFO/PAT {cfo:.2f}",
+                    "impact": "medium",
+                }
+            )
         elif cfo is not None and cfo < 0.5:
-            penalties.append({"factor": "Weak Cash Quality", "value": f"CFO/PAT {cfo:.2f}", "impact": "medium"})
+            penalties.append(
+                {"factor": "Weak Cash Quality", "value": f"CFO/PAT {cfo:.2f}", "impact": "medium"}
+            )
         elif cfo is None:
             missing_factors.append("CFO/PAT")
 
         # Promoter holding
         prom = stock.get("promoter_holding")
         if prom is not None and prom > 60:
-            positive_drivers.append({"factor": "High Promoter Confidence", "value": f"{prom:.1f}%", "impact": "medium"})
+            positive_drivers.append(
+                {"factor": "High Promoter Confidence", "value": f"{prom:.1f}%", "impact": "medium"}
+            )
         elif prom is not None and prom < 25:
-            penalties.append({"factor": "Low Promoter Holding", "value": f"{prom:.1f}%", "impact": "medium"})
+            penalties.append(
+                {"factor": "Low Promoter Holding", "value": f"{prom:.1f}%", "impact": "medium"}
+            )
 
         # Pledge
         pledge = stock.get("pledge_pct")
         if pledge is not None and pledge > 10:
-            penalties.append({"factor": "Significant Pledge", "value": f"{pledge:.1f}%", "impact": "high"})
+            penalties.append(
+                {"factor": "Significant Pledge", "value": f"{pledge:.1f}%", "impact": "high"}
+            )
 
         # Market cap
         mcap = stock.get("market_cap_cr")
@@ -216,9 +234,13 @@ def get_score_explanation(symbol: str) -> dict[str, Any]:
         # F-Score
         fscore = stock.get("f_score")
         if fscore is not None and fscore >= 7:
-            positive_drivers.append({"factor": "High Piotroski Score", "value": f"{fscore}/9", "impact": "medium"})
+            positive_drivers.append(
+                {"factor": "High Piotroski Score", "value": f"{fscore}/9", "impact": "medium"}
+            )
         elif fscore is not None and fscore <= 3:
-            penalties.append({"factor": "Low Piotroski Score", "value": f"{fscore}/9", "impact": "medium"})
+            penalties.append(
+                {"factor": "Low Piotroski Score", "value": f"{fscore}/9", "impact": "medium"}
+            )
         elif fscore is None:
             missing_factors.append("Piotroski F-Score")
 
@@ -294,16 +316,28 @@ def _infer_active_ceilings(stock: dict) -> list[dict[str, Any]]:
     ceilings = []
     roe = stock.get("avg_roe_5y") or stock.get("roe") or 0
     if roe < 15:
-        ceilings.append({"name": "ROE Decay Spline", "cap": round(50 + (roe / 15) * 50, 0), "active": True})
+        ceilings.append(
+            {"name": "ROE Decay Spline", "cap": round(50 + (roe / 15) * 50, 0), "active": True}
+        )
     sg = stock.get("sales_cagr_5y") or stock.get("sales_growth") or 0
     if sg < 10:
-        ceilings.append({"name": "Growth Decay Spline", "cap": round(50 + (max(sg, -5) / 10) * 50, 0), "active": True})
+        ceilings.append(
+            {
+                "name": "Growth Decay Spline",
+                "cap": round(50 + (max(sg, -5) / 10) * 50, 0),
+                "active": True,
+            }
+        )
     fscore = stock.get("f_score")
     if fscore is not None and fscore <= 4:
-        ceilings.append({"name": "Quality Floor Spline", "cap": round(65 + fscore * 5.9, 0), "active": True})
+        ceilings.append(
+            {"name": "Quality Floor Spline", "cap": round(65 + fscore * 5.9, 0), "active": True}
+        )
     cfo = stock.get("cfo_pat_ratio") or 0
     if cfo < 0.8:
-        ceilings.append({"name": "Cash Quality Spline", "cap": round(50 + (cfo / 0.8) * 50, 0), "active": True})
+        ceilings.append(
+            {"name": "Cash Quality Spline", "cap": round(50 + (cfo / 0.8) * 50, 0), "active": True}
+        )
     return ceilings
 
 
@@ -347,23 +381,29 @@ def get_calibration_report() -> dict[str, Any]:
     # Calibration quality indicators
     issues = []
     if graveyard_pct > 30:
-        issues.append({
-            "severity": "CRITICAL",
-            "issue": f"{graveyard_pct}% of stocks score 59-61 — 'graveyard' clustering",
-            "fix": "Score ceiling splines are converging. Spread min_cap values.",
-        })
+        issues.append(
+            {
+                "severity": "CRITICAL",
+                "issue": f"{graveyard_pct}% of stocks score 59-61 — 'graveyard' clustering",
+                "fix": "Score ceiling splines are converging. Spread min_cap values.",
+            }
+        )
     if stats.get("std", 0) < 10:
-        issues.append({
-            "severity": "WARNING",
-            "issue": f"Low score variance (σ={stats.get('std', 0)}). Scores lack differentiation.",
-            "fix": "Increase weight spread or reduce ceiling convergence.",
-        })
+        issues.append(
+            {
+                "severity": "WARNING",
+                "issue": f"Low score variance (σ={stats.get('std', 0)}). Scores lack differentiation.",
+                "fix": "Increase weight spread or reduce ceiling convergence.",
+            }
+        )
     if stats.get("max", 0) < 85:
-        issues.append({
-            "severity": "WARNING",
-            "issue": f"No high-conviction picks (max={stats.get('max', 0)}). Top end is capped.",
-            "fix": "Review checklist gate and bonus cap limits.",
-        })
+        issues.append(
+            {
+                "severity": "WARNING",
+                "issue": f"No high-conviction picks (max={stats.get('max', 0)}). Top end is capped.",
+                "fix": "Review checklist gate and bonus cap limits.",
+            }
+        )
 
     above_90 = sum(v for k, v in dist.get("deciles", {}).items() if k.startswith("9"))
     total = dist.get("total", 1)

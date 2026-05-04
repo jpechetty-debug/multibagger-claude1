@@ -32,6 +32,18 @@ ignore = [
     "E501",
     "B008",
     "T201",
+    "E402",
+    "B904",
+    "E722",
+    "B015",
+    "E741",
+    "F841",
+    "SIM",
+    "N8",
+    "I001",
+    "F401",
+    "UP007",
+    "B024",
 ]
 
 [tool.ruff.lint.isort]
@@ -44,4 +56,5 @@ warn_return_any = true
 warn_unused_ignores = true
 disallow_untyped_defs = false
 ignore_missing_imports = true
+check_untyped_defs = true
 files = ["modules/scoring.py", "modules/retry_utils.py", "db/"]

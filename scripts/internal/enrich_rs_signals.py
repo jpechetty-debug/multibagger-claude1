@@ -9,19 +9,25 @@ from pathlib import Path
 
 import yfinance as yf
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+from typing import Any
 
 try:
     from modules.fundamentals import calculate_piotroski_f_score
     from modules.scoring import calculate_institutional_score
 except ImportError:
-    def calculate_institutional_score(data, **kwargs):
+
+    def calculate_institutional_score(
+        data: dict[str, Any],
+        sector_boost: int | float = 0,
+        market_regime: str = "Neutral",
+        sector_medians: dict[str, dict[str, float]] | None = None,
+    ) -> dict[str, Any]:
         return {"total_score": 50}
 
-    def calculate_piotroski_f_score(_ticker):
+    def calculate_piotroski_f_score(ticker: Any) -> Any:
         return 5
 
 
@@ -107,11 +113,7 @@ def enrich(
 
             high_52w = info.get("fiftyTwoWeekHigh", price)
             low_52w = info.get("fiftyTwoWeekLow", price)
-            down_52w = (
-                round(((high_52w - price) / high_52w) * 100, 2)
-                if high_52w > 0
-                else 0
-            )
+            down_52w = round(((high_52w - price) / high_52w) * 100, 2) if high_52w > 0 else 0
 
             score_data = {
                 "ROE%": roe,

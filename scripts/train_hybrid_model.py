@@ -3,10 +3,9 @@
 Sovereign AI — ML Meta-Model Training Entry Point
 Reproducibly retrains the XGBoost forward-return predictor.
 """
-import os
-import sys
+
 import argparse
-import logging
+import sys
 from pathlib import Path
 
 # Add project root to path
@@ -19,24 +18,30 @@ from modules.structured_logger import SovereignLogger
 
 logger = SovereignLogger("sovereign.scripts.train_ml")
 
+
 def main():
     parser = argparse.ArgumentParser(description="Retrain Sovereign Hybrid XGBoost Model")
-    parser.add_argument("--force", action="store_true", help="Force retraining regardless of data size")
-    args = parser.parse_args()
+    parser.add_argument(
+        "--force", action="store_true", help="Force retraining regardless of data size"
+    )
+    parser.parse_args()
 
     logger.info("Starting ML model retraining cycle")
-    
+
     # Ensure runtime/models exists
     model_dir = PROJECT_ROOT / "runtime" / "models"
     model_dir.mkdir(parents=True, exist_ok=True)
 
     success = train_hybrid_model()
-    
+
     if success:
-        logger.info("ML model retraining successful", path=str(model_dir / "xgboost_meta_model.pkl"))
+        logger.info(
+            "ML model retraining successful", path=str(model_dir / "xgboost_meta_model.pkl")
+        )
     else:
         logger.error("ML model retraining failed or skipped due to insufficient data")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

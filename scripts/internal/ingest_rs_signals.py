@@ -6,13 +6,11 @@ from pathlib import Path
 
 import pandas as pd
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from db.repository import save_multibaggers
-
 
 DEFAULT_CSV_PATH = PROJECT_ROOT / "tmp_rs_data.csv"
 
@@ -112,9 +110,7 @@ def ingest(csv_path: str | Path = DEFAULT_CSV_PATH) -> int:
     df = df[df["Symbol"].notna()].copy()
     df["Symbol"] = df["Symbol"].astype(str).str.strip()
     df = df[
-        (df["Symbol"] != "")
-        & (df["Symbol"].str.upper() != "SYMBOL")
-        & (df["Symbol"] != "#")
+        (df["Symbol"] != "") & (df["Symbol"].str.upper() != "SYMBOL") & (df["Symbol"] != "#")
     ].copy()
 
     df["Symbol"] = df["Symbol"].apply(
@@ -130,14 +126,17 @@ def ingest(csv_path: str | Path = DEFAULT_CSV_PATH) -> int:
     )
     df["Score"] = df["Signal"].apply(map_score)
     df["Rating"] = df["Signal"]
-    df["RS_Rating"] = pd.to_numeric(
-        df["RS%"]
-        .astype(str)
-        .str.replace("%", "", regex=False)
-        .str.replace(",", "", regex=False)
-        .str.strip(),
-        errors="coerce",
-    ) * 100
+    df["RS_Rating"] = (
+        pd.to_numeric(
+            df["RS%"]
+            .astype(str)
+            .str.replace("%", "", regex=False)
+            .str.replace(",", "", regex=False)
+            .str.strip(),
+            errors="coerce",
+        )
+        * 100
+    )
 
     df_save = df.rename(columns={"Signal": "Technical_Signal"})
     print(f"Ingesting {len(df_save)} signals into database...")
@@ -148,7 +147,9 @@ def ingest(csv_path: str | Path = DEFAULT_CSV_PATH) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Ingest RS signals from a CSV export.")
-    parser.add_argument("--csv-path", default=str(DEFAULT_CSV_PATH), help="Path to the RS CSV export.")
+    parser.add_argument(
+        "--csv-path", default=str(DEFAULT_CSV_PATH), help="Path to the RS CSV export."
+    )
     return parser
 
 

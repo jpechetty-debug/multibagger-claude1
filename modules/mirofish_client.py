@@ -1,10 +1,10 @@
-import os
 import time
+
 import requests
-import json
-import config
 from loguru import logger
-from typing import Dict, Any, Optional
+
+import config
+
 
 class MiroFishClient:
     """
@@ -12,7 +12,7 @@ class MiroFishClient:
     Used for submitting QARP stock picks to a multi-agent debate simulation.
     """
 
-    def __init__(self, base_url: str = None):
+    def __init__(self, base_url: str | None = None):
         if not base_url:
             base_url = config.MIROFISH_URL
         self.base_url = base_url.rstrip("/")
@@ -22,7 +22,7 @@ class MiroFishClient:
         else:
             logger.info("MiroFish Client initialized in MOCK/FALLBACK mode.")
 
-    def create_project(self, name: str, description: str, document_text: str) -> Optional[Dict]:
+    def create_project(self, name: str, description: str, document_text: str) -> dict | None:
         """
         Create a new MiroFish project with the textual context.
         """
@@ -37,18 +37,18 @@ class MiroFishClient:
                 "name": name,
                 "description": description,
                 "document_text": document_text,
-                "simulation_requirement": f"Analyze {name} and predict its stock trajectory over the next 30 days."
+                "simulation_requirement": f"Analyze {name} and predict its stock trajectory over the next 30 days.",
             }
             resp = requests.post(url, json=payload, timeout=10)
             resp.raise_for_status()
             data = resp.json()
             if data.get("success"):
-                return data.get("data")
+                return data.get("data")  # type: ignore[no-any-return]
             else:
                 logger.error(f"Failed to create project: {data.get('error')}")
         except Exception as e:
             logger.error(f"MiroFish connection error (create_project): {e}")
-            
+
         return None
 
     def build_graph(self, project_id: str) -> bool:
@@ -60,12 +60,12 @@ class MiroFishClient:
             resp = requests.post(url, json={"project_id": project_id}, timeout=10)
             resp.raise_for_status()
             data = resp.json()
-            return data.get("success", False)
+            return bool(data.get("success", False))
         except Exception as e:
             logger.error(f"MiroFish connection error (build_graph): {e}")
         return False
 
-    def create_simulation(self, project_id: str) -> Optional[str]:
+    def create_simulation(self, project_id: str) -> str | None:
         """
         Create the simulation
         """
@@ -75,7 +75,11 @@ class MiroFishClient:
             resp.raise_for_status()
             data = resp.json()
             if data.get("success"):
-                return data["data"].get("simulation_id")
+                return (
+                    str(data["data"].get("simulation_id"))
+                    if data["data"].get("simulation_id")
+                    else None
+                )
         except Exception as e:
             logger.error(f"MiroFish connection error (create_simulation): {e}")
         return None
@@ -112,13 +116,14 @@ class MiroFishClient:
             data = resp.json()
             if data.get("success"):
                 task_id = data["data"].get("task_id")
-                if not task_id: return True # Already prepared
+                if not task_id:
+                    return True  # Already prepared
                 return self.poll_task(task_id, timeout_sec=120)
         except Exception as e:
             logger.error(f"MiroFish connection error (prepare_simulation): {e}")
         return False
 
-    def generate_report(self, simulation_id: str) -> Optional[str]:
+    def generate_report(self, simulation_id: str) -> str | None:
         """
         Start report generation task. Returns report_id if successful.
         """
@@ -128,12 +133,12 @@ class MiroFishClient:
             resp.raise_for_status()
             data = resp.json()
             if data.get("success"):
-                return data["data"].get("report_id")
+                return str(data["data"].get("report_id")) if data["data"].get("report_id") else None
         except Exception as e:
             logger.error(f"MiroFish connection error (generate_report): {e}")
         return None
 
-    def wait_for_report(self, simulation_id: str, timeout_sec: int = 300) -> Optional[str]:
+    def wait_for_report(self, simulation_id: str, timeout_sec: int = 300) -> str | None:
         """
         Poll report status until completion.
         """
@@ -141,7 +146,7 @@ class MiroFishClient:
         report_id = self.generate_report(simulation_id)
         if not report_id:
             return None
-            
+
         start_time = time.time()
         while time.time() - start_time < timeout_sec:
             try:
@@ -151,15 +156,19 @@ class MiroFishClient:
                 if data.get("success"):
                     status = data["data"].get("status")
                     if status == "completed":
-                        return data["data"].get("report_id")
+                        return (
+                            str(data["data"].get("report_id"))
+                            if data["data"].get("report_id")
+                            else None
+                        )
                     elif status == "failed":
                         logger.error("Simulation report generation failed.")
                         return None
             except Exception as e:
                 logger.warning(f"Polling error: {e}")
-                
+
             time.sleep(5)
-            
+
         logger.error(f"Timeout waiting for report on {simulation_id}")
         return None
 
@@ -171,26 +180,28 @@ class MiroFishClient:
         logger.info(f"Submitting ticker {ticker} to MiroFish for swarm analysis...")
         if not self.enabled:
             return f"# Local AI Thesis for {ticker}\n\n[MOCK MODE] Momentum is strong, fundamentals support the QARP thesis."
-            
+
         proj = self.create_project(f"{ticker} Swarm Debate", "QARP validation", context)
         if not proj:
             logger.warning("MiroFish unvailable. Using fallback heuristic.")
             return f"# Simulated Conviction Report for {ticker}\\n\\nAgents generated a robust consensus indicating continued momentum."
-            
-        project_id = proj.get("project_id")
-        self.build_graph(project_id)
-        # Assuming synchronous build for simplicity
-        
-        sim_id = self.create_simulation(project_id)
+
+        project_id = str(proj.get("project_id")) if proj.get("project_id") else None
+        if project_id:
+            self.build_graph(project_id)
+            # Assuming synchronous build for simplicity
+            sim_id = self.create_simulation(project_id)
+        else:
+            sim_id = None
         if not sim_id:
             return "Simulation failed to start."
-            
+
         success = self.prepare_simulation(sim_id)
         if not success:
             return "Simulation preparation failed (agent generation timeout)."
-            
+
         report_id = self.wait_for_report(sim_id)
         if report_id:
             return f"Swarm simulation complete. Consensus reached. Report ID: {report_id}"
-            
+
         return "Simulation timed out or failed."

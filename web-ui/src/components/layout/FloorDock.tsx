@@ -1,4 +1,4 @@
-import { LayoutGrid, Menu } from 'lucide-react'
+import { LayoutGrid, Menu, Activity } from 'lucide-react'
 
 interface FloorDockProps {
   activeTab: string
@@ -8,6 +8,7 @@ interface FloorDockProps {
 export function FloorDock({ activeTab, onTabChange }: FloorDockProps) {
   const tabs = [
     { name: 'Signals', icon: LayoutGrid },
+    { name: 'Swing Trades', icon: Activity },
   ]
 
   return (

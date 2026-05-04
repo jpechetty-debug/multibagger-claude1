@@ -1,6 +1,5 @@
-
-import pandas as pd
 import numpy as np
+
 
 def calculate_rsi(series, period=14):
     """
@@ -12,8 +11,8 @@ def calculate_rsi(series, period=14):
 
     rs = gain / loss
     rsi = 100 - (100 / (1 + rs))
-    
+
     # Handle division by zero (if loss is 0, RSI is 100)
-    rsi = rsi.replace([np.inf, -np.inf], 100).fillna(50) # Neutral RSI fill
-    
+    rsi = rsi.replace([np.inf, -np.inf], 100).fillna(50)  # Neutral RSI fill
+
     return rsi

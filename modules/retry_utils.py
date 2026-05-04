@@ -1,7 +1,7 @@
 import asyncio
 import inspect
-from typing import Any, Awaitable, Callable, Optional, Sequence
-
+from collections.abc import Callable, Sequence
+from typing import Any
 
 DEFAULT_BACKOFF_SECONDS: Sequence[float] = (2.0, 4.0, 8.0)
 
@@ -23,7 +23,7 @@ async def run_with_exponential_backoff(
     *,
     context: str = "",
     retry_delays: Sequence[float] = DEFAULT_BACKOFF_SECONDS,
-    should_retry: Optional[Callable[[Exception], bool]] = None,
+    should_retry: Callable[[Exception], bool] | None = None,
 ) -> Any:
     """
     Execute an operation with deterministic exponential backoff.
@@ -36,7 +36,7 @@ async def run_with_exponential_backoff(
         try:
             result = operation()
             if inspect.isawaitable(result):
-                return await result  # type: ignore[no-any-return]
+                return await result
             return result
         except Exception as exc:
             if attempt >= retries or not retry_check(exc):
@@ -52,15 +52,15 @@ async def run_with_exponential_backoff(
 
 # ── Circuit Breaker ────────────────────────────────────────────────────────────
 
-import time
 import threading
+import time
 from enum import Enum
 
 
 class CircuitState(Enum):
-    CLOSED = "closed"       # normal — requests pass through
-    OPEN = "open"           # tripped — requests fail-fast
-    HALF_OPEN = "half_open" # probing — one request let through
+    CLOSED = "closed"  # normal — requests pass through
+    OPEN = "open"  # tripped — requests fail-fast
+    HALF_OPEN = "half_open"  # probing — one request let through
 
 
 class CircuitBreaker:

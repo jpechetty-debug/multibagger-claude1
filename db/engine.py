@@ -6,11 +6,14 @@ Provides dual-mode database connectivity:
   - SQLite (local development) via sync SQLAlchemy
 Controlled by DATABASE_URL environment variable.
 """
+
 import os
 from pathlib import Path
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+
 from db.models import Base
 
 # --- Configuration ---
@@ -24,6 +27,7 @@ DATABASE_URL = os.getenv(
     f"sqlite:///{DEFAULT_SQLITE_PATH.as_posix()}",
 )
 IS_SQLITE = DATABASE_URL.startswith("sqlite")
+
 
 # --- Engine Factory ---
 def _build_engine():
@@ -43,6 +47,7 @@ def _build_engine():
             pool_recycle=3600,
             echo=False,
         )
+
 
 engine = _build_engine()
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -80,5 +85,5 @@ def get_engine_info() -> dict:
     return {
         "url": DATABASE_URL.split("@")[-1] if "@" in DATABASE_URL else DATABASE_URL,
         "backend": "PostgreSQL/TimescaleDB" if not IS_SQLITE else "SQLite/WAL",
-        "pool_size": engine.pool.size() if hasattr(engine.pool, 'size') else "N/A",
+        "pool_size": engine.pool.size() if hasattr(engine.pool, "size") else "N/A",
     }

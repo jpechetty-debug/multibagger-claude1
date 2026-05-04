@@ -8,7 +8,9 @@ Usage:
     Start beat:     celery -A worker.celery_app beat --loglevel=info
     Monitor:        celery -A worker.celery_app flower
 """
+
 import os
+
 from celery import Celery
 from celery.schedules import crontab
 
@@ -34,23 +36,18 @@ app.conf.update(
     result_serializer="json",
     timezone="Asia/Kolkata",
     enable_utc=True,
-
     # Performance
-    worker_prefetch_multiplier=1,       # Fair task distribution
-    task_acks_late=True,                # Retry on worker crash
-    task_reject_on_worker_lost=True,    # Re-queue if worker dies mid-task
-    worker_max_tasks_per_child=50,      # Recycle workers to prevent memory leaks
-
+    worker_prefetch_multiplier=1,  # Fair task distribution
+    task_acks_late=True,  # Retry on worker crash
+    task_reject_on_worker_lost=True,  # Re-queue if worker dies mid-task
+    worker_max_tasks_per_child=50,  # Recycle workers to prevent memory leaks
     # Rate Limiting (respect API providers)
-    task_default_rate_limit="10/m",     # Default: 10 tasks/minute
-
+    task_default_rate_limit="10/m",  # Default: 10 tasks/minute
     # Result Expiration
-    result_expires=3600,                # 1 hour
-
+    result_expires=3600,  # 1 hour
     # Retry Policy
     task_default_retry_delay=30,
     task_max_retries=3,
-
     # Scheduled Tasks (Beat)
     beat_schedule={
         "full-market-scan": {
@@ -78,7 +75,6 @@ app.conf.update(
             "options": {"queue": "compute"},
         },
     },
-
     # Task Routing
     task_routes={
         "worker.tasks.scan_single_stock": {"queue": "screening"},

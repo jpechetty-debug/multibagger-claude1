@@ -4,8 +4,9 @@ import asyncio
 import json
 import threading
 import time
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 import pandas as pd
 import yfinance as yf
@@ -13,7 +14,6 @@ import yfinance as yf
 from modules.retry_utils import run_with_exponential_backoff
 from modules.runtime_settings import runtime_settings
 from modules.structured_logger import SovereignLogger
-
 
 AsyncCallable = Callable[..., Awaitable[Any]]
 
@@ -62,9 +62,7 @@ async def run_price_update_loop(
         if startup_delay_seconds is None
         else startup_delay_seconds
     )
-    batch_limit = (
-        runtime_settings.price_update_batch_size if batch_size is None else batch_size
-    )
+    batch_limit = runtime_settings.price_update_batch_size if batch_size is None else batch_size
     batch_pause = (
         runtime_settings.price_update_batch_pause_seconds
         if batch_pause_seconds is None
@@ -110,9 +108,9 @@ async def run_price_update_loop(
                     data = pd.DataFrame()
                     try:
                         data = await run_with_exponential_backoff(
-                            lambda: run_ticker_blocking(
+                            lambda b=batch: run_ticker_blocking(
                                 price_downloader,
-                                batch,
+                                b,
                                 period="1d",
                                 interval="1m",
                                 progress=False,
@@ -130,16 +128,16 @@ async def run_price_update_loop(
 
                     if not data.empty:
 
-                        def _write_batch_prices():
+                        def _write_batch_prices(b=batch, d=data):
                             conn = get_connection()
                             try:
                                 cursor = conn.cursor()
                                 updated = 0
-                                for symbol in batch:
+                                for symbol in b:
                                     try:
                                         current_price = _extract_current_price(
-                                            data,
-                                            batch,
+                                            d,
+                                            b,
                                             symbol,
                                         )
                                         if current_price is None:
@@ -164,14 +162,13 @@ async def run_price_update_loop(
                             try:
                                 placeholders = ",".join(["?"] * len(batch))
                                 query = (
-                                    "SELECT * FROM multibaggers "
-                                    f"WHERE symbol IN ({placeholders})"
+                                    f"SELECT * FROM multibaggers WHERE symbol IN ({placeholders})"
                                 )
 
-                                def _read_batch_records():
+                                def _read_batch_records(q=query, b=batch):
                                     conn = get_connection()
                                     try:
-                                        df = pd.read_sql(query, conn, params=batch)
+                                        df = pd.read_sql(q, conn, params=b)
                                         return json.loads(
                                             df.to_json(
                                                 orient="records",
@@ -245,17 +242,15 @@ def run_weekly_audit_loop(
             )
             conn = get_connection()
             try:
-                stale_cutoff = (
-                    datetime.now() - timedelta(days=stale_days)
-                ).strftime("%Y-%m-%d %H:%M:%S")
+                stale_cutoff = (datetime.now() - timedelta(days=stale_days)).strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
                 query = (
                     "SELECT symbol FROM multibaggers "
                     "WHERE last_audited IS NULL OR last_audited < ? "
                     "LIMIT 5"
                 )
-                expired_stocks = pd.read_sql(query, conn, params=(stale_cutoff,))[
-                    "symbol"
-                ].tolist()
+                expired_stocks = pd.read_sql(query, conn, params=(stale_cutoff,))["symbol"].tolist()
             finally:
                 conn.close()
 
@@ -266,13 +261,13 @@ def run_weekly_audit_loop(
                 )
                 now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                def _write_audit_marks():
+                def _write_audit_marks(expired=expired_stocks, t=now_str):
                     conn_write = get_connection()
                     try:
-                        for symbol in expired_stocks:
+                        for symbol in expired:
                             conn_write.execute(
                                 "UPDATE multibaggers SET last_audited = ? WHERE symbol = ?",
-                                (now_str, symbol),
+                                (t, symbol),
                             )
                         conn_write.commit()
                     finally:

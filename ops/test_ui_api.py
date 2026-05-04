@@ -1,8 +1,7 @@
-
 import requests
-import sys
 
 BASE_URL = "http://127.0.0.1:8000"
+
 
 def test_slippage_stats():
     print("Testing /api/slippage_stats...")
@@ -21,6 +20,7 @@ def test_slippage_stats():
     except Exception as e:
         print(f"❌ Failed: {e}")
 
+
 def test_regime_status():
     print("Testing /api/regime_status...")
     try:
@@ -35,6 +35,7 @@ def test_regime_status():
             print(f"❌ Failed: Status {res.status_code}")
     except Exception as e:
         print(f"❌ Failed: {e}")
+
 
 if __name__ == "__main__":
     test_slippage_stats()

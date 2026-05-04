@@ -3,12 +3,21 @@
 SQLAlchemy 2.0 ORM Models — Sovereign AI Trading Engine v4.0
 Mirrors the existing SQLite schema for seamless PostgreSQL/TimescaleDB migration.
 """
+
 from datetime import datetime
+
 from sqlalchemy import (
-    Column, Integer, Float, String, Text, DateTime, CheckConstraint,
-    ForeignKey, Index, UniqueConstraint
+    CheckConstraint,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
 )
-from sqlalchemy.orm import DeclarativeBase, relationship
+from sqlalchemy.orm import DeclarativeBase
 
 
 class Base(DeclarativeBase):
@@ -94,9 +103,7 @@ class FundamentalsPIT(Base):
     source_updated_at = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    __table_args__ = (
-        Index("idx_fundamentals_pit_as_of_date", "as_of_date"),
-    )
+    __table_args__ = (Index("idx_fundamentals_pit_as_of_date", "as_of_date"),)
 
 
 class ScoreHistory(Base):

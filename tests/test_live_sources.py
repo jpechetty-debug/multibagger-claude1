@@ -1,14 +1,16 @@
-from modules.data_service import data_manager
 import logging
+
+from modules.data_service import data_manager
 
 # Enable logging to see which source is processing
 logging.basicConfig(level=logging.INFO)
+
 
 def test_live_fetch():
     symbol = "SBIN.NS"
     print(f"Fetching fundamentals for {symbol}...")
     data = data_manager.fetch_fundamentals(symbol)
-    
+
     if "error" in data:
         print(f"Error: {data['error']}")
     else:
@@ -21,6 +23,7 @@ def test_live_fetch():
     print(f"Quarterly data points: {len(timeline)}")
     if timeline:
         print(f"Latest: {timeline[0]}")
+
 
 if __name__ == "__main__":
     test_live_fetch()

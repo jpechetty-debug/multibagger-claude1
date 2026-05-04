@@ -32,9 +32,7 @@ def test_pnsea_provider_initializes_client_lazily(monkeypatch):
                     },
                 }
             )
-            self.insider = SimpleNamespace(
-                getPledgedData=lambda symbol: {"pledgedPercentage": 1.5}
-            )
+            self.insider = SimpleNamespace(getPledgedData=lambda symbol: {"pledgedPercentage": 1.5})
 
     def factory():
         calls.append("created")

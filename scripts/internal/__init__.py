@@ -1,1 +1,1 @@
-﻿"""Internal scripts package."""
+"""Internal scripts package."""

@@ -130,7 +130,9 @@ def main() -> None:
     restore_cmd.add_argument("path", help="Path to backup file")
     sub.add_parser("list", help="List available backups")
     prune_cmd = sub.add_parser("prune", help="Prune old backups")
-    prune_cmd.add_argument("--keep", type=int, default=DEFAULT_KEEP, help="Number of backups to keep")
+    prune_cmd.add_argument(
+        "--keep", type=int, default=DEFAULT_KEEP, help="Number of backups to keep"
+    )
 
     args = parser.parse_args()
 

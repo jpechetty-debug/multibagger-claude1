@@ -4,13 +4,11 @@ Tracks promoter actions, pledge trends, insider trading, and institutional flows
 Uses NSE bulk deal data + yfinance + historical PIT snapshots.
 """
 
+import contextlib
 import sqlite3
-import pandas as pd
-import requests
-import json
-import time
 from datetime import datetime, timedelta
-from typing import Dict, Optional, List
+
+import requests
 
 DB_NAME = "stocks.db"
 DB_BUSY_TIMEOUT_MS = 5000
@@ -18,7 +16,7 @@ DB_BUSY_TIMEOUT_MS = 5000
 # NSE API requires browser-like headers
 NSE_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                  "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Accept": "application/json, text/plain, */*",
     "Accept-Language": "en-US,en;q=0.9",
     "Referer": "https://www.nseindia.com/",
@@ -33,7 +31,7 @@ def _get_conn():
     return conn
 
 
-def fetch_nse_bulk_deals(symbol: str) -> List[Dict]:
+def fetch_nse_bulk_deals(symbol: str) -> list[dict]:
     """
     Fetch bulk/block deal data from NSE API.
     Falls back gracefully if NSE blocks the request.
@@ -46,10 +44,8 @@ def fetch_nse_bulk_deals(symbol: str) -> List[Dict]:
         session.headers.update(NSE_HEADERS)
 
         # Hit the main page first for cookie
-        try:
+        with contextlib.suppress(Exception):
             session.get("https://www.nseindia.com", timeout=5)
-        except Exception:
-            pass
 
         # Fetch bulk deals
         url = "https://www.nseindia.com/api/historical/bulk-deals"
@@ -81,7 +77,7 @@ def fetch_nse_bulk_deals(symbol: str) -> List[Dict]:
     return []
 
 
-def _get_historical_holdings(symbol: str, periods: int = 4) -> List[Dict]:
+def _get_historical_holdings(symbol: str, periods: int = 4) -> list[dict]:
     """
     Get promoter/institutional holding history from fundamentals_pit table.
     Returns last N quarters of holding data.
@@ -103,19 +99,17 @@ def _get_historical_holdings(symbol: str, periods: int = 4) -> List[Dict]:
         conn.close()
 
 
-def _get_multibagger_row(symbol: str) -> Optional[Dict]:
+def _get_multibagger_row(symbol: str) -> dict | None:
     """Get current data from multibaggers table."""
     conn = _get_conn()
     try:
-        row = conn.execute(
-            "SELECT * FROM multibaggers WHERE symbol = ?", (symbol,)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM multibaggers WHERE symbol = ?", (symbol,)).fetchone()
         return dict(row) if row else None
     finally:
         conn.close()
 
 
-def get_promoter_trend(symbol: str) -> Dict:
+def get_promoter_trend(symbol: str) -> dict:
     """
     Compute promoter action trends.
     Combines: yfinance current holdings, PIT history, and NSE bulk deals.
@@ -135,7 +129,9 @@ def get_promoter_trend(symbol: str) -> Dict:
     if not symbol.endswith(".NS") and not symbol.endswith(".BO"):
         symbol += ".NS"
 
-    result = {
+    from typing import Any
+
+    result: dict[str, Any] = {
         "symbol": symbol,
         "promoter_holding_current": 0,
         "promoter_holding_history": [],
@@ -162,11 +158,11 @@ def get_promoter_trend(symbol: str) -> Dict:
     # 2. Try to get pledge data from yfinance
     try:
         import yfinance as yf
+
         ticker = yf.Ticker(symbol)
-        info = ticker.info or {}
 
         # Some Indian stocks report pledge through majorHolders
-        pledge_pct = 0
+        pledge_pct = 0.0
         try:
             holders = ticker.major_holders
             if holders is not None and not holders.empty:
@@ -191,21 +187,22 @@ def get_promoter_trend(symbol: str) -> Dict:
     # 3. Get historical holding snapshots from PIT table for QoQ trend
     hist = _get_historical_holdings(symbol, periods=4)
     if len(hist) >= 2:
-        result["promoter_holding_history"] = [
-            {"date": h["as_of_date"]} for h in hist
-        ]
+        result["promoter_holding_history"] = [{"date": h["as_of_date"]} for h in hist]
 
     # 4. Determine promoter holding direction from current vs PIT
     # Compare latest promoter_holding vs previous quarter
     if current and current.get("promoter_holding", 0):
         conn = _get_conn()
         try:
-            prev_rows = conn.execute("""
+            prev_rows = conn.execute(
+                """
                 SELECT as_of_date FROM fundamentals_pit
                 WHERE symbol = ? AND as_of_date < date('now', '-30 days')
                 ORDER BY as_of_date DESC
                 LIMIT 1
-            """, (symbol,)).fetchall()
+            """,
+                (symbol,),
+            ).fetchall()
         finally:
             conn.close()
 
@@ -235,7 +232,7 @@ def get_promoter_trend(symbol: str) -> Dict:
     return result
 
 
-def calculate_promoter_score(symbol: str) -> Dict:
+def calculate_promoter_score(symbol: str) -> dict:
     """
     Calculate promoter behaviour scoring impact.
 
@@ -253,15 +250,16 @@ def calculate_promoter_score(symbol: str) -> Dict:
     signals = []
 
     # Rule 1: Promoter buying + pledge decreasing = +4
-    if (trend["insider_net_action"] == "NET_BUYER"
-            and trend["pledge_direction"] in ("FALLING", "STABLE")
-            and trend["pledge_current"] < 5):
+    if (
+        trend["insider_net_action"] == "NET_BUYER"
+        and trend["pledge_direction"] in ("FALLING", "STABLE")
+        and trend["pledge_current"] < 5
+    ):
         score_adj += 4
         signals.append("Promoter accumulating")
 
     # Rule 2: Promoter selling + pledge increasing = -8
-    if (trend["insider_net_action"] == "NET_SELLER"
-            and trend["pledge_current"] > 10):
+    if trend["insider_net_action"] == "NET_SELLER" and trend["pledge_current"] > 10:
         score_adj -= 8
         signals.append("Promoter selling + high pledge")
 
@@ -279,10 +277,9 @@ def calculate_promoter_score(symbol: str) -> Dict:
             signals.append("Owner-operator increasing stake")
 
     # Low promoter + selling = danger
-    if trend["promoter_holding_current"] < 25:
-        if trend["insider_net_action"] == "NET_SELLER":
-            score_adj -= 3
-            signals.append("Low-conviction promoter selling")
+    if trend["promoter_holding_current"] < 25 and trend["insider_net_action"] == "NET_SELLER":
+        score_adj -= 3
+        signals.append("Low-conviction promoter selling")
 
     # Institutional buying trend
     if trend["institutional_holding_current"] > 30:
@@ -301,10 +298,7 @@ def calculate_promoter_score(symbol: str) -> Dict:
     pledge_text = f"{trend['pledge_current']:.1f}%" if trend["pledge_current"] > 0 else "None"
 
     # Build signal text
-    if not signals:
-        signal_text = "No significant promoter activity"
-    else:
-        signal_text = " | ".join(signals)
+    signal_text = "No significant promoter activity" if not signals else " | ".join(signals)
 
     return {
         "symbol": symbol,

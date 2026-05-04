@@ -16,6 +16,8 @@ import {
   type ScoreDistributionResponse,
   type ScoreExplanationResponse,
   type CalibrationReportResponse,
+  type SwingTrade,
+  type PortfolioState,
 } from './contracts'
 
 const BASE_URL = ''
@@ -32,7 +34,14 @@ export class ApiError extends Error {
 }
 
 function asNumber(value: unknown, fallback = 0): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : fallback
+  }
+  if (typeof value === 'string') {
+    const parsed = parseFloat(value)
+    return Number.isFinite(parsed) ? parsed : fallback
+  }
+  return fallback
 }
 
 function asString(value: unknown, fallback = ''): string {
@@ -213,6 +222,18 @@ export const api = {
 
   getCalibrationReport: async (): Promise<CalibrationReportResponse> => {
     return fetchJson<CalibrationReportResponse>('/api/calibration-report')
+  },
+
+  getSwingTrades: async (): Promise<SwingTrade[]> => {
+    return fetchJson<SwingTrade[]>('/api/trades/swing')
+  },
+
+  getPortfolioState: async (): Promise<PortfolioState> => {
+    return fetchJson<PortfolioState>('/api/portfolio/state')
+  },
+
+  getPortfolioPerformance: async (): Promise<any> => {
+    return fetchJson<any>('/api/portfolio/performance')
   },
 }
 

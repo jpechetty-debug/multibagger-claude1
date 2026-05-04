@@ -5,12 +5,14 @@ This script reads existing fundamentals from the multibaggers table,
 runs the XGBoost ML model to generate predictions, then batch-runs
 VectorBT backtests, and updates the database in-place.
 """
-import sqlite3
-import pandas as pd
+
 import json
-import sys
 import os
+import sqlite3
+import sys
 import time
+
+import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -32,7 +34,7 @@ def _write_with_retry(write_fn, label="write"):
             return write_fn()
         except sqlite3.OperationalError as e:
             if "locked" in str(e).lower() and attempt < WRITE_RETRIES - 1:
-                wait = RETRY_BASE_SECONDS * (2 ** attempt)
+                wait = RETRY_BASE_SECONDS * (2**attempt)
                 print(f"  ⏳ DB locked during {label}, retrying in {wait:.1f}s...")
                 time.sleep(wait)
             else:
@@ -69,7 +71,7 @@ def backfill_ml_predictions():
         return
 
     updates = []
-    for idx, row in missing.iterrows():
+    for _idx, row in missing.iterrows():
         factors = {
             "score": row.get("score", 0) or 0,
             "sales_cagr_5y": row.get("sales_cagr_5y", 0) or 0,
@@ -85,11 +87,11 @@ def backfill_ml_predictions():
         updates.append((ml_pred, shap_json, row["symbol"]))
 
     # Batch update with retry
-    def _do_ml_write():
+    def _do_ml_write(u=updates):
         conn = _get_conn()
         conn.executemany(
             "UPDATE multibaggers SET ml_predicted_return = ?, shap_breakdown = ? WHERE symbol = ?",
-            updates,
+            u,
         )
         conn.commit()
         conn.close()
@@ -148,35 +150,41 @@ def backfill_backtest_metrics():
 
         updates = []
         for sym in batch:
-            sym_ns = sym if sym.endswith(".NS") or sym.endswith(".BO") else sym + ".NS"
+            sym_ns = sym if sym.endswith((".NS", ".BO")) else sym + ".NS"
             bt = batch_results.get(sym_ns, batch_results.get(sym, {}))
             cagr = bt.get("cagr", 0.0)
-            updates.append((
-                cagr,
-                bt.get("win_rate", 0.0),
-                bt.get("max_drawdown", 0.0),
-                bt.get("sharpe_ratio", 0.0),
-                sym,
-            ))
+            updates.append(
+                (
+                    cagr,
+                    bt.get("win_rate", 0.0),
+                    bt.get("max_drawdown", 0.0),
+                    bt.get("sharpe_ratio", 0.0),
+                    sym,
+                )
+            )
             if cagr != 0.0:
                 total_filled += 1
             total_processed += 1
 
         # Write batch to DB with retry
-        def _do_bt_write():
+        def _do_bt_write(u=updates):
             conn = _get_conn()
             conn.executemany(
                 "UPDATE multibaggers SET backtest_cagr = ?, backtest_win_rate = ?, "
                 "backtest_max_dd = ?, backtest_sharpe = ? WHERE symbol = ?",
-                updates,
+                u,
             )
             conn.commit()
             conn.close()
 
         _write_with_retry(_do_bt_write, f"backtest batch {batch_num}")
-        print(f"  ✅ Batch {batch_num} done. Running total: {total_filled}/{total_processed} filled.")
+        print(
+            f"  ✅ Batch {batch_num} done. Running total: {total_filled}/{total_processed} filled."
+        )
 
-    print(f"\n✅ Backtest backfill complete: {total_filled}/{total_processed} stocks with valid data.")
+    print(
+        f"\n✅ Backtest backfill complete: {total_filled}/{total_processed} stocks with valid data."
+    )
 
 
 if __name__ == "__main__":

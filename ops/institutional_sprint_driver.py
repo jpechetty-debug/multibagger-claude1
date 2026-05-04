@@ -6,8 +6,7 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Tuple
-
+from typing import cast
 
 ROOT = Path(__file__).resolve().parents[1]
 OPS_DIR = ROOT / "ops"
@@ -37,15 +36,15 @@ class GateResult:
     max_score: float
     cap_applied: bool
     cap_reason: str
-    checks: List[CheckResult]
+    checks: list[CheckResult]
 
 
-def load_json(path: Path) -> Dict:
+def load_json(path: Path) -> dict:
     with path.open("r", encoding="utf-8") as f:
-        return json.load(f)
+        return cast(dict, json.load(f))
 
 
-def save_json(path: Path, payload: Dict) -> None:
+def save_json(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
@@ -61,7 +60,7 @@ def contains(path: Path, pattern: str) -> bool:
     return pattern in read_text(path)
 
 
-def run_cmd(args: List[str]) -> Dict:
+def run_cmd(args: list[str]) -> dict:
     proc = subprocess.run(
         args,
         cwd=ROOT,
@@ -77,12 +76,12 @@ def run_cmd(args: List[str]) -> Dict:
     }
 
 
-def run_pytest(targets: List[str]) -> Dict:
+def run_pytest(targets: list[str]) -> dict:
     args = [sys.executable, "-m", "pytest", "-q", *targets, "-p", "no:cacheprovider"]
     return run_cmd(args)
 
 
-def count_occurrences(paths: List[Path], token: str) -> int:
+def count_occurrences(paths: list[Path], token: str) -> int:
     total = 0
     for path in paths:
         total += read_text(path).count(token)
@@ -93,7 +92,7 @@ def clamp_score(score: float, max_score: float = 10.0) -> float:
     return round(max(0.0, min(score, max_score)), 1)
 
 
-def score_from_checks(checks: List[CheckResult]) -> Tuple[float, float]:
+def score_from_checks(checks: list[CheckResult]) -> tuple[float, float]:
     raw = round(sum(c.score for c in checks), 2)
     max_raw = round(sum(c.max_score for c in checks), 2)
     if max_raw == 0:
@@ -102,14 +101,14 @@ def score_from_checks(checks: List[CheckResult]) -> Tuple[float, float]:
     return normalized, raw
 
 
-def apply_cap(score: float, cap: float, reason: str, condition: bool) -> Tuple[float, bool, str]:
+def apply_cap(score: float, cap: float, reason: str, condition: bool) -> tuple[float, bool, str]:
     if condition and score > cap:
         return cap, True, reason
     return score, False, ""
 
 
-def evaluate_resilience(rubric_item: Dict, shared: Dict) -> GateResult:
-    checks: List[CheckResult] = []
+def evaluate_resilience(rubric_item: dict, shared: dict) -> GateResult:
+    checks: list[CheckResult] = []
     retry_utils = ROOT / "modules" / "retry_utils.py"
     main_py = ROOT / "main.py"
     db_py = ROOT / "database.py"
@@ -185,7 +184,12 @@ def evaluate_resilience(rubric_item: Dict, shared: Dict) -> GateResult:
 
     has_backup = all(
         token in read_text(backup_bat)
-        for token in ('copy /Y "stocks.db"', 'copy /Y "portfolio_history.db"', "exit /b 0", "exit /b 1")
+        for token in (
+            'copy /Y "stocks.db"',
+            'copy /Y "portfolio_history.db"',
+            "exit /b 0",
+            "exit /b 1",
+        )
     )
     checks.append(
         CheckResult(
@@ -222,15 +226,19 @@ def evaluate_resilience(rubric_item: Dict, shared: Dict) -> GateResult:
     )
 
 
-def evaluate_risk(rubric_item: Dict, shared: Dict) -> GateResult:
-    checks: List[CheckResult] = []
+def evaluate_risk(rubric_item: dict, shared: dict) -> GateResult:
+    checks: list[CheckResult] = []
     config_text = read_text(ROOT / "config.py")
     risk_text = read_text(ROOT / "modules" / "risk.py")
     main_text = read_text(ROOT / "main.py")
 
     has_thresholds = all(
         token in config_text
-        for token in ("DRAWDOWN_RATE_KILL_WEEKLY", "CORRELATION_REDUCE_THRESHOLD", "CORRELATION_LIQUIDATE_THRESHOLD")
+        for token in (
+            "DRAWDOWN_RATE_KILL_WEEKLY",
+            "CORRELATION_REDUCE_THRESHOLD",
+            "CORRELATION_LIQUIDATE_THRESHOLD",
+        )
     )
     checks.append(
         CheckResult(
@@ -243,7 +251,12 @@ def evaluate_risk(rubric_item: Dict, shared: Dict) -> GateResult:
 
     has_core_methods = all(
         token in risk_text
-        for token in ("def check_kill_switch", "drawdown_rate_weekly", "def validate_var_budget", "def validate_correlation_risk")
+        for token in (
+            "def check_kill_switch",
+            "drawdown_rate_weekly",
+            "def validate_var_budget",
+            "def validate_correlation_risk",
+        )
     )
     checks.append(
         CheckResult(
@@ -256,7 +269,12 @@ def evaluate_risk(rubric_item: Dict, shared: Dict) -> GateResult:
 
     order_risk_path = all(
         token in main_text
-        for token in ("/api/order", "validate_var_budget", "validate_correlation_risk", "check_kill_switch")
+        for token in (
+            "/api/order",
+            "validate_var_budget",
+            "validate_correlation_risk",
+            "check_kill_switch",
+        )
     )
     checks.append(
         CheckResult(
@@ -294,8 +312,7 @@ def evaluate_risk(rubric_item: Dict, shared: Dict) -> GateResult:
 
     stress_text = read_text(ROOT / "modules" / "stress_test.py")
     has_full_scenario_replay = all(
-        token in stress_text.lower()
-        for token in ("gap", "slippage", "correlation", "vix")
+        token in stress_text.lower() for token in ("gap", "slippage", "correlation", "vix")
     )
     score, capped, reason = apply_cap(
         normalized,
@@ -316,8 +333,8 @@ def evaluate_risk(rubric_item: Dict, shared: Dict) -> GateResult:
     )
 
 
-def evaluate_performance(rubric_item: Dict, shared: Dict) -> GateResult:
-    checks: List[CheckResult] = []
+def evaluate_performance(rubric_item: dict, shared: dict) -> GateResult:
+    checks: list[CheckResult] = []
     backtest_text = read_text(ROOT / "modules" / "backtest.py")
     validation_text = read_text(ROOT / "modules" / "validation.py")
     perf_suite = shared["commands"]["perf_suite"]
@@ -374,11 +391,14 @@ def evaluate_performance(rubric_item: Dict, shared: Dict) -> GateResult:
         )
     )
 
-    has_latency_alpha_model = re.search(
-        r"(latency.*alpha|alpha.*latency|slippage.*latency)",
-        monte_text,
-        re.IGNORECASE,
-    ) is not None
+    has_latency_alpha_model = (
+        re.search(
+            r"(latency.*alpha|alpha.*latency|slippage.*latency)",
+            monte_text,
+            re.IGNORECASE,
+        )
+        is not None
+    )
     checks.append(
         CheckResult(
             "Latency impact on alpha capture model",
@@ -408,8 +428,8 @@ def evaluate_performance(rubric_item: Dict, shared: Dict) -> GateResult:
     )
 
 
-def evaluate_audit(rubric_item: Dict, shared: Dict) -> GateResult:
-    checks: List[CheckResult] = []
+def evaluate_audit(rubric_item: dict, shared: dict) -> GateResult:
+    checks: list[CheckResult] = []
     report_text = read_text(ROOT / "report_generator.py")
     logger_text = read_text(ROOT / "modules" / "logger.py")
     backtest_engine_text = read_text(ROOT / "backtest_engine.py")
@@ -443,7 +463,8 @@ def evaluate_audit(rubric_item: Dict, shared: Dict) -> GateResult:
     )
 
     has_lookahead_guard = all(
-        token in backtest_engine_text for token in ("as_of_date", "lookahead bias", "Backtest aborted")
+        token in backtest_engine_text
+        for token in ("as_of_date", "lookahead bias", "Backtest aborted")
     )
     checks.append(
         CheckResult(
@@ -456,7 +477,12 @@ def evaluate_audit(rubric_item: Dict, shared: Dict) -> GateResult:
 
     backup_ok = all(
         token in backup_text
-        for token in ('copy /Y "stocks.db"', 'copy /Y "portfolio_history.db"', "exit /b 0", "exit /b 1")
+        for token in (
+            'copy /Y "stocks.db"',
+            'copy /Y "portfolio_history.db"',
+            "exit /b 0",
+            "exit /b 1",
+        )
     )
     has_backups = any((ROOT / "backups").rglob("*.db"))
     checks.append(
@@ -502,8 +528,8 @@ def evaluate_audit(rubric_item: Dict, shared: Dict) -> GateResult:
     )
 
 
-def evaluate_operations(rubric_item: Dict, shared: Dict) -> GateResult:
-    checks: List[CheckResult] = []
+def evaluate_operations(rubric_item: dict, shared: dict) -> GateResult:
+    checks: list[CheckResult] = []
     main_text = read_text(ROOT / "main.py")
     tracker_text = read_text(ROOT / "modules" / "tracker.py")
     execution_text = read_text(ROOT / "modules" / "execution.py")
@@ -522,10 +548,13 @@ def evaluate_operations(rubric_item: Dict, shared: Dict) -> GateResult:
     )
 
     has_tracker_states = all(
-        token in tracker_text for token in ("status = 'OPEN'", "status = 'CLOSED'", "log_entry", "log_exit")
+        token in tracker_text
+        for token in ("status = 'OPEN'", "status = 'CLOSED'", "log_entry", "log_exit")
     )
     has_duplicate_reject = "Position already open" in tracker_text
-    tracker_score = 2.5 if (has_tracker_states and has_duplicate_reject) else 1.0 if has_tracker_states else 0.0
+    tracker_score = (
+        2.5 if (has_tracker_states and has_duplicate_reject) else 1.0 if has_tracker_states else 0.0
+    )
     checks.append(
         CheckResult(
             "State transition + duplicate order guard",
@@ -546,7 +575,12 @@ def evaluate_operations(rubric_item: Dict, shared: Dict) -> GateResult:
 
     risk_gated_order = all(
         token in main_text
-        for token in ("check_kill_switch", "validate_var_budget", "validate_correlation_risk", "log_rejected_trade")
+        for token in (
+            "check_kill_switch",
+            "validate_var_budget",
+            "validate_correlation_risk",
+            "log_rejected_trade",
+        )
     )
     checks.append(
         CheckResult(
@@ -557,11 +591,14 @@ def evaluate_operations(rubric_item: Dict, shared: Dict) -> GateResult:
         )
     )
 
-    has_external_ack_lifecycle = re.search(
-        r"(FILLED|PARTIAL|CANCELLED|idempotency|reconcile)",
-        main_text + tracker_text + execution_text,
-        re.IGNORECASE,
-    ) is not None
+    has_external_ack_lifecycle = (
+        re.search(
+            r"(FILLED|PARTIAL|CANCELLED|idempotency|reconcile)",
+            main_text + tracker_text + execution_text,
+            re.IGNORECASE,
+        )
+        is not None
+    )
     checks.append(
         CheckResult(
             "Broker ack/reconciliation lifecycle",
@@ -595,10 +632,10 @@ def build_markdown_report(
     date_str: str,
     composite: float,
     weighted_gap: float,
-    results: List[GateResult],
-    commands: Dict[str, Dict],
+    results: list[GateResult],
+    commands: dict[str, dict],
 ) -> str:
-    lines: List[str] = []
+    lines: list[str] = []
     lines.append(f"# Institutional Sprint Daily Scorecard - {date_str}")
     lines.append("")
     lines.append(f"- Composite Score: **{composite:.1f}/10**")
@@ -630,7 +667,9 @@ def build_markdown_report(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Daily institutional sprint scorer.")
     parser.add_argument("--date", default=datetime.now().strftime("%Y-%m-%d"))
-    parser.add_argument("--no-record", action="store_true", help="Do not write history/report files.")
+    parser.add_argument(
+        "--no-record", action="store_true", help="Do not write history/report files."
+    )
     parser.add_argument("--print-json", action="store_true", help="Print score payload as JSON.")
     args = parser.parse_args()
 
@@ -719,7 +758,9 @@ def main() -> None:
         "commands": shared["commands"],
     }
 
-    report_md = build_markdown_report(args.date, composite_score, weighted_gap, results, shared["commands"])
+    report_md = build_markdown_report(
+        args.date, composite_score, weighted_gap, results, shared["commands"]
+    )
 
     if not args.no_record:
         history = load_json(HISTORY_PATH)

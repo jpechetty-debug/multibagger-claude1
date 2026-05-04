@@ -10,23 +10,23 @@ predictor of multibagger potential.
 
 from __future__ import annotations
 
-import numpy as np
+from typing import cast
+
 import pandas as pd
-from typing import Optional
 
 
-def _safe_cagr(start_val: float, end_val: float, years: int) -> Optional[float]:
+def _safe_cagr(start_val: float, end_val: float, years: int) -> float | None:
     """Computes CAGR with safety checks for negative/zero values."""
     if years <= 0 or start_val <= 0 or end_val <= 0:
         return None
     try:
         cagr = (end_val / start_val) ** (1.0 / years) - 1.0
-        return round(cagr * 100, 2)
+        return cast(float, round(cagr * 100, 2))
     except (ZeroDivisionError, ValueError, OverflowError):
         return None
 
 
-def _extract_series(df: pd.DataFrame, keys: list[str]) -> Optional[pd.Series]:
+def _extract_series(df: pd.DataFrame, keys: list[str]) -> pd.Series | None:
     """Extract a time-series row from a financial statement DataFrame."""
     if df.empty:
         return None
@@ -44,7 +44,7 @@ def _extract_series(df: pd.DataFrame, keys: list[str]) -> Optional[pd.Series]:
 def _compute_multi_period_cagr(
     series: pd.Series,
     periods: dict[str, int],
-) -> dict[str, Optional[float]]:
+) -> dict[str, float | None]:
     """
     Given a time-series (oldest-first after reversal), compute CAGRs
     for each named period.
@@ -57,7 +57,7 @@ def _compute_multi_period_cagr(
     end_val = series.iloc[-1]
 
     if pd.isna(end_val) or end_val <= 0:
-        return {name: None for name in periods}
+        return dict.fromkeys(periods)
 
     result = {}
     for name, years in periods.items():
@@ -74,7 +74,7 @@ def _compute_multi_period_cagr(
     return result
 
 
-def calculate_all_cagrs(ticker) -> dict[str, Optional[float]]:
+def calculate_all_cagrs(ticker) -> dict[str, float | str | None]:
     """
     Compute Revenue, PAT, and EPS CAGRs for 3Y, 5Y periods.
 
@@ -92,10 +92,13 @@ def calculate_all_cagrs(ticker) -> dict[str, Optional[float]]:
             "CAGR_Consistency": "HIGH"   # HIGH / MEDIUM / LOW
         }
     """
-    default = {
-        "Revenue_CAGR_3Y": None, "Revenue_CAGR_5Y": None,
-        "PAT_CAGR_3Y": None, "PAT_CAGR_5Y": None,
-        "EPS_CAGR_3Y": None, "EPS_CAGR_5Y": None,
+    default: dict[str, float | str | None] = {
+        "Revenue_CAGR_3Y": None,
+        "Revenue_CAGR_5Y": None,
+        "PAT_CAGR_3Y": None,
+        "PAT_CAGR_5Y": None,
+        "EPS_CAGR_3Y": None,
+        "EPS_CAGR_5Y": None,
         "CAGR_Consistency": "UNKNOWN",
     }
 
@@ -116,17 +119,29 @@ def calculate_all_cagrs(ticker) -> dict[str, Optional[float]]:
         periods["5Y"] = available_years - 1
 
     # --- Revenue CAGR ---
-    rev_series = _extract_series(fin, [
-        "Total Revenue", "Operating Revenue", "Revenue From Operations", "Net Sales",
-    ])
+    rev_series = _extract_series(
+        fin,
+        [
+            "Total Revenue",
+            "Operating Revenue",
+            "Revenue From Operations",
+            "Net Sales",
+        ],
+    )
     rev_cagrs = {}
     if rev_series is not None:
         rev_cagrs = _compute_multi_period_cagr(rev_series, periods)
 
     # --- PAT (Net Income) CAGR ---
-    pat_series = _extract_series(fin, [
-        "Net Income", "Net Profit", "PAT", "Profit After Tax",
-    ])
+    pat_series = _extract_series(
+        fin,
+        [
+            "Net Income",
+            "Net Profit",
+            "PAT",
+            "Profit After Tax",
+        ],
+    )
     pat_cagrs = {}
     if pat_series is not None:
         pat_cagrs = _compute_multi_period_cagr(pat_series, periods)
@@ -136,9 +151,14 @@ def calculate_all_cagrs(ticker) -> dict[str, Optional[float]]:
     try:
         bs = ticker.balance_sheet
         if pat_series is not None and bs is not None and not bs.empty:
-            shares_series = _extract_series(bs, [
-                "Ordinary Shares Number", "Share Issued", "Common Stock",
-            ])
+            shares_series = _extract_series(
+                bs,
+                [
+                    "Ordinary Shares Number",
+                    "Share Issued",
+                    "Common Stock",
+                ],
+            )
             if shares_series is not None:
                 # Align indices
                 common_idx = pat_series.index.intersection(shares_series.index)
@@ -203,7 +223,7 @@ def classify_market_cap(market_cap_crore: float) -> str:
         return "Micro Cap"
 
 
-def extract_dividend_metrics(info: dict) -> dict[str, Optional[float]]:
+def extract_dividend_metrics(info: dict) -> dict[str, float | None]:
     """
     Extract dividend yield and payout ratio from yfinance info dict.
 
@@ -216,10 +236,7 @@ def extract_dividend_metrics(info: dict) -> dict[str, Optional[float]]:
     div_yield = info.get("dividendYield") or info.get("trailingAnnualDividendYield")
     if div_yield is not None and div_yield > 0:
         # yfinance returns as decimal (0.025 for 2.5%)
-        if div_yield < 1.0:
-            div_yield = round(div_yield * 100, 2)
-        else:
-            div_yield = round(div_yield, 2)
+        div_yield = round(div_yield * 100, 2) if div_yield < 1.0 else round(div_yield, 2)
         # Sanity cap: no Indian stock yields > 25% realistically
         # If above 25%, likely a data error (e.g., special dividend or wrong format)
         if div_yield > 25.0:
@@ -229,10 +246,7 @@ def extract_dividend_metrics(info: dict) -> dict[str, Optional[float]]:
 
     payout = info.get("payoutRatio")
     if payout is not None and payout > 0:
-        if payout < 1.0:
-            payout = round(payout * 100, 2)
-        else:
-            payout = round(payout, 2)
+        payout = round(payout * 100, 2) if payout < 1.0 else round(payout, 2)
         # Cap absurd payout ratios (some data errors show > 200%)
         payout = min(payout, 200.0)
     else:

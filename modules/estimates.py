@@ -6,8 +6,6 @@ Uses Alpha Vantage earnings calendar + self-computed CAGR estimates.
 
 import json
 import os
-from datetime import datetime
-from typing import Dict, List, Optional
 
 
 def _safe_float(val, default=0.0):
@@ -23,7 +21,7 @@ def _safe_float(val, default=0.0):
         return default
 
 
-def compute_own_estimate(info: dict, financials_data: dict = None) -> Dict:
+def compute_own_estimate(info: dict, financials_data: dict | None = None) -> dict:
     """
     Compute own EPS estimate as fallback.
     Formula: Revenue 5Y CAGR  (1 + industry_growth_premium)
@@ -67,7 +65,7 @@ def compute_own_estimate(info: dict, financials_data: dict = None) -> Dict:
     }
 
 
-def analyze_earnings_surprises(quarterly_earnings: List[Dict]) -> Dict:
+def analyze_earnings_surprises(quarterly_earnings: list[dict]) -> dict:
     """
     Analyze earnings beat/miss streak from Alpha Vantage quarterly earnings.
 
@@ -108,13 +106,15 @@ def analyze_earnings_surprises(quarterly_earnings: List[Dict]) -> Dict:
         else:
             result = "INLINE"
 
-        history.append({
-            "date": q.get("date", ""),
-            "estimated_eps": estimated,
-            "reported_eps": reported,
-            "surprise_pct": surprise_pct,
-            "result": result,
-        })
+        history.append(
+            {
+                "date": q.get("date", ""),
+                "estimated_eps": estimated,
+                "reported_eps": reported,
+                "surprise_pct": surprise_pct,
+                "result": result,
+            }
+        )
 
     # Calculate streak (from most recent)
     streak = 0
@@ -138,7 +138,7 @@ def analyze_earnings_surprises(quarterly_earnings: List[Dict]) -> Dict:
     }
 
 
-def analyze_estimate_revisions(quarterly_earnings: List[Dict]) -> Dict:
+def analyze_estimate_revisions(quarterly_earnings: list[dict]) -> dict:
     """
     Analyze estimate revision trends (are analysts upgrading or downgrading?).
 
@@ -199,7 +199,7 @@ def analyze_estimate_revisions(quarterly_earnings: List[Dict]) -> Dict:
     }
 
 
-def analyze_estimate_momentum(earnings_data: Dict) -> Dict:
+def analyze_estimate_momentum(earnings_data: dict) -> dict:
     """
     Master orchestrator: determine scoring impact from estimate data.
 
@@ -245,16 +245,12 @@ def analyze_estimate_momentum(earnings_data: Dict) -> Dict:
     elif revisions["consecutive_downgrades"] >= 2:
         score_adj -= 3
         momentum = "DOWN"
-        display_parts.append(
-            f" Estimates falling {revisions['consecutive_downgrades']}Q"
-        )
+        display_parts.append(f" Estimates falling {revisions['consecutive_downgrades']}Q")
 
     # Rule 3: 4Q earnings beat streak = +3
     if surprises["streak"] >= 4 and surprises["streak_type"] == "BEAT":
         score_adj += 3
-        display_parts.append(
-            f" {surprises['streak']}Q consecutive earnings beat"
-        )
+        display_parts.append(f" {surprises['streak']}Q consecutive earnings beat")
     elif surprises["streak"] >= 2 and surprises["streak_type"] == "BEAT":
         score_adj += 1
         display_parts.append(f" {surprises['streak']}Q beat streak")
@@ -301,8 +297,8 @@ def analyze_estimate_momentum(earnings_data: Dict) -> Dict:
 
 def get_estimate_data(
     symbol: str,
-    info: Optional[dict] = None,
-) -> Dict:
+    info: dict | None = None,
+) -> dict:
     """
     Full estimate pipeline: fetch data + analyze momentum.
 
@@ -316,7 +312,9 @@ def get_estimate_data(
     Returns:
         Complete estimate tracking dict for API/dashboard
     """
-    result = {
+    from typing import Any
+
+    result: dict[str, Any] = {
         "symbol": symbol,
         "estimates": None,
         "momentum": None,
@@ -331,22 +329,33 @@ def get_estimate_data(
         current_dir = os.path.dirname(os.path.abspath(__file__))
         consensus_path = os.path.join(current_dir, "analyst_consensus.json")
         if os.path.exists(consensus_path):
-            with open(consensus_path, "r") as f:
+            with open(consensus_path) as f:
                 seeds = json.load(f)
                 if symbol in seeds:
                     seed = seeds[symbol]
                     result["source"] = "manual_seed"
                     result["estimates"] = seed
                     result["momentum"] = {
-                        "momentum_signal": "STRONG_UP" if seed.get("upside_potential_pct", 0) > 20 else "UP",
+                        "momentum_signal": "STRONG_UP"
+                        if seed.get("upside_potential_pct", 0) > 20
+                        else "UP",
                         "score_adjustment": 5 if seed.get("consensus") == "Strong Buy" else 2,
                         "is_disqualified": False,
                         "score_cap": None,
                         "display_text": f" INSTITUTIONAL CONSENSUS: {seed['consensus']} ({seed['analyst_count']} analysts) | Target: {seed['target_high']} (+{seed.get('upside_potential_pct')}% upside)",
                         "surprise_history": f"Horizon: {seed.get('time_horizon_months')}m",
-                        "revisions": {"revision_direction": "UPGRADING", "consecutive_upgrades": 3, "consecutive_downgrades": 0},
-                        "surprises": {"beat_count": 0, "miss_count": 0, "streak": 0, "streak_type": "NONE"},
-                        "fundamentals_override": seed.get("fundamentals_override")
+                        "revisions": {
+                            "revision_direction": "UPGRADING",
+                            "consecutive_upgrades": 3,
+                            "consecutive_downgrades": 0,
+                        },
+                        "surprises": {
+                            "beat_count": 0,
+                            "miss_count": 0,
+                            "streak": 0,
+                            "streak_type": "NONE",
+                        },
+                        "fundamentals_override": seed.get("fundamentals_override"),
                     }
                     return result
     except Exception as e:
@@ -358,6 +367,7 @@ def get_estimate_data(
             local_info = info
             if local_info is None:
                 import yfinance as yf
+
                 ticker = yf.Ticker(symbol)
                 local_info = ticker.info or {}
             own_est = compute_own_estimate(local_info)
@@ -371,7 +381,7 @@ def get_estimate_data(
                 "is_disqualified": False,
                 "score_cap": None,
                 "display_text": f"Self-computed estimate: {own_est['current_fy_eps_estimate']} (FY curr) "
-                                f" {own_est['next_fy_eps_estimate']} (FY next)",
+                f" {own_est['next_fy_eps_estimate']} (FY next)",
                 "surprise_history": "",
                 "revisions": {
                     "revision_direction": "STABLE",
@@ -394,7 +404,11 @@ def get_estimate_data(
                 "score_cap": None,
                 "display_text": "Estimate data unavailable",
                 "surprise_history": "",
-                "revisions": {"revision_direction": "STABLE", "consecutive_upgrades": 0, "consecutive_downgrades": 0},
+                "revisions": {
+                    "revision_direction": "STABLE",
+                    "consecutive_upgrades": 0,
+                    "consecutive_downgrades": 0,
+                },
                 "surprises": {"beat_count": 0, "miss_count": 0, "streak": 0, "streak_type": "NONE"},
             }
 

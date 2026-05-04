@@ -36,7 +36,9 @@ def test_price_fundamentals_endpoint_returns_payload(monkeypatch):
             "timestamp": "2026-02-14T12:00:00",
         }
 
-    monkeypatch.setattr(price_fundamentals, "get_price_vs_fundamentals", fake_get_price_vs_fundamentals)
+    monkeypatch.setattr(
+        price_fundamentals, "get_price_vs_fundamentals", fake_get_price_vs_fundamentals
+    )
 
     with TestClient(main.app) as client:
         response = client.get("/api/price-fundamentals/RELIANCE.NS?years=5")
@@ -64,7 +66,9 @@ def test_price_fundamentals_endpoint_clamps_years(monkeypatch):
             "timestamp": "2026-02-14T12:00:00",
         }
 
-    monkeypatch.setattr(price_fundamentals, "get_price_vs_fundamentals", fake_get_price_vs_fundamentals)
+    monkeypatch.setattr(
+        price_fundamentals, "get_price_vs_fundamentals", fake_get_price_vs_fundamentals
+    )
 
     with TestClient(main.app) as client:
         response_high = client.get("/api/price-fundamentals/TCS.NS?years=99")
@@ -79,7 +83,9 @@ def test_price_fundamentals_endpoint_returns_500_on_failure(monkeypatch):
     async def fake_get_price_vs_fundamentals(symbol: str, years: int):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(price_fundamentals, "get_price_vs_fundamentals", fake_get_price_vs_fundamentals)
+    monkeypatch.setattr(
+        price_fundamentals, "get_price_vs_fundamentals", fake_get_price_vs_fundamentals
+    )
 
     with TestClient(main.app) as client:
         response = client.get("/api/price-fundamentals/TCS.NS?years=5")

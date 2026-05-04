@@ -48,7 +48,9 @@ def test_run_batch_momentum_backtest_handles_suffixing_and_sparse_symbols(monkey
     xyz = pd.DataFrame({"Close": xyz_close}, index=dates)
     fake_download = pd.concat({"ABC.NS": abc, "XYZ.NS": xyz}, axis=1)
 
-    monkeypatch.setattr(backtest_engine_module.yf, "download", lambda *args, **kwargs: fake_download)
+    monkeypatch.setattr(
+        backtest_engine_module.yf, "download", lambda *args, **kwargs: fake_download
+    )
 
     engine = backtest_engine_module.VectorBTEngine(period="1y")
     results = engine.run_batch_momentum_backtest(["ABC", "XYZ.NS"])

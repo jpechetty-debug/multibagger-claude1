@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -14,10 +15,8 @@ if str(ROOT) not in sys.path:
 import config
 import db.repository as database_module
 import main
-
-import modules.financials as financials_module
 import modules.data_service as market_data_module
-import modules.news as news_module
+import modules.financials as financials_module
 import modules.peer_analysis as peer_analysis_module
 import modules.quarterly_results as quarterly_results_module
 import modules.shareholding as shareholding_module
@@ -25,6 +24,15 @@ import modules.technicals as technicals_module
 import modules.tracker as tracker_module
 import modules.valuation as valuation_module
 import report_generator
+
+
+def patch_sqlalchemy_db(monkeypatch, db_path: Path):
+    import modules.dependencies as deps
+
+    engine = create_engine(f"sqlite:///{db_path.as_posix()}")
+    monkeypatch.setattr(deps, "db_engine", engine, raising=False)
+    monkeypatch.setattr(deps, "get_sqla_connection", engine.connect, raising=False)
+    return engine
 
 
 def test_global_api_key_enforcement(monkeypatch):
@@ -82,9 +90,7 @@ def test_reports_endpoint_appends_ns_suffix(monkeypatch):
         seen_symbols.append(symbol)
         return "mock report"
 
-    monkeypatch.setattr(
-        report_generator, "generate_analyst_report", fake_generate_analyst_report
-    )
+    monkeypatch.setattr(report_generator, "generate_analyst_report", fake_generate_analyst_report)
 
     with TestClient(main.app) as client:
         response = client.get("/api/reports/RELIANCE")
@@ -112,7 +118,7 @@ def test_forensic_file_endpoints(tmp_path, monkeypatch):
     assert thesis_break.status_code == 200
     assert liquidity.json() == {"ok": "liquidity"}
     assert recovery.json() == {"ok": "recovery"}
-    
+
     # Thesis break logic in main.py tries to import thesis_monitor first.
     # If it works, it returns a new schema. If literal mock is needed, we should check status.
     assert "status" in thesis_break.json()
@@ -150,9 +156,7 @@ def test_regime_status_and_force_regime(monkeypatch):
                 "votes": {"bull": 1, "bear": 1, "sideways": 1},
             }
 
-    monkeypatch.setattr(
-        market_data_module, "MarketDataProvider", FakeMarketDataProvider
-    )
+    monkeypatch.setattr(market_data_module, "MarketDataProvider", FakeMarketDataProvider)
 
     try:
         config.FORCED_REGIME = None
@@ -192,9 +196,6 @@ def test_performance_endpoint_shape():
     assert set(payload.keys()) == {"strategy", "benchmark", "alpha", "win_rate", "avg_hold"}
 
 
-
-
-
 def test_peers_financials_technicals_shareholding_endpoints(monkeypatch):
     async def fake_peers(symbol: str):
         return {"symbol": symbol, "peers": [{"symbol": "TCS.NS"}]}
@@ -206,7 +207,10 @@ def test_peers_financials_technicals_shareholding_endpoints(monkeypatch):
         return {"symbol": symbol, "trend": "Bullish", "strength_score": 82}
 
     async def fake_shareholding(symbol: str):
-        return {"symbol": symbol, "pattern": {"promoters": 52.1, "institutions": 31.0, "public": 16.9}}
+        return {
+            "symbol": symbol,
+            "pattern": {"promoters": 52.1, "institutions": 31.0, "public": 16.9},
+        }
 
     monkeypatch.setattr(peer_analysis_module, "get_peer_comparison", fake_peers)
     monkeypatch.setattr(financials_module, "get_quarterly_results", fake_financials)
@@ -235,9 +239,7 @@ def test_quarterly_results_endpoint_success_and_error(monkeypatch):
         calls.append((symbol, quarters))
         return {"symbol": symbol, "quarters": [{"quarter": "Q1FY26"}], "alerts": []}
 
-    monkeypatch.setattr(
-        quarterly_results_module, "get_quarterly_timeline", fake_quarterly
-    )
+    monkeypatch.setattr(quarterly_results_module, "get_quarterly_timeline", fake_quarterly)
 
     with TestClient(main.app) as client:
         ok_response = client.get("/api/quarterly-results/INFY.NS?quarters=8")
@@ -248,13 +250,11 @@ def test_quarterly_results_endpoint_success_and_error(monkeypatch):
 
     # Clear cache before failing test
     main.CACHE_QUARTERLY = {}
-    
+
     async def fake_quarterly_error(symbol: str, quarters: int):
         raise RuntimeError("quarterly failed")
 
-    monkeypatch.setattr(
-        quarterly_results_module, "get_quarterly_timeline", fake_quarterly_error
-    )
+    monkeypatch.setattr(quarterly_results_module, "get_quarterly_timeline", fake_quarterly_error)
 
     with TestClient(main.app) as client:
         # Use a DIFFERENT symbol to avoid any other potential cache hits
@@ -287,9 +287,7 @@ def test_valuation_endpoint_uses_db_and_returns_metrics(tmp_path, monkeypatch):
     conn.commit()
     conn.close()
 
-    import modules.dependencies as deps
-    monkeypatch.setattr(deps, "DB_PATH", str(db_path), raising=False)
-    monkeypatch.setattr(deps, "DB_NAME", str(db_path), raising=False)
+    engine = patch_sqlalchemy_db(monkeypatch, db_path)
 
     class FakeTicker:
         @property
@@ -340,6 +338,7 @@ def test_valuation_endpoint_uses_db_and_returns_metrics(tmp_path, monkeypatch):
     assert row[0] == "RELIANCE.NS"
     assert row[1] == 140.0
     assert row[2] == "UNDERVALUED"
+    engine.dispose()
 
 
 def test_valuation_endpoint_cached_payload_shape(tmp_path, monkeypatch):
@@ -383,9 +382,7 @@ def test_valuation_endpoint_cached_payload_shape(tmp_path, monkeypatch):
     conn.commit()
     conn.close()
 
-    import modules.dependencies as deps
-    monkeypatch.setattr(deps, "DB_PATH", str(db_path), raising=False)
-    monkeypatch.setattr(deps, "DB_NAME", str(db_path), raising=False)
+    engine = patch_sqlalchemy_db(monkeypatch, db_path)
 
     class ExplodingTicker:
         @property
@@ -404,17 +401,19 @@ def test_valuation_endpoint_cached_payload_shape(tmp_path, monkeypatch):
     assert payload["components"]["dcf"] == 150.0
     assert payload["components"]["graham"] == 130.0
     assert payload["components"]["epv"] == 120.0
+    engine.dispose()
 
 
 def test_order_lifecycle_endpoints(tmp_path, monkeypatch):
     tracker_db = tmp_path / "portfolio_history_test.db"
     import modules.dependencies as deps
-    monkeypatch.setattr(deps, "portfolio_tracker", tracker_module.PortfolioTracker(str(tracker_db)), raising=False)
+
+    monkeypatch.setattr(
+        deps, "portfolio_tracker", tracker_module.PortfolioTracker(str(tracker_db)), raising=False
+    )
 
     class FakeRiskGovernor:
-        def check_kill_switch(
-            self, current_vix, dynamic_threshold=None, drawdown_rate_weekly=None
-        ):
+        def check_kill_switch(self, current_vix, dynamic_threshold=None, drawdown_rate_weekly=None):
             return True, "Market conditions safe"
 
         def validate_var_budget(self, projected_var_pct, max_var_pct):
@@ -471,3 +470,53 @@ def test_order_lifecycle_endpoints(tmp_path, monkeypatch):
     assert len(history_payload) == 1
     assert history_payload[0]["symbol"] == "INFY.NS"
     assert history_payload[0]["exit_reason"] == "TARGET"
+
+
+def test_swing_trades_endpoint_derives_setups(monkeypatch):
+    import app_routes.trading as trading_routes
+
+    monkeypatch.setenv("SOVEREIGN_API_KEY", "server-secret")
+    source = pd.DataFrame(
+        [
+            {
+                "symbol": "ABC.NS",
+                "price": 100.0,
+                "score": 65.0,
+                "ret_1m": 0.15,
+                "ret_3m": 0.22,
+                "dist_from_52w_high": 0.05,
+                "vol_breakout": 1.4,
+                "atr": 4.0,
+                "stop_loss_atr": 92.0,
+                "target_1": 115.0,
+                "buy_below": 102.0,
+                "market_cap_cr": 7000.0,
+                "as_of_date": "2026-04-27",
+            },
+            {
+                "symbol": "WEAK.NS",
+                "price": 90.0,
+                "score": 20.0,
+                "ret_1m": 0.40,
+                "dist_from_52w_high": 0.02,
+                "atr": 3.0,
+                "target_1": 108.0,
+            },
+        ]
+    )
+    monkeypatch.setattr(trading_routes, "_load_swing_source_rows", lambda: source)
+
+    with TestClient(main.app) as client:
+        response = client.get(
+            "/api/trades/swing?limit=5&min_score=40",
+            headers={"X-API-Key": "server-secret"},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) == 1
+    assert payload[0]["symbol"] == "NSE:ABC-EQ"
+    assert payload[0]["status"] == "ACTIVE"
+    assert payload[0]["target_pct"] == 15.0
+    assert payload[0]["sl"] == 92.0
+    assert "1M momentum 15.0%" in payload[0]["analysis"]

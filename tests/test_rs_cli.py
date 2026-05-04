@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pytest
 
-
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -73,9 +72,7 @@ def test_cleanup_symbols_deletes_requested_rows(tmp_path):
     remaining_multibaggers = conn.execute(
         "SELECT symbol FROM multibaggers ORDER BY symbol"
     ).fetchall()
-    remaining_pit = conn.execute(
-        "SELECT symbol FROM fundamentals_pit ORDER BY symbol"
-    ).fetchall()
+    remaining_pit = conn.execute("SELECT symbol FROM fundamentals_pit ORDER BY symbol").fetchall()
     conn.close()
 
     assert deleted_rows == 2

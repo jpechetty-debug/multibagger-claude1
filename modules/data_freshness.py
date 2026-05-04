@@ -13,13 +13,11 @@ from __future__ import annotations
 
 import sqlite3
 import time
-from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
-from enum import Enum
+from dataclasses import dataclass
+from datetime import date, datetime
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
-
-from modules.runtime_settings import runtime_settings
 
 # ── Freshness Thresholds (configurable via env in future) ────────────────────
 FRESH_MAX_DAYS = 3
@@ -31,7 +29,7 @@ BUY_BLOCK_AGE_DAYS = 5  # Block BUY labels if data older than this
 UNIVERSE_STALE_ALERT_PCT = 20.0  # Alert if >20% universe is stale
 
 
-class FreshnessStatus(str, Enum):
+class FreshnessStatus(StrEnum):
     FRESH = "FRESH"
     STALE = "STALE"
     EXPIRED = "EXPIRED"
@@ -46,6 +44,7 @@ class FreshnessReport:
     source: str
     data_quality: float  # 0-100
     scheduled_refresh: dict[str, Any]
+    universe_counts: dict[str, int]  # fresh, stale, expired
 
 
 @dataclass(frozen=True)
@@ -80,6 +79,7 @@ _CACHE_DB_PATH = str(_PROJECT_ROOT / "data_cache.db")
 
 def _get_db_path() -> str:
     import os
+
     return os.getenv("DATABASE_URL", f"sqlite:///{_DB_PATH}").replace("sqlite:///", "")
 
 
@@ -121,6 +121,7 @@ def should_block_buy_label(age_days: int) -> bool:
 
 # ── Public API ───────────────────────────────────────────────────────────────
 
+
 def get_freshness_report() -> FreshnessReport:
     """Query the database for the latest as_of_date and compute freshness."""
     try:
@@ -139,7 +140,7 @@ def get_freshness_report() -> FreshnessReport:
                    WHERE as_of_date = (SELECT MAX(as_of_date) FROM fundamentals_pit)
                    GROUP BY as_of_date"""
             ).fetchone()
-            stock_count = source_row["cnt"] if source_row else 0
+            source_row["cnt"] if source_row else 0
 
             # Data quality: % of stocks with non-null scores in latest snapshot
             if latest_date:
@@ -162,6 +163,16 @@ def get_freshness_report() -> FreshnessReport:
             # Check for scheduled refresh status
             scheduled = _get_scheduled_refresh_status(conn)
 
+            # Calculate universe breakdown
+            quality = get_universe_quality()
+            universe_counts = {
+                "fresh": quality.fresh_count,
+                "stale": quality.stale_count,
+                "expired": quality.expired_count,
+                "incomplete": quality.incomplete_count,
+                "total": quality.total_stocks
+            }
+
             return FreshnessReport(
                 status=status,
                 latest_as_of_date=latest_date,
@@ -169,6 +180,7 @@ def get_freshness_report() -> FreshnessReport:
                 source="fundamentals_pit",
                 data_quality=data_quality,
                 scheduled_refresh=scheduled,
+                universe_counts=universe_counts,
             )
         finally:
             conn.close()
@@ -180,15 +192,14 @@ def get_freshness_report() -> FreshnessReport:
             source="error",
             data_quality=0.0,
             scheduled_refresh={"status": "error", "message": str(exc)},
+            universe_counts={"fresh": 0, "stale": 0, "expired": 0, "incomplete": 0, "total": 0}
         )
 
 
 def _get_scheduled_refresh_status(conn) -> dict[str, Any]:
     """Check when the last scan ran and estimate next expected scan."""
     try:
-        row = conn.execute(
-            "SELECT MAX(updated_at) as last_update FROM multibaggers"
-        ).fetchone()
+        row = conn.execute("SELECT MAX(updated_at) as last_update FROM multibaggers").fetchone()
         last_update = row["last_update"] if row else None
 
         if last_update:
@@ -199,7 +210,9 @@ def _get_scheduled_refresh_status(conn) -> dict[str, Any]:
                     "last_scan": str(last_update),
                     "age_hours": round(age_hours, 1),
                     "status": "recent" if age_hours < 24 else "overdue",
-                    "next_expected": "Within 24h (automated)" if age_hours < 24 else "OVERDUE — manual scan recommended",
+                    "next_expected": "Within 24h (automated)"
+                    if age_hours < 24
+                    else "OVERDUE — manual scan recommended",
                 }
             except (ValueError, TypeError):
                 pass
@@ -238,7 +251,7 @@ def get_provider_health() -> list[ProviderHealth]:
                 (one_day_ago,),
             ).fetchone()["cnt"]
 
-            stale_cached = conn.execute(
+            conn.execute(
                 "SELECT COUNT(*) as cnt FROM cache WHERE key LIKE 'fund_%' AND timestamp < ?",
                 (one_week_ago,),
             ).fetchone()["cnt"]
@@ -247,7 +260,7 @@ def get_provider_health() -> list[ProviderHealth]:
             fresh_pct = (recent_cached / max(total_cached, 1)) * 100
 
             # We infer provider health from the overall cache state
-            for pname, base_rate in [("yfinance", 85.0), ("pnsea", 60.0), ("nsepython", 40.0)]:
+            for pname, _base_rate in [("yfinance", 85.0), ("pnsea", 60.0), ("nsepython", 40.0)]:
                 # Adjust based on cache freshness
                 if pname == "yfinance":
                     rate = min(100, fresh_pct + 15)  # yfinance is usually most reliable
@@ -258,14 +271,18 @@ def get_provider_health() -> list[ProviderHealth]:
 
                 status = "healthy" if rate > 70 else "degraded" if rate > 30 else "down"
 
-                providers_result.append(ProviderHealth(
-                    name=pname,
-                    success_rate=round(rate, 1),
-                    total_calls=total_cached if pname == "yfinance" else total_cached // 3,
-                    last_success=datetime.fromtimestamp(now).isoformat() if rate > 50 else None,
-                    last_failure=None if rate > 80 else datetime.fromtimestamp(now - 3600).isoformat(),
-                    status=status,
-                ))
+                providers_result.append(
+                    ProviderHealth(
+                        name=pname,
+                        success_rate=round(rate, 1),
+                        total_calls=total_cached if pname == "yfinance" else total_cached // 3,
+                        last_success=datetime.fromtimestamp(now).isoformat() if rate > 50 else None,
+                        last_failure=None
+                        if rate > 80
+                        else datetime.fromtimestamp(now - 3600).isoformat(),
+                        status=status,
+                    )
+                )
         finally:
             conn.close()
 

@@ -152,7 +152,9 @@ describe('api contract normalization', () => {
         convictionScore: 68,
       }),
     ])
-    expect(fetchMock).toHaveBeenCalledWith('/api/stocks')
+    expect(fetchMock).toHaveBeenCalledWith('/api/stocks', {
+      headers: { 'X-API-Key': 'DEV_KEY_123' },
+    })
   })
 
   it('attaches the configured API key header to backend requests', async () => {

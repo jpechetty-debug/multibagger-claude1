@@ -1,6 +1,5 @@
-
-import sys
 import os
+import sys
 
 print(f"Python Executable: {sys.executable}")
 print(f"Python Version: {sys.version}")
@@ -12,6 +11,7 @@ for p in sys.path:
 print("\nAttempting to import jinja2...")
 try:
     import jinja2
+
     print(f"✅ jinja2 imported successfully. File: {jinja2.__file__}")
     print(f"Version: {jinja2.__version__}")
 except ImportError as e:
@@ -20,8 +20,9 @@ except ImportError as e:
 print("\nAttempting to verify pip installed packages...")
 try:
     from importlib.metadata import distributions
-    pkgs = [d.metadata['Name'] for d in distributions()]
-    if 'Jinja2' in pkgs or 'jinja2' in pkgs:
+
+    pkgs = [d.metadata["Name"] for d in distributions()]
+    if "Jinja2" in pkgs or "jinja2" in pkgs:
         print("✅ Jinja2 found in importlib.metadata")
     else:
         print("❌ Jinja2 NOT found in importlib.metadata")

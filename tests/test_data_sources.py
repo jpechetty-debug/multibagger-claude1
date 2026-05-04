@@ -1,54 +1,110 @@
-import unittest
+from __future__ import annotations
+
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-import pandas as pd
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from modules.data_service import DataSourceManager
-from modules.sources.yfinance_source import YFinanceSource
-from modules.sources.nse_source import NSESource
-from modules.sources.groww_source import GrowwSource
+from modules.data_service import DataManager
 
-class TestDataSourceManager(unittest.TestCase):
 
-    def setUp(self):
-        self.manager = DataSourceManager()
+class FakeCache:
+    def __init__(self):
+        self.values = {}
 
-    def test_fetch_fundamentals_yfinance_success(self):
-        # Mock YFinanceSource to succeed
-        with patch.object(YFinanceSource, 'fetch_fundamentals') as mock_yf:
-            mock_yf.return_value = {"info": {"symbol": "RELIANCE.NS"}, "financials": pd.DataFrame()}
-            
-            data = self.manager.fetch_fundamentals("RELIANCE.NS")
-            self.assertEqual(data["info"]["symbol"], "RELIANCE.NS")
-            mock_yf.assert_called_once()
+    def get(self, key: str):
+        return self.values.get(key)
 
-    def test_fetch_fundamentals_fallback_to_nse(self):
-        # Mock YFinance to fail, NSE to succeed
-        with patch.object(YFinanceSource, 'fetch_fundamentals') as mock_yf, \
-             patch.object(NSESource, 'fetch_fundamentals') as mock_nse:
-            
-            mock_yf.side_effect = Exception("YF Failed")
-            mock_nse.return_value = {"info": {"symbol": "RELIANCE"}, "financials": pd.DataFrame()}
-            
-            data = self.manager.fetch_fundamentals("RELIANCE.NS")
-            self.assertEqual(data["info"]["symbol"], "RELIANCE")
-            mock_yf.assert_called_once()
-            mock_nse.assert_called_once()
+    def get_expired(self, key: str):
+        return None
 
-    def test_fetch_fundamentals_all_fail(self):
-        # Mock all to fail
-        with patch.object(YFinanceSource, 'fetch_fundamentals', side_effect=Exception("Fail")), \
-             patch.object(NSESource, 'fetch_fundamentals', side_effect=Exception("Fail")), \
-             patch.object(GrowwSource, 'fetch_fundamentals', side_effect=Exception("Fail")):
-            
-            data = self.manager.fetch_fundamentals("RELIANCE.NS")
-            self.assertIn("error", data)
-            self.assertEqual(data["error"], "All sources failed")
+    def set(self, key: str, value):
+        self.values[key] = value
 
-if __name__ == '__main__':
-    unittest.main()
+
+class FakeProvider:
+    available = True
+
+    def __init__(self, name: str, payload=None, exc: Exception | None = None):
+        self.name = name
+        self.payload = payload
+        self.exc = exc
+        self.calls = 0
+
+    async def fetch_fundamentals(self, symbol: str):
+        self.calls += 1
+        if self.exc is not None:
+            raise self.exc
+        return dict(self.payload)
+
+
+def complete_payload(symbol: str, source: str):
+    return {
+        "symbol": symbol,
+        "source": source,
+        "price": 2450.0,
+        "info": {
+            "symbol": symbol,
+            "marketCap": 10_000_000_000,
+            "sector": "Technology",
+            "trailingPE": 24.5,
+            "returnOnEquity": 0.22,
+        },
+    }
+
+
+@pytest.fixture
+async def manager():
+    dm = DataManager(max_concurrency=1)
+    dm.cache = FakeCache()
+    try:
+        yield dm
+    finally:
+        await dm.close()
+
+
+@pytest.mark.asyncio
+async def test_fetch_fundamentals_first_provider_success(manager):
+    primary = FakeProvider("pnsea", complete_payload("RELIANCE.NS", "pnsea"))
+    fallback = FakeProvider("yfinance", complete_payload("RELIANCE.NS", "yfinance"))
+    manager.providers = [primary, fallback]
+
+    data = await manager.async_fetch_fundamentals("RELIANCE.NS")
+
+    assert data["symbol"] == "RELIANCE.NS"
+    assert data["source"] == "pnsea"
+    assert data["data_freshness"] == "live"
+    assert primary.calls == 1
+    assert fallback.calls == 0
+
+
+@pytest.mark.asyncio
+async def test_fetch_fundamentals_falls_back_after_provider_failure(manager):
+    failing = FakeProvider("pnsea", exc=TimeoutError("provider timeout"))
+    fallback = FakeProvider("nsepython", complete_payload("RELIANCE.NS", "nsepython"))
+    manager.providers = [failing, fallback]
+
+    data = await manager.async_fetch_fundamentals("RELIANCE.NS")
+
+    assert data["source"] == "nsepython"
+    assert failing.calls == 1
+    assert fallback.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_fetch_fundamentals_returns_error_when_all_providers_fail(manager):
+    manager.providers = [
+        FakeProvider("pnsea", exc=RuntimeError("fail")),
+        FakeProvider("nsepython", exc=RuntimeError("fail")),
+        FakeProvider("yfinance", exc=RuntimeError("fail")),
+    ]
+
+    data = await manager.async_fetch_fundamentals("RELIANCE.NS")
+
+    assert data["symbol"] == "RELIANCE.NS"
+    assert data["error"] == "All providers failed"
+    assert data["source"] == "fallback_failed"

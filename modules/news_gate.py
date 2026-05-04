@@ -48,4 +48,3 @@ class NewsGate:
                 return False, f"Governance red flag for {symbol}: {term}"
 
         return True, "No adverse news found"
-

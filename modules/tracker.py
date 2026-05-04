@@ -59,9 +59,7 @@ class PortfolioTracker:
         conn = self._get_conn()
         cursor = conn.cursor()
 
-        cursor.execute(
-            "SELECT id FROM trades WHERE symbol = ? AND status = 'OPEN'", (symbol,)
-        )
+        cursor.execute("SELECT id FROM trades WHERE symbol = ? AND status = 'OPEN'", (symbol,))
         if cursor.fetchone():
             message = f"Position already open for {symbol}. Skipping."
             print(message)

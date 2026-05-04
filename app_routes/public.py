@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime
 import os
+from datetime import datetime
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
@@ -75,7 +75,6 @@ async def deep_health_check():
     # 3. Data Freshness
     try:
         from modules.data_freshness import get_freshness_report
-        from dataclasses import asdict
 
         report = get_freshness_report()
         checks["data_freshness"] = {
@@ -91,8 +90,9 @@ async def deep_health_check():
 
     # 4. Provider Health
     try:
-        from modules.data_freshness import get_provider_health
         from dataclasses import asdict as _asdict
+
+        from modules.data_freshness import get_provider_health
 
         providers = get_provider_health()
         checks["providers"] = [_asdict(p) for p in providers]
@@ -101,8 +101,6 @@ async def deep_health_check():
 
     # 5. Background Worker Status
     try:
-        from fastapi import Request
-
         # Check if price updater task is alive (set in lifespan)
         checks["background_worker"] = {"status": "configured"}
     except Exception as exc:
@@ -136,7 +134,7 @@ async def get_swarm_report(symbol: str):
     if not os.path.exists(report_path):
         raise HTTPException(status_code=404, detail=f"Swarm report not found for {symbol}")
 
-    with open(report_path, "r", encoding="utf-8") as handle:
+    with open(report_path, encoding="utf-8") as handle:
         content = handle.read()
 
     return {"symbol": symbol, "report": content}

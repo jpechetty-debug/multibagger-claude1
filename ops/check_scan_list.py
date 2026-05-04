@@ -1,29 +1,32 @@
 import csv
 import re
 
+
 def get_csv_tickers(file_path):
     tickers = []
-    with open(file_path, 'r') as f:
+    with open(file_path) as f:
         reader = csv.DictReader(f)
         for row in reader:
-            symbol = row['Symbol'].strip()
+            symbol = row["Symbol"].strip()
             if symbol:
                 tickers.append(symbol)
     return tickers
 
+
 def get_current_tickers(file_path):
-    with open(file_path, 'r') as f:
+    with open(file_path) as f:
         content = f.read()
-    
+
     # Regex to find strings inside quotes in the TICKERS list
     tickers = re.findall(r'"([^"]+)"', content)
     return tickers
 
-csv_list = get_csv_tickers('Return Yearly.csv')
-current_list = get_current_tickers('ticker_list.py')
+
+csv_list = get_csv_tickers("Return Yearly.csv")
+current_list = get_current_tickers("ticker_list.py")
 
 # Normalize: remove .NS or .BO for comparison
-current_normalized = {t.split('.')[0] for t in current_list}
+current_normalized = {t.split(".")[0] for t in current_list}
 
 missing = []
 for symbol in csv_list:

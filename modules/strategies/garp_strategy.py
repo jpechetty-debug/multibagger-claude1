@@ -1,4 +1,3 @@
-
 """
 GARP Strategy Module
 --------------------
@@ -9,18 +8,20 @@ Generates weekly 'ALLOCATION_PROPOSAL' events.
 4. Emits Top Candidates
 """
 
-import pandas as pd
-import sqlite3
 import os
 import sys
+
+import pandas as pd
 
 # Add project root
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from modules.fundamental_filters import validate_garp_criteria
-import db.repository as database
 import asyncio
+
+import db.repository as database
+from modules.fundamental_filters import validate_garp_criteria
 from modules.news import get_stock_news
+
 
 class GarpStrategy:
     def __init__(self, db_path="stocks.db"):
@@ -56,10 +57,7 @@ class GarpStrategy:
         # Nexus Alpha is the primary engine. Conviction/RS/DQ refine the ordering.
         if nexus_score > 0:
             final_rank_score = (
-                nexus_score * 0.60
-                + conviction * 0.25
-                + rs_score * 0.10
-                + data_quality * 0.05
+                nexus_score * 0.60 + conviction * 0.25 + rs_score * 0.10 + data_quality * 0.05
             )
         else:
             final_rank_score = (conviction * 0.70) + (rs_score * 0.30)
@@ -78,8 +76,8 @@ class GarpStrategy:
         try:
             # Load active stocks with valid price
             query = """
-            SELECT * FROM multibaggers 
-            WHERE price > 0 
+            SELECT * FROM multibaggers
+            WHERE price > 0
             ORDER BY score DESC
             """
             self.universe = pd.read_sql(query, conn)
@@ -99,33 +97,35 @@ class GarpStrategy:
             return []
 
         qualified = []
-        
+
         print(f"Scanning {len(self.universe)} stocks for GARP criteria...")
-        
+
         for _, row in self.universe.iterrows():
             stock = row.to_dict()
             is_valid, reason = validate_garp_criteria(stock)
-            
+
             if is_valid:
                 components = self._build_rank_components(stock)
-                
-                qualified.append({
-                    "Symbol": stock.get("symbol"),
-                    "Rank_Score": components["rank_score"],
-                    "Nexus_Score": components["nexus_score"],
-                    "Conviction": components["conviction"],
-                    "RS_Score": components["rs_score"],
-                    "Data_Quality": components["data_quality"],
-                    "Price": stock.get("price"),
-                    "Reason": "GARP Qualified | Nexus-led composite rank",
-                })
-        
+
+                qualified.append(
+                    {
+                        "Symbol": stock.get("symbol"),
+                        "Rank_Score": components["rank_score"],
+                        "Nexus_Score": components["nexus_score"],
+                        "Conviction": components["conviction"],
+                        "RS_Score": components["rs_score"],
+                        "Data_Quality": components["data_quality"],
+                        "Price": stock.get("price"),
+                        "Reason": "GARP Qualified | Nexus-led composite rank",
+                    }
+                )
+
         # Sort by Rank
         qualified_df = pd.DataFrame(qualified)
         if not qualified_df.empty:
             qualified_df = qualified_df.sort_values(by="Rank_Score", ascending=False).head(top_n)
             final_proposals = qualified_df.to_dict(orient="records")
-            
+
             # Enrich with News (Gate 0 Requirement)
             print(f"Fetching news for {len(final_proposals)} candidates...")
             try:
@@ -135,7 +135,7 @@ class GarpStrategy:
             except Exception as e:
                 print(f"News fetch failed: {e}")
                 return final_proposals
-        
+
         return []
 
     async def _fetch_news_batch(self, proposals):
@@ -144,26 +144,29 @@ class GarpStrategy:
         """
         tasks = []
         for p in proposals:
-            symbol = p.get('Symbol')
+            symbol = p.get("Symbol")
             tasks.append(get_stock_news(symbol))
-            
+
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        for p, news in zip(proposals, results):
+
+        for p, news in zip(proposals, results, strict=False):
             if isinstance(news, list):
-                p['Recent_News'] = news
+                p["Recent_News"] = news
             else:
-                p['Recent_News'] = [] # On error
-                
+                p["Recent_News"] = []  # On error
+
         return proposals
+
 
 if __name__ == "__main__":
     strategy = GarpStrategy()
     proposals = strategy.generate_proposals()
-    
+
     print("\n--- GARP Allocation Proposals ---")
     if proposals:
         for i, p in enumerate(proposals):
-            print(f"{i+1}. {p['Symbol']} (Rank: {p['Rank_Score']}, Conviction: {p['Conviction']})")
+            print(
+                f"{i + 1}. {p['Symbol']} (Rank: {p['Rank_Score']}, Conviction: {p['Conviction']})"
+            )
     else:
         print("No candidates found.")

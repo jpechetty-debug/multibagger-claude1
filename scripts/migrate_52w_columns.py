@@ -1,7 +1,8 @@
-import sqlite3
 import os
+import sqlite3
 
 DB_NAME = "stocks.db"
+
 
 def migrate():
     if not os.path.exists(DB_NAME):
@@ -38,6 +39,7 @@ def migrate():
     conn.commit()
     conn.close()
     print("Migration complete.")
+
 
 if __name__ == "__main__":
     migrate()

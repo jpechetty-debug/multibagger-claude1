@@ -1,18 +1,34 @@
-import sqlite3
+import os
+import sys
 
-import db.repository as database
+# Force a fresh Numba cache to resolve "ValueError: incorrect value for flags variable (overflow)"
+os.environ['NUMBA_CACHE_DIR'] = os.path.join(os.getcwd(), 'numba_cache')
+
+# Ensure root directory is in path for imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
 import numpy as np
 import pandas as pd
 import vectorbt as vbt
 import yfinance as yf
 
+import db.repository as database
+
 
 def _canonical_symbol(symbol: str) -> str:
-    text = str(symbol or "").strip().upper()
-    if not text:
+    """Standardizes symbols for Yahoo Finance."""
+    text = str(symbol).strip().upper()
+    
+    # If it already has a suffix, return as is
+    if "." in text:
         return text
-    if text.endswith(".NS") or text.endswith(".BO"):
+        
+    # Known US stocks in this universe (from ticker_list.py)
+    us_stocks = {"AAPL", "MSFT", "NVDA", "TSLA", "GOOGL", "AMZN", "META", "NFLX"}
+    if text in us_stocks:
         return text
+        
+    # Default to NSE for others
     return f"{text}.NS"
 
 
@@ -217,7 +233,7 @@ def run_backtest():
     update_data = []
     for original_symbol in input_symbols:
         canonical_symbol = canonical_map.get(original_symbol, original_symbol)
-        
+
         # Use .get() on Series correctly
         cagr = individual_cagr.get(canonical_symbol, 0)
         win_rate = individual_win_rate.get(canonical_symbol, 0)

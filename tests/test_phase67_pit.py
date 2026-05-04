@@ -1,7 +1,7 @@
 import sys
+import types
 from datetime import datetime
 from pathlib import Path
-import types
 
 import pandas as pd
 
@@ -224,14 +224,18 @@ def test_write_fundamentals_snapshot_normalizes_dates_and_syncs_pit_store(tmp_pa
     finally:
         conn.close()
 
-    metric_names = {
-        args[1]
-        for args in inserted_records
-        if args and args[0] != "closed"
-    }
+    metric_names = {args[1] for args in inserted_records if args and args[0] != "closed"}
 
     assert snapshot_row["symbol"] == "AAA.NS"
     assert snapshot_row["as_of_date"] == "2026-02-20"
     assert snapshot_row["source_updated_at"] == "2026-02-19 10:15:30"
-    assert {"score", "sales_cagr_5y", "avg_roe_5y", "pe_ratio", "debt_equity", "cfo_pat_ratio", "market_cap_cr"} <= metric_names
+    assert {
+        "score",
+        "sales_cagr_5y",
+        "avg_roe_5y",
+        "pe_ratio",
+        "debt_equity",
+        "cfo_pat_ratio",
+        "market_cap_cr",
+    } <= metric_names
     assert inserted_records[-1] == ("closed",)

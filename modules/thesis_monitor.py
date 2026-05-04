@@ -4,12 +4,12 @@ Records buy thesis at purchase and monitors for thesis breaks per stock.
 Hedge-fund-grade investment thesis monitoring.
 """
 
+import contextlib
 import json
 import sqlite3
-import os
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from dataclasses import dataclass, field, asdict
-from typing import List, Optional, Dict
+from typing import Any, cast
 
 DB_NAME = "stocks.db"
 DB_BUSY_TIMEOUT_MS = 5000
@@ -58,7 +58,7 @@ class ThesisBreak:
 class ThesisStatus:
     symbol: str
     status: str  # "INTACT", "WARNING", "THESIS_BREAK"
-    breaks: List[Dict] = field(default_factory=list)
+    breaks: list[dict] = field(default_factory=list)
     thesis_age_days: int = 0
     score_at_buy: float = 0.0
     score_now: float = 0.0
@@ -70,8 +70,9 @@ class ThesisStatus:
         return asdict(self)
 
 
-def record_buy_thesis(symbol: str, stock_data: dict, score: float,
-                      checklist_passes: int = 0, regime: str = "SIDEWAYS"):
+def record_buy_thesis(
+    symbol: str, stock_data: dict, score: float, checklist_passes: int = 0, regime: str = "SIDEWAYS"
+):
     """
     Record the investment thesis at time of purchase.
     Called automatically when a BUY order is placed.
@@ -87,7 +88,9 @@ def record_buy_thesis(symbol: str, stock_data: dict, score: float,
 
     # Extract key metrics for thesis thresholds
     # Revenue growth: use 80% of current as minimum threshold
-    rev_growth = stock_data.get("Sales_Growth_TTM%", 0) or stock_data.get("Sales_Growth_5Y%", 0) or 0
+    rev_growth = (
+        stock_data.get("Sales_Growth_TTM%", 0) or stock_data.get("Sales_Growth_5Y%", 0) or 0
+    )
     revenue_growth_min = round(rev_growth * 0.8, 1) if rev_growth > 0 else 0
 
     # Operating margin: use current profit margin as baseline
@@ -184,9 +187,7 @@ def check_thesis(symbol: str) -> ThesisStatus:
 
     conn = _get_conn()
     try:
-        row = conn.execute(
-            "SELECT * FROM buy_thesis WHERE symbol = ?", (symbol,)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM buy_thesis WHERE symbol = ?", (symbol,)).fetchone()
     finally:
         conn.close()
 
@@ -207,17 +208,15 @@ def check_thesis(symbol: str) -> ThesisStatus:
 
     score_at_buy = row["score_at_buy"] or 0
     revenue_growth_min = row["revenue_growth_min"] or 0
-    operating_margin_min = row["operating_margin_min"] or 0
+    row["operating_margin_min"] or 0
     primary_driver = row["primary_driver"] or ""
     regime_at_buy = row["regime_at_buy"] or ""
-    checklist_at_buy = row["checklist_passes_at_buy"] or 0
+    row["checklist_passes_at_buy"] or 0
 
     # Fetch current fundamentals from multibaggers table
     conn = _get_conn()
     try:
-        current = conn.execute(
-            "SELECT * FROM multibaggers WHERE symbol = ?", (symbol,)
-        ).fetchone()
+        current = conn.execute("SELECT * FROM multibaggers WHERE symbol = ?", (symbol,)).fetchone()
     finally:
         conn.close()
 
@@ -240,82 +239,92 @@ def check_thesis(symbol: str) -> ThesisStatus:
     # 1. Revenue Growth Check
     current_sales_growth = current["sales_growth"] or 0
     if revenue_growth_min > 0 and current_sales_growth < revenue_growth_min:
-        breaks.append({
-            "metric": "Revenue Growth",
-            "threshold": revenue_growth_min,
-            "current_value": current_sales_growth,
-            "message": f"THESIS BREAK: Growth deceleration detected "
-                       f"({current_sales_growth:.1f}% < min {revenue_growth_min:.1f}%)",
-        })
+        breaks.append(
+            {
+                "metric": "Revenue Growth",
+                "threshold": revenue_growth_min,
+                "current_value": current_sales_growth,
+                "message": f"THESIS BREAK: Growth deceleration detected "
+                f"({current_sales_growth:.1f}% < min {revenue_growth_min:.1f}%)",
+            }
+        )
 
     # 2. Operating Margin Check
     # We don't have operating margin directly in multibaggers, approximate with ROE trend
     # Load raw thesis for snapshot comparison
     raw_thesis = {}
-    try:
+    with contextlib.suppress(json.JSONDecodeError, TypeError):
         raw_thesis = json.loads(row["raw_thesis_json"] or "{}")
-    except (json.JSONDecodeError, TypeError):
-        pass
 
     snapshot = raw_thesis.get("buy_thesis", {}).get("snapshot_at_buy", {})
 
     # 3. Score Deterioration
     if score_at_buy > 0 and score_now < score_at_buy * 0.7:
-        breaks.append({
-            "metric": "Composite Score",
-            "threshold": round(score_at_buy * 0.7, 1),
-            "current_value": score_now,
-            "message": f"THESIS BREAK: Score collapsed from {score_at_buy:.1f} to {score_now:.1f} "
-                       f"(>{30}% drop)",
-        })
+        breaks.append(
+            {
+                "metric": "Composite Score",
+                "threshold": round(score_at_buy * 0.7, 1),
+                "current_value": score_now,
+                "message": f"THESIS BREAK: Score collapsed from {score_at_buy:.1f} to {score_now:.1f} "
+                f"(>{30}% drop)",
+            }
+        )
 
     # 4. ROE Deterioration
     roe_at_buy = snapshot.get("avg_roe_5y", 0) or snapshot.get("roe", 0)
     current_roe = current["roe"] or 0
     if roe_at_buy > 15 and current_roe < roe_at_buy * 0.6:
-        breaks.append({
-            "metric": "ROE",
-            "threshold": round(roe_at_buy * 0.6, 1),
-            "current_value": current_roe,
-            "message": f"THESIS BREAK: Profitability collapse "
-                       f"(ROE {current_roe:.1f}% vs buy {roe_at_buy:.1f}%)",
-        })
+        breaks.append(
+            {
+                "metric": "ROE",
+                "threshold": round(roe_at_buy * 0.6, 1),
+                "current_value": current_roe,
+                "message": f"THESIS BREAK: Profitability collapse "
+                f"(ROE {current_roe:.1f}% vs buy {roe_at_buy:.1f}%)",
+            }
+        )
 
     # 5. F-Score Deterioration
     f_score_at_buy = snapshot.get("f_score", 0)
     current_f_score = current["f_score"] or 0
     if f_score_at_buy >= 6 and current_f_score <= 3:
-        breaks.append({
-            "metric": "F-Score",
-            "threshold": 4,
-            "current_value": current_f_score,
-            "message": f"THESIS BREAK: Financial quality collapsed "
-                       f"(F-Score {current_f_score} vs buy {f_score_at_buy})",
-        })
+        breaks.append(
+            {
+                "metric": "F-Score",
+                "threshold": 4,
+                "current_value": current_f_score,
+                "message": f"THESIS BREAK: Financial quality collapsed "
+                f"(F-Score {current_f_score} vs buy {f_score_at_buy})",
+            }
+        )
 
     # 6. Debt Spike
     de_at_buy = snapshot.get("debt_equity", 0)
     current_de = current["debt_equity"] or 0
     if de_at_buy < 0.5 and current_de > 1.0:
-        breaks.append({
-            "metric": "Debt/Equity",
-            "threshold": 1.0,
-            "current_value": current_de,
-            "message": f"THESIS BREAK: Leverage spike "
-                       f"(D/E {current_de:.2f} vs buy {de_at_buy:.2f})",
-        })
+        breaks.append(
+            {
+                "metric": "Debt/Equity",
+                "threshold": 1.0,
+                "current_value": current_de,
+                "message": f"THESIS BREAK: Leverage spike "
+                f"(D/E {current_de:.2f} vs buy {de_at_buy:.2f})",
+            }
+        )
 
     # 7. Promoter Exit
     prom_at_buy = snapshot.get("promoter_holding", 0)
     current_prom = current["promoter_holding"] or 0
     if prom_at_buy > 50 and current_prom < prom_at_buy * 0.8:
-        breaks.append({
-            "metric": "Promoter Holding",
-            "threshold": round(prom_at_buy * 0.8, 1),
-            "current_value": current_prom,
-            "message": f"THESIS BREAK: Promoter reducing stake "
-                       f"({current_prom:.1f}% vs buy {prom_at_buy:.1f}%)",
-        })
+        breaks.append(
+            {
+                "metric": "Promoter Holding",
+                "threshold": round(prom_at_buy * 0.8, 1),
+                "current_value": current_prom,
+                "message": f"THESIS BREAK: Promoter reducing stake "
+                f"({current_prom:.1f}% vs buy {prom_at_buy:.1f}%)",
+            }
+        )
 
     # Determine status
     if len(breaks) >= 2:
@@ -341,7 +350,7 @@ def check_thesis(symbol: str) -> ThesisStatus:
     )
 
 
-def check_all_thesis_breaks() -> List[Dict]:
+def check_all_thesis_breaks() -> list[dict]:
     """
     Check thesis status for ALL stocks with recorded thesis.
     Returns list of thesis statuses, sorted by severity.
@@ -366,7 +375,7 @@ def check_all_thesis_breaks() -> List[Dict]:
     return results
 
 
-def get_thesis_summary(symbol: str) -> Optional[Dict]:
+def get_thesis_summary(symbol: str) -> dict | None:
     """Get the raw thesis JSON for a symbol."""
     ensure_thesis_table()
     conn = _get_conn()
@@ -379,7 +388,7 @@ def get_thesis_summary(symbol: str) -> Optional[Dict]:
 
     if row and row["raw_thesis_json"]:
         try:
-            return json.loads(row["raw_thesis_json"])
+            return cast(dict[str, Any], json.loads(row["raw_thesis_json"]))
         except (json.JSONDecodeError, TypeError):
             pass
     return None

@@ -1,6 +1,7 @@
 # modules/adapters/base.py
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Any
+
 
 class DataProvider(ABC):
     @property
@@ -9,5 +10,5 @@ class DataProvider(ABC):
         pass
 
     @abstractmethod
-    async def fetch_fundamentals(self, symbol: str) -> Dict[str, Any]:
+    async def fetch_fundamentals(self, symbol: str) -> dict[str, Any]:
         pass

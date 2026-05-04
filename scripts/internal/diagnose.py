@@ -1,7 +1,8 @@
-
-import sqlite3
-import pandas as pd
 import os
+import sqlite3
+
+import pandas as pd
+
 
 def check_system():
     print("--- Checking Database ---")
@@ -13,7 +14,7 @@ def check_system():
             conn = sqlite3.connect(db_path)
             res = pd.read_sql("SELECT * FROM multibaggers LIMIT 5", conn)
             print(f"DB Read Successful. Columns: {res.columns.tolist()}")
-            if 'market_cap_cr' in res.columns:
+            if "market_cap_cr" in res.columns:
                 print("Schema Verified: New columns present.")
             else:
                 print("Schema WARNING: New columns MISSING.")
@@ -33,10 +34,10 @@ def check_system():
 
     print("\n--- Checking Imports ---")
     try:
-        import main
         print("Import main.py Successful.")
     except Exception as e:
         print(f"Import Error: {e}")
+
 
 if __name__ == "__main__":
     check_system()

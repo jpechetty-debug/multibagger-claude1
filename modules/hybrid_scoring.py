@@ -49,14 +49,15 @@ def _sanitize_features(df: pd.DataFrame) -> pd.DataFrame:
 
 def _get_historical_targets(symbols: list):
     """Refactored forward-return target construction using modular data manager."""
+
     from modules.data_service import data_manager
-    import asyncio
-    
+
     async def _fetch():
         return await data_manager.fetch_batch(symbols)
-    
+
     # Use sync wrapper for ML training context
     from modules.data_utils import run_coroutine_sync
+
     data = run_coroutine_sync(_fetch())
     return {s: d.get("price") for s, d in data.items() if "price" in d}
 
@@ -86,7 +87,9 @@ def train_hybrid_model():
         return False
 
     if len(df) < 20:
-        print("Not enough historical data in fundamentals_pit to train a reliable XGBoost model (need > 20).")
+        print(
+            "Not enough historical data in fundamentals_pit to train a reliable XGBoost model (need > 20)."
+        )
         return False
 
     # 2. Get current prices to calculate forward returns.

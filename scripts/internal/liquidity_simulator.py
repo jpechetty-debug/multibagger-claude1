@@ -1,6 +1,6 @@
 import json
-import sqlite3
 import os
+import sqlite3
 
 import numpy as np
 import pandas as pd
@@ -10,7 +10,12 @@ import yfinance as yf
 def _fetch_recent_volume_and_price(symbol: str) -> tuple:
     try:
         hist = yf.Ticker(symbol).history(period="20d")
-        if hist is not None and not hist.empty and "Volume" in hist.columns and "Close" in hist.columns:
+        if (
+            hist is not None
+            and not hist.empty
+            and "Volume" in hist.columns
+            and "Close" in hist.columns
+        ):
             avg_vol = float(pd.to_numeric(hist["Volume"], errors="coerce").dropna().mean())
             last_price_series = pd.to_numeric(hist["Close"], errors="coerce").dropna()
             last_price = float(last_price_series.iloc[-1]) if not last_price_series.empty else 0.0
@@ -86,15 +91,12 @@ def run_liquidity_check():
 
     with open("liquidity_report.md", "w", encoding="utf-8") as f:
         f.write("# Phase 52: Capital Deployment Report (v2.9 Enhanced)\n")
-        f.write(
-            f"Market Condition: VIX {current_vix:.2f} (Multiplier: {crisis_multiplier}x)\n\n"
-        )
+        f.write(f"Market Condition: VIX {current_vix:.2f} (Multiplier: {crisis_multiplier}x)\n\n")
 
         for aum in aum_levels:
             allocation_per_stock = aum / 20.0
             print(
-                f"\nStress Testing AUM: INR {aum:,.0f} "
-                f"(INR {allocation_per_stock:,.0f} per stock)"
+                f"\nStress Testing AUM: INR {aum:,.0f} (INR {allocation_per_stock:,.0f} per stock)"
             )
             f.write(f"## AUM Scenario: INR {aum:,.0f}\n")
 
@@ -171,7 +173,9 @@ def run_liquidity_check():
         return
 
     max_flags = max(s["risk_flags"] for s in scenario_results)
-    overall_verdict = "SCALABLE" if max_flags == 0 else "CAUTION" if max_flags <= 5 else "NON_SCALABLE"
+    overall_verdict = (
+        "SCALABLE" if max_flags == 0 else "CAUTION" if max_flags <= 5 else "NON_SCALABLE"
+    )
 
     json_output = {
         "timestamp": pd.Timestamp.now().isoformat(),

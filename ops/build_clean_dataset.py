@@ -2,14 +2,14 @@ import argparse
 import json
 import re
 import sqlite3
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Any
+
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
-import yaml
-
+import yaml  # type: ignore[import-untyped]
 
 SECTOR_MAP = {
     "BASIC MATERIALS": "Basic Materials",
@@ -173,7 +173,9 @@ def load_rules_config(path: Path) -> dict[str, Any]:
         "target_tables": refresh_raw.get("target_tables", []),
         "min_age_days": int(refresh_raw.get("min_age_days", 7)),
         "require_newer_source": bool(refresh_raw.get("require_newer_source", True)),
-        "allow_fill_missing_when_stale": bool(refresh_raw.get("allow_fill_missing_when_stale", True)),
+        "allow_fill_missing_when_stale": bool(
+            refresh_raw.get("allow_fill_missing_when_stale", True)
+        ),
         "overwrite_non_null": bool(refresh_raw.get("overwrite_non_null", True)),
         "update_columns": refresh_raw.get("update_columns", []),
     }
@@ -221,7 +223,9 @@ def load_rules_config(path: Path) -> dict[str, Any]:
     if not isinstance(cfg["tables"], list) or not cfg["tables"]:
         raise ValueError("'tables' must be a non-empty list")
     if cfg["filter_mode"] not in FILTER_MODES:
-        raise ValueError(f"Invalid filter_mode '{cfg['filter_mode']}'. Expected one of {sorted(FILTER_MODES)}")
+        raise ValueError(
+            f"Invalid filter_mode '{cfg['filter_mode']}'. Expected one of {sorted(FILTER_MODES)}"
+        )
     return cfg
 
 
@@ -268,7 +272,7 @@ def refresh_stale_rows(
     if not refresh_cfg.get("enabled", False):
         return df, default_summary
 
-    target_tables = set(str(x) for x in (refresh_cfg.get("target_tables") or []))
+    target_tables = {str(x) for x in (refresh_cfg.get("target_tables") or [])}
     if target_tables and table_name not in target_tables:
         return df, default_summary
 
@@ -311,9 +315,7 @@ def refresh_stale_rows(
     summary["rows_with_source_match"] = int(source_match_mask.sum())
 
     src_dates = out[target_key].map(source_latest[src_date_ts_col])
-    newer_source_mask = source_match_mask & (
-        tgt_date_ts.isna() | (src_dates > tgt_date_ts)
-    )
+    newer_source_mask = source_match_mask & (tgt_date_ts.isna() | (src_dates > tgt_date_ts))
     if not require_newer_source:
         newer_source_mask = source_match_mask & src_dates.notna()
     summary["rows_with_newer_source"] = int(newer_source_mask.sum())
@@ -403,7 +405,7 @@ def load_summary_file(path_value: str | None) -> dict[str, Any] | None:
     if not path.exists():
         return None
     with path.open("r", encoding="utf-8") as fh:
-        return json.load(fh)
+        return cast(dict[str, Any], json.load(fh))
 
 
 def _safe_pct(numerator: float, denominator: float) -> float:
@@ -445,11 +447,23 @@ def build_alerts(
         return []
 
     thresholds = monitor_cfg.get("thresholds", DEFAULT_MONITOR_THRESHOLDS)
-    warning_share_max_pct = float(thresholds.get("warning_share_max_pct", DEFAULT_MONITOR_THRESHOLDS["warning_share_max_pct"]))
-    hard_fail_share_max_pct = float(thresholds.get("hard_fail_share_max_pct", DEFAULT_MONITOR_THRESHOLDS["hard_fail_share_max_pct"]))
-    null_spike_abs_pct = float(thresholds.get("null_spike_abs_pct", DEFAULT_MONITOR_THRESHOLDS["null_spike_abs_pct"]))
-    hard_fail_spike_rel = float(thresholds.get("hard_fail_spike_rel", DEFAULT_MONITOR_THRESHOLDS["hard_fail_spike_rel"]))
-    rule_spike_rel = float(thresholds.get("rule_spike_rel", DEFAULT_MONITOR_THRESHOLDS["rule_spike_rel"]))
+    warning_share_max_pct = float(
+        thresholds.get("warning_share_max_pct", DEFAULT_MONITOR_THRESHOLDS["warning_share_max_pct"])
+    )
+    hard_fail_share_max_pct = float(
+        thresholds.get(
+            "hard_fail_share_max_pct", DEFAULT_MONITOR_THRESHOLDS["hard_fail_share_max_pct"]
+        )
+    )
+    null_spike_abs_pct = float(
+        thresholds.get("null_spike_abs_pct", DEFAULT_MONITOR_THRESHOLDS["null_spike_abs_pct"])
+    )
+    hard_fail_spike_rel = float(
+        thresholds.get("hard_fail_spike_rel", DEFAULT_MONITOR_THRESHOLDS["hard_fail_spike_rel"])
+    )
+    rule_spike_rel = float(
+        thresholds.get("rule_spike_rel", DEFAULT_MONITOR_THRESHOLDS["rule_spike_rel"])
+    )
 
     baseline_tables = (baseline_summary or {}).get("tables", {})
     critical_columns_by_table = monitor_cfg.get("critical_columns", {})
@@ -494,14 +508,18 @@ def build_alerts(
                 )
             )
 
-        baseline_table = baseline_tables.get(table_name) if isinstance(baseline_tables, dict) else None
+        baseline_table = (
+            baseline_tables.get(table_name) if isinstance(baseline_tables, dict) else None
+        )
         if isinstance(baseline_table, dict):
             baseline_row_counts = baseline_table.get("row_state_counts", {})
             prev_rows_input = int(baseline_table.get("rows_input", 0))
             prev_hard_fail = int(baseline_row_counts.get("rows_with_hard_fail", 0))
             prev_hard_fail_share_pct = _safe_pct(prev_hard_fail, prev_rows_input)
             if prev_hard_fail_share_pct > 0:
-                hard_fail_rel_change = (hard_fail_share_pct - prev_hard_fail_share_pct) / prev_hard_fail_share_pct
+                hard_fail_rel_change = (
+                    hard_fail_share_pct - prev_hard_fail_share_pct
+                ) / prev_hard_fail_share_pct
                 if hard_fail_rel_change > hard_fail_spike_rel:
                     alerts.append(
                         _alert(
@@ -613,7 +631,9 @@ def persist_quality_telemetry(
                 "rows_with_warning": int(row_counts.get("rows_with_warning", 0)),
                 "rows_with_any_issue": int(row_counts.get("rows_with_any_issue", 0)),
                 "rules_json": json.dumps(table_summary.get("rules", {}), separators=(",", ":")),
-                "null_profile_json": json.dumps(table_summary.get("null_profile", {}), separators=(",", ":")),
+                "null_profile_json": json.dumps(
+                    table_summary.get("null_profile", {}), separators=(",", ":")
+                ),
                 "refresh_json": json.dumps(table_summary.get("refresh", {}), separators=(",", ":")),
             }
         )
@@ -638,7 +658,9 @@ def persist_quality_telemetry(
                     "message": alert.get("message"),
                 }
             )
-        pd.DataFrame(alert_rows).to_sql("data_quality_alerts", conn, if_exists="append", index=False)
+        pd.DataFrame(alert_rows).to_sql(
+            "data_quality_alerts", conn, if_exists="append", index=False
+        )
 
 
 def _evaluate_rule(
@@ -663,7 +685,10 @@ def _evaluate_rule(
                 "skip_reason": f"missing column '{column}'",
                 "missing_columns": [column],
             }
-        age_col = str(rule.get("age_output_column") or ("as_of_age_days" if column == "as_of_date" else f"{column}_age_days"))
+        age_col = str(
+            rule.get("age_output_column")
+            or ("as_of_age_days" if column == "as_of_date" else f"{column}_age_days")
+        )
         threshold = float(rule["threshold"])
         dt = pd.to_datetime(df[column], errors="coerce")
         if column == "as_of_date":
@@ -691,7 +716,9 @@ def _evaluate_rule(
         group_by = str(rule.get("group_by", "sector"))
         min_group_size = int(rule.get("min_group_size", 20))
         fallback_threshold = rule.get("fallback_threshold")
-        fallback_threshold_float = float(fallback_threshold) if fallback_threshold is not None else None
+        fallback_threshold_float = (
+            float(fallback_threshold) if fallback_threshold is not None else None
+        )
 
         if group_by in df.columns:
             group_key = df[group_by].fillna("Unknown").astype(str)
@@ -755,7 +782,7 @@ def _evaluate_rule(
             "missing_columns": missing_cols,
         }
 
-    threshold = float(rule["threshold"]) if rule.get("threshold") is not None else None
+    threshold = float(rule["threshold"]) if rule.get("threshold") is not None else 0.0
     mask = _false_series(df.index)
     if rule_type == "threshold_upper":
         for col in existing_cols:
@@ -791,12 +818,11 @@ def _build_issue_series(
         return empty_codes, empty_counts
 
     matrix = np.column_stack([rule_masks[code].to_numpy(dtype=bool) for code in codes])
-    issue_codes = [
-        "|".join([codes[i] for i, hit in enumerate(row) if hit])
-        for row in matrix
-    ]
+    issue_codes = ["|".join([codes[i] for i, hit in enumerate(row) if hit]) for row in matrix]
     issue_counts = matrix.sum(axis=1).astype(int)
-    return pd.Series(issue_codes, index=index, dtype=object), pd.Series(issue_counts, index=index, dtype=int)
+    return pd.Series(issue_codes, index=index, dtype=object), pd.Series(
+        issue_counts, index=index, dtype=int
+    )
 
 
 def clean_table(
@@ -827,9 +853,15 @@ def clean_table(
 
     rule_columns: set[str] = set()
     for rule in rules_config["rules"]:
-        if rule["type"] in {"threshold_upper", "threshold_lower", "threshold_abs", "group_percentile_upper", "group_percentile_abs"}:
+        if rule["type"] in {
+            "threshold_upper",
+            "threshold_lower",
+            "threshold_abs",
+            "group_percentile_upper",
+            "group_percentile_abs",
+        }:
             rule_columns.update(_rule_columns(rule))
-    numeric_columns = set(str(c) for c in rules_config.get("numeric_columns", []))
+    numeric_columns = {str(c) for c in rules_config.get("numeric_columns", [])}
     candidate_numeric = [col for col in (numeric_columns | rule_columns) if col in out.columns]
     for col in candidate_numeric:
         out[col] = pd.to_numeric(out[col], errors="coerce")
@@ -857,7 +889,9 @@ def clean_table(
         rule_meta[code] = meta
 
     hard_codes = [rule["code"] for rule in rules_config["rules"] if rule["category"] == "hard_fail"]
-    warning_codes = [rule["code"] for rule in rules_config["rules"] if rule["category"] == "warning"]
+    warning_codes = [
+        rule["code"] for rule in rules_config["rules"] if rule["category"] == "warning"
+    ]
 
     has_hard_fail = _false_series(out.index)
     for code in hard_codes:
@@ -868,7 +902,9 @@ def clean_table(
     has_any_issue = has_hard_fail | has_warning
 
     hard_codes_series, hard_count_series = _build_issue_series(out.index, rule_masks, hard_codes)
-    warning_codes_series, warning_count_series = _build_issue_series(out.index, rule_masks, warning_codes)
+    warning_codes_series, warning_count_series = _build_issue_series(
+        out.index, rule_masks, warning_codes
+    )
     all_codes_order = [rule["code"] for rule in rules_config["rules"]]
     all_codes_series, all_count_series = _build_issue_series(out.index, rule_masks, all_codes_order)
 
@@ -995,12 +1031,13 @@ def main() -> None:
     rules_path = Path(args.rules_path)
     rules_config = load_rules_config(rules_path)
     baseline_summary = load_summary_file(args.baseline_summary)
-    run_id = args.run_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    run_ts_utc = datetime.now(timezone.utc).isoformat()
+    run_id = args.run_id or datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    run_ts_utc = datetime.now(UTC).isoformat()
     as_of_ref = (
         pd.Timestamp(args.as_of_date)
         if args.as_of_date
-        else pd.Timestamp(rules_config["as_of_date"]) if rules_config.get("as_of_date")
+        else pd.Timestamp(rules_config["as_of_date"])
+        if rules_config.get("as_of_date")
         else pd.Timestamp(date.today())
     )
     tables = args.tables or rules_config["tables"]
@@ -1048,7 +1085,9 @@ def main() -> None:
                 filter_mode=filter_mode,
                 refresh_cfg=refresh_cfg,
                 source_latest=source_latest,
-                monitor_columns=rules_config.get("monitor", {}).get("critical_columns", {}).get(table_name, []),
+                monitor_columns=rules_config.get("monitor", {})
+                .get("critical_columns", {})
+                .get(table_name, []),
             )
 
             cleaned_path = out_dir / f"{table_name}_cleaned.csv"

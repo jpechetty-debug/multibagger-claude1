@@ -2,7 +2,7 @@ import argparse
 import json
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -37,7 +37,9 @@ def main() -> None:
         default=True,
         help="Write cleaned/gold tables and telemetry tables to DB.",
     )
-    parser.add_argument("--run-id", default=None, help="Optional run id; defaults to UTC timestamp.")
+    parser.add_argument(
+        "--run-id", default=None, help="Optional run id; defaults to UTC timestamp."
+    )
     parser.add_argument(
         "--run-backtest-compare",
         action=argparse.BooleanOptionalAction,
@@ -50,7 +52,7 @@ def main() -> None:
     parser.add_argument("--backtest-period", default="5y")
     args = parser.parse_args()
 
-    run_id = args.run_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    run_id = args.run_id or datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     runs_dir = Path(args.runs_dir)
     out_dir = runs_dir / run_id
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -123,7 +125,7 @@ def main() -> None:
 
     manifest = {
         "run_id": run_id,
-        "run_ts_utc": datetime.now(timezone.utc).isoformat(),
+        "run_ts_utc": datetime.now(UTC).isoformat(),
         "out_dir": str(out_dir),
         "summary_path": str(summary_path),
         "alerts_path": str(alerts_path),

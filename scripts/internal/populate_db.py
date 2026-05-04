@@ -1,23 +1,41 @@
 import os
+
 """Quick population script — fetches a few tickers via yfinance and inserts into multibaggers."""
-import sys, os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-import yfinance as yf
 import sqlite3
-import numpy as np
 from datetime import datetime
-from modules.scoring import calculate_institutional_score
+
+import yfinance as yf
+
 from modules.fundamentals import calculate_piotroski_f_score
+from modules.scoring import calculate_institutional_score
 
 TICKERS = [
-    "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
-    "HINDUNILVR.NS", "BHARTIARTL.NS", "BAJFINANCE.NS", "SBIN.NS", "LT.NS",
-    "ITC.NS", "KOTAKBANK.NS", "AXISBANK.NS", "MARUTI.NS", "TITAN.NS"
+    "RELIANCE.NS",
+    "TCS.NS",
+    "HDFCBANK.NS",
+    "INFY.NS",
+    "ICICIBANK.NS",
+    "HINDUNILVR.NS",
+    "BHARTIARTL.NS",
+    "BAJFINANCE.NS",
+    "SBIN.NS",
+    "LT.NS",
+    "ITC.NS",
+    "KOTAKBANK.NS",
+    "AXISBANK.NS",
+    "MARUTI.NS",
+    "TITAN.NS",
 ]
 
+
 def populate():
-    conn = sqlite3.connect("runtime/stocks.db" if os.path.exists("runtime/stocks.db") else "stocks.db")
+    conn = sqlite3.connect(
+        "runtime/stocks.db" if os.path.exists("runtime/stocks.db") else "stocks.db"
+    )
     conn.execute("PRAGMA busy_timeout=5000")
     conn.execute("PRAGMA journal_mode=WAL")
     cursor = conn.cursor()
@@ -69,24 +87,51 @@ def populate():
 
             # Score
             data = {
-                "ROE%": roe, "Sales_Growth_TTM%": sales_g, "Debt_Equity": de,
-                "F_Score": f_score, "PE_Ratio": pe, "Market_Cap_Cr": mcap,
-                "Down_From_52W_High%": down_52w, "CFO_PAT_Ratio": cfo_pat,
-                "EPS_Growth%": eps_g, "RS_Rating": rs,
+                "ROE%": roe,
+                "Sales_Growth_TTM%": sales_g,
+                "Debt_Equity": de,
+                "F_Score": f_score,
+                "PE_Ratio": pe,
+                "Market_Cap_Cr": mcap,
+                "Down_From_52W_High%": down_52w,
+                "CFO_PAT_Ratio": cfo_pat,
+                "EPS_Growth%": eps_g,
+                "RS_Rating": rs,
             }
             score_res = calculate_institutional_score(data, market_regime="SIDEWAYS")
             score = score_res["total_score"]
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT OR REPLACE INTO multibaggers
                 (symbol, name, price, score, sector, pe_ratio, market_cap_cr,
                  roe_pct, debt_equity, sales_cagr_5y, eps_growth, cfo_pat_ratio,
                  f_score, rs_rating, promoter_holding, high_52w, low_52w,
                  down_from_52w_high, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (symbol, name, price, score, sector, pe, mcap, roe, de,
-                  sales_g, eps_g, cfo_pat, f_score, rs, prom, high_52w,
-                  low_52w, down_52w, datetime.now().isoformat()))
+            """,
+                (
+                    symbol,
+                    name,
+                    price,
+                    score,
+                    sector,
+                    pe,
+                    mcap,
+                    roe,
+                    de,
+                    sales_g,
+                    eps_g,
+                    cfo_pat,
+                    f_score,
+                    rs,
+                    prom,
+                    high_52w,
+                    low_52w,
+                    down_52w,
+                    datetime.now().isoformat(),
+                ),
+            )
             inserted += 1
             print(f"  ✅ {symbol}: Score={score:.1f}, Price={price:.2f}")
 
@@ -96,9 +141,10 @@ def populate():
 
     conn.commit()
     conn.close()
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f"  Populated {inserted}/{len(TICKERS)} stocks into multibaggers")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
+
 
 if __name__ == "__main__":
     populate()
