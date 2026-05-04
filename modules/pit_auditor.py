@@ -21,11 +21,15 @@ PIT_LOG_PATH = os.getenv("PIT_LOG_PATH", "pit_violations.log")
 if os.path.dirname(PIT_LOG_PATH):
     os.makedirs(os.path.dirname(PIT_LOG_PATH), exist_ok=True)
 
+# Use a specific logger for PIT to avoid root pollution
+logger = logging.getLogger("pit_auditor")
+logger.setLevel(logging.WARNING)
+logger.propagate = False  # Don't bubble to root
+
 # Add file handler if not already present
-_root_logger = logging.getLogger()
 _has_pit_handler = False
 try:
-    for h in _root_logger.handlers:
+    for h in logger.handlers:
         if isinstance(h, logging.FileHandler) and os.path.abspath(h.baseFilename) == os.path.abspath(PIT_LOG_PATH):
             _has_pit_handler = True
             break
@@ -35,9 +39,7 @@ except Exception:
 if not _has_pit_handler:
     _fh = logging.FileHandler(PIT_LOG_PATH)
     _fh.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
-    _root_logger.addHandler(_fh)
-
-logger = logging.getLogger(__name__)
+    logger.addHandler(_fh)
 
 
 @dataclass

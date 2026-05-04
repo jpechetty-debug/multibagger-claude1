@@ -12,7 +12,7 @@ class ScanLogger:
 
     def _generate_version_hash(self):
         """Generates a hash of key logic files to ensure model consistency."""
-        hasher = hashlib.md5()
+        hasher = hashlib.md5(usedforsecurity=False)
         files_to_hash = ["modules/scoring.py", "modules/technicals.py", "modules/fundamentals.py"]
 
         for file_path in files_to_hash:

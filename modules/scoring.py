@@ -735,13 +735,14 @@ def _apply_optional_intel_adjustments(
     except Exception as e:
         logger.warning(f"Estimate data adjustment failed for {symbol}: {e}", exc_info=True)
 
-    return total_bonus, total_penalty, score_ceiling, disqualifiers
+    # Cap extra bonuses to 10 points to prevent stacking (Issue 6)
+    return min(total_bonus, 10.0), total_penalty, score_ceiling, disqualifiers
 
 
 def _calculate_tiebreak_epsilon(symbol: str) -> float:
     import hashlib
 
-    sym_hash = int(hashlib.md5(symbol.encode()).hexdigest(), 16) % 1000
+    sym_hash = int(hashlib.md5(symbol.encode(), usedforsecurity=False).hexdigest(), 16) % 1000
     return sym_hash / 100000.0
 
 

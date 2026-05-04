@@ -130,12 +130,12 @@ class SovereignCache:
 
     def cache_api_response(self, url: str, response_data: Any):
         """Cache an external API response (deduplicated by URL hash)."""
-        url_hash = hashlib.md5(url.encode()).hexdigest()[:12]
+        url_hash = hashlib.md5(url.encode(), usedforsecurity=False).hexdigest()[:12]
         self.set(f"api:{url_hash}", response_data, ttl=API_RESPONSE_TTL)
 
     def get_api_response(self, url: str) -> Any | None:
         """Retrieve a cached API response."""
-        url_hash = hashlib.md5(url.encode()).hexdigest()[:12]
+        url_hash = hashlib.md5(url.encode(), usedforsecurity=False).hexdigest()[:12]
         return self.get(f"api:{url_hash}")
 
     def is_connected(self) -> bool:
