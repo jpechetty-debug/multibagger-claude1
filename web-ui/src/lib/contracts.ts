@@ -252,6 +252,7 @@ export interface SwingTrade {
   potential_left_pct: number
   ltp: number
   ltp_change_pct: number
+  ret_1m_pct: number
   analysis: string
   score: number
   reward_risk_ratio: number

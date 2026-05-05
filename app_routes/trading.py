@@ -53,8 +53,9 @@ def _as_float(value, default: float | None = 0.0) -> float | None:
 
 
 def _fraction_to_pct(value) -> float:
+    """Convert fraction-scale values to percent. Threshold at 5 covers returns up to 500%."""
     parsed = _as_float(value, 0.0) or 0.0
-    if abs(parsed) <= 2:
+    if abs(parsed) <= 5:
         return parsed * 100
     return parsed
 
@@ -115,11 +116,12 @@ def _build_swing_trade(row: pd.Series) -> dict | None:
     score = _as_float(row.get("score"), 0.0) or 0.0
     ret_1m_pct = _fraction_to_pct(row.get("ret_1m"))
     ret_3m_pct = _fraction_to_pct(row.get("ret_3m"))
-    dist_52w_pct = _fraction_to_pct(
-        row.get("dist_from_52w_high")
-        if row.get("dist_from_52w_high") is not None
-        else row.get("down_from_52w")
-    )
+    # dist_from_52w_high is always in fraction (0-1); down_from_52w is in percent
+    raw_dist = row.get("dist_from_52w_high")
+    if raw_dist is not None and _as_float(raw_dist) is not None:
+        dist_52w_pct = (_as_float(raw_dist, 0.0) or 0.0) * 100
+    else:
+        dist_52w_pct = _as_float(row.get("down_from_52w"), 0.0) or 0.0
     vol_breakout = _as_float(row.get("vol_breakout"), 0.0) or 0.0
     atr = _as_float(row.get("atr"), 0.0) or 0.0
     atr_pct = (atr / price) * 100 if atr > 0 else 0.0
@@ -131,9 +133,15 @@ def _build_swing_trade(row: pd.Series) -> dict | None:
     stop_loss = max(stop_loss, price * 0.75)
 
     raw_target = _as_float(row.get("target_1"), None) or _as_float(row.get("target_2"), None)
-    target = raw_target if raw_target and raw_target > price else None
+    # Detect and replace uniform ~25% targets with ATR-based dynamic targets
+    target = None
+    if raw_target and raw_target > price:
+        target_deviation = abs(((raw_target - price) / price) - 0.25)
+        if target_deviation > 0.02:
+            target = raw_target  # Genuine analytical target
     if target is None:
-        target = price + max(1.6 * atr, price * 0.08)
+        # Dynamic target: 3x ATR or 8% of price, whichever is greater
+        target = price + max(3.0 * atr, price * 0.08)
 
     target_pct = ((target - price) / price) * 100
     risk_pct = ((price - stop_loss) / price) * 100
@@ -189,7 +197,8 @@ def _build_swing_trade(row: pd.Series) -> dict | None:
         "sl": _round_price(stop_loss),
         "potential_left_pct": round(max(target_pct, 0.0), 2),
         "ltp": _round_price(price),
-        "ltp_change_pct": round(ret_1m_pct, 2),
+        "ltp_change_pct": round(ret_1m_pct, 2),  # 1-month return, NOT daily change
+        "ret_1m_pct": round(ret_1m_pct, 2),
         "analysis": analysis,
         "score": round(score, 1),
         "reward_risk_ratio": round(target_pct / risk_pct, 2) if risk_pct > 0 else 0.0,
@@ -219,14 +228,18 @@ def _build_swing_trades(
     for _, row in source.iterrows():
         price = _as_float(row.get("price"), 0.0) or 0.0
         score = _as_float(row.get("score"), 0.0) or 0.0
+        data_quality = _as_float(row.get("data_quality"), 0.0) or 0.0
         ret_1m_pct = _fraction_to_pct(row.get("ret_1m"))
-        dist_52w_pct = _fraction_to_pct(
-            row.get("dist_from_52w_high")
-            if row.get("dist_from_52w_high") is not None
-            else row.get("down_from_52w")
-        )
+        # Explicit scale: dist_from_52w_high is fraction, down_from_52w is percent
+        raw_dist = row.get("dist_from_52w_high")
+        if raw_dist is not None and _as_float(raw_dist) is not None:
+            dist_52w_pct = (_as_float(raw_dist, 0.0) or 0.0) * 100
+        else:
+            dist_52w_pct = _as_float(row.get("down_from_52w"), 0.0) or 0.0
 
         if price <= 0 or score < min_score or ret_1m_pct < min_return_pct:
+            continue
+        if data_quality < 60:
             continue
         if dist_52w_pct and dist_52w_pct > max_52w_distance_pct:
             continue

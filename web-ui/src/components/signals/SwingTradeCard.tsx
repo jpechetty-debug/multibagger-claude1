@@ -98,11 +98,14 @@ export function SwingTradeCard({ trade }: SwingTradeCardProps) {
             <div>
               <div className="text-[9px] text-brand-text-dim font-black uppercase tracking-[0.2em] mb-2">Market Price</div>
               <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-mono font-bold text-white tracking-tighter leading-none">
+              <span className="text-4xl font-mono font-bold text-white tracking-tighter leading-none">
                   ₹{trade.ltp.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                 </span>
-                <span className={`text-xs font-mono font-bold px-1.5 py-0.5 rounded-md ${isPositiveChange ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                  {isPositiveChange ? '▲' : '▼'}{Math.abs(trade.ltp_change_pct)}%
+                <span className={`text-xs font-mono font-bold px-1.5 py-0.5 rounded-md ${isPositiveChange ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}
+                  title="1-month return, not daily change"
+                >
+                  {isPositiveChange ? '▲' : '▼'}{Math.abs(trade.ret_1m_pct ?? trade.ltp_change_pct)}%
+                  <span className="text-[8px] ml-0.5 opacity-60">1M</span>
                 </span>
               </div>
             </div>
@@ -134,7 +137,7 @@ export function SwingTradeCard({ trade }: SwingTradeCardProps) {
           {/* Target Zone */}
           <div className="flex-1 p-6 bg-brand-accent/[0.03] border-b border-white/5 relative overflow-hidden">
             <div className="text-[9px] text-brand-accent font-black uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
-              <Crosshair className="w-3 h-3" /> Target Trajectory
+              <Crosshair className="w-3 h-3" /> ATR Target
             </div>
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -142,7 +145,7 @@ export function SwingTradeCard({ trade }: SwingTradeCardProps) {
                   ₹{trade.target.toLocaleString('en-IN')}
                 </div>
                 <div className="text-[10px] text-brand-accent font-bold mt-1">
-                  PROJECTION: +{trade.target_pct}%
+                  UPSIDE: +{trade.target_pct}%
                 </div>
               </div>
               <div className="bg-brand-accent/10 border border-brand-accent/20 px-3 py-2 text-center rounded-lg">

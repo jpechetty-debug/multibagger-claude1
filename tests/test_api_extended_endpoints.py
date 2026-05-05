@@ -492,6 +492,7 @@ def test_swing_trades_endpoint_derives_setups(monkeypatch):
                 "buy_below": 102.0,
                 "market_cap_cr": 7000.0,
                 "as_of_date": "2026-04-27",
+                "data_quality": 82.0,
             },
             {
                 "symbol": "WEAK.NS",
@@ -501,6 +502,7 @@ def test_swing_trades_endpoint_derives_setups(monkeypatch):
                 "dist_from_52w_high": 0.02,
                 "atr": 3.0,
                 "target_1": 108.0,
+                "data_quality": 45.0,
             },
         ]
     )
