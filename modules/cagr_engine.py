@@ -74,6 +74,111 @@ def _compute_multi_period_cagr(
     return result
 
 
+def _cagr_from_series(
+    series: dict[str, float],
+    periods: dict[str, int],
+) -> dict[str, float | None]:
+    """Compute CAGRs from a year-keyed dict (oldest-first)."""
+    values = list(series.values())
+    total_points = len(values)
+    if total_points < 2:
+        return dict.fromkeys(periods)
+
+    end_val = values[-1]
+    if end_val <= 0:
+        return dict.fromkeys(periods)
+
+    result = {}
+    for name, years in periods.items():
+        idx = total_points - 1 - years
+        if idx >= 0:
+            start_val = values[idx]
+            if start_val is not None and start_val > 0:
+                result[name] = _safe_cagr(start_val, end_val, years)
+            else:
+                result[name] = None
+        else:
+            result[name] = None
+    return result
+
+
+def calculate_all_cagrs_from_normalized(fin) -> dict[str, float | str | None]:
+    """Pure math CAGR calculation from a NormalizedFinancials dataclass.
+
+    This function has zero dependencies on yfinance or pandas,
+    making it perfectly unit-testable with static data.
+
+    Args:
+        fin: A NormalizedFinancials instance from financial_adapter.
+
+    Returns:
+        Same shape as calculate_all_cagrs().
+    """
+    default: dict[str, float | str | None] = {
+        "Revenue_CAGR_3Y": None,
+        "Revenue_CAGR_5Y": None,
+        "PAT_CAGR_3Y": None,
+        "PAT_CAGR_5Y": None,
+        "EPS_CAGR_3Y": None,
+        "EPS_CAGR_5Y": None,
+        "CAGR_Consistency": "UNKNOWN",
+    }
+
+    if fin.data_points < 2:
+        return default
+
+    available_years = fin.data_points
+    periods = {"3Y": 3, "5Y": min(4, available_years - 1)}
+    if available_years >= 5:
+        periods["5Y"] = 4
+
+    # Revenue CAGR
+    rev_cagrs = _cagr_from_series(fin.revenue_series, periods) if fin.revenue_series else {}
+
+    # PAT CAGR
+    pat_cagrs = _cagr_from_series(fin.net_income_series, periods) if fin.net_income_series else {}
+
+    # EPS CAGR (Net Income / Shares Outstanding)
+    eps_cagrs: dict[str, float | None] = {}
+    if fin.net_income_series and fin.shares_outstanding_series:
+        common_years = sorted(
+            set(fin.net_income_series) & set(fin.shares_outstanding_series)
+        )
+        if len(common_years) >= 2:
+            eps_series = {}
+            for year in common_years:
+                shares = fin.shares_outstanding_series[year]
+                if shares and shares > 0:
+                    eps_series[year] = fin.net_income_series[year] / shares
+            if len(eps_series) >= 2:
+                eps_periods = {k: v for k, v in periods.items() if v < len(eps_series)}
+                eps_cagrs = _cagr_from_series(eps_series, eps_periods)
+
+    # Consistency
+    all_cagrs = [v for v in list(rev_cagrs.values()) + list(pat_cagrs.values()) if v is not None]
+    if len(all_cagrs) >= 2:
+        above_15 = sum(1 for c in all_cagrs if c >= 15)
+        above_10 = sum(1 for c in all_cagrs if c >= 10)
+        if above_15 >= len(all_cagrs) * 0.75:
+            consistency = "HIGH"
+        elif above_10 >= len(all_cagrs) * 0.5:
+            consistency = "MEDIUM"
+        else:
+            consistency = "LOW"
+    else:
+        consistency = "UNKNOWN"
+
+    return {
+        "Revenue_CAGR_3Y": rev_cagrs.get("3Y"),
+        "Revenue_CAGR_5Y": rev_cagrs.get("5Y"),
+        "PAT_CAGR_3Y": pat_cagrs.get("3Y"),
+        "PAT_CAGR_5Y": pat_cagrs.get("5Y"),
+        "EPS_CAGR_3Y": eps_cagrs.get("3Y"),
+        "EPS_CAGR_5Y": eps_cagrs.get("5Y"),
+        "CAGR_Consistency": consistency,
+    }
+
+
 def calculate_all_cagrs(ticker) -> dict[str, float | str | None]:
     """
     Compute Revenue, PAT, and EPS CAGRs for 3Y, 5Y periods.

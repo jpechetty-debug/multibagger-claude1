@@ -10,6 +10,7 @@ import modules.dependencies as deps
 from modules.allocation_hrp import HRPAllocator
 from modules.models import OrderRequest
 from modules.retry_utils import run_with_exponential_backoff
+from modules.symbol_utils import canonical_symbol
 
 router = APIRouter()
 
@@ -256,15 +257,13 @@ def _build_swing_trades(
 async def place_order(order: OrderRequest):
     """Order lifecycle endpoint for paper execution (BUY/SELL)."""
     try:
-        symbol = order.symbol.strip().upper()
+        symbol = canonical_symbol(order.symbol)
         side = order.side.strip().upper()
 
         if not symbol:
             return {"status": "rejected", "error": "symbol is required"}
         if side not in {"BUY", "SELL"}:
             return {"status": "rejected", "error": "side must be BUY or SELL"}
-        if "." not in symbol:
-            symbol = f"{symbol}.NS"
 
         if side == "BUY":
             # Risk Gates: Kill Switch & VaR

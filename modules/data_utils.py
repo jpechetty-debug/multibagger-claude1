@@ -6,6 +6,8 @@ import threading
 import pandas as pd
 import pandas_market_calendars as mcal
 
+from modules.symbol_utils import canonical_symbol
+
 
 def run_coroutine_sync(coro):
     """Run an async coroutine from synchronous compatibility wrappers."""
@@ -58,10 +60,7 @@ def load_tickers_from_csv(file_paths):
             if symbol_col:
                 symbols = df[symbol_col].dropna().unique()
                 for sym in symbols:
-                    sym = str(sym).strip()
-                    if not sym.endswith(".NS") and not sym.endswith(".BO"):
-                        sym += ".NS"
-                    all_symbols.add(sym)
+                    all_symbols.add(canonical_symbol(str(sym)))
         except Exception:
             continue
     return list(all_symbols)

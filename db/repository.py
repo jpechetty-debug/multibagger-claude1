@@ -884,13 +884,9 @@ def save_multibaggers(df, *, replace_existing: bool = False):
     except Exception as e:
         print(f"Warning preserving audit logs: {e}")
 
-    # Outlier Protection Capping
-    if "pe_ratio" in df_db.columns:
-        df_db["pe_ratio"] = df_db["pe_ratio"].clip(lower=-100, upper=1000)
-    if "roe" in df_db.columns:
-        df_db["roe"] = df_db["roe"].clip(lower=-500, upper=500)
-    if "score" in df_db.columns:
-        df_db["score"] = df_db["score"].clip(lower=0, upper=100)
+    # Outlier Protection — centralized DQ gates (replaces inline .clip())
+    from modules.dq_gates import validate_dataframe as _validate_df
+    df_db = _validate_df(df_db)
 
     # De-duplicate
     df_db = df_db.drop_duplicates(subset=["symbol"], keep="first")
