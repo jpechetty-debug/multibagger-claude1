@@ -1,127 +1,128 @@
-# Sovereign Research Terminal v4.0.0
-## // The Sovereign Hybrid: Institutional Alpha Architecture //
+# Sovereign Research Terminal v4.2.0
+## // Institutional-Grade Quantitative Research & Data Integrity //
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![SQLite + DuckDB](https://img.shields.io/badge/Database-SQLite%20%2B%20DuckDB-orange.svg)]()
+[![Pydantic v2](https://img.shields.io/badge/Validation-Pydantic%20v2-red.svg)]()
 [![FastMCP](https://img.shields.io/badge/Agentic-FastMCP-green.svg)]()
-[![Scoring](https://img.shields.io/badge/Nexus%20Alpha-v12.0-gold.svg)]()
+[![Nexus Alpha](https://img.shields.io/badge/Nexus%20Alpha-v12.5-gold.svg)]()
 
-Sovereign v4.0.0 represents a significant technical debt remediation and architectural leap. It integrates a **Modular Data Service (v4.0)**, a **Sigmoid-Normalized Nexus Alpha (v12.0)** scoring engine, and a **Unified CLI** for institutional-grade quantitative research across a universe of **2,000+ equity tickers**.
+Sovereign v4.2.0 is an advanced equity research platform designed for structural reliability and high-conviction quantitative signaling. It features a **hardened data quality pipeline**, **sigmoid-normalized scoring**, and **XGBoost-powered alpha signals** for a universe of 2,000+ Indian equity tickers.
 
 > [!IMPORTANT]
-> **Sovereign is built for structural reliability.** v4.0.0 introduces a modular adapter layer, hard-fail security dependencies, and a robust Celery worker architecture that eliminates event-loop anti-patterns.
+> **Data Integrity First.** v4.2.0 introduces proactive Data Quality (DQ) gates and Pydantic boundary enforcement, ensuring that low-quality upstream data never corrupts your analytical models or trade signals.
 
 ---
 
-## 🏗️ Core Architecture: Modular & Resilient
+## 🏗️ The Data Correctness Pipeline (Hardened)
 
-The "God-Module" technical debt has been eliminated. All strategic logic is now centralized and decoupled:
+To eliminate silent failures and scale-ambiguity errors, Sovereign implements a **5-Layer Hardening Architecture**:
 
-```mermaid
-graph TD
-    A[Sovereign CLI / Web UI] --> B[Unified Orchestrator]
-    B --> C[Modular Data Service]
-    B --> D[Nexus Alpha Scoring]
-    B --> E[Agentic MCP Layer]
-    
-    C --> C1[NSE Adapter]
-    C --> C2[yFinance Fallback]
-    
-    D --> D1[ML Inference - XGBoost]
-    D --> D2[Fundamental Audit]
-    
-    E --> E1[Research Memory]
-    E --> E2[MiroFish Swarm]
-    
-    B --> F[(SQLite + DuckDB Hybrid)]
-```
+1. **Ingestion Boundary**: Pydantic v2 models (`models.py`) with `extra="ignore"` and auto-scaling validators that detect and correct fraction-to-percent ambiguity (e.g., ROE 0.15 → 15.0%).
+2. **Symbol Canonicalization**: Centralized utility (`symbol_utils.py`) that resolves exchange suffixes (`.NS`, `.BO`, `.N`, `.NSE`) into a single source of truth for DB storage.
+3. **Data Quality (DQ) Gates**: Proactive physical-limit validators (`dq_gates.py`) that clamp metrics to realistic ranges (e.g., PE capped at 1000, Debt/Equity at 50) and generate DQ flags.
+4. **Financial Adapter**: Decoupled extraction layer (`financial_adapter.py`) that maps messy upstream DataFrames into a typed `NormalizedFinancials` dataclass.
+5. **Pure Math Engines**: Calculation modules (CAGR, ROE, F-Score) are now pure functions, making the core math 100% unit-testable without network dependencies.
 
-### 1. Unified Operations (`sovereign_cli.py`)
-The authoritative entry point for all engine operations, research, and maintenance.
-- **`db`**: Schema initialization, integrity verification, and statistics.
-- **`scan`**: Multi-universe scans (Quick, Microcap, Swarm, Value).
-- **`ml`**: XGBoost training and SHAP explainability.
-- **`sys`**: System-wide health diagnostics and market regime audits.
+---
 
-### 2. Agentic Intelligence (`sovereign_mcp.py`)
-Powered by **FastMCP**, providing a state-of-the-art interface for AI agents:
-- **Research Memory**: Progressive disclosure of past observations via `MemoryManager`.
-- **MiroFish Swarm**: High-conviction multi-agent simulation for thesis validation.
-- **Regime Awareness**: Hidden Markov Model (HMM) based regime detection.
+## 🔍 Core Analytical Modules
 
-### 3. Nexus Alpha v12.0 Scoring Engine
-Every stock is audited across nine distinct vectors, dynamically weighted by **Market Regime**:
-- **Growth (15%)**: 5Y Sales and EPS Expansion splines.
-- **Quality (15%)**: ROE/ROCE + Asset-Light CFO/PAT validation.
-- **Value (15%)**: Sigmoid-normalized sector-relative PE/PEG.
-- **Momentum (10%)**: Composite RS + 52-Week High Proximity.
-- **Risk (10%)**: Institutional F-Score floor + D/E Constraints.
+### 1. The Compounding Lens (Sprint 1)
+Deep analysis of structural growth and shareholder returns:
+- **CAGR Purity**: 3Y and 5Y Revenue, PAT, and EPS CAGRs with a "Consistency" score.
+- **Dividend Audit**: Yield and Payout analysis with automatic outlier capping.
+- **SEBI Cap Classification**: Real-time classification into Large, Mid, Small, and Micro Cap categories.
+
+### 2. Nexus Alpha v12.5 Scoring Engine
+Dynamically weighted factors based on **Market Regime** (Bull/Bear/Sideways):
+- **Growth (15%)**: Sigmoid-normalized Sales and EPS expansion.
+- **Quality (15%)**: Average ROE (5Y) + Cashflow validation (CFO/PAT).
+- **Risk (10%)**: Institutional-grade F-Score floor + Debt/Equity constraints.
+- **ML Meta-Model**: Meta-scoring layer using XGBoost and SHAP for explainable AI alpha.
 
 ---
 
 ## ⚡ Analytical Performance (DuckDB Optimized)
 
-Sovereign leverages a **SQLite + DuckDB** hybrid approach for lightning-fast quantitative research.
-- **Universe Coverage**: 2,000+ Tickers (NSE & Fallbacks).
-- **Sorting Performance**: <5ms (Vectorized SIMD).
-- **Zero Infrastructure**: Native C++ extensions attached to the SQLite file.
+Sovereign leverages a **SQLite + DuckDB** hybrid approach:
+- **Lightning Queries**: Analytical sorting and filtering across 2,000+ records in <5ms.
+- **PIT Auditing**: Point-In-Time fundamentals snapshots stored in SQLite for backtest accuracy.
+- **Zero-Infra**: Native C++ extensions attached to the local SQLite storage.
 
 ---
 
-## 🚀 Operations & Deployment
+## 🚀 Getting Started
 
-### Quickstart (CLI First)
-
+### 1. Installation & Setup
 ```bash
-# 1. Initialize Environment
+# Clone and install
+git clone https://github.com/your-repo/sovereign-terminal.git
+cd sovereign-terminal
+python -m venv .venv
+source .venv/bin/activate  # Or .venv\Scripts\activate on Windows
+pip install -r requirements.txt
+
+# Initialize System
 python sovereign_cli.py sys setup
 python sovereign_cli.py db init
-
-# 2. Run Health Diagnostic
-python sovereign_cli.py sys health
-
-# 3. Execute a Quick Scan
-python sovereign_cli.py scan quick --smoke
-
-# 4. Start Web API (Port 9005)
-uvicorn main:app --reload --port 9005
-
-# 5. Launch MCP Server
-python sovereign_mcp.py
 ```
 
-### Critical Environment Variables
+### 2. Operational Workflow
+```bash
+# Run a full universe scan (NSE stocks)
+python sovereign_cli.py scan quick
+
+# Train the ML Meta-Model
+python sovereign_cli.py ml train
+
+# Start the Web API (Port 9005)
+uvicorn main:app --reload --port 9005
+```
+
+### 3. Critical Environment Variables
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `SOVEREIGN_API_KEY` | REQUIRED in production | None (Fails if missing) |
-| `SOVEREIGN_ENV` | `production` / `local` | `local` |
-| `OLLAMA_MODEL` | LLM model for thesis gen | `llama3.2:3b-instruct-fp16` |
+| `SOVEREIGN_API_KEY` | Production API Security | None (Required) |
+| `SOVEREIGN_ENV` | Environment Context | `local` |
+| `OLLAMA_MODEL` | LLM for Thesis Generation | `llama3.2:3b-instruct-fp16` |
 
 ---
 
-## 🧪 Testing Suite
+## 🧪 Testing & Verification
 
-Sovereign enforces a strict **Testing Pyramid**:
-1. **Unit Tests**: `pytest -m "not live"` — Logic and math validation.
-2. **E2E Integration**: `pytest tests/e2e_scoring_pipeline.py` — Verifies full Fetch -> Score -> Result pipe.
-3. **CI Pipeline**: GitHub Actions enforces Lint (Ruff), Types (Mypy), and Syntax Parsing.
+Sovereign enforces a strict **Data Correctness Suite**:
+
+```bash
+# Run Data Integrity & Math Verification (42+ tests)
+pytest tests/test_data_correctness.py -v
+
+# Run Full Test Suite (excluding live network tests)
+pytest tests/ -m "not live"
+```
+
+The testing pyramid ensures:
+- **Unit**: Logic and math purity.
+- **Contract**: Pydantic model validity.
+- **Regression**: Structural alpha consistency across updates.
 
 ---
 
-## 🗂️ File Landscape (v4.0)
+## 🗂️ Project Structure (v4.2)
 ```
 ├── modules/
-│   ├── adapters/          # Source-specific data fetchers
-│   ├── strategies/        # Quantitative allocation logic
-│   ├── normalization/     # Data cleaning and quality gates
-│   ├── auth.py            # Security & API Key enforcement
-│   ├── hybrid_scoring.py  # ML Meta-Model inference (XGBoost)
-│   └── research_memory.py # Agentic observation persistence
-├── scripts/
-│   └── internal/          # Operational scripts (Invoked via CLI)
+│   ├── adapters/          # Source-specific fetchers (NSE, yFinance)
+│   ├── normalization/     # Data cleaning and DQ Gates
+│   ├── strategies/        # Allocation and HRP logic
+│   ├── models.py          # Pydantic v2 Contract Boundary
+│   ├── dq_gates.py        # Proactive physical-limit validators
+│   └── financial_adapter.py # Clean financial data normalizer
+├── db/
+│   ├── repository.py      # SQLAlchemy 2.0 Persistence Layer
+│   └── pit_auditor.py     # Point-In-Time snapshots
 ├── sovereign_cli.py       # AUTHORITATIVE ENTRY POINT
-└── sovereign_mcp.py       # AGENTIC MCP INTERFACE
+└── main.py                # FastAPI Web Application
 ```
 
 ---
-*Sovereign Terminal v4.0.0 — Built for structural alpha.*
+*Sovereign Terminal v4.2.0 — Precision Quantitative Equity Research.*
