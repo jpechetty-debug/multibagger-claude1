@@ -18,10 +18,10 @@ from typing import Any
 
 import numpy as np
 
+from modules.connections import DB_PATH as _DB_PATH
+
 _PROJECT_ROOT = Path(__file__).resolve().parents[1]
 _RUNTIME_DIR = _PROJECT_ROOT / "runtime"
-_DB_PATH = str(_RUNTIME_DIR / "stocks.db")
-
 
 def _get_connection():
     db_path = _DB_PATH

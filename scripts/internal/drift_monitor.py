@@ -1,22 +1,31 @@
+import json
 import os
 import sqlite3
+import sys
 import time
+from pathlib import Path
 
 import pandas as pd
 import yfinance as yf
 
+# Ensure modules can be imported
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-def run_drift_monitor():
+from modules.connections import DB_PATH
+
+
+def run_drift_monitor() -> None:
     print("🛰️ Initiating Real-Time Drift Monitor (Phase 55)...")
 
     # 1. System Health Check
-    db_path = "stocks.db"
-    if not os.path.exists(db_path):
-        print("❌ CRITICAL: Database Missing!")
+    if not os.path.exists(DB_PATH):
+        print(f"❌ CRITICAL: Database Missing at {DB_PATH}!")
         return
 
     # Check DB Data Freshness
-    mod_time = os.path.getmtime(db_path)
+    mod_time = os.path.getmtime(DB_PATH)
     age_hours = (time.time() - mod_time) / 3600
 
     print(f"⏱️ System Age: {age_hours:.1f} hours")
@@ -31,7 +40,7 @@ def run_drift_monitor():
     # If correlation drops, it means "Regime decoupling" (Good or Bad).
 
     try:
-        conn = sqlite3.connect(db_path)
+        conn = sqlite3.connect(DB_PATH)
         df = pd.read_sql(
             "SELECT symbol, price, rs_rating FROM multibaggers ORDER BY rs_rating DESC LIMIT 10",
             conn,
@@ -47,17 +56,25 @@ def run_drift_monitor():
 
         # Download Data
         data = yf.download(top_tickers + ["^NSEI"], period="1mo", progress=False)["Close"]
+        
+        # Forward fill and drop any completely missing columns
+        data = data.ffill().dropna(axis=1, how="all")
 
         # Correlation
+        if "^NSEI" not in data.columns:
+            print("⚠️ ^NSEI data missing, cannot compute correlation.")
+            return
+
         nifty = data["^NSEI"]
-        correlations = []
+        correlations: list[float] = []
 
         for sym in top_tickers:
             if sym in data.columns:
                 corr = data[sym].corr(nifty)
-                correlations.append(corr)
+                if pd.notna(corr):
+                    correlations.append(float(corr))
 
-        avg_corr = sum(correlations) / len(correlations) if correlations else 0
+        avg_corr = sum(correlations) / len(correlations) if correlations else 0.0
 
         print(f"🔗 Portfolio-Nifty Correlation (1 Month): {avg_corr:.2f}")
 
@@ -69,11 +86,11 @@ def run_drift_monitor():
             print("✅ Portfolio behaving normally (Hybrid Correlation).")
 
         # Save Report (Log)
-        with open("drift_log.txt", "a", encoding="utf-8") as f:
+        runtime_dir = PROJECT_ROOT / "runtime"
+        runtime_dir.mkdir(exist_ok=True)
+        
+        with open(runtime_dir / "drift_log.txt", "a", encoding="utf-8") as f:
             f.write(f"{time.ctime()} | Age: {age_hours:.1f}h | Correlation: {avg_corr:.2f}\n")
-
-        # Save to JSON for API
-        import json
 
         json_output = {
             "timestamp": pd.Timestamp.now().isoformat(),
@@ -82,10 +99,10 @@ def run_drift_monitor():
             "status": "DECOUPLED" if avg_corr < 0.3 else "TRACKING" if avg_corr > 0.8 else "NORMAL",
             "data_fresh": age_hours < 24,
         }
-        with open("drift.json", "w") as f:
+        with open(runtime_dir / "drift.json", "w") as f:
             json.dump(json_output, f, indent=4)
 
-        print("📄 Drift metrics saved to drift.json")
+        print(f"📄 Drift metrics saved to {runtime_dir / 'drift.json'}")
 
     except Exception as e:
         print(f"❌ Monitor Error: {e}")

@@ -4,6 +4,13 @@ import os
 from dataclasses import dataclass
 
 
+def _get_str(name: str, default: str) -> str:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip()
+
+
 def _get_bool(name: str, default: bool) -> bool:
     raw = os.getenv(name)
     if raw is None:
@@ -41,6 +48,7 @@ class RuntimeSettings:
     regime_cache_ttl_seconds: int
     movers_cache_ttl_seconds: int
     audit_cache_ttl_seconds: int
+    ml_model_path: str
     embed_price_updater_in_web: bool
     embed_weekly_audit_in_web: bool
     price_update_batch_size: int
@@ -61,6 +69,7 @@ def load_runtime_settings() -> RuntimeSettings:
         regime_cache_ttl_seconds=_get_int("REGIME_CACHE_TTL_SECONDS", 120),
         movers_cache_ttl_seconds=_get_int("MOVERS_CACHE_TTL_SECONDS", 120),
         audit_cache_ttl_seconds=_get_int("AUDIT_CACHE_TTL_SECONDS", 3600),
+        ml_model_path=_get_str("ML_MODEL_PATH", "runtime/multibagger_lgbm_ranker.pkl"),
         embed_price_updater_in_web=_get_bool("EMBED_PRICE_UPDATER_IN_WEB", False),
         embed_weekly_audit_in_web=_get_bool("EMBED_WEEKLY_AUDIT_IN_WEB", False),
         price_update_batch_size=_get_int("PRICE_UPDATE_BATCH_SIZE", 50),

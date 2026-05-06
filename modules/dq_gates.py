@@ -110,12 +110,13 @@ def compute_data_quality_score(flags: list[str], total_fields: int) -> float:
 def validate_dataframe(df):
     """Apply DQ gates to every row in a pandas DataFrame.
 
-    Mutates the DataFrame in-place:
+    Mutates the DataFrame in-place using vectorized operations:
     - Clamps/scales columns that violate physical limits.
     - Populates a ``data_quality`` column with a 0-100 score.
 
     Returns the DataFrame for chaining.
     """
+    import numpy as np
     import pandas as pd
 
     all_limit_columns = [lim.column for lim in METRIC_LIMITS]
@@ -125,21 +126,45 @@ def validate_dataframe(df):
         return df
 
     total_fields = len(present_columns)
-    quality_scores: list[float] = []
+    penalties = pd.Series(0.0, index=df.index)
 
-    for idx in df.index:
-        row_dict = {col: df.at[idx, col] for col in present_columns}
-        sanitized, flags = validate_record(row_dict)
+    for limit in METRIC_LIMITS:
+        col = limit.column
+        if col not in df.columns:
+            continue
 
-        # Write back sanitized values
-        for col in present_columns:
-            df.at[idx, col] = sanitized.get(col)
+        # Ensure numeric and handle unparseable/non_finite
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+        mask_nan = df[col].isna()
+        # Non-finite values will also be NaN after coerce + replace
+        # We can explicitly handle inf
+        df[col] = df[col].replace([np.inf, -np.inf], np.nan)
+        mask_nan = df[col].isna()
+        penalties[mask_nan] += 1
 
-        if flags:
-            symbol = df.at[idx, "symbol"] if "symbol" in df.columns else idx
-            logger.debug("DQ flags for %s: %s", symbol, flags)
+        # Auto-scale check
+        if limit.auto_scale_threshold is not None:
+            mask_scale = (df[col] > limit.auto_scale_threshold) & ~mask_nan
+            if mask_scale.any():
+                df.loc[mask_scale, col] = df.loc[mask_scale, col] / 100.0
+                penalties[mask_scale] += 1
 
-        quality_scores.append(compute_data_quality_score(flags, total_fields))
+        # Clamp low
+        mask_low = (df[col] < limit.min_val) & ~mask_nan
+        if mask_low.any():
+            df.loc[mask_low, col] = limit.min_val
+            penalties[mask_low] += 1
 
-    df["data_quality"] = quality_scores
+        # Clamp high
+        mask_high = (df[col] > limit.max_val) & ~mask_nan
+        if mask_high.any():
+            df.loc[mask_high, col] = limit.max_val
+            penalties[mask_high] += 1
+
+    if penalties.sum() > 0:
+        logger.debug("DQ gates applied. Total flags: %d", int(penalties.sum()))
+
+    penalty_per_flag = 100.0 / max(total_fields, 1)
+    df["data_quality"] = (100.0 - penalties * penalty_per_flag).clip(lower=0.0).round(1)
+
     return df

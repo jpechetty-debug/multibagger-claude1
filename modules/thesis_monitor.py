@@ -11,12 +11,11 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from typing import Any, cast
 
-DB_NAME = "stocks.db"
-DB_BUSY_TIMEOUT_MS = 5000
+from modules.connections import DB_PATH, DB_BUSY_TIMEOUT_MS
 
 
 def _get_conn():
-    conn = sqlite3.connect(DB_NAME, timeout=5, check_same_thread=False)
+    conn = sqlite3.connect(DB_PATH, timeout=5, check_same_thread=False)
     conn.execute(f"PRAGMA busy_timeout={DB_BUSY_TIMEOUT_MS}")
     conn.execute("PRAGMA journal_mode=WAL")
     conn.row_factory = sqlite3.Row

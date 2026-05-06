@@ -1,6 +1,9 @@
 import datetime
 
 from modules.backtest import run_performance_analysis
+from modules.structured_logger import SovereignLogger
+
+logger = SovereignLogger("sovereign.validation")
 
 
 def validate_robustness(tickers):
@@ -46,6 +49,7 @@ def validate_robustness(tickers):
                 scorecard.append(f"{cycle['name']:<20} | NO DATA")
 
         except Exception as e:
+            logger.exception(f"Error in {cycle['name']} robustness check", exc_info=e)
             print(f"Error in {cycle['name']}: {e}")
 
     print("\n" + "-" * 50)

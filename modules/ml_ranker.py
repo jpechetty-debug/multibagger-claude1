@@ -6,7 +6,12 @@ import lightgbm as lgb
 import numpy as np
 import pandas as pd
 
-MODEL_PATH = "multibagger_lgbm_ranker.pkl"
+from modules.runtime_settings import runtime_settings
+from modules.structured_logger import SovereignLogger
+
+logger = SovereignLogger("sovereign.ranker")
+
+MODEL_PATH = runtime_settings.ml_model_path
 
 FEATURES = [
     "score",
@@ -40,7 +45,7 @@ class LightGBMRanker:
             try:
                 self.model = joblib.load(self.model_path)
             except Exception as e:
-                print(f"Error loading ranker model: {e}")
+                logger.error(f"Error loading ranker model: {e}")
 
     def rank_stocks(self, stocks: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
@@ -84,7 +89,7 @@ class LightGBMRanker:
                 X = df[FEATURES]
                 df["ml_rank_score"] = self.model.predict(X)
             except Exception as e:
-                print(f"Prediction error: {e}")
+                logger.error(f"Prediction error: {e}")
                 self._apply_heuristic_ranking(df)
         else:
             # Fallback to heuristic ranking if no model
@@ -136,15 +141,15 @@ class LightGBMRanker:
             "seed": 42,
         }
 
-        print(f"Training LightGBM Ranker on {len(data)} samples...")
+        logger.info(f"Training LightGBM Ranker on {len(data)} samples...")
         self.model = lgb.train(params, train_data, num_boost_round=100)
 
         joblib.dump(self.model, self.model_path)
-        print(f"Model saved to {self.model_path}")
+        logger.info(f"Model saved to {self.model_path}")
         return True
 
 
 if __name__ == "__main__":
     # Test/Diagnostics placeholder
     ranker = LightGBMRanker()
-    print("Ranker initialized.")
+    logger.info("Ranker initialized.")

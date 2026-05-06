@@ -60,15 +60,40 @@ CACHE_QUARTERLY = "audit:quarterly"
 CACHE_FUNDAMENTALS = "audit:fundamentals"
 CACHE_PEERS = "audit:peers"
 
-# Distributed Locks: asyncio.Lock() is NOT safe for multi-worker.
-# For simple cache-aside patterns, we use a no-op lock to maintain API compatibility
-# while allowing Redis to handle the data consistency.
-class NoOpLock:
-    async def __aenter__(self): return self
-    async def __aexit__(self, *args): pass
+class DistributedAsyncLock:
+    def __init__(self, key: str, timeout: int = 10):
+        self.key = f"lock:{key}"
+        self.timeout = timeout
+        self.acquired = False
+        self._local_lock = asyncio.Lock()
 
-regime_cache_lock = NoOpLock()
-movers_cache_lock = NoOpLock()
+    async def __aenter__(self):
+        if not redis_cache.is_connected():
+            await self._local_lock.acquire()
+            self.acquired = True
+            return self
+
+        for _ in range(self.timeout * 10):
+            acquired = await asyncio.to_thread(
+                redis_cache._redis.set, self.key, "1", nx=True, ex=self.timeout
+            ) if redis_cache._redis else False
+            if acquired:
+                self.acquired = True
+                return self
+            await asyncio.sleep(0.1)
+        # Instead of raising timeout, fallback or proceed
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        if self.acquired:
+            if not redis_cache.is_connected():
+                self._local_lock.release()
+            elif redis_cache._redis:
+                await asyncio.to_thread(redis_cache._redis.delete, self.key)
+            self.acquired = False
+
+regime_cache_lock = DistributedAsyncLock("regime_cache")
+movers_cache_lock = DistributedAsyncLock("movers_cache")
 
 def _cache_is_fresh(cache_obj: Any, ttl_seconds: int) -> bool:
     if isinstance(cache_obj, RedisCacheProxy):
