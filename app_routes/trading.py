@@ -53,11 +53,9 @@ def _as_float(value, default: float | None = 0.0) -> float | None:
 
 
 def _fraction_to_pct(value) -> float:
-    """Convert fraction-scale values to percent. Threshold at 5 covers returns up to 500%."""
+    """Convert fraction-scale values to percent. Unconditionally multiplies by 100."""
     parsed = _as_float(value, 0.0) or 0.0
-    if abs(parsed) <= 5:
-        return parsed * 100
-    return parsed
+    return parsed * 100
 
 
 def _round_price(value: float) -> float:

@@ -147,6 +147,13 @@ def predict_and_explain(factors_dict):
     Returns: {"ml_prediction": float|None, "shap_values": dict}
     """
     if not os.path.exists(MODEL_PATH):
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(
+            "ML Meta-Model (%s) not found. Falling back to raw fundamental score. "
+            "To resolve this, run training via `python -m modules.hybrid_scoring`",
+            MODEL_PATH
+        )
         return {"ml_prediction": None, "shap_values": {}}
 
     try:

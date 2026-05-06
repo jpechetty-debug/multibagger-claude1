@@ -97,6 +97,32 @@ runtime/
 .gemini/
 
 # ── Artifacts that must never be committed ────────────────────────────────────
+backup.bat
+health_check*.txt
+checklist_output.txt
+test_output.txt
+test_results.txt
+check_fail*.txt
+disq_fail*.txt
+final_fail*.txt
+liquidity.json
+paper_trade_signals.json
+modules/analyst_consensus.json
+delisted_candidates.txt
+tests/*_log.txt
+reports_cache/
+ops/ticker_list_*.txt
+ops/audit_result.txt
+_fns.txt
+
+# ── Data directory (populated at runtime) ────────────────────────────────────
+data/
+runtime/
+
+# Agent State
+.gemini/
+
+# ── Artifacts that must never be committed ────────────────────────────────────
 *.zip
 *.bak
 *.bak_fix*
@@ -111,14 +137,12 @@ screener_results.*
 # ── Wrong-repo intraday bot files (moved to sovereign-engine repo) ─────────────
 sovereign-cli.py
 sovereign_analyst_reports.py
-sovereign_mcp.py
  
 test_results.txt
 schema_output.txt
 alpha_report.md
 backtest_report.md
 liquidity_report.md
- 
 git_files.txt
 tests_out.txt
 refactor_script.py
