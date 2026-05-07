@@ -56,7 +56,7 @@ def run_drift_monitor() -> None:
 
         # Download Data
         data = yf.download(top_tickers + ["^NSEI"], period="1mo", progress=False)["Close"]
-        
+
         # Forward fill and drop any completely missing columns
         data = data.ffill().dropna(axis=1, how="all")
 
@@ -88,7 +88,7 @@ def run_drift_monitor() -> None:
         # Save Report (Log)
         runtime_dir = PROJECT_ROOT / "runtime"
         runtime_dir.mkdir(exist_ok=True)
-        
+
         with open(runtime_dir / "drift_log.txt", "a", encoding="utf-8") as f:
             f.write(f"{time.ctime()} | Age: {age_hours:.1f}h | Correlation: {avg_corr:.2f}\n")
 

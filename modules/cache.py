@@ -5,10 +5,13 @@ Refactored to use Redis for multi-worker compatibility (Gunicorn/Celery).
 Falls back to in-memory if Redis is unavailable via SovereignCache.
 """
 import asyncio
-from typing import Any
+import functools
+import inspect
+from collections.abc import Callable
+from typing import Any, Optional
 
 from modules.runtime_settings import runtime_settings
-from worker.redis_cache import cache as redis_cache
+from worker.redis_cache import cache as redis_cache, DEFAULT_TTL
 
 # TTL Settings from Runtime Configuration
 REGIME_CACHE_TTL_SECONDS = runtime_settings.regime_cache_ttl_seconds
@@ -46,7 +49,7 @@ class RedisCacheProxy:
         data = redis_cache.get(self.key)
         if not data or not isinstance(data, dict):
             return False
-        
+
         ts = data.get("timestamp", 0.0)
         ttl = ttl_override if ttl_override is not None else self.ttl
         return (time.time() - ts) < ttl
@@ -118,3 +121,39 @@ def _cache_invalidate(cache_obj: Any):
         cache_obj.invalidate()
     else:
         redis_cache.delete(str(cache_obj))
+
+def cached(ttl: int | None = None, key_prefix: str = "fn"):
+    """
+    Decorator to cache function results in Redis.
+    Generates key based on function name and arguments.
+    """
+    def decorator(func: Callable):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            # Generate stable cache key
+            try:
+                sig = inspect.signature(func)
+                bound_args = sig.bind(*args, **kwargs)
+                bound_args.apply_defaults()
+                # Skip 'self' or 'cls' for methods if needed, but here we assume general functions
+                arg_str = ":".join(f"{k}={v}" for k, v in bound_args.arguments.items() if k not in ("self", "cls"))
+                cache_key = f"{key_prefix}:{func.__name__}:{arg_str}"
+            except Exception:
+                # Fallback key generation
+                cache_key = f"{key_prefix}:{func.__name__}:{hash(str(args) + str(kwargs))}"
+
+            # Try to get from cache
+            cached_val = redis_cache.get(cache_key)
+            if cached_val is not None:
+                return cached_val
+
+            # Execute function
+            result = func(*args, **kwargs)
+
+            # Store in cache
+            ttl_val = ttl if ttl is not None else DEFAULT_TTL
+            redis_cache.set(cache_key, result, ttl=ttl_val)
+
+            return result
+        return wrapper
+    return decorator

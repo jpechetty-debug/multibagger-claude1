@@ -7,6 +7,8 @@ Uses Alpha Vantage earnings calendar + self-computed CAGR estimates.
 import json
 import os
 
+from modules.cache import cached
+
 
 def _safe_float(val, default=0.0):
     """Safe float conversion."""
@@ -295,6 +297,7 @@ def analyze_estimate_momentum(earnings_data: dict) -> dict:
     }
 
 
+@cached(ttl=1800, key_prefix="estimates")
 def get_estimate_data(
     symbol: str,
     info: dict | None = None,

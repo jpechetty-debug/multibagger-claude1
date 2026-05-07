@@ -16,8 +16,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 def _normalize_fraction_to_pct(value: float | None, field_name: str) -> float | None:
     """Convert fraction-scale values to percent if they look like fractions.
-    
-    Note: Values exactly equal to 1.0 or -1.0 are treated as fractions and scaled to 
+
+    Note: Values exactly equal to 1.0 or -1.0 are treated as fractions and scaled to
     100.0% or -100.0%. This ambiguity assumes 1% is rare compared to 100%.
     """
     if value is None:

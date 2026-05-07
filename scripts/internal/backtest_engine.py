@@ -18,16 +18,16 @@ import db.repository as database
 def _canonical_symbol(symbol: str) -> str:
     """Standardizes symbols for Yahoo Finance."""
     text = str(symbol).strip().upper()
-    
+
     # If it already has a suffix, return as is
     if "." in text:
         return text
-        
+
     # Known US stocks in this universe (from ticker_list.py)
     us_stocks = {"AAPL", "MSFT", "NVDA", "TSLA", "GOOGL", "AMZN", "META", "NFLX"}
     if text in us_stocks:
         return text
-        
+
     # Default to NSE for others
     return f"{text}.NS"
 
