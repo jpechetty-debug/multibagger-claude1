@@ -1385,7 +1385,7 @@ def main(argv=None):
         "soft_flag": ipo_short_history_soft_flag,
     }
     full_scan_min_pass_ratio = float(getattr(config, "FULL_SCAN_MIN_PASS_RATIO", 0.20))
-    full_scan_dq_floor = float(getattr(config, "FULL_SCAN_DQ_FLOOR", 30))
+    full_scan_dq_floor = float(getattr(config, "FULL_SCAN_DQ_FLOOR", 20))  # Loosened to 20 for mid-cap coverage
     auto_flag_failure_threshold = int(getattr(config, "AUTO_FLAG_FAILURE_THRESHOLD", 1))
     auto_flag_cooldown_days = int(getattr(config, "AUTO_FLAG_COOLDOWN_DAYS", 14))
     auto_flag_min_success_ratio = float(getattr(config, "AUTO_FLAG_MIN_SUCCESS_RATIO", 0.40))
@@ -1728,6 +1728,13 @@ def main(argv=None):
             f"fetch_failed_total={fetch_failures_raw + fetch_rejected + fetch_short_history_rejected}, "
             f"dq_threshold={effective_min_dq}%"
         )
+
+        if len(valid_data) < 10:
+            print("\n" + "!" * 80)
+            print(" MIN_PICKS_WARNING: Less than 10 valid candidates produced!")
+            print(" This likely indicates a widespread data ingestion failure (e.g., API blocked/rate-limited).")
+            print(" Check your network connection, proxies, or switch data providers.")
+            print("!" * 80 + "\n")
         if retry_attempted:
             retry_c = retry_concurrency if retry_concurrency is not None else "n/a"
             print(

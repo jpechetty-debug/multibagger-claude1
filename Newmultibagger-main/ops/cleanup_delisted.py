@@ -4,7 +4,6 @@ import sqlite3
 # Safe list to NEVER delete automatically
 WHITELIST = ["TATAMOTORS.NS", "REC.NS", "RECLTD.NS", "RELIANCE.NS", "SBIN.NS", "HDFCBANK.NS"]
 
-
 def cleanup():
     candidates_file = "delisted_candidates.txt"
     if not os.path.exists(candidates_file):
@@ -22,20 +21,46 @@ def cleanup():
             to_delete.append(c)
 
     if not to_delete:
-        print("No stocks to delete.")
+        print("No stocks to process.")
         return
 
-    print(f"Preparing to delete: {to_delete}")
+    print(f"Preparing to inject synthetic terminal records for: {to_delete}")
 
     # 1. DB Cleanup
-    db_path = "stocks.db"
+    db_path = "runtime/stocks.db" if os.path.exists("runtime/stocks.db") else "stocks.db"
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     for sym in to_delete:
-        cursor.execute("DELETE FROM multibaggers WHERE symbol = ?", (sym,))
-        if cursor.rowcount > 0:
-            print(f"✅ Deleted {sym} from DB.")
+        # Instead of deleting, mark them as delisted with -100% returns for backtesting
+        cursor.execute("""
+            UPDATE multibaggers 
+            SET ret_1m = -100.0, 
+                ret_3m = -100.0, 
+                ret_6m = -100.0, 
+                backtest_cagr = -100.0, 
+                score = 0,
+                ml_rank_score = 0,
+                sector = 'DELISTED'
+            WHERE symbol = ?
+        """, (sym,))
+        
+        updated = cursor.rowcount > 0
+        
+        # Also ensure fundamentals_pit reflects this for the PIT backtests
+        cursor.execute("""
+            UPDATE fundamentals_pit 
+            SET ret_1m = -100.0, 
+                ret_3m = -100.0, 
+                ret_6m = -100.0, 
+                score = 0,
+                ml_rank_score = 0,
+                sector = 'DELISTED'
+            WHERE symbol = ?
+        """, (sym,))
+        
+        if updated or cursor.rowcount > 0:
+            print(f"✅ Injected synthetic terminal record (-100%) for {sym} in DB.")
         else:
             print(f"⚠️ {sym} not found in DB.")
 
@@ -44,34 +69,30 @@ def cleanup():
 
     # 2. Update ticker_list.py
     ticker_file = "ticker_list.py"
-    with open(ticker_file) as f:
-        lines = f.readlines()
+    if os.path.exists(ticker_file):
+        with open(ticker_file) as f:
+            lines = f.readlines()
 
-    new_lines = []
-    removed_count = 0
-    for line in lines:
-        for sym in to_delete:
-            if f'"{sym}"' in line or f"'{sym}'" in line:
-                # Basic check, might be part of a list
-                # Inspecting line content
-                if sym in line:
-                    # Replace the quoted string with empty or remove line if it's just that ticker?
-                    # ticker_list.py structure is `    "SYM", "SYM2",`
-                    # We can replace `"SYM",` with ``
-                    line = line.replace(f'"{sym}",', "")
-                    line = line.replace(f"'{sym}',", "")
-                    line = line.replace(f'"{sym}"', "")
-                    line = line.replace(f"'{sym}'", "")
-                    print(f"removed {sym} from ticker_list.py")
-                    removed_count += 1
+        new_lines = []
+        removed_count = 0
+        for line in lines:
+            for sym in to_delete:
+                if f'"{sym}"' in line or f"'{sym}'" in line:
+                    if sym in line:
+                        line = line.replace(f'"{sym}",', "")
+                        line = line.replace(f"'{sym}',", "")
+                        line = line.replace(f'"{sym}"', "")
+                        line = line.replace(f"'{sym}'", "")
+                        print(f"removed {sym} from {ticker_file}")
+                        removed_count += 1
 
-        if line.strip() != "" and line.strip() != ",":
-            new_lines.append(line)
+            if line.strip() != "" and line.strip() != ",":
+                new_lines.append(line)
 
-    with open(ticker_file, "w") as f:
-        f.writelines(new_lines)
+        with open(ticker_file, "w") as f:
+            f.writelines(new_lines)
 
-    print("Updated ticker_list.py (removed references).")
+        print(f"Updated {ticker_file} (removed references).")
 
 
 if __name__ == "__main__":

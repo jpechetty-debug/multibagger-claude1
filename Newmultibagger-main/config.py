@@ -32,7 +32,13 @@ CAPITAL_LIMIT = 50_000_000  # 5 Cr pilot limit
 
 # ── Model Integrity ───────────────────────────────────────────────────────────
 MODEL_VERSION = VERSION
-MODEL_VERSION_HASH = "bc2a3187"
+
+import subprocess
+try:
+    _git_hash = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL).decode("utf-8").strip()
+    MODEL_VERSION_HASH = _git_hash
+except Exception:
+    MODEL_VERSION_HASH = "bc2a3187"
 
 # ── Risk Limits ───────────────────────────────────────────────────────────────
 MAX_SECTOR_EXPOSURE = 0.25
@@ -45,7 +51,7 @@ CORRELATION_LIQUIDATE_THRESHOLD = 0.85
 MIN_MARKET_CAP_CR = 100
 MIN_DATA_QUALITY = 40
 FULL_SCAN_MIN_PASS_RATIO = 0.20
-FULL_SCAN_DQ_FLOOR = 30
+FULL_SCAN_DQ_FLOOR = 20
 MAX_VECTORBT_SYMBOLS = 250
 MIN_HISTORY_BARS = 120
 MIN_FETCH_CORE_FIELDS = 2

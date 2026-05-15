@@ -888,13 +888,16 @@ def calculate_institutional_score(
         factor_audit.append({"name": disqualifier, "value": round(score_ceiling - 100, 1)})
 
     raw_score = round(max(0, min(base_score, 100.0)), 1)
+    
+    # Cap institutional conviction score so it doesn't bypass the fundamental score ceiling
+    capped_conviction_score = min(conviction["conviction_score"], score_ceiling)
 
     return {
         "total_score": round(max(0, min(final_score, 100.0)), 5),
         "raw_score": raw_score,
         "checklist_score": f"{checklist_pass}/{checklist_total}",
         "data_confidence": data_confidence,
-        "conviction_score": conviction["conviction_score"],
+        "conviction_score": capped_conviction_score,
         "conviction_boost": conviction["conviction_boost"],
         "institutional_interest": conviction["institutional_interest"],
         "super_investors": ", ".join(conviction["investors"]),

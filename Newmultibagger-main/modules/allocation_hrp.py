@@ -34,8 +34,8 @@ class HRPAllocator:
         corr = returns_df.corr().fillna(0)
         dist = np.sqrt(0.5 * (1 - corr))
 
-        # 2. Hierarchical Clustering (Single Linkage)
-        link = sch.linkage(sch.distance.pdist(dist), method="single")
+        # 2. Hierarchical Clustering (Ward Linkage)
+        link = sch.linkage(sch.distance.pdist(dist), method="ward")
 
         # 3. Quasi-Diagonalization (Sort indices by cluster)
         sort_ix = sch.leaves_list(link)

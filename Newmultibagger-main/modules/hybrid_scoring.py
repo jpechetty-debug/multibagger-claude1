@@ -22,6 +22,12 @@ FEATURES = [
     "debt_equity",
     "cfo_pat_ratio",
     "market_cap_cr",
+    "ret_1m",
+    "ret_3m",
+    "ret_6m",
+    "vol_breakout",
+    "dist_from_52w_high",
+    "roce"
 ]
 FEATURE_BOUNDS = {
     "score": (0.0, 100.0),
@@ -31,6 +37,12 @@ FEATURE_BOUNDS = {
     "debt_equity": (0.0, 10.0),
     "cfo_pat_ratio": (-5.0, 10.0),
     "market_cap_cr": (0.0, 5_000_000.0),
+    "ret_1m": (-100.0, 500.0),
+    "ret_3m": (-100.0, 1000.0),
+    "ret_6m": (-100.0, 2000.0),
+    "vol_breakout": (0.0, 100.0),
+    "dist_from_52w_high": (0.0, 1.0),
+    "roce": (-100.0, 200.0),
 }
 
 
@@ -73,7 +85,8 @@ def train_hybrid_model():
         with get_db_connection("stocks.db") as conn:
             query = """
                 SELECT symbol, as_of_date, source_updated_at as report_date, price as pit_price,
-                score, sales_cagr_5y, avg_roe_5y, pe_ratio, debt_equity, cfo_pat_ratio, market_cap_cr
+                score, sales_cagr_5y, avg_roe_5y, pe_ratio, debt_equity, cfo_pat_ratio, market_cap_cr,
+                ret_1m, ret_3m, ret_6m, vol_breakout, dist_from_52w_high, roce
                 FROM fundamentals_pit
             """
             raw_df = pd.read_sql(query, conn)
@@ -160,7 +173,23 @@ def predict_and_explain(factors_dict):
     try:
         model = joblib.load(MODEL_PATH)
 
-        row = {f: factors_dict.get(f, 0.0) for f in FEATURES}
+        # Normalize feature names mapping for prediction
+        mapped_factors = {
+            "score": factors_dict.get("score", factors_dict.get("Score", 0.0)),
+            "sales_cagr_5y": factors_dict.get("sales_cagr_5y", factors_dict.get("Sales_Growth_5Y%", 0.0)),
+            "avg_roe_5y": factors_dict.get("avg_roe_5y", factors_dict.get("Avg_ROE_5Y%", 0.0)),
+            "pe_ratio": factors_dict.get("pe_ratio", factors_dict.get("PE_Ratio", 0.0)),
+            "debt_equity": factors_dict.get("debt_equity", factors_dict.get("Debt_Equity", 0.0)),
+            "cfo_pat_ratio": factors_dict.get("cfo_pat_ratio", factors_dict.get("CFO_PAT_Ratio", 0.0)),
+            "market_cap_cr": factors_dict.get("market_cap_cr", factors_dict.get("Market_Cap_Cr", 0.0)),
+            "ret_1m": factors_dict.get("ret_1m", factors_dict.get("Ret_1M", 0.0)),
+            "ret_3m": factors_dict.get("ret_3m", factors_dict.get("Ret_3M", 0.0)),
+            "ret_6m": factors_dict.get("ret_6m", factors_dict.get("Ret_6M", 0.0)),
+            "vol_breakout": factors_dict.get("vol_breakout", factors_dict.get("Vol_Breakout", 0.0)),
+            "dist_from_52w_high": factors_dict.get("dist_from_52w_high", factors_dict.get("Dist_From_52W_High", 0.0)),
+            "roce": factors_dict.get("roce", factors_dict.get("ROCE%", 0.0)),
+        }
+        row = {f: mapped_factors.get(f, 0.0) for f in FEATURES}
         X_pred = pd.DataFrame([row], columns=FEATURES)
         X_pred = _sanitize_features(X_pred)
 

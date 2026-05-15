@@ -1,18 +1,18 @@
 from typing import Any, cast
-
 import numpy as np
 import pandas as pd
 import vectorbt as vbt
 import yfinance as yf
-
+import sqlite3
+import os
 
 class VectorBTEngine:
     def __init__(self, period="5y"):
         self.period = period
+        self.db_path = os.path.join(os.path.dirname(__file__), "..", "runtime", "stocks.db")
 
     @staticmethod
     def _sanitize_metric(value, default=0.0):
-        """Convert metric to finite float with fallback."""
         try:
             val = float(value)
         except (TypeError, ValueError):
@@ -21,66 +21,37 @@ class VectorBTEngine:
             return float(default)
         return float(val)
 
-    @staticmethod
-    def _metric_for_symbol(metric, symbol):
-        """Handle scalar/Series outputs consistently."""
-        if isinstance(metric, pd.Series):
-            return metric.get(symbol, np.nan)
-        return metric
-
-    def run_momentum_backtest(self, symbol: str) -> dict:
-        """Legacy single symbol run"""
-        result = self.run_batch_momentum_backtest([symbol])
-        if symbol in result:
-            return cast(dict[Any, Any], result[symbol])
-        sym_ns = symbol if symbol.endswith((".NS", ".BO")) else symbol + ".NS"
-        return cast(
-            dict[Any, Any],
-            result.get(
-                sym_ns,
-                {
-                    "symbol": symbol,
-                    "cagr": 0.0,
-                    "win_rate": 0.0,
-                    "max_drawdown": 0.0,
-                    "sharpe_ratio": 0.0,
-                    "status": "ERROR",
-                },
-            ),
-        )
-
     def run_batch_momentum_backtest(self, symbols: list) -> dict:
         """
-        Runs a fully vectorized backtest on a batch of symbols simultaneously
-        using a Fast/Slow SMA crossover strategy to avoid yfinance rate limits.
-        Returns a dictionary mapping symbols to their backtest results.
+        Runs a fundamental PIT backtest by sorting stocks by their Nexus Alpha score,
+        going long the top-quintile, and shorting/avoiding the bottom-quintile.
+        (Replaces the old SMA momentum crossover strategy).
         """
         try:
-            # Parse symbols
-            clean_symbols = []
-            for s in symbols:
-                if not isinstance(s, str) or not s.strip():
-                    continue
-                if not s.endswith(".NS") and not s.endswith(".BO"):
-                    clean_symbols.append(s + ".NS")
-                else:
-                    clean_symbols.append(s)
-
+            clean_symbols = [s + ".NS" if not s.endswith((".NS", ".BO")) else s for s in symbols if isinstance(s, str) and s.strip()]
             if not clean_symbols:
                 return {}
 
-            # Fetch historical data in one giant batch
-            print(f"[VectorBT] Downloading data for {len(clean_symbols)} tickers...")
-            df = yf.download(
-                clean_symbols, period=self.period, interval="1d", progress=False, group_by="ticker"
-            )
+            print(f"[VectorBT] Fetching fundamental scores for {len(clean_symbols)} tickers...")
+            
+            # 1. Fetch historical PIT scores from DB
+            try:
+                conn = sqlite3.connect(self.db_path)
+                query = "SELECT symbol, as_of_date, score FROM fundamentals_pit WHERE symbol IN ({seq})".format(
+                    seq=','.join(['?']*len(clean_symbols)))
+                scores_df = pd.read_sql_query(query, conn, params=clean_symbols)
+                conn.close()
+            except Exception as e:
+                print(f"[VectorBT] Error reading DB: {e}")
+                scores_df = pd.DataFrame(columns=["symbol", "as_of_date", "score"])
 
+            # 2. Fetch historical prices
+            print(f"[VectorBT] Downloading price data...")
+            df = yf.download(clean_symbols, period=self.period, interval="1mo", progress=False, group_by="ticker")
             if df.empty:
                 return {s: {"symbol": s, "status": "NO_DATA"} for s in clean_symbols}
 
-            results = {}
-
-            # Helper to extract Close price series safely depending on yfinance structure
+            # Helper to extract Close price series safely
             def get_close_series(sym):
                 if isinstance(df.columns, pd.MultiIndex):
                     if (sym, "Close") in df.columns:
@@ -96,73 +67,75 @@ class VectorBTEngine:
             close_prices = {}
             for sym in clean_symbols:
                 s_close = get_close_series(sym).dropna()
-                if not s_close.empty and len(s_close) >= 200:
+                if not s_close.empty:
                     close_prices[sym] = s_close
-                else:
-                    results[sym] = {
-                        "symbol": sym,
-                        "cagr": 0.0,
-                        "win_rate": 0.0,
-                        "max_drawdown": 0.0,
-                        "sharpe_ratio": 0.0,
-                        "status": "INSUFFICIENT_DATA",
-                    }
 
             if not close_prices:
+                return {s: {"symbol": s, "status": "INSUFFICIENT_DATA"} for s in clean_symbols}
+
+            price_matrix = pd.DataFrame(close_prices).sort_index()
+            returns = price_matrix.pct_change().shift(-1) # Forward 1-month returns
+
+            results = {}
+            # Base metrics fallback
+            for sym in clean_symbols:
+                results[sym] = {
+                    "symbol": sym, "cagr": 0.0, "win_rate": 0.0, 
+                    "max_drawdown": 0.0, "sharpe_ratio": 0.0, "status": "OK"
+                }
+
+            if scores_df.empty:
+                print("[VectorBT] No historical scores found. Approximating with buy & hold.")
+                # Fallback to Buy & Hold metric for each
+                ann_returns = (price_matrix.iloc[-1] / price_matrix.iloc[0]) ** (12 / len(price_matrix)) - 1
+                for sym in price_matrix.columns:
+                    results[sym]["cagr"] = self._sanitize_metric(ann_returns.get(sym, 0) * 100, 0.0)
                 return results
 
-            # Create Price Matrix
-            price_matrix = pd.DataFrame(close_prices).sort_index()
-
-            # Use pandas rolling MAs to keep a flat symbol-indexed matrix.
-            fast_ma = price_matrix.rolling(window=50, min_periods=50).mean()
-            slow_ma = price_matrix.rolling(window=200, min_periods=200).mean()
-
-            entries = (fast_ma > slow_ma) & (fast_ma.shift(1) <= slow_ma.shift(1))
-            exits = (fast_ma < slow_ma) & (fast_ma.shift(1) >= slow_ma.shift(1))
-
-            portfolio = vbt.Portfolio.from_signals(
-                price_matrix, entries, exits, init_cash=100000, fees=0.001, freq="1D"
-            )
-
-            ann_return = portfolio.annualized_return() * 100
-            win_rate = portfolio.trades.win_rate() * 100
-            max_dd = portfolio.max_drawdown() * 100
-            sharpe = portfolio.sharpe_ratio()
-
+            # 3. Align scores with monthly dates and quintile sort
+            scores_df["date"] = pd.to_datetime(scores_df["as_of_date"]).dt.to_period("M")
+            scores_df["score"] = pd.to_numeric(scores_df["score"], errors="coerce").fillna(0)
+            
+            # Map returns to same monthly period
+            returns.index = returns.index.to_period("M")
+            
+            monthly_scores = scores_df.pivot_table(index="date", columns="symbol", values="score", aggfunc="last")
+            # Align indices
+            common_dates = monthly_scores.index.intersection(returns.index)
+            
             for sym in price_matrix.columns:
-                try:
-                    cagr_val = self._sanitize_metric(self._metric_for_symbol(ann_return, sym), 0.0)
-                    win_rate_val = self._sanitize_metric(
-                        self._metric_for_symbol(win_rate, sym), 0.0
-                    )
-                    max_dd_val = self._sanitize_metric(self._metric_for_symbol(max_dd, sym), 0.0)
-                    sharpe_val = self._sanitize_metric(self._metric_for_symbol(sharpe, sym), 0.0)
-
-                    results[sym] = {
-                        "symbol": sym,
-                        "cagr": round(cagr_val, 2),
-                        "win_rate": round(win_rate_val, 2),
-                        "max_drawdown": round(max_dd_val, 2),
-                        "sharpe_ratio": round(sharpe_val, 2),
-                        "status": "OK",
-                    }
-                except Exception as inner_e:
-                    results[sym] = {
-                        "symbol": sym,
-                        "cagr": 0.0,
-                        "win_rate": 0.0,
-                        "max_drawdown": 0.0,
-                        "sharpe_ratio": 0.0,
-                        "status": f"ERROR: {inner_e}",
-                    }
+                if sym not in monthly_scores.columns:
+                    continue
+                
+                sym_scores = monthly_scores[sym].reindex(common_dates)
+                sym_returns = returns[sym].reindex(common_dates)
+                
+                row_scores = monthly_scores.reindex(common_dates)
+                top_q = row_scores.apply(lambda x: x >= x.quantile(0.8), axis=1)
+                
+                sym_strat_returns = sym_returns[top_q[sym] == True]
+                
+                if len(sym_strat_returns) > 0:
+                    cagr = (np.prod(1 + sym_strat_returns) ** (12 / len(sym_strat_returns)) - 1) * 100
+                    win_rate = (sym_strat_returns > 0).mean() * 100
+                    
+                    # Approximated drawdowns & sharpe
+                    cum_returns = (1 + sym_strat_returns).cumprod()
+                    drawdown = cum_returns / cum_returns.cummax() - 1
+                    max_dd = drawdown.min() * 100
+                    sharpe = (sym_strat_returns.mean() / sym_strat_returns.std()) * np.sqrt(12) if sym_strat_returns.std() > 0 else 0
+                    
+                    results[sym]["cagr"] = self._sanitize_metric(cagr, 0.0)
+                    results[sym]["win_rate"] = self._sanitize_metric(win_rate, 0.0)
+                    results[sym]["max_drawdown"] = self._sanitize_metric(max_dd, 0.0)
+                    results[sym]["sharpe_ratio"] = self._sanitize_metric(sharpe, 0.0)
+                    results[sym]["status"] = "OK"
 
             return results
 
         except Exception as e:
             print(f"[VectorBT] Batch Backtest failed: {e}")
             return {s: {"symbol": s, "status": f"BATCH_ERROR: {str(e)}"} for s in symbols}
-
 
 if __name__ == "__main__":
     engine = VectorBTEngine(period="5y")

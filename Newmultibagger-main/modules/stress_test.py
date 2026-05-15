@@ -6,6 +6,45 @@ def _build_weights(portfolio_stocks, weights=None):
     return {s["Symbol"]: 1.0 / len(portfolio_stocks) for s in portfolio_stocks}
 
 
+import pandas as pd
+import numpy as np
+
+def _calculate_1yr_beta(symbol: str) -> float | None:
+    try:
+        from modules.data_service import data_manager
+        from modules.data_utils import run_coroutine_sync
+        
+        async def fetch_data():
+            stock_df = await data_manager.async_fetch_history(symbol)
+            bench_df = await data_manager.async_fetch_history("^NSEI")
+            return stock_df, bench_df
+            
+        stock_df, bench_df = run_coroutine_sync(fetch_data())
+        
+        if stock_df is None or bench_df is None or stock_df.empty or bench_df.empty:
+            return None
+            
+        stock_df = stock_df.tail(252)
+        bench_df = bench_df.tail(252)
+        
+        stock_ret = stock_df["Close"].pct_change().dropna()
+        bench_ret = bench_df["Close"].pct_change().dropna()
+        
+        df = pd.DataFrame({"stock": stock_ret, "bench": bench_ret}).dropna()
+        
+        if len(df) < 50:
+            return None
+            
+        cov = df.cov().iloc[0, 1]
+        var = df["bench"].var()
+        
+        if var == 0:
+            return None
+            
+        return float(cov / var)
+    except Exception as e:
+        return None
+
 def _estimate_portfolio_beta(portfolio_stocks, weights=None):
     if not portfolio_stocks:
         return 1.0
@@ -18,21 +57,26 @@ def _estimate_portfolio_beta(portfolio_stocks, weights=None):
         sym = stock["Symbol"]
         wt = use_weights.get(sym, 0.0)
 
-        beta = 1.0
-        sec = stock.get("Sector", "Unknown")
-        if sec in ["Technology", "Realty", "Metals"]:
-            beta += 0.3
-        if sec in ["FMCG", "Utilities", "Pharma"]:
-            beta -= 0.2
+        # 1-yr rolling regression (Phase 20)
+        beta = _calculate_1yr_beta(sym)
+        
+        # Fallback to heuristic if regression fails
+        if beta is None:
+            beta = 1.0
+            sec = stock.get("Sector", "Unknown")
+            if sec in ["Technology", "Realty", "Metals"]:
+                beta += 0.3
+            if sec in ["FMCG", "Utilities", "Pharma"]:
+                beta -= 0.2
 
-        atr = stock.get("ATR", 0)
-        price = stock.get("Price", 1)
-        if price > 0:
-            vol = atr / price
-            if vol > 0.03:
-                beta += 0.2
-            if vol < 0.015:
-                beta -= 0.1
+            atr = stock.get("ATR", 0)
+            price = stock.get("Price", 1)
+            if price > 0:
+                vol = atr / price
+                if vol > 0.03:
+                    beta += 0.2
+                if vol < 0.015:
+                    beta -= 0.1
 
         total_beta += beta * wt
         total_weight += wt
