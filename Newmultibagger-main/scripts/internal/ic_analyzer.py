@@ -14,8 +14,9 @@ from modules.hybrid_scoring import FEATURES
 
 import yfinance as yf
 
-def fetch_forward_prices(df, months=3):
+def fetch_forward_prices(df_input, months=3):
     """Fetch forward prices using yfinance monthly data."""
+    df = df_input.copy()
     symbols = df["symbol"].unique().tolist()
     print(f"Fetching monthly history for {len(symbols)} symbols...")
     
@@ -43,9 +44,9 @@ def fetch_forward_prices(df, months=3):
     close_prices = close_prices.loc[:,~close_prices.columns.duplicated()]
     
     if close_prices.index.tz is not None:
-        close_prices.index = close_prices.index.tz_localize(None)
+        close_prices.index = close_prices.index.tz_convert(None)
 
-    df["as_of_date"] = pd.to_datetime(df["as_of_date"]).dt.tz_localize(None)
+    df["as_of_date"] = pd.to_datetime(df["as_of_date"])
     df["target_date"] = df["as_of_date"] + pd.DateOffset(months=months)
 
     def get_forward_price(row):
@@ -77,8 +78,10 @@ def perform_ic_analysis():
 
     try:
         conn = sqlite3.connect(DB_PATH)
+        existing = pd.read_sql("PRAGMA table_info(fundamentals_pit)", conn)["name"].tolist()
+        safe_features = [f for f in FEATURES if f in existing]
         query = f"""
-            SELECT symbol, as_of_date, price as pit_price, score, {', '.join(FEATURES)}
+            SELECT symbol, as_of_date, price as pit_price, score, {', '.join(safe_features)}
             FROM fundamentals_pit
             WHERE sector != 'DELISTED'
         """
