@@ -1,0 +1,32 @@
+
+[UX AUDIT] 43 files checked
+--------------------------------------------------
+[!] ISSUES (14):
+  - [Cognitive Load] boilerplate.css: Form inputs without labels. Use <label> for accessibility and clarity.
+  - [Hick's Law] docindex.html: 9 nav items (Max 7)
+  - [Hick's Law] QuickStartServerCom.html: 11 nav items (Max 7)
+  - [Cognitive Load] index.html: Form inputs without labels. Use <label> for accessibility and clarity.
+  - [Color] index.html: PURPLE DETECTED ('#8B5CF6'). Banned by Maestro rules. Use Teal/Cyan/Emerald instead.
+  - [Cognitive Load] audit_report.html: Form inputs without labels. Use <label> for accessibility and clarity.
+  - [Cognitive Load] BANKINDIA.html: Form inputs without labels. Use <label> for accessibility and clarity.
+  - [Cognitive Load] INFY.html: Form inputs without labels. Use <label> for accessibility and clarity.
+  - [Cognitive Load] SPORTKING.html: Form inputs without labels. Use <label> for accessibility and clarity.
+  - [Cognitive Load] App.test.tsx: Form inputs without labels. Use <label> for accessibility and clarity.
+[*] WARNINGS (291):
+  - [Von Restorff] index.html: No primary CTA
+  - [Serial Position] index.html: Last nav item may not be important. Place key actions at start/end.
+  - [Visceral] index.html: Hero section lacks visual appeal. Consider gradients or subtle animations.
+  - [Reflective] index.html: Long-form content without brand story/values. Add 'About' or 'Why We Exist' section.
+  - [Trust] index.html: No social proof detected. Consider adding testimonials, ratings, or 'Trusted by' logos.
+  - [Trust] index.html: Footer lacks authority signals. Add certifications, awards, or media mentions.
+  - [Typography] index.html: No line length constraint (45-75ch). Use max-w-prose or max-w-[65ch].
+  - [Typography] index.html: Text elements found without line-height. Body: 1.4-1.6, Headings: 1.1-1.3
+  - [Visual] index.html: Hero section without visual interest. Consider gradient for depth.
+  - [Visual] index.html: Text over image without overlay. Add gradient overlay for readability.
+  - [Visual] index.html: Flat design with no depth. Consider shadows or subtle gradients for hierarchy.
+  - [Animation] index.html: Interactive elements without hover/focus states. Add micro-interactions for feedback.
+  - [Von Restorff] pyfile.html: No primary CTA
+  - [Visceral] pyfile.html: Hero section lacks visual appeal. Consider gradients or subtle animations.
+  - [Reflective] pyfile.html: Long-form content without brand story/values. Add 'About' or 'Why We Exist' section.
+[+] PASSED CHECKS: 22
+STATUS: FAIL

@@ -1,0 +1,19 @@
+# Install with: pip install -r requirements-dev.txt
+-r requirements.txt
+
+# Testing
+pytest==8.3.3
+pytest-asyncio==0.24.0
+pytest-cov==6.0.0
+pytest-mock==3.14.0
+
+# Type checking
+mypy==1.13.0
+types-requests==2.32.0.20241016
+types-PyYAML==6.0.12.20240917
+
+# Linting / formatting
+ruff==0.7.4
+
+# Profiling / dev tools
+ipython==8.29.0

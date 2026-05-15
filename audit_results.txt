@@ -1,0 +1,27 @@
+UX:
+{"files_checked": 10, "issues": [], "warnings": ["[Von Restorff] App.test.tsx: No primary CTA", "[Visceral] App.test.tsx: Hero section lacks visual appeal. Consider gradients or subtle animations.", "[Visual] App.test.tsx: Hero section without visual interest. Consider gradient for depth.", "[Animation] App.test.tsx: Async operations without loading indicator. Add skeleton or spinner for perceived performance.", "[Typography] App.tsx: Text elements found without line-height. Body: 1.4-1.6, Headings: 1.1-1.3", "[Fitts' Law] FloorDock.tsx: Small targets (< 44px)", "[Von Restorff] FloorDock.tsx: No primary CTA", "[Reflective] FloorDock.tsx: Long-form content without brand story/values. Add 'About' or 'Why We Exist' section.", "[Trust] FloorDock.tsx: No social proof detected. Consider adding testimonials, ratings, or 'Trusted by' logos.", "[Trust] FloorDock.tsx: Footer lacks authority signals. Add certifications, awards, or media mentions.", "[Typography] FloorDock.tsx: No line length constraint (45-75ch). Use max-w-prose or max-w-[65ch].", "[Visual] FloorDock.tsx: Flat design with no depth. Consider shadows or subtle gradients for hierarchy.", "[Fitts' Law] Header.tsx: Small targets (< 44px)", "[Reflective] Header.tsx: Long-form content without brand story/values. Add 'About' or 'Why We Exist' section.", "[Typography] Header.tsx: No line length constraint (45-75ch). Use max-w-prose or max-w-[65ch].", "[Typography] Header.tsx: Text elements found without line-height. Body: 1.4-1.6, Headings: 1.1-1.3", "[Typography] Header.tsx: Fixed font sizes without clamp(). Consider fluid typography: clamp(MIN, PREFERRED, MAX)", "[Visual] Header.tsx: Flat design with no depth. Consider shadows or subtle gradients for hierarchy.", "[Fitts' Law] Heartbeat.tsx: Small targets (< 44px)", "[Reflective] Heartbeat.tsx: Long-form content without brand story/values. Add 'About' or 'Why We Exist' section.", "[Typography] Heartbeat.tsx: No line length constraint (45-75ch). Use max-w-prose or max-w-[65ch].", "[Typography] Heartbeat.tsx: Text elements found without line-height. Body: 1.4-1.6, Headings: 1.1-1.3", "[Typography] Heartbeat.tsx: Fixed font sizes without clamp(). Consider fluid typography: clamp(MIN, PREFERRED, MAX)", "[Visual] Heartbeat.tsx: Flat design with no depth. Consider shadows or subtle gradients for hierarchy.", "[Animation] Heartbeat.tsx: Async operations without loading indicator. Add skeleton or spinner for perceived performance.", "[Fitts' Law] SignalCard.tsx: Small targets (< 44px)", "[Reflective] SignalCard.tsx: Long-form content without brand story/values. Add 'About' or 'Why We Exist' section.", "[Typography] SignalCard.tsx: No line length constraint (45-75ch). Use max-w-prose or max-w-[65ch].", "[Typography] SignalCard.tsx: Fixed font sizes without clamp(). Consider fluid typography: clamp(MIN, PREFERRED, MAX)", "[Typography] SignalCard.tsx: No h1 found. Each page should have one primary heading.", "[Visual] SignalCard.tsx: Flat design with no depth. Consider shadows or subtle gradients for hierarchy.", "[Fitts' Law] SignalGrid.tsx: Small targets (< 44px)", "[Von Restorff] SignalGrid.tsx: No primary CTA", "[Reflective] SignalGrid.tsx: Long-form content without brand story/values. Add 'About' or 'Why We Exist' section.", "[Trust] SignalGrid.tsx: Form without security indicators. Add 'SSL Secure' or lock icon.", "[Typography] SignalGrid.tsx: No line length constraint (45-75ch). Use max-w-prose or max-w-[65ch].", "[Typography] SignalGrid.tsx: Fixed font sizes without clamp(). Consider fluid typography: clamp(MIN, PREFERRED, MAX)", "[Typography] SignalGrid.tsx: No h1 found. Each page should have one primary heading.", "[Visual] SignalGrid.tsx: Flat design with no depth. Consider shadows or subtle gradients for hierarchy."], "passed_checks": 5, "compliant": true}
+
+SEO:
+
+============================================================
+  SEO CHECKER - Search Engine Optimization Audit
+============================================================
+Project: D:\Tradeidesa\Multibagger-claude\Newmultibagger-main\web-ui
+Time: 2026-04-05 08:19:00
+------------------------------------------------------------
+Found 1 page files to analyze
+
+============================================================
+SEO ANALYSIS RESULTS
+============================================================
+
+[OK] No SEO issues found!
+
+{
+  "script": "seo_checker",
+  "project": "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\web-ui",
+  "files_checked": 1,
+  "files_with_issues": 0,
+  "issues_found": 0,
+  "passed": true
+}

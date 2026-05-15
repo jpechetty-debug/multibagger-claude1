@@ -1,0 +1,36 @@
+name: Market Regime Monitor
+description: Autonomous swarm for NSE sector rotation and trend labeling
+version: 1.0.0
+
+trigger:
+  type: schedule
+  cron: "0 */4 * * 1-5" # Every 4 hours on weekdays
+
+swarm:
+  queen: regime-monitor-queen
+  workers:
+    - scanner
+    - labeler
+    - reporter
+
+steps:
+  - name: sector_scan
+    agent: scanner
+    prompt: "Scan NSE indices for Energy, Metals, and Banking sectors. Identify top 3 gaining and losing sectors by volume and RSI."
+    output: scan_results
+
+  - name: trend_labeling
+    agent: labeler
+    input: scan_results
+    prompt: "Using the scan results, apply B/G logic. Cross-reference symbols with 'sovereign-labels' namespace in memory. Provide confidence scores."
+    output: labeled_trends
+
+  - name: alert_dispatch
+    agent: reporter
+    input: labeled_trends
+    prompt: "Format the labeled trends into a 'Regime Shift' alert. Dispatch to the Sovereign Dashboard webhook."
+    output: completion_status
+
+memory_contexts:
+  - sovereign-labels
+  - market-regime-history

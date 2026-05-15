@@ -147,11 +147,11 @@ git_files.txt
 tests_out.txt
 refactor_script.py
 
-# AI Scaffolding & Bloat
-.agent/
+# AI Scaffolding
 .pytest_tmp/
 *.bak
 extracted_*/
+
 
 # Local Numba cache
 numba_cache/

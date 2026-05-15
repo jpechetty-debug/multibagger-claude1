@@ -1,0 +1,87 @@
+digraph STYLE_GUIDE {
+    // The style guide for our process DSL, written in the DSL itself
+
+    // Node type examples with their shapes
+    subgraph cluster_node_types {
+        label="NODE TYPES AND SHAPES";
+
+        // Questions are diamonds
+        "Is this a question?" [shape=diamond];
+
+        // Actions are boxes (default)
+        "Take an action" [shape=box];
+
+        // Commands are plaintext
+        "git commit -m 'msg'" [shape=plaintext];
+
+        // States are ellipses
+        "Current state" [shape=ellipse];
+
+        // Warnings are octagons
+        "STOP: Critical warning" [shape=octagon, style=filled, fillcolor=red, fontcolor=white];
+
+        // Entry/exit are double circles
+        "Process starts" [shape=doublecircle];
+        "Process complete" [shape=doublecircle];
+    }
+
+    // Edge naming conventions
+    subgraph cluster_edge_types {
+        label="EDGE LABELS";
+
+        "Binary decision?" [shape=diamond];
+        "Yes path" [shape=box];
+        "No path" [shape=box];
+
+        "Binary decision?" -> "Yes path" [label="yes"];
+        "Binary decision?" -> "No path" [label="no"];
+
+        "Multiple choice?" [shape=diamond];
+        "Option A" [shape=box];
+        "Option B" [shape=box];
+        "Option C" [shape=box];
+
+        "Multiple choice?" -> "Option A" [label="condition A"];
+        "Multiple choice?" -> "Option B" [label="condition B"];
+        "Multiple choice?" -> "Option C" [label="otherwise"];
+    }
+
+    // Naming patterns
+    subgraph cluster_naming_patterns {
+        label="NAMING PATTERNS";
+
+        // Questions end with ?
+        "Should I do X?";
+        "Can this be Y?";
+        "Is Z true?";
+
+        // Actions start with verb
+        "Write the test";
+        "Search for patterns";
+        "Commit changes";
+
+        // Commands are literal
+        "grep -r 'pattern' .";
+        "git status";
+
+        // States describe situation
+        "Test is failing";
+        "Build complete";
+    }
+
+    // Process structure template
+    subgraph cluster_structure {
+        label="PROCESS STRUCTURE TEMPLATE";
+
+        "Trigger: Something happens" [shape=ellipse];
+        "Initial check?" [shape=diamond];
+        "Main action" [shape=box];
+        "git status" [shape=plaintext];
+        "Process complete" [shape=doublecircle];
+
+        "Trigger: Something happens" -> "Initial check?";
+        "Initial check?" -> "Main action" [label="yes"];
+        "Main action" -> "git status";
+        "git status" -> "Process complete";
+    }
+}

@@ -1,0 +1,36 @@
+
+============================================================
+  SEO CHECKER - Search Engine Optimization Audit
+============================================================
+Project: D:\Tradeidesa\Multibagger-claude
+Time: 2026-04-05 08:10:12
+------------------------------------------------------------
+Found 37 page files to analyze
+
+============================================================
+SEO ANALYSIS RESULTS
+============================================================
+
+Issue Summary:
+  [28] Missing meta description
+  [28] Missing Open Graph tags
+  [3] Missing <title> tag
+  [3] Multiple H1 tags (2)
+  [1] Image missing alt attribute
+
+Affected files (28):
+  - readme.html
+  - all_figures.html
+  - single_figure.html
+  - template.html
+  - COM_Records.html
+  ... and 23 more
+
+{
+  "script": "seo_checker",
+  "project": "D:\\Tradeidesa\\Multibagger-claude",
+  "files_checked": 37,
+  "files_with_issues": 28,
+  "issues_found": 63,
+  "passed": false
+}
