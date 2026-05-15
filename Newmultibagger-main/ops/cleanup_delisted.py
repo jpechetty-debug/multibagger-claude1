@@ -50,11 +50,7 @@ def cleanup():
         # Also ensure fundamentals_pit reflects this for the PIT backtests
         cursor.execute("""
             UPDATE fundamentals_pit 
-            SET ret_1m = -100.0, 
-                ret_3m = -100.0, 
-                ret_6m = -100.0, 
-                score = 0,
-                ml_rank_score = 0,
+            SET score = 0,
                 sector = 'DELISTED'
             WHERE symbol = ?
         """, (sym,))

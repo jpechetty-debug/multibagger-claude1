@@ -100,6 +100,14 @@ class VectorBTEngine:
             returns.index = returns.index.to_period("M")
             
             monthly_scores = scores_df.pivot_table(index="date", columns="symbol", values="score", aggfunc="last")
+            
+            # Create a continuous monthly period index to forward-fill sparse PIT dates
+            if not monthly_scores.empty and not returns.empty:
+                min_date = min(monthly_scores.index.min(), returns.index.min())
+                max_date = max(monthly_scores.index.max(), returns.index.max())
+                all_months = pd.period_range(start=min_date, end=max_date, freq='M')
+                monthly_scores = monthly_scores.reindex(all_months).ffill()
+            
             # Align indices
             common_dates = monthly_scores.index.intersection(returns.index)
             
