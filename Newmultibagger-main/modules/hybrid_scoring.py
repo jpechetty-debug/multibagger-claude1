@@ -71,7 +71,11 @@ def _get_historical_targets(symbols: list):
     from modules.data_utils import run_coroutine_sync
 
     data = run_coroutine_sync(_fetch())
-    return {s: d.get("price") for s, d in data.items() if "price" in d}
+    return {
+        s: d.get("price", d.get("Price"))
+        for s, d in data.items()
+        if d.get("price") is not None or d.get("Price") is not None
+    }
 
 
 def train_hybrid_model():

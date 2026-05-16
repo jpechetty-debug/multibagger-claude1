@@ -1432,8 +1432,16 @@ def main(argv=None):
                 }
 
         async def _run_batch(symbols_batch, dm_instance, *, include_quarterly):
+            semaphore = asyncio.Semaphore(int(full_scan_base_concurrency))
+
+            async def _fetch_with_semaphore(sym):
+                async with semaphore:
+                    # Add a tiny jitter to prevent burst hitting same millisecond
+                    await asyncio.sleep(np.random.uniform(0.05, 0.2))
+                    return await _fetch_symbol(dm_instance, sym, include_quarterly=include_quarterly)
+
             tasks = [
-                _fetch_symbol(dm_instance, sym, include_quarterly=include_quarterly)
+                _fetch_with_semaphore(sym)
                 for sym in symbols_batch
             ]
             return await asyncio.gather(*tasks, return_exceptions=True)

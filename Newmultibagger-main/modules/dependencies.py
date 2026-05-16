@@ -15,11 +15,16 @@ from modules.cache import (
     _cache_set,
     MOVERS_CACHE_TTL_SECONDS,
     REGIME_CACHE_TTL_SECONDS,
+    CACHE_QUARTERLY as CACHE_QUARTERLY_VAL,
+    CACHE_FUNDAMENTALS as CACHE_FUNDAMENTALS_VAL,
+    CACHE_AUDIT_TTL,
     movers_cache,
     movers_cache_lock,
     regime_cache,
     regime_cache_lock,
 )
+CACHE_QUARTERLY = CACHE_QUARTERLY_VAL
+CACHE_FUNDAMENTALS = CACHE_FUNDAMENTALS_VAL
 # -- Re-exporting from Modular Components --
 from db.db_core import db_engine, get_db_connection as get_sqla_connection
 from modules.connections import (
@@ -59,13 +64,25 @@ def _read_records(query: str, params: dict[Any, Any] | None = None):
 
 def _json_safe_clean(obj):
     import numpy as np
+    import pandas as pd
 
-    if isinstance(obj, list):
+    # Handle Pydantic models (v1 and v2)
+    if hasattr(obj, "dict") and callable(obj.dict):
+        obj = obj.dict()
+    elif hasattr(obj, "model_dump") and callable(obj.model_dump):
+        obj = obj.model_dump()
+
+    if isinstance(obj, (list, tuple, np.ndarray)):
         return [_json_safe_clean(x) for x in obj]
-    if isinstance(obj, dict):
-        return {k: _json_safe_clean(v) for k, v in obj.items()}
+    if isinstance(obj, (dict, pd.Series)):
+        return {str(k): _json_safe_clean(v) for k, v in obj.items()}
     if isinstance(obj, float) and (np.isnan(obj) or np.isinf(obj)):
         return None
+    if isinstance(obj, (np.integer, np.floating)):
+        val = obj.item()
+        if isinstance(val, float) and (np.isnan(val) or np.isinf(val)):
+            return None
+        return val
     return obj
 
 

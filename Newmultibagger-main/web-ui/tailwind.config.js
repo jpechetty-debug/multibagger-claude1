@@ -8,20 +8,22 @@ export default {
     extend: {
       colors: {
         brand: {
-          bg: '#04060d',
-          card: '#080c17',
-          border: 'rgba(255, 255, 255, 0.05)',
-          accent: '#00ffa3',
-          rose: '#ff3060',
-          gold: '#ffb700',
-          text: '#c9d4f0',
-          'text-dim': '#6d7fa8',
+          bg: '#0F172A',
+          card: 'rgba(30, 41, 59, 0.5)',
+          border: 'rgba(255, 255, 255, 0.1)',
+          primary: '#F59E0B',
+          secondary: '#06B6D4',
+          accent: '#FBBF24',
+          rose: '#EF4444',
+          emerald: '#10B981',
+          text: '#F8FAFC',
+          'text-dim': '#94A3B8',
         }
       },
       fontFamily: {
-        display: ["Syne", "sans-serif"],
-        mono: ["Geist Mono", "monospace"],
-        sans: ["Geist", "sans-serif"],
+        display: ["Fira Code", "monospace"],
+        mono: ["Fira Code", "monospace"],
+        sans: ["Fira Sans", "sans-serif"],
       }
     },
   },

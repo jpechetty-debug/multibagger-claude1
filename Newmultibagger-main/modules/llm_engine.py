@@ -58,7 +58,7 @@ def generate_ic_memo(stock_data: dict) -> str:
         return "Insufficient data to generate IC Memo."
 
     symbol = stock_data.get("symbol") or stock_data.get("Symbol", "UNKNOWN")
-    
+
     # Extract data for prompt context
     # Prioritize 'total_score' from scoring engine, then 'score' from DB
     context = {
@@ -112,7 +112,7 @@ BE DETAILED. Provide reasoned arguments for each section."""
         )
         response.raise_for_status()
         raw_memo = response.json().get("response", "").strip()
-        
+
         if not raw_memo:
             raise ValueError("Empty response from Ollama")
 

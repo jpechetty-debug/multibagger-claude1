@@ -64,7 +64,7 @@ export function Heartbeat() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1 }}
-      className="brutalist-card flex h-full flex-col justify-between border-l-4 border-l-brand-accent p-6 transition-all group hover:border-l-brand-accent/80"
+      className="premium-glass-card flex h-full flex-col justify-between border-l-4 border-l-brand-primary p-6 transition-all group hover:border-l-brand-primary"
     >
       <div>
         <div className="mb-4 flex items-center justify-between">
@@ -72,7 +72,7 @@ export function Heartbeat() {
             Neural Heartbeat
           </span>
           <Activity
-            className={`h-4 w-4 ${isHealthy ? 'animate-pulse text-brand-accent' : 'text-brand-rose'}`}
+            className={`h-4 w-4 ${isHealthy ? 'animate-pulse text-brand-primary' : 'text-brand-rose'}`}
           />
         </div>
         <div className="flex items-baseline gap-2">
@@ -92,7 +92,7 @@ export function Heartbeat() {
         </div>
         <div className="mt-2 flex justify-between font-mono text-[9px] font-bold uppercase text-brand-text-dim">
           <span>{isHealthy ? 'Feed Integrity' : 'Feed Degraded'}</span>
-          <span className={isHealthy ? 'text-brand-accent' : 'text-brand-rose'}>
+          <span className={isHealthy ? 'text-brand-primary' : 'text-brand-rose'}>
             {isHealthy ? 'Online' : 'Retrying'}
           </span>
         </div>
@@ -102,23 +102,23 @@ export function Heartbeat() {
       <div className="mt-6 border-t border-brand-bg pt-4">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <ShieldCheck className={`h-3 w-3 ${swarmStatus?.status === 'online' ? 'text-brand-accent' : 'text-brand-text-dim'}`} />
+            <ShieldCheck className={`h-3 w-3 ${swarmStatus?.status === 'online' ? 'text-brand-primary' : 'text-brand-text-dim'}`} />
             <span className="text-[9px] font-mono font-bold uppercase text-brand-text-dim">
               Swarm: {swarmStatus?.status || 'offline'}
             </span>
           </div>
           {swarmStatus?.active_agents && (
-            <span className="text-[9px] font-mono text-brand-accent">
+            <span className="text-[9px] font-mono text-brand-primary">
               {swarmStatus.active_agents} AGENTS
             </span>
           )}
         </div>
         
         {recentAlert ? (
-          <div className="rounded border border-brand-accent/20 bg-brand-accent/5 p-2">
+          <div className="rounded border border-brand-primary/20 bg-brand-primary/5 p-2">
             <div className="flex items-center gap-2">
-              <Zap className="h-3 w-3 text-brand-accent" />
-              <span className="text-[10px] font-bold text-brand-accent uppercase">
+              <Zap className="h-3 w-3 text-brand-primary" />
+              <span className="text-[10px] font-bold text-brand-primary uppercase">
                 {recentAlert.type}
               </span>
             </div>

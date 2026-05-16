@@ -1,22 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   body {
-    @apply bg-brand-bg text-brand-text font-sans selection:bg-brand-accent/30 selection:text-brand-accent overflow-x-hidden;
+    @apply bg-brand-bg text-brand-text font-sans selection:bg-brand-primary/30 selection:text-brand-primary overflow-x-hidden;
   }
 }
 
 @layer components {
-  .brutalist-card {
-    @apply bg-brand-card border-2 border-brand-border relative overflow-hidden transition-all duration-300;
-    box-shadow: 4px 4px 0px 0px theme('colors.brand.border');
+  .premium-glass-card {
+    @apply bg-brand-card backdrop-blur-xl border border-brand-border relative overflow-hidden transition-all duration-300;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
   }
   
-  .brutalist-card:hover {
-    box-shadow: 8px 8px 0px 0px theme('colors.brand.accent');
-    transform: translate(-2px, -2px);
+  .premium-glass-card:hover {
+    @apply border-brand-primary/40;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 0 0 15px rgba(245, 158, 11, 0.1);
+    transform: translateY(-2px);
   }
 
   .hazard-pattern {
@@ -24,19 +27,18 @@
       45deg,
       transparent,
       transparent 10px,
-      rgba(255, 171, 0, 0.05) 10px,
-      rgba(255, 171, 0, 0.05) 20px
+      rgba(245, 158, 11, 0.05) 10px,
+      rgba(245, 158, 11, 0.05) 20px
     );
   }
   
   .glass-panel {
-    @apply bg-white/5 backdrop-blur-xl border border-white/10;
+    @apply bg-brand-card backdrop-blur-2xl border border-brand-border;
   }
   
   .floor-dock {
-    @apply fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 p-2 glass-panel shadow-2xl;
-    border-radius: 0; /* Brutalist: no rounded corners on primary navigation */
-    border: 2px solid theme('colors.brand.border');
+    @apply fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 p-3 glass-panel shadow-2xl rounded-2xl;
+    @apply border border-white/5;
   }
 }
 

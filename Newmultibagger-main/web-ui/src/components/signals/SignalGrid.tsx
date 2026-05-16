@@ -6,6 +6,7 @@ import {
   LoaderCircle,
   RefreshCcw,
   Search,
+  Database,
 } from 'lucide-react'
 
 import { SignalCard } from './SignalCard'
@@ -22,6 +23,8 @@ interface SignalGridProps {
   lastUpdated: string | null
   onRetry: () => void
   onSearch: (term: string) => void
+  highReliabilityOnly: boolean
+  onToggleReliability: (val: boolean) => void
 }
 
 function formatTimestamp(value: string | null): string {
@@ -45,21 +48,25 @@ function SearchPanel({
   searchTerm,
   onSearch,
   disabled,
+  highReliabilityOnly,
+  onToggleReliability,
 }: {
   searchTerm: string
   onSearch: (term: string) => void
   disabled: boolean
+  highReliabilityOnly: boolean
+  onToggleReliability: (val: boolean) => void
 }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.15 }}
-      className="brutalist-card p-6 h-full flex flex-col justify-center bg-brand-accent/5 border-dashed border-brand-accent/30 hover:border-brand-accent/50 transition-all group"
+      className="premium-glass-card p-6 h-full flex flex-col justify-center bg-brand-primary/5 border-dashed border-brand-primary/30 hover:border-brand-primary/50 transition-all group"
     >
       <div className="flex flex-col items-center gap-4 text-center">
-        <div className="w-12 h-12 rounded-xl bg-brand-accent/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-          <Search className="w-6 h-6 text-brand-accent" />
+        <div className="w-12 h-12 rounded-xl bg-brand-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+          <Search className="w-6 h-6 text-brand-primary" />
         </div>
         <div>
           <h4 className="font-display font-bold text-lg">Scan Universe</h4>
@@ -67,16 +74,40 @@ function SearchPanel({
             Filter the live institutional sweep by ticker, company, or sector
           </p>
         </div>
-        <div className="mt-4 w-full relative">
-          <input
-            aria-label="Filter signal grid"
-            type="text"
-            value={searchTerm}
-            placeholder="PROMPT TICKER..."
+        <div className="mt-4 w-full space-y-4">
+          <div className="relative">
+            <input
+              aria-label="Filter signal grid"
+              type="text"
+              value={searchTerm}
+              placeholder="PROMPT TICKER..."
+              disabled={disabled}
+              onChange={(event) => onSearch(event.target.value)}
+              className="w-full bg-brand-bg/50 border border-brand-border rounded-xl px-4 py-3 text-xs font-mono focus:border-brand-primary outline-none font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+            />
+          </div>
+          
+          <button
+            type="button"
             disabled={disabled}
-            onChange={(event) => onSearch(event.target.value)}
-            className="w-full bg-brand-bg border border-brand-border rounded-xl px-4 py-3 text-xs font-mono focus:border-brand-accent outline-none font-bold disabled:opacity-40 disabled:cursor-not-allowed"
-          />
+            onClick={() => onToggleReliability(!highReliabilityOnly)}
+            className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${
+                highReliabilityOnly 
+                ? 'bg-brand-primary/20 border-brand-primary text-brand-primary' 
+                : 'bg-white/5 border-white/10 text-brand-text-dim hover:border-white/20'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+                <Database size={14} className={highReliabilityOnly ? 'animate-pulse' : ''} />
+                <span className="text-[10px] font-mono font-black uppercase tracking-widest">High Reliability</span>
+            </div>
+            <div className={`w-8 h-4 rounded-full relative transition-colors ${highReliabilityOnly ? 'bg-brand-primary' : 'bg-white/10'}`}>
+                <motion.div 
+                    animate={{ x: highReliabilityOnly ? 16 : 2 }}
+                    className="absolute top-1 w-2 h-2 rounded-full bg-white" 
+                />
+            </div>
+          </button>
         </div>
       </div>
     </motion.div>
@@ -100,9 +131,9 @@ function SignalGridStatus({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="brutalist-card p-8 border-dashed border-brand-border flex min-h-[280px] flex-col items-center justify-center gap-4 text-center xl:col-span-3"
+      className="premium-glass-card p-8 border-dashed border-brand-border flex min-h-[280px] flex-col items-center justify-center gap-4 text-center xl:col-span-3"
     >
-      <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center text-brand-accent">
+      <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center text-brand-primary">
         {icon}
       </div>
       <div className="space-y-2 max-w-md">
@@ -113,7 +144,7 @@ function SignalGridStatus({
         <button
           type="button"
           onClick={onAction}
-          className="mt-2 inline-flex items-center gap-2 rounded-xl border border-brand-accent/30 bg-brand-accent/10 px-4 py-2 text-xs font-mono font-bold uppercase tracking-widest text-brand-accent transition-colors hover:border-brand-accent/60 hover:bg-brand-accent/15"
+          className="mt-2 inline-flex items-center gap-2 rounded-xl border border-brand-primary/30 bg-brand-primary/10 px-4 py-2 text-xs font-mono font-bold uppercase tracking-widest text-brand-primary transition-colors hover:border-brand-primary/60 hover:bg-brand-primary/15"
         >
           <RefreshCcw className="h-3.5 w-3.5" />
           {actionLabel}
@@ -129,7 +160,7 @@ function SignalCardSkeleton({ index }: { index: number }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ delay: 0.15 + index * 0.04 }}
-      className={`brutalist-card p-6 min-h-[240px] ${index % 3 === 0 ? 'mt-4' : 'mt-0'}`}
+      className={`premium-glass-card p-6 min-h-[240px] ${index % 3 === 0 ? 'mt-4' : 'mt-0'}`}
     >
       <div className="animate-pulse space-y-5">
         <div className="flex justify-between items-start">
@@ -162,6 +193,8 @@ export function SignalGrid({
   lastUpdated,
   onRetry,
   onSearch,
+  highReliabilityOnly,
+  onToggleReliability,
 }: SignalGridProps) {
   const hasSearch = searchTerm.trim().length > 0
   const isEmptyUniverse = !loading && totalSignalCount === 0
@@ -173,8 +206,8 @@ export function SignalGrid({
         <motion.section
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`brutalist-card p-6 border-l-4 ${
-            error ? 'border-l-brand-rose' : 'border-l-brand-accent'
+          className={`premium-glass-card p-6 border-l-4 ${
+            error ? 'border-l-brand-rose' : 'border-l-brand-primary'
           }`}
         >
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -201,8 +234,8 @@ export function SignalGrid({
                     error
                       ? 'bg-brand-rose/10 text-brand-rose'
                       : loading
-                        ? 'bg-brand-gold/10 text-brand-gold'
-                        : 'bg-brand-accent/10 text-brand-accent'
+                        ? 'bg-brand-accent/10 text-brand-accent'
+                        : 'bg-brand-primary/10 text-brand-primary'
                   }`}
                 >
                   {loading ? (
@@ -246,6 +279,8 @@ export function SignalGrid({
           searchTerm={searchTerm}
           onSearch={onSearch}
           disabled={loading && totalSignalCount === 0}
+          highReliabilityOnly={highReliabilityOnly}
+          onToggleReliability={onToggleReliability}
         />
       </div>
 
@@ -292,7 +327,7 @@ export function SignalGrid({
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="brutalist-card p-5 border-dashed border-brand-border/70"
+            className="premium-glass-card p-5 border-dashed border-brand-border/70"
           >
             <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-brand-text-dim">
               Active Filter
@@ -309,7 +344,7 @@ export function SignalGrid({
               <button
                 type="button"
                 onClick={() => onSearch('')}
-                className="rounded-xl border border-white/10 px-3 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-brand-text-dim transition-colors hover:border-brand-accent/40 hover:text-brand-accent"
+                className="rounded-xl border border-white/10 px-3 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-brand-text-dim transition-colors hover:border-brand-primary/40 hover:text-brand-primary"
               >
                 Clear
               </button>

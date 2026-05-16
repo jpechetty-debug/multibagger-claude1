@@ -37,17 +37,17 @@ def test_openapi_exposes_15_core_endpoints():
     ]
 
     paths = spec.get("paths", {})
-    
+
     for endpoint in core_endpoints:
         assert endpoint in paths, f"Endpoint {endpoint} missing from OpenAPI spec"
-        
+
         # Verify it has a GET method and a 200 response
         methods = paths[endpoint]
         assert "get" in methods, f"Endpoint {endpoint} missing GET method"
-        
+
         responses = methods["get"].get("responses", {})
         assert "200" in responses, f"Endpoint {endpoint} missing 200 response contract"
-        
+
         # Verify the 200 response has application/json content schema
         content = responses["200"].get("content", {})
         if "application/json" in content:

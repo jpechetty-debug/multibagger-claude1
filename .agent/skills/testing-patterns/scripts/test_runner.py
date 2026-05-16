@@ -20,7 +20,7 @@ from datetime import datetime
 # Fix Windows console encoding
 try:
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-except:
+except Exception:
     pass
 
 
@@ -63,14 +63,14 @@ def detect_test_framework(project_path: Path) -> dict:
                 result["cmd"] = ["npx", "jest"]
                 result["coverage_cmd"] = ["npx", "jest", "--coverage"]
                 
-        except:
+        except Exception:
             pass
     
     # Python project
     if (project_path / "pyproject.toml").exists() or (project_path / "requirements.txt").exists():
         result["type"] = "python"
         result["framework"] = "pytest"
-        result["cmd"] = ["python", "-m", "pytest", "-v"]
+        result["cmd"] = ["python", "-m", "pytest", "-v", "--ignore=tools", "--ignore=Newmultibagger-main/scratch", "--ignore=Newmultibagger-main/tests/test_output.txt"]
         result["coverage_cmd"] = ["python", "-m", "pytest", "--cov", "--cov-report=term-missing"]
     
     return result

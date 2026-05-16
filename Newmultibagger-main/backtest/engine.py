@@ -33,7 +33,7 @@ class VectorBTEngine:
                 return {}
 
             print(f"[VectorBT] Fetching fundamental scores for {len(clean_symbols)} tickers...")
-            
+
             # 1. Fetch historical PIT scores from DB
             try:
                 conn = sqlite3.connect(self.db_path)
@@ -46,7 +46,7 @@ class VectorBTEngine:
                 scores_df = pd.DataFrame(columns=["symbol", "as_of_date", "score"])
 
             # 2. Fetch historical prices
-            print(f"[VectorBT] Downloading price data...")
+            print("[VectorBT] Downloading price data...")
             df = yf.download(clean_symbols, period=self.period, interval="1mo", progress=False, group_by="ticker")
             if df.empty:
                 return {s: {"symbol": s, "status": "NO_DATA"} for s in clean_symbols}
@@ -79,9 +79,10 @@ class VectorBTEngine:
             results = {}
             # Base metrics fallback
             for sym in clean_symbols:
+                status = "OK" if sym in close_prices else "INSUFFICIENT_DATA"
                 results[sym] = {
-                    "symbol": sym, "cagr": 0.0, "win_rate": 0.0, 
-                    "max_drawdown": 0.0, "sharpe_ratio": 0.0, "status": "OK"
+                    "symbol": sym, "cagr": 0.0, "win_rate": 0.0,
+                    "max_drawdown": 0.0, "sharpe_ratio": 0.0, "status": status
                 }
 
             if scores_df.empty:
@@ -95,44 +96,44 @@ class VectorBTEngine:
             # 3. Align scores with monthly dates and quintile sort
             scores_df["date"] = pd.to_datetime(scores_df["as_of_date"]).dt.to_period("M")
             scores_df["score"] = pd.to_numeric(scores_df["score"], errors="coerce").fillna(0)
-            
+
             # Map returns to same monthly period
             returns.index = returns.index.to_period("M")
-            
+
             monthly_scores = scores_df.pivot_table(index="date", columns="symbol", values="score", aggfunc="last")
-            
+
             # Create a continuous monthly period index to forward-fill sparse PIT dates
             if not monthly_scores.empty and not returns.empty:
                 min_date = min(monthly_scores.index.min(), returns.index.min())
                 max_date = max(monthly_scores.index.max(), returns.index.max())
                 all_months = pd.period_range(start=min_date, end=max_date, freq='M')
                 monthly_scores = monthly_scores.reindex(all_months).ffill()
-            
+
             # Align indices
             common_dates = monthly_scores.index.intersection(returns.index)
-            
+
             for sym in price_matrix.columns:
                 if sym not in monthly_scores.columns:
                     continue
-                
+
                 sym_scores = monthly_scores[sym].reindex(common_dates)
                 sym_returns = returns[sym].reindex(common_dates)
-                
+
                 row_scores = monthly_scores.reindex(common_dates)
                 top_q = row_scores.apply(lambda x: x >= x.quantile(0.8), axis=1)
-                
-                sym_strat_returns = sym_returns[top_q[sym] == True]
-                
+
+                sym_strat_returns = sym_returns[top_q[sym]].dropna()
+
                 if len(sym_strat_returns) > 0:
                     cagr = (np.prod(1 + sym_strat_returns) ** (12 / len(sym_strat_returns)) - 1) * 100
                     win_rate = (sym_strat_returns > 0).mean() * 100
-                    
+
                     # Approximated drawdowns & sharpe
                     cum_returns = (1 + sym_strat_returns).cumprod()
                     drawdown = cum_returns / cum_returns.cummax() - 1
                     max_dd = drawdown.min() * 100
                     sharpe = (sym_strat_returns.mean() / sym_strat_returns.std()) * np.sqrt(12) if sym_strat_returns.std() > 0 else 0
-                    
+
                     results[sym]["cagr"] = self._sanitize_metric(cagr, 0.0)
                     results[sym]["win_rate"] = self._sanitize_metric(win_rate, 0.0)
                     results[sym]["max_drawdown"] = self._sanitize_metric(max_dd, 0.0)

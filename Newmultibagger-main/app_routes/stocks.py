@@ -497,13 +497,15 @@ async def quarterly_results_endpoint(symbol: str, quarters: int = 12):
     try:
         from modules.quarterly_results import get_quarterly_timeline
 
-        if deps._cache_is_fresh(deps.CACHE_QUARTERLY.get(symbol, {}), deps.CACHE_AUDIT_TTL):
-            return deps.CACHE_QUARTERLY[symbol]["payload"]
+        cache_key = f"{deps.CACHE_QUARTERLY}:{symbol}"
+        if deps._cache_is_fresh(cache_key, deps.CACHE_AUDIT_TTL):
+            from worker.redis_cache import cache as redis_cache
+            cached_data = redis_cache.get(cache_key)
+            if cached_data:
+                return cached_data["payload"]
         result = await get_quarterly_timeline(symbol, quarters)
         cleaned = deps._json_safe_clean(result)
-        if symbol not in deps.CACHE_QUARTERLY:
-            deps.CACHE_QUARTERLY[symbol] = {}
-        deps._cache_set(deps.CACHE_QUARTERLY[symbol], cleaned)
+        deps._cache_set(cache_key, cleaned)
         return cleaned
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch quarterly results: {e}")
@@ -514,15 +516,17 @@ async def price_fundamentals_endpoint(symbol: str, years: int = 5):
     try:
         years = min(max(years, 3), 10)
         cache_key = f"{symbol}:{years}"
-        if deps._cache_is_fresh(deps.CACHE_FUNDAMENTALS.get(cache_key, {}), deps.CACHE_AUDIT_TTL):
-            return deps.CACHE_FUNDAMENTALS[cache_key]["payload"]
+        full_cache_key = f"{deps.CACHE_FUNDAMENTALS}:{cache_key}"
+        if deps._cache_is_fresh(full_cache_key, deps.CACHE_AUDIT_TTL):
+            from worker.redis_cache import cache as redis_cache
+            cached_data = redis_cache.get(full_cache_key)
+            if cached_data:
+                return cached_data["payload"]
         from modules.price_fundamentals import get_price_vs_fundamentals
 
         result = await get_price_vs_fundamentals(symbol, years)
         cleaned = deps._json_safe_clean(result)
-        if cache_key not in deps.CACHE_FUNDAMENTALS:
-            deps.CACHE_FUNDAMENTALS[cache_key] = {}
-        deps._cache_set(deps.CACHE_FUNDAMENTALS[cache_key], cleaned)
+        deps._cache_set(full_cache_key, cleaned)
         return cleaned
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch price vs fundamentals: {e}")

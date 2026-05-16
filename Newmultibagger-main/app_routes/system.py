@@ -74,7 +74,9 @@ async def refresh_prices_status():
 @router.get("/")
 def read_root():
     """Serve the Brutalist Terminal UI"""
-    return FileResponse("web-ui/index.html")
+    from pathlib import Path
+    project_root = Path(__file__).resolve().parents[1]
+    return FileResponse(project_root / "web-ui" / "index.html")
 
 
 @router.get("/api/market_movers")

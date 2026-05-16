@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, BrainCircuit, Activity, BarChart4, Heart, Printer } from 'lucide-react'
+import { ArrowLeft, BrainCircuit, Activity, BarChart4, Heart, Printer, ShieldAlert, Database } from 'lucide-react'
 import {
   LineChart,
   Line,
@@ -144,7 +144,20 @@ export function StockDetail() {
                 </div>
               </div>
               <p className="font-mono text-lg text-brand-text-dim uppercase tracking-widest mb-1">{stock.name}</p>
-              <p className="font-mono text-sm text-brand-text-dim uppercase">{stock.sector}</p>
+              <div className="flex items-center gap-3 mt-1">
+                <p className="font-mono text-xs text-brand-text-dim uppercase">{stock.sector}</p>
+                <div className="h-1 w-1 rounded-full bg-white/20" />
+                <div className={`flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase tracking-widest ${stock.dataQuality >= 90 ? 'text-brand-emerald' : 'text-brand-rose'}`}>
+                    <Database size={10} className="opacity-50" />
+                    Reliability: {stock.dataQuality}%
+                </div>
+                {stock.dataQualityFlags && (
+                    <div className="flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-widest text-brand-rose bg-brand-rose/10 px-1.5 py-0.5 rounded border border-brand-rose/20">
+                        <ShieldAlert size={10} />
+                        Audit Flagged
+                    </div>
+                )}
+              </div>
             </div>
             
             <div className="flex flex-col items-end text-right">

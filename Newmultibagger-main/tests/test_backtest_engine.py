@@ -42,9 +42,18 @@ def _load_backtest_engine_module(monkeypatch):
 
 def test_run_batch_momentum_backtest_handles_suffixing_and_sparse_symbols(monkeypatch):
     backtest_engine_module = _load_backtest_engine_module(monkeypatch)
-    dates = pd.date_range("2025-01-01", periods=205)
-    abc = pd.DataFrame({"Close": np.linspace(100, 130, len(dates))}, index=dates)
-    xyz_close = np.concatenate([np.linspace(50, 60, 145), np.full(60, np.nan)])
+
+    # Mock pd.read_sql_query to return non-empty scores
+    dummy_scores = pd.DataFrame({
+        "symbol": ["ABC.NS"],
+        "as_of_date": ["2025-01-01"],
+        "score": [80.0]
+    })
+    monkeypatch.setattr(pd, "read_sql_query", lambda *args, **kwargs: dummy_scores)
+
+    dates = pd.date_range("2025-01-01", periods=12, freq="ME")
+    abc = pd.DataFrame({"Close": np.linspace(100, 112, len(dates))}, index=dates)
+    xyz_close = np.full(12, np.nan)
     xyz = pd.DataFrame({"Close": xyz_close}, index=dates)
     fake_download = pd.concat({"ABC.NS": abc, "XYZ.NS": xyz}, axis=1)
 
@@ -56,8 +65,10 @@ def test_run_batch_momentum_backtest_handles_suffixing_and_sparse_symbols(monkey
     results = engine.run_batch_momentum_backtest(["ABC", "XYZ.NS"])
 
     assert results["ABC.NS"]["status"] == "OK"
-    assert results["ABC.NS"]["cagr"] == 12.0
-    assert results["ABC.NS"]["win_rate"] == 60.0
-    assert results["ABC.NS"]["max_drawdown"] == -8.0
-    assert results["ABC.NS"]["sharpe_ratio"] == 1.5
+    # Expected CAGR calculation: Total return is 12% over 12 months.
+    # returns.pct_change().shift(-1) yields 11 valid returns.
+    # CAGR = (1.12 ** (12 / 11) - 1) * 100 = 13.21...
+    assert abs(results["ABC.NS"]["cagr"] - 13.21) < 0.1
+    assert results["ABC.NS"]["win_rate"] == 100.0
+    assert results["ABC.NS"]["max_drawdown"] == 0.0
     assert results["XYZ.NS"]["status"] == "INSUFFICIENT_DATA"

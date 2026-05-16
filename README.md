@@ -17,5 +17,9 @@ The core implementation, including the Unified CLI, MCP integration, and scoring
 - **Unified Operations**: Centralized CLI for data ingestion, scanning, and ML training.
 - **Hybrid Data Layer**: SQLite + DuckDB optimization for vectorized research.
 
+## 🛠️ Maintenance & Updates
+
+- **Knowledge Graph**: Rebuilt the project graph with Graphify (16,405 nodes, 23,384 edges) on 2026-05-16.
+
 ---
 *For full documentation, setup guides, and architectural deep-dives, please refer to the [Main README](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/README.md).*

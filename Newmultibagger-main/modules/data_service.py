@@ -172,7 +172,7 @@ class DataManager:
                         if provider.name == "yfinance"
                         else self.provider_timeout_seconds
                     )
-                    
+
                     # Use safe_fetch with timeout
                     data = await asyncio.wait_for(
                         provider.safe_fetch(symbol), timeout=timeout_s
@@ -183,7 +183,7 @@ class DataManager:
                             incomplete_payload = data
                             if provider.name != "yfinance":
                                 continue
-                        
+
                         data["data_freshness"] = "live"
                         self.cache.set(cache_key, data)
                         return data

@@ -12,7 +12,7 @@ import contextlib
 import hashlib
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone, UTC
 from typing import Any
 
 try:
@@ -70,7 +70,7 @@ class SovereignCache:
                 return None
         else:
             entry = self._fallback_cache.get(full_key)
-            if entry and entry["expires_at"] > datetime.utcnow().timestamp():
+            if entry and entry["expires_at"] > datetime.now(UTC).timestamp():
                 return entry["value"]
             return None
 
@@ -83,7 +83,7 @@ class SovereignCache:
         else:
             self._fallback_cache[full_key] = {
                 "value": value,
-                "expires_at": datetime.utcnow().timestamp() + ttl,
+                "expires_at": datetime.now(UTC).timestamp() + ttl,
             }
 
     def delete(self, key: str):

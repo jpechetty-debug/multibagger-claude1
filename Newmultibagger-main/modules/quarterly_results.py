@@ -35,10 +35,19 @@ async def get_quarterly_timeline(symbol: str, quarters: int = 12) -> dict:
 
         async def _load_quarterly_payload():
             ticker = await asyncio.to_thread(yf.Ticker, symbol)
-            info_task = asyncio.to_thread(lambda: ticker.info)
-            income_task = asyncio.to_thread(lambda: ticker.quarterly_income_stmt)
-            balance_task = asyncio.to_thread(lambda: ticker.quarterly_balance_sheet)
-            cashflow_task = asyncio.to_thread(lambda: ticker.quarterly_cashflow)
+
+            async def _safe_task(fn):
+                try:
+                    return await asyncio.to_thread(fn)
+                except Exception as e:
+                    print(f"Task failed for {symbol}: {e}")
+                    return {} if "info" in str(fn) else pd.DataFrame()
+
+            info_task = _safe_task(lambda: ticker.info)
+            income_task = _safe_task(lambda: ticker.quarterly_income_stmt)
+            balance_task = _safe_task(lambda: ticker.quarterly_balance_sheet)
+            cashflow_task = _safe_task(lambda: ticker.quarterly_cashflow)
+
             return await asyncio.gather(info_task, income_task, balance_task, cashflow_task)
 
         (

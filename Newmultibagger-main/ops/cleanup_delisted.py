@@ -34,27 +34,27 @@ def cleanup():
     for sym in to_delete:
         # Instead of deleting, mark them as delisted with -100% returns for backtesting
         cursor.execute("""
-            UPDATE multibaggers 
-            SET ret_1m = -100.0, 
-                ret_3m = -100.0, 
-                ret_6m = -100.0, 
-                backtest_cagr = -100.0, 
+            UPDATE multibaggers
+            SET ret_1m = -100.0,
+                ret_3m = -100.0,
+                ret_6m = -100.0,
+                backtest_cagr = -100.0,
                 score = 0,
                 ml_rank_score = 0,
                 sector = 'DELISTED'
             WHERE symbol = ?
         """, (sym,))
-        
+
         updated = cursor.rowcount > 0
-        
+
         # Also ensure fundamentals_pit reflects this for the PIT backtests
         cursor.execute("""
-            UPDATE fundamentals_pit 
+            UPDATE fundamentals_pit
             SET score = 0,
                 sector = 'DELISTED'
             WHERE symbol = ?
         """, (sym,))
-        
+
         if updated or cursor.rowcount > 0:
             print(f"✅ Injected synthetic terminal record (-100%) for {sym} in DB.")
         else:

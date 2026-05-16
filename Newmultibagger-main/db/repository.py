@@ -188,6 +188,7 @@ def _ensure_runtime_schema():
             _ensure_column(conn, "multibaggers", "super_investors", "TEXT")
             # V3.1 columns
             _ensure_column(conn, "multibaggers", "data_quality", "REAL")
+            _ensure_column(conn, "multibaggers", "data_quality_flags", "TEXT")
             _ensure_column(conn, "multibaggers", "data_confidence", "REAL")
             _ensure_column(conn, "multibaggers", "f_score_method", "TEXT")
             # Backtest columns
@@ -515,7 +516,10 @@ def prune_fundamentals_pit_retention(keep_days=PIT_RETENTION_DAYS):
 # ── Phase 4.1: Score Drift Detection ─────────────────────────────────────────
 
 SCORE_DRIFT_THRESHOLD = 15.0  # Alert if score changes by more than this
-_FUNDAMENTAL_FIELDS = ["sales_cagr_5y", "avg_roe_5y", "pe_ratio", "debt_equity", "cfo_pat_ratio"]
+_FUNDAMENTAL_FIELDS = [
+    "sales_cagr_5y", "avg_roe_5y", "pe_ratio", "debt_equity", "cfo_pat_ratio",
+    "ret_1m", "ret_3m", "ret_6m", "vol_breakout", "dist_from_52w_high", "price"
+]
 
 
 def _detect_score_drift(df_new: "pd.DataFrame"):
@@ -676,6 +680,8 @@ def init_db():
             low_52w REAL,
             pledge_pct REAL,
             piotroski_score INTEGER,
+            data_quality REAL,
+            data_quality_flags TEXT,
             CHECK(pe_ratio >= -100 AND pe_ratio <= 1000),
             CHECK(roe >= -500 AND roe <= 500),
             CHECK(score >= 0 AND score <= 100)
@@ -914,6 +920,7 @@ def save_multibaggers(df, *, replace_existing: bool = False):
         "Dividend_Yield",
         "Dividend_Payout",
         "Cap_Category",
+        "Data_Quality_Flags",
     ]
 
     available_cols = [c for c in cols if c in df.columns]
@@ -993,6 +1000,7 @@ def save_multibaggers(df, *, replace_existing: bool = False):
         "Dividend_Yield": "dividend_yield",
         "Dividend_Payout": "dividend_payout",
         "Cap_Category": "cap_category",
+        "Data_Quality_Flags": "data_quality_flags",
     }
 
     df_db.rename(columns=mapping, inplace=True)

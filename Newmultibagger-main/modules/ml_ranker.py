@@ -15,7 +15,6 @@ class LightGBMRanker:
     def __init__(self, model_path=None):
         self.model_path = model_path
         # Model is loaded lazily inside predict_and_explain
-        pass
 
     def rank_stocks(self, stocks: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
@@ -25,16 +24,16 @@ class LightGBMRanker:
             return []
 
         df = pd.DataFrame(stocks)
-        
+
         # Predict score for each stock
         ml_scores = []
         for stock in stocks:
             pred_score, _ = predict_and_explain(stock)
             # if predict_and_explain fails, it returns (0.0, {})
             ml_scores.append(pred_score)
-            
+
         df["ml_rank_score"] = ml_scores
-        
+
         # If all scores are 0 (e.g. model not trained), fallback to heuristic
         if (df["ml_rank_score"] == 0.0).all():
             self._apply_heuristic_ranking(df)

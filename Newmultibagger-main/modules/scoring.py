@@ -115,9 +115,9 @@ def _resolve_mode_and_weights(market_regime: str | None, sector: str = "") -> tu
     mode = market_regime.lower() if market_regime else "balanced"
     if mode not in config.SCORING_WEIGHTS:
         mode = "balanced"
-    
+
     weights = config.SCORING_WEIGHTS[mode].copy()
-    
+
     # Sector-Aware Weight Adjustments (Anthropic Pattern)
     if "Bank" in sector or "Financial" in sector:
         # For financials, Book Value and ROE are critical, Sales Growth is less relevant
@@ -217,7 +217,7 @@ def _build_factor_state(data: _StockData, score_sentiment: float) -> FactorState
     # Phase 2.5: Smooth sigmoid replaces coarse 25-point cliff bucketing
     score_rs = normalize_metric(rs_rating, 0.5, 1.5) if rs_rating is not None else 50.0
     score_mom_combined = (score_mom_tech * 0.5) + (score_rs * 0.5)
-    
+
     # Fundamental Anchoring (Tactical Implementation)
     # Discount technical momentum if fundamentals (ROE/Sales) are poor
     fundamental_quality = (score_roe + score_sales) / 2.0
@@ -467,7 +467,7 @@ def _apply_checklist_gate(
     down_pct = data.get("Down_From_52W_High%")
     if down_pct is not None and 0 <= down_pct < 25:
         checklist_pass += 1
-    
+
     sg_5y = data.get("Sales_Growth_5Y%")
     sg_ttm = data.get("Sales_Growth_TTM%")
     sg = sg_5y if sg_5y is not None else (sg_ttm if sg_ttm is not None else 0)
@@ -888,7 +888,7 @@ def calculate_institutional_score(
         factor_audit.append({"name": disqualifier, "value": round(score_ceiling - 100, 1)})
 
     raw_score = round(max(0, min(base_score, 100.0)), 1)
-    
+
     # Cap institutional conviction score so it doesn't bypass the fundamental score ceiling
     capped_conviction_score = min(conviction["conviction_score"], score_ceiling)
 

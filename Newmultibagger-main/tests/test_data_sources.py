@@ -28,6 +28,7 @@ class FakeCache:
 
 class FakeProvider:
     available = True
+    cooldown_until = 0
 
     def __init__(self, name: str, payload=None, exc: Exception | None = None):
         self.name = name
@@ -35,7 +36,7 @@ class FakeProvider:
         self.exc = exc
         self.calls = 0
 
-    async def fetch_fundamentals(self, symbol: str):
+    async def safe_fetch(self, symbol: str):
         self.calls += 1
         if self.exc is not None:
             raise self.exc

@@ -30,7 +30,7 @@ const ScoreReportPage = lazy(() =>
 
 function RouteFallback() {
   return (
-    <div className="flex min-h-[60vh] items-center justify-center p-8 font-mono text-xs font-bold uppercase tracking-widest text-brand-accent">
+    <div className="flex min-h-[60vh] items-center justify-center p-8 font-mono text-xs font-bold uppercase tracking-widest text-brand-primary">
       Loading terminal node...
     </div>
   )
@@ -45,6 +45,7 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
+  const [highReliabilityOnly, setHighReliabilityOnly] = useState(false)
 
   const deferredSearchTerm = useDeferredValue(searchTerm)
   const normalizedSearchTerm = deferredSearchTerm.trim().toLowerCase()
@@ -88,21 +89,20 @@ export default function App() {
     return () => clearInterval(interval)
   }, [loadData])
 
-  const filteredSignals = normalizedSearchTerm
-    ? signals.filter((signal) => {
-        const symbol = signal.symbol.toLowerCase()
-        const name = signal.name.toLowerCase()
-        const sector = signal.sector.toLowerCase()
-        return (
-          symbol.includes(normalizedSearchTerm) ||
-          name.includes(normalizedSearchTerm) ||
-          sector.includes(normalizedSearchTerm)
-        )
-      })
-    : signals
+  const filteredSignals = signals.filter((signal) => {
+    const matchesSearch = normalizedSearchTerm
+      ? signal.symbol.toLowerCase().includes(normalizedSearchTerm) ||
+        signal.name.toLowerCase().includes(normalizedSearchTerm) ||
+        signal.sector.toLowerCase().includes(normalizedSearchTerm)
+      : true
+    
+    const matchesReliability = highReliabilityOnly ? signal.dataQuality >= 90 : true
+    
+    return matchesSearch && matchesReliability
+  })
 
   return (
-    <div className="min-h-screen bg-brand-bg text-brand-text font-sans selection:bg-brand-accent/30 selection:text-brand-accent grainy">
+    <div className="min-h-screen bg-brand-bg text-brand-text font-sans selection:bg-brand-primary/30 selection:text-brand-primary grainy">
       {regime?.regime === 'BLACK' && (
         <div className="hazard-pattern border-b-2 border-brand-rose p-2 text-center text-[10px] font-black uppercase tracking-[0.2em] text-brand-rose animate-pulse">
           CRITICAL VOLATILITY: Market halted by Risk Governor (VIX {regime.vix})
@@ -131,6 +131,8 @@ export default function App() {
                 lastUpdated={lastUpdated}
                 onRetry={() => void loadData('initial')}
                 onSearch={setSearchTerm}
+                highReliabilityOnly={highReliabilityOnly}
+                onToggleReliability={setHighReliabilityOnly}
               />
             )}
             {activeTab === 'Swing Trades' && (
@@ -171,8 +173,8 @@ export default function App() {
         />
       </Routes>
 
-      <div className="fixed top-[40%] -left-8 w-32 h-32 bg-brand-accent/5 rounded-full blur-[100px] pointer-events-none" />
-      <div className="fixed bottom-0 right-0 w-64 h-64 bg-brand-rose/5 rounded-full blur-[150px] pointer-events-none" />
+      <div className="fixed top-[20%] -left-16 w-64 h-64 bg-brand-primary/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="fixed bottom-0 -right-16 w-96 h-96 bg-brand-secondary/10 rounded-full blur-[150px] pointer-events-none" />
     </div>
   )
 }

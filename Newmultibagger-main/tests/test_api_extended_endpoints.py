@@ -315,7 +315,7 @@ def test_valuation_endpoint_uses_db_and_returns_metrics(tmp_path, monkeypatch):
                 "verdict": "UNDERVALUED",
             }
 
-    monkeypatch.setattr(main.yf, "Ticker", lambda _symbol: FakeTicker())
+    monkeypatch.setattr("app_routes.stocks.yf.Ticker", lambda _symbol: FakeTicker())
     monkeypatch.setattr(valuation_module, "ValuationEngine", FakeValuationEngine)
 
     with TestClient(main.app) as client:
@@ -389,7 +389,7 @@ def test_valuation_endpoint_cached_payload_shape(tmp_path, monkeypatch):
         def info(self):
             raise AssertionError("Should not hit yfinance when cached row exists")
 
-    monkeypatch.setattr(main.yf, "Ticker", lambda _symbol: ExplodingTicker())
+    monkeypatch.setattr("app_routes.stocks.yf.Ticker", lambda _symbol: ExplodingTicker())
 
     with TestClient(main.app) as client:
         response = client.get("/api/valuation/RELIANCE.NS")

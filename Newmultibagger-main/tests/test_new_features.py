@@ -24,7 +24,7 @@ class TestNewFeatures(unittest.TestCase):
             os.remove(self.test_db)
 
         # Patch the DB_NAME in the modules to use the test database
-        self.patcher1 = patch("modules.thesis_monitor.DB_NAME", self.test_db)
+        self.patcher1 = patch("modules.thesis_monitor.DB_PATH", self.test_db)
         self.patcher2 = patch("modules.promoter_intel.DB_NAME", self.test_db)
         self.patcher1.start()
         self.patcher2.start()

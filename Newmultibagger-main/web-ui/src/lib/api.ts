@@ -64,27 +64,42 @@ function readErrorMessage(payload: unknown, fallback: string): string {
   return fallback
 }
 
-async function fetchJson<T>(path: string): Promise<T> {
+async function fetchJson<T>(path: string, timeoutMs: number = 15000): Promise<T> {
   const apiKey = import.meta.env.VITE_SOVEREIGN_API_KEY?.trim()
   const requestInit = apiKey
     ? { headers: { [API_KEY_HEADER]: apiKey } }
     : undefined
-  const response = requestInit
-    ? await fetch(`${BASE_URL}${path}`, requestInit)
-    : await fetch(`${BASE_URL}${path}`)
-  const contentType = response.headers.get('content-type') ?? ''
-  const payload = contentType.includes('application/json')
-    ? await response.json()
-    : null
 
-  if (!response.ok) {
-    throw new ApiError(
-      readErrorMessage(payload, `Request failed for ${path}`),
-      response.status,
-    )
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    const response = requestInit
+      ? await fetch(`${BASE_URL}${path}`, { ...requestInit, signal: controller.signal })
+      : await fetch(`${BASE_URL}${path}`, { signal: controller.signal })
+    
+    clearTimeout(timeoutId)
+
+    const contentType = response.headers.get('content-type') ?? ''
+    const payload = contentType.includes('application/json')
+      ? await response.json()
+      : null
+
+    if (!response.ok) {
+      throw new ApiError(
+        readErrorMessage(payload, `Request failed for ${path}`),
+        response.status,
+      )
+    }
+
+    return payload as T
+  } catch (err: any) {
+    clearTimeout(timeoutId)
+    if (err.name === 'AbortError') {
+      throw new ApiError(`Request timeout for ${path} after ${timeoutMs}ms`, 408)
+    }
+    throw err
   }
-
-  return payload as T
 }
 
 function normalizeAction(rating: unknown, score: number, record?: BackendStockRecord): SignalAction {
@@ -127,6 +142,8 @@ export function normalizeStockRecord(record: BackendStockRecord): SignalData {
     record.conviction_score ?? record.Conviction_Score,
   )
   const asOfDate = asString(record.as_of_date ?? record.As_Of_Date, '') || null
+  const dataQuality = asNumber(record.data_quality ?? record.Data_Quality, 0)
+  const dataQualityFlags = asString(record.data_quality_flags ?? record.Data_Quality_Flags, '')
 
   return {
     symbol,
@@ -138,6 +155,8 @@ export function normalizeStockRecord(record: BackendStockRecord): SignalData {
     sector,
     convictionScore,
     asOfDate,
+    dataQuality,
+    dataQualityFlags,
     raw: record,
   }
 }

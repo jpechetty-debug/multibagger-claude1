@@ -26,7 +26,7 @@ from datetime import datetime
 # Fix Windows console encoding
 try:
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-except:
+except Exception:
     pass
 
 
@@ -53,6 +53,10 @@ def is_page_file(file_path: Path) -> bool:
     
     # Skip utility/config files
     if any(skip in name for skip in SKIP_PATTERNS):
+        return False
+        
+    # Skip generated or internal files
+    if any(skip in name for skip in ['report', 'viewer', 'flow', 'tree']):
         return False
     
     # Check path - pages in specific directories are likely pages

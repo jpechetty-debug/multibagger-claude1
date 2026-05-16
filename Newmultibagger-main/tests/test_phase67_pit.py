@@ -187,7 +187,10 @@ def test_write_fundamentals_snapshot_normalizes_dates_and_syncs_pit_store(tmp_pa
     monkeypatch.setitem(
         sys.modules,
         "modules.pit_auditor",
-        types.SimpleNamespace(PITDataStore=FakePITStore),
+        types.SimpleNamespace(
+            PITDataStore=FakePITStore,
+            sanitize=lambda df: df,  # Pass-through mock for sanitization
+        ),
     )
 
     database.init_db()

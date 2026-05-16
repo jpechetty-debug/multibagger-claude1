@@ -19,7 +19,7 @@ def fetch_forward_prices(df_input, months=3):
     df = df_input.copy()
     symbols = df["symbol"].unique().tolist()
     print(f"Fetching monthly history for {len(symbols)} symbols...")
-    
+
     hist_dfs = []
     chunk_size = 200
     for i in range(0, len(symbols), chunk_size):
@@ -35,14 +35,14 @@ def fetch_forward_prices(df_input, months=3):
                         hist_dfs.append(pd.DataFrame({chunk[0]: h["Close"]}))
         except Exception as e:
             print(f"Error fetching chunk: {e}")
-            
+
     if not hist_dfs:
         return pd.Series(dtype=float)
-        
+
     # Join chunks avoiding duplicate columns
     close_prices = pd.concat(hist_dfs, axis=1)
     close_prices = close_prices.loc[:,~close_prices.columns.duplicated()]
-    
+
     if close_prices.index.tz is not None:
         close_prices.index = close_prices.index.tz_convert(None)
 
@@ -54,16 +54,16 @@ def fetch_forward_prices(df_input, months=3):
         t_date = row["target_date"]
         if sym not in close_prices.columns:
             return np.nan
-        
+
         sym_prices = close_prices[sym].dropna()
         if sym_prices.empty:
             return np.nan
-        
+
         # Find closest date >= target_date
         future_prices = sym_prices[sym_prices.index >= t_date]
         if future_prices.empty:
             return np.nan
-            
+
         closest_date = future_prices.index[0]
         if (closest_date - t_date).days <= 35:
             return future_prices.iloc[0]
@@ -100,14 +100,14 @@ def perform_ic_analysis():
     df["forward_price"] = fetch_forward_prices(df, months=3)
     df = df.dropna(subset=["pit_price", "forward_price"])
     df = df[df["pit_price"] > 0]
-    
+
     if df.empty:
         print("No valid forward returns calculable (missing future prices).")
         return
 
     # Calculate 3-Month Forward Return
     df["forward_return"] = (df["forward_price"] - df["pit_price"]) / df["pit_price"]
-    
+
     # Handle synthetic delisted records explicitly
     df.loc[df["forward_return"] < -0.99, "forward_return"] = -1.0
 
@@ -122,14 +122,14 @@ def perform_ic_analysis():
     for factor in factors_to_test:
         if factor not in df.columns:
             continue
-            
+
         # Clean data for correlation
         clean_df = df.dropna(subset=[factor, "forward_return"])
         if len(clean_df) < 10:
             continue
-            
+
         res = spearmanr(clean_df[factor], clean_df["forward_return"])
-        
+
         # Handle different SciPy versions (tuple vs SignificanceResult)
         if hasattr(res, 'statistic'):
             correlation = res.statistic
@@ -137,7 +137,7 @@ def perform_ic_analysis():
         else:
             correlation = res[0]
             p_value = res[1]
-            
+
         ic_results.append({
             "Factor": factor,
             "IC": float(correlation) if isinstance(correlation, (int, float, np.floating)) else 0.0,
@@ -151,11 +151,11 @@ def perform_ic_analysis():
         factor = res["Factor"]
         ic = res["IC"]
         p_val = res["p_value"]
-        
+
         # Format
         ic_str = f"{ic:.4f}" if not np.isnan(ic) else "NaN"
         p_str = f"{p_val:.4f}" if not np.isnan(p_val) else "NaN"
-        
+
         # Highlight significant factors (p < 0.05) and strong IC (|IC| > 0.05)
         marker = ""
         if not np.isnan(p_val) and p_val < 0.05:
@@ -163,7 +163,7 @@ def perform_ic_analysis():
                 marker = "***"
             else:
                 marker = "*"
-                
+
         print(f"{factor:<25} | {ic_str:<15} | {p_str:<10} {marker}")
 
     print("-" * 60)

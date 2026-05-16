@@ -87,6 +87,8 @@ export interface SignalData {
   sector: string
   convictionScore: number
   asOfDate: string | null
+  dataQuality: number
+  dataQualityFlags: string
   raw: BackendStockRecord
 }
 

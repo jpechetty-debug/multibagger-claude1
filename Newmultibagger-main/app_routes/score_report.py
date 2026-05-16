@@ -25,20 +25,26 @@ router = APIRouter()
 @router.get("/api/score-distribution")
 async def score_distribution():
     """Return decile breakdown, sector distribution, and cap reason counts."""
+    from modules.dependencies import _json_safe_clean
+
     dist = get_score_distribution()
     sectors = get_sector_distribution()
-    return {**dist, "sector_breakdown": sectors.get("sectors", {})}
+    return _json_safe_clean({**dist, "sector_breakdown": sectors.get("sectors", {})})
 
 
 @router.get("/api/score-explain/{symbol}")
 async def score_explain(symbol: str):
     """Return full score explanation for one stock."""
+    from modules.dependencies import _json_safe_clean
+
     if not symbol.endswith(".NS") and not symbol.endswith(".BO"):
         symbol += ".NS"
-    return get_score_explanation(symbol)
+    return _json_safe_clean(get_score_explanation(symbol))
 
 
 @router.get("/api/calibration-report")
 async def calibration_report():
     """Return overall calibration health report."""
-    return get_calibration_report()
+    from modules.dependencies import _json_safe_clean
+
+    return _json_safe_clean(get_calibration_report())

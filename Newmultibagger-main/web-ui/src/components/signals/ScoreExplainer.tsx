@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { BrainCircuit, TrendingUp, TrendingDown, ShieldAlert, CheckCircle, XCircle, Minus } from 'lucide-react'
+import { BrainCircuit, TrendingUp, TrendingDown, ShieldAlert, CheckCircle, XCircle, Minus, Database } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { api } from '../../lib/api'
 import type { ScoreExplanationResponse } from '../../lib/contracts'
 
@@ -28,7 +29,9 @@ export function ScoreExplainer({ symbol }: ScoreExplainerProps) {
     )
   }
 
-  if (!data || 'error' in data) return null
+  if (!data || typeof data !== 'object' || 'error' in data || 'detail' in data) {
+    return null
+  }
 
   return (
     <div className="space-y-6">
@@ -37,7 +40,7 @@ export function ScoreExplainer({ symbol }: ScoreExplainerProps) {
         <h2 className="font-mono text-lg font-bold uppercase tracking-widest text-brand-text">
           Why This Score?
         </h2>
-        {data.score_delta && (
+        {data && 'score_delta' in data && data.score_delta && (
           <span className={`ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
             data.score_delta.direction === 'UP' ? 'bg-brand-accent/10 text-brand-accent' :
             data.score_delta.direction === 'DOWN' ? 'bg-brand-rose/10 text-brand-rose' :
@@ -52,7 +55,7 @@ export function ScoreExplainer({ symbol }: ScoreExplainerProps) {
       </div>
 
       {/* Positive Drivers */}
-      {data.top_positive_drivers.length > 0 && (
+      {data.top_positive_drivers && data.top_positive_drivers.length > 0 && (
         <div>
           <h4 className="font-mono text-[10px] font-bold uppercase tracking-widest text-brand-accent mb-3">
             Positive Drivers
@@ -72,7 +75,7 @@ export function ScoreExplainer({ symbol }: ScoreExplainerProps) {
       )}
 
       {/* Penalties */}
-      {data.top_penalties.length > 0 && (
+      {data.top_penalties && data.top_penalties.length > 0 && (
         <div>
           <h4 className="font-mono text-[10px] font-bold uppercase tracking-widest text-brand-rose mb-3">
             Penalties
@@ -92,7 +95,7 @@ export function ScoreExplainer({ symbol }: ScoreExplainerProps) {
       )}
 
       {/* Active Ceilings */}
-      {data.active_ceilings.length > 0 && (
+      {data.active_ceilings && data.active_ceilings.length > 0 && (
         <div>
           <h4 className="font-mono text-[10px] font-bold uppercase tracking-widest text-brand-gold mb-3">
             <ShieldAlert className="inline h-3 w-3 mr-1" />
@@ -112,17 +115,17 @@ export function ScoreExplainer({ symbol }: ScoreExplainerProps) {
       {/* Checklist */}
       <div>
         <h4 className="font-mono text-[10px] font-bold uppercase tracking-widest text-brand-text-dim mb-3">
-          Quality Checklist ({data.checklist_status.passed}/{data.checklist_status.total})
+          Quality Checklist ({data.checklist_status?.passed || 0}/{data.checklist_status?.total || 0})
           <span className={`ml-2 px-1.5 py-0.5 rounded text-[9px] ${
-            data.checklist_status.grade === 'A' ? 'bg-brand-accent/10 text-brand-accent' :
-            data.checklist_status.grade === 'B' ? 'bg-brand-gold/10 text-brand-gold' :
+            data.checklist_status?.grade === 'A' ? 'bg-brand-accent/10 text-brand-accent' :
+            data.checklist_status?.grade === 'B' ? 'bg-brand-gold/10 text-brand-gold' :
             'bg-brand-rose/10 text-brand-rose'
           }`}>
-            Grade {data.checklist_status.grade}
+            Grade {data.checklist_status?.grade || 'N/A'}
           </span>
         </h4>
         <div className="grid grid-cols-2 gap-1.5">
-          {Object.entries(data.checklist_status.items).map(([name, passed]) => (
+          {data.checklist_status?.items && Object.entries(data.checklist_status.items).map(([name, passed]) => (
             <div key={name} className="flex items-center gap-1.5 text-xs font-mono">
               {passed ? (
                 <CheckCircle className="h-3 w-3 text-brand-accent flex-shrink-0" />
@@ -136,7 +139,7 @@ export function ScoreExplainer({ symbol }: ScoreExplainerProps) {
       </div>
 
       {/* Missing Factors */}
-      {data.missing_factors.length > 0 && (
+      {data.missing_factors && data.missing_factors.length > 0 && (
         <div className="p-3 rounded bg-white/5 border border-white/10">
           <h4 className="font-mono text-[10px] font-bold uppercase tracking-widest text-brand-text-dim mb-2">
             Missing Data ({data.missing_factors.length} factors)
@@ -146,6 +149,30 @@ export function ScoreExplainer({ symbol }: ScoreExplainerProps) {
           </p>
         </div>
       )}
+
+      {/* Data Quality Section */}
+      <div className="pt-6 border-t border-white/5">
+        <h4 className="font-mono text-[10px] font-bold uppercase tracking-widest text-brand-text-dim mb-3 flex items-center gap-2">
+          <Database className="w-3 h-3" />
+          Data Reliability Index
+        </h4>
+        <div className="flex items-center gap-4">
+          <div className="flex-1 h-2.5 bg-black/40 rounded-full overflow-hidden border border-white/5">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${data.data_quality}%` }}
+              className={`h-full ${data.data_quality >= 90 ? 'bg-brand-accent' : data.data_quality >= 70 ? 'bg-brand-gold' : 'bg-brand-rose'}`}
+            />
+          </div>
+          <span className={`font-mono text-sm font-black ${data.data_quality >= 90 ? 'text-brand-accent' : data.data_quality >= 70 ? 'text-brand-gold' : 'text-brand-rose'}`}>
+            {data.data_quality}%
+          </span>
+        </div>
+        <p className="mt-2 text-[10px] font-mono text-brand-text-dim leading-relaxed font-medium">
+            Score represents semantic correctness and completeness of fundamental data used for this evaluation. 
+            Values below 80% indicate potential missing filings or anomalous metrics.
+        </p>
+      </div>
 
       {/* Score Change */}
       {data.score_delta && (
@@ -157,7 +184,7 @@ export function ScoreExplainer({ symbol }: ScoreExplainerProps) {
           <h4 className="font-mono text-[10px] font-bold uppercase tracking-widest text-brand-text-dim mb-1">
             Score Changed Because…
           </h4>
-          <p className="font-mono text-xs text-brand-text">{data.score_delta.reason}</p>
+          <p className="font-mono text-xs text-brand-text font-bold">{data.score_delta.reason}</p>
           <p className="font-mono text-[10px] text-brand-text-dim mt-1">
             Previous: {data.score_delta.previous_score} on {data.score_delta.previous_date}
           </p>

@@ -16,14 +16,12 @@ class DataProvider(ABC):
     @abstractmethod
     def name(self) -> str:
         """Returns the provider name (e.g., 'yfinance', 'morningstar')."""
-        pass
 
     @abstractmethod
     async def fetch_fundamentals(self, symbol: str) -> dict[str, Any]:
         """Core fetch logic to be implemented by child classes."""
-        pass
 
-    async def safe_fetch(self, symbol: str) -> Optional[dict[str, Any]]:
+    async def safe_fetch(self, symbol: str) -> dict[str, Any] | None:
         """Standardized wrapper to prevent provider failures from crashing the loop."""
         if not self.available:
             return None

@@ -104,6 +104,16 @@ export function RedFlagPanel({ stock }: RedFlagPanelProps) {
       icon: AlertTriangle,
     })
   }
+  
+  // Data Quality Audit
+  if (stock.data_quality_flags) {
+    flags.push({
+      severity: 'CRITICAL',
+      label: 'Data Integrity Audit Failure',
+      value: stock.data_quality_flags,
+      icon: ShieldAlert,
+    })
+  }
 
   if (flags.length === 0) return null
 

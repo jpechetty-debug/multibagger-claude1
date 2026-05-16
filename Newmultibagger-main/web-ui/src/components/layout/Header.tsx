@@ -44,12 +44,12 @@ export function Header({
         className="flex flex-col gap-1"
       >
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 select-none items-center justify-center rounded-lg bg-brand-accent font-display text-xl font-bold text-brand-bg">
+          <div className="flex h-10 w-10 select-none items-center justify-center rounded-lg bg-brand-primary font-display text-xl font-bold text-brand-bg">
             S
           </div>
           <h1 className="font-display text-3xl font-extrabold tracking-tight">
             SOVEREIGN
-            <span className="ml-2 text-brand-accent">v9.5</span>
+            <span className="ml-2 text-brand-primary">v9.5</span>
           </h1>
         </div>
         <p className="pl-1 font-mono text-[10px] font-bold uppercase tracking-widest text-brand-text-dim">
@@ -62,13 +62,13 @@ export function Header({
         animate={{ opacity: 1, x: 0 }}
         className="flex gap-4 items-center"
       >
-        <div className="group flex items-center gap-4 rounded-xl border border-brand-border bg-brand-card/50 px-4 py-3 transition-all hover:border-brand-accent/30">
+        <div className="group flex items-center gap-4 rounded-xl border border-brand-border bg-brand-card/30 backdrop-blur-md px-4 py-3 transition-all hover:border-brand-primary/30">
           <div className="flex flex-col gap-2">
             <span className="text-[8px] font-bold uppercase tracking-tighter text-brand-text-dim">
               Market Regime
             </span>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold text-brand-accent">{regime}</span>
+              <span className="text-xs font-mono font-bold text-brand-primary">{regime}</span>
               <span className="rounded bg-white/5 px-1 text-[8px] font-bold text-brand-text-dim">
                 ACCEL: {acceleration.toFixed(2)}
               </span>
@@ -76,7 +76,7 @@ export function Header({
             <div className="flex flex-wrap items-center gap-2 text-[8px] font-mono font-bold uppercase tracking-widest text-brand-text-dim">
               <span>Sync {formatTimestamp(lastUpdated)}</span>
               {isForced ? (
-                <span className="rounded bg-brand-gold/10 px-1.5 py-0.5 text-brand-gold">
+                <span className="rounded bg-brand-accent/10 px-1.5 py-0.5 text-brand-accent">
                   Forced
                 </span>
               ) : null}
@@ -87,8 +87,8 @@ export function Header({
               ) : null}
             </div>
           </div>
-          <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-brand-accent/20 transition-transform group-hover:scale-110">
-            <TrendingUp className="h-4 w-4 text-brand-accent" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-brand-primary/20 transition-transform group-hover:scale-110">
+            <TrendingUp className="h-4 w-4 text-brand-primary" />
           </div>
         </div>
 
@@ -106,14 +106,14 @@ function HeaderNavLinks() {
     <div className="flex items-center gap-2">
       <Link
         to="/watchlist"
-        className="inline-flex items-center gap-1.5 rounded-lg border border-brand-border px-2.5 py-1.5 text-[10px] font-mono font-bold uppercase tracking-widest text-brand-text-dim hover:border-brand-accent/40 hover:text-brand-accent transition-colors"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-brand-border px-2.5 py-1.5 text-[10px] font-mono font-bold uppercase tracking-widest text-brand-text-dim hover:border-brand-primary/40 hover:text-brand-primary transition-colors"
       >
         <Heart className="h-3 w-3" />
-        {count > 0 && <span className="text-brand-accent">{count}</span>}
+        {count > 0 && <span className="text-brand-primary">{count}</span>}
       </Link>
       <Link
         to="/score-report"
-        className="inline-flex items-center gap-1.5 rounded-lg border border-brand-border px-2.5 py-1.5 text-[10px] font-mono font-bold uppercase tracking-widest text-brand-text-dim hover:border-brand-accent/40 hover:text-brand-accent transition-colors"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-brand-border px-2.5 py-1.5 text-[10px] font-mono font-bold uppercase tracking-widest text-brand-text-dim hover:border-brand-primary/40 hover:text-brand-primary transition-colors"
       >
         <BarChart3 className="h-3 w-3" />
       </Link>

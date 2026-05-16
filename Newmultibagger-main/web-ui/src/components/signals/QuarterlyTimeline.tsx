@@ -64,7 +64,9 @@ function QuarterlyTimeline({ symbol }: QuarterlyTimelineProps) {
     );
   }
 
-  const { quarters, trends, alerts } = data;
+  const quarters = data?.quarters || [];
+  const trends = data?.trends || {};
+  const alerts = data?.alerts || [];
 
   const chartData = quarters.map(q => ({
     quarter: q.quarter,

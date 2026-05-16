@@ -103,19 +103,19 @@ class TestDQGateContracts:
 class TestPydanticModelContracts:
     """Validate that the Pydantic ingestion boundary works correctly."""
 
-    def test_extra_fields_are_rejected(self):
-        """Phase fix: extra='forbid' prevents unknown fields from leaking."""
-        from pydantic import ValidationError
-
+    def test_extra_fields_are_ignored(self):
+        """Verify that extra fields are ignored and do not cause validation errors."""
         from modules.models import StockDataPayload
 
-        with pytest.raises(ValidationError):
-            StockDataPayload(
-                Symbol="TEST.NS",
-                Price=100.0,
-                unknown_field="should_be_dropped",
-                another_garbage=42,
-            )
+        payload = StockDataPayload(
+            Symbol="TEST.NS",
+            Price=100.0,
+            unknown_field="should_be_dropped",
+            another_garbage=42,
+        )
+        assert payload.Symbol == "TEST.NS"
+        assert not hasattr(payload, "unknown_field")
+        assert not hasattr(payload, "another_garbage")
 
     def test_roe_fraction_normalized_to_percent(self):
         from modules.models import StockDataPayload

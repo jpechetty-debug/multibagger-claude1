@@ -142,6 +142,8 @@ def validate_dataframe(df):
 
     total_fields = len(present_columns)
     penalties = pd.Series(0.0, index=df.index)
+    # Track flags for reporting (as comma-separated strings)
+    df["data_quality_flags"] = ""
 
     for limit in METRIC_LIMITS:
         col = limit.column
@@ -152,10 +154,12 @@ def validate_dataframe(df):
         df[col] = pd.to_numeric(df[col], errors="coerce")
         mask_nan = df[col].isna()
         # Non-finite values will also be NaN after coerce + replace
-        # We can explicitly handle inf
         df[col] = df[col].replace([np.inf, -np.inf], np.nan)
         mask_nan = df[col].isna()
         penalties[mask_nan] += 1
+        df.loc[mask_nan, "data_quality_flags"] = df.loc[mask_nan, "data_quality_flags"].apply(
+            lambda x, col=col: (x + f",{col}_invalid" if x else f"{col}_invalid")
+        )
 
         # Auto-scale check
         if limit.auto_scale_threshold is not None:
@@ -163,18 +167,27 @@ def validate_dataframe(df):
             if mask_scale.any():
                 df.loc[mask_scale, col] = df.loc[mask_scale, col] / 100.0
                 penalties[mask_scale] += 1
+                df.loc[mask_scale, "data_quality_flags"] = df.loc[mask_scale, "data_quality_flags"].apply(
+                    lambda x, col=col: (x + f",{col}_auto_scaled" if x else f"{col}_auto_scaled")
+                )
 
         # Clamp low
         mask_low = (df[col] < limit.min_val) & ~mask_nan
         if mask_low.any():
             df.loc[mask_low, col] = limit.min_val
             penalties[mask_low] += 1
+            df.loc[mask_low, "data_quality_flags"] = df.loc[mask_low, "data_quality_flags"].apply(
+                lambda x, col=col: (x + f",{col}_clamped_low" if x else f"{col}_clamped_low")
+            )
 
         # Clamp high
         mask_high = (df[col] > limit.max_val) & ~mask_nan
         if mask_high.any():
             df.loc[mask_high, col] = limit.max_val
             penalties[mask_high] += 1
+            df.loc[mask_high, "data_quality_flags"] = df.loc[mask_high, "data_quality_flags"].apply(
+                lambda x, col=col: (x + f",{col}_clamped_high" if x else f"{col}_clamped_high")
+            )
 
     if penalties.sum() > 0:
         logger.debug("DQ gates applied. Total flags: %d", int(penalties.sum()))
