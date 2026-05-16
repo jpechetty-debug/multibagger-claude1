@@ -1,6 +1,7 @@
 # modules/hybrid_scoring.py
 # Sovereign AI - XGBoost Meta-Model with SHAP Explainability
 
+import json
 import os
 import sqlite3
 import warnings
@@ -14,6 +15,7 @@ import xgboost as xgb
 warnings.filterwarnings("ignore")
 
 MODEL_PATH = os.path.join("runtime", "models", "xgboost_meta_model.pkl")
+WALK_FORWARD_REPORT_PATH = os.path.join("runtime", "models", "xgboost_walk_forward.json")
 FEATURES = [
     "score",
     "sales_cagr_5y",
@@ -57,6 +59,134 @@ def _sanitize_features(df: pd.DataFrame) -> pd.DataFrame:
         lo, hi = FEATURE_BOUNDS.get(col, (-1e9, 1e9))
         out[col] = out[col].clip(lower=lo, upper=hi)
     return out[FEATURES]
+
+
+def _make_xgb_regressor():
+    return xgb.XGBRegressor(
+        n_estimators=100,
+        learning_rate=0.05,
+        max_depth=4,
+        subsample=0.8,
+        random_state=42,
+    )
+
+
+def _finite_or_none(value):
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return None
+    return value if np.isfinite(value) else None
+
+
+def _build_training_frame(df: pd.DataFrame, current_prices: dict) -> pd.DataFrame:
+    out = df.copy()
+    out["current_price"] = out["symbol"].map(current_prices)
+    out = out.dropna(subset=["pit_price", "current_price"])
+    out = out[out["pit_price"] > 0]
+    if out.empty:
+        return out
+
+    out["forward_return"] = (out["current_price"] - out["pit_price"]) / out["pit_price"]
+    out.replace([np.inf, -np.inf], np.nan, inplace=True)
+    train_df = out.dropna(subset=["forward_return"]).copy()
+    if not train_df.empty:
+        train_df[FEATURES] = _sanitize_features(train_df[FEATURES])
+    return train_df
+
+
+def walk_forward_validate(
+    train_df: pd.DataFrame,
+    min_train_rows: int = 10,
+    min_train_periods: int = 4,
+) -> dict:
+    """
+    Expanding-window validation for the hybrid XGBoost scorer.
+
+    Each fold trains only on rows with `as_of_date` before the test quarter and
+    evaluates on the next quarter. The final production model can still be fit
+    on all rows after this out-of-sample audit is recorded.
+    """
+    required = {"symbol", "as_of_date", "forward_return", *FEATURES}
+    missing = required - set(train_df.columns)
+    if missing:
+        return {"status": "SKIPPED", "reason": f"missing columns: {sorted(missing)}"}
+
+    df = train_df.copy()
+    df["as_of_date"] = pd.to_datetime(df["as_of_date"], errors="coerce")
+    df["forward_return"] = pd.to_numeric(df["forward_return"], errors="coerce")
+    df = df.dropna(subset=["as_of_date", "forward_return"]).sort_values("as_of_date")
+    if len(df) < min_train_rows:
+        return {"status": "SKIPPED", "reason": "not enough valid rows"}
+
+    df["test_period"] = df["as_of_date"].dt.to_period("Q")
+    periods = sorted(df["test_period"].dropna().unique())
+    if len(periods) <= min_train_periods:
+        return {"status": "SKIPPED", "reason": "not enough quarterly periods"}
+
+    predictions = []
+    windows = []
+    for test_period in periods[min_train_periods:]:
+        test_start = test_period.start_time
+        train_fold = df[df["as_of_date"] < test_start]
+        test_fold = df[df["test_period"] == test_period]
+        if len(train_fold) < min_train_rows or test_fold.empty:
+            continue
+
+        model = _make_xgb_regressor()
+        X_train = _sanitize_features(train_fold[FEATURES])
+        y_train = train_fold["forward_return"]
+        X_test = _sanitize_features(test_fold[FEATURES])
+        model.fit(X_train, y_train)
+
+        fold_predictions = test_fold[["symbol", "as_of_date", "forward_return"]].copy()
+        fold_predictions["prediction"] = model.predict(X_test)
+        fold_predictions["test_period"] = str(test_period)
+        predictions.append(fold_predictions)
+        windows.append(
+            {
+                "test_period": str(test_period),
+                "train_rows": int(len(train_fold)),
+                "test_rows": int(len(test_fold)),
+            }
+        )
+
+    if not predictions:
+        return {"status": "SKIPPED", "reason": "no valid walk-forward folds"}
+
+    pred_df = pd.concat(predictions, ignore_index=True)
+    y_true = pd.to_numeric(pred_df["forward_return"], errors="coerce")
+    y_pred = pd.to_numeric(pred_df["prediction"], errors="coerce")
+    valid = y_true.notna() & y_pred.notna()
+    y_true = y_true[valid]
+    y_pred = y_pred[valid]
+    if y_true.empty:
+        return {"status": "SKIPPED", "reason": "all predictions invalid"}
+
+    residual = y_true - y_pred
+    ss_res = float(np.square(residual).sum())
+    ss_tot = float(np.square(y_true - y_true.mean()).sum())
+    oos_r2 = 1 - (ss_res / ss_tot) if ss_tot > 0 else np.nan
+    spearman_ic = y_true.corr(y_pred, method="spearman") if len(y_true) > 1 else np.nan
+    hit_rate = ((y_true > 0) == (y_pred > 0)).mean()
+
+    return {
+        "status": "OK",
+        "folds": int(len(windows)),
+        "rows": int(len(y_true)),
+        "oos_r2": _finite_or_none(oos_r2),
+        "mae": _finite_or_none(np.abs(residual).mean()),
+        "rmse": _finite_or_none(np.sqrt(np.square(residual).mean())),
+        "spearman_ic": _finite_or_none(spearman_ic),
+        "hit_rate": _finite_or_none(hit_rate),
+        "windows": windows,
+    }
+
+
+def _save_walk_forward_report(metrics: dict) -> None:
+    os.makedirs(os.path.dirname(WALK_FORWARD_REPORT_PATH), exist_ok=True)
+    with open(WALK_FORWARD_REPORT_PATH, "w", encoding="utf-8") as f:
+        json.dump(metrics, f, indent=2)
 
 
 def _get_historical_targets(symbols: list):
@@ -115,45 +245,42 @@ def train_hybrid_model():
     print(f"Fetching current prices for {len(symbols)} symbols to construct target (Y)...")
     current_prices = _get_historical_targets(symbols)
 
-    # Calculate Y (forward return).
-    df["current_price"] = df["symbol"].map(current_prices)
-    df = df.dropna(subset=["pit_price", "current_price"])
-    df = df[df["pit_price"] > 0]
-    if df.empty:
+    train_df = _build_training_frame(df, current_prices)
+    if train_df.empty:
         print("No valid forward returns calculable.")
         return False
-
-    df["forward_return"] = (df["current_price"] - df["pit_price"]) / df["pit_price"]
-
-    # Sanitize ML features and drop invalid targets.
-    df.replace([np.inf, -np.inf], np.nan, inplace=True)
-    train_df = df.dropna(subset=["forward_return"]).copy()
-    if not train_df.empty:
-        train_df[FEATURES] = _sanitize_features(train_df[FEATURES])
 
     if len(train_df) < 10:
         print("Too many invalid rows; not enough training data after cleanup.")
         return False
 
+    validation = walk_forward_validate(train_df)
+    _save_walk_forward_report(validation)
+    if validation.get("status") == "OK":
+        print(
+            "Walk-forward validation: "
+            f"{validation['folds']} folds, "
+            f"OOS R2={validation.get('oos_r2')}, "
+            f"IC={validation.get('spearman_ic')}, "
+            f"hit_rate={validation.get('hit_rate')}"
+        )
+    else:
+        print(f"Walk-forward validation skipped: {validation.get('reason')}")
+
     X = train_df[FEATURES]
     y = train_df["forward_return"]
 
     # 3. Train XGBoost Regressor.
-    model = xgb.XGBRegressor(
-        n_estimators=100,
-        learning_rate=0.05,
-        max_depth=4,
-        subsample=0.8,
-        random_state=42,
-    )
+    model = _make_xgb_regressor()
 
     print("Training XGBoost regressor on historical factor signatures...")
     model.fit(X, y)
 
     r2 = model.score(X, y)
-    print(f"Training complete. Meta-Model R2: {r2:.2f}")
+    print(f"Training complete. Final in-sample fit R2: {r2:.2f}")
 
     # 4. Save model.
+    os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
     joblib.dump(model, MODEL_PATH)
     print("Model saved to disk.")
     return True

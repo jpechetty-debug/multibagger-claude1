@@ -198,6 +198,170 @@ async def cmd_ml_explain(args):
     import subprocess
     subprocess.run([sys.executable, os.path.join("scripts", "internal", "diagnose_scores.py"), "--symbol", args.symbol])
 
+
+def _parse_symbol_list(symbols_text):
+    if not symbols_text:
+        return []
+    return [s.strip() for s in str(symbols_text).replace("\n", ",").split(",") if s.strip()]
+
+
+def _load_walk_forward_symbols(args):
+    explicit = _parse_symbol_list(getattr(args, "symbols", None))
+    if explicit:
+        return explicit
+
+    limit = int(getattr(args, "universe_size", 50) or 50)
+    try:
+        conn = get_connection()
+        df = pd.read_sql(
+            "SELECT symbol FROM multibaggers ORDER BY score DESC LIMIT ?",
+            conn,
+            params=(limit,),
+        )
+        conn.close()
+    except Exception as exc:
+        print(f"Failed to load backtest universe: {exc}")
+        return []
+
+    if df.empty or "symbol" not in df.columns:
+        return []
+    return [str(s).strip() for s in df["symbol"].tolist() if str(s).strip()]
+
+
+def _build_vectorbt_engine(period, transaction_cost, benchmark_symbol):
+    from backtest.engine import VectorBTEngine
+
+    return VectorBTEngine(
+        period=period,
+        transaction_cost=transaction_cost,
+        benchmark_symbol=benchmark_symbol,
+    )
+
+
+def _fmt_pct(value, signed=False):
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        number = 0.0
+    prefix = "+" if signed and number > 0 else ""
+    return f"{prefix}{number:.2f}%"
+
+
+def _fmt_num(value):
+    try:
+        return f"{float(value):.2f}"
+    except (TypeError, ValueError):
+        return "0.00"
+
+
+def _write_walk_forward_report(result, report_path):
+    report_path = os.path.abspath(report_path)
+    os.makedirs(os.path.dirname(report_path), exist_ok=True)
+
+    folds = result.get("fold_details", []) or []
+    generated_at = datetime.now().isoformat(timespec="seconds")
+    lines = [
+        "# Sovereign Walk-Forward Portfolio Backtest",
+        "",
+        f"- Generated At: {generated_at}",
+        f"- Status: {result.get('status', 'UNKNOWN')}",
+        f"- Strategy: {result.get('strategy', 'xgboost_walk_forward')}",
+        f"- Rebalance Frequency: {result.get('rebalance_frequency', 'Q')}",
+        f"- Benchmark: {result.get('benchmark_symbol', '^CNX500')}",
+        f"- Benchmark Status: {result.get('benchmark_status', 'UNKNOWN')}",
+        f"- Folds: {result.get('folds', 0)}",
+        f"- Top Quantile: {result.get('top_quantile', 0.8)}",
+        f"- Max Positions: {result.get('max_positions') or 'unbounded'}",
+        "",
+        "## Performance Metrics",
+        "",
+        "| Metric | Value |",
+        "| :--- | ---: |",
+        f"| Net CAGR | {_fmt_pct(result.get('cagr'))} |",
+        f"| Gross CAGR | {_fmt_pct(result.get('gross_cagr'))} |",
+        f"| Transaction Cost Drag | {_fmt_pct(result.get('transaction_cost_drag'))} |",
+        f"| Benchmark CAGR | {_fmt_pct(result.get('benchmark_cagr'))} |",
+        f"| Alpha CAGR | {_fmt_pct(result.get('alpha_cagr'), signed=True)} |",
+        f"| Monthly Alpha | {_fmt_pct(result.get('alpha_monthly'), signed=True)} |",
+        f"| Beta | {_fmt_num(result.get('beta'))} |",
+        f"| Tracking Error | {_fmt_pct(result.get('tracking_error'))} |",
+        f"| Information Ratio | {_fmt_num(result.get('information_ratio'))} |",
+        f"| Max Drawdown | {_fmt_pct(result.get('max_drawdown'))} |",
+        f"| Sharpe Ratio | {_fmt_num(result.get('sharpe_ratio'))} |",
+        f"| Win Rate | {_fmt_pct(result.get('win_rate'))} |",
+        f"| Total Turnover | {_fmt_num(result.get('turnover'))} |",
+        f"| Average Turnover | {_fmt_num(result.get('avg_turnover'))} |",
+        "",
+        "## Fold Audit",
+        "",
+    ]
+
+    if folds:
+        lines.extend(
+            [
+                "| Test Period | Train Window | Candidates | Selected | Gross Return | Net Return | Turnover | Picks |",
+                "| :--- | :--- | ---: | ---: | ---: | ---: | ---: | :--- |",
+            ]
+        )
+        for fold in folds:
+            train_window = (
+                f"{fold.get('train_start_period', '')} to {fold.get('train_end_period', '')}"
+            )
+            selected_symbols = fold.get("selected_symbols") or []
+            picks = ", ".join(selected_symbols[:8])
+            if len(selected_symbols) > 8:
+                picks += ", ..."
+            lines.append(
+                "| {test} | {train} | {candidates} | {selected} | {gross} | {net} | {turnover} | {picks} |".format(
+                    test=fold.get("test_period", ""),
+                    train=train_window,
+                    candidates=fold.get("candidate_count", 0),
+                    selected=fold.get("selected_count", 0),
+                    gross=_fmt_pct(float(fold.get("gross_return", 0.0)) * 100),
+                    net=_fmt_pct(float(fold.get("net_return", 0.0)) * 100),
+                    turnover=_fmt_num(fold.get("turnover", 0.0)),
+                    picks=picks,
+                )
+            )
+    else:
+        lines.append("No valid folds were produced.")
+
+    with open(report_path, "w", encoding="utf-8") as handle:
+        handle.write("\n".join(lines) + "\n")
+    return report_path
+
+
+async def cmd_backtest_walk_forward(args):
+    """Run XGBoost expanding-window portfolio backtest and write a report."""
+    print_header("Backtest: XGBoost Walk-Forward Portfolio")
+    symbols = _load_walk_forward_symbols(args)
+    if not symbols:
+        print("No symbols available for walk-forward backtest.")
+        return None
+
+    print(f"Universe: {len(symbols)} symbols")
+    engine = _build_vectorbt_engine(
+        period=args.period,
+        transaction_cost=args.transaction_cost,
+        benchmark_symbol=args.benchmark,
+    )
+    result = await asyncio.to_thread(
+        engine.run_walk_forward_strategy_backtest,
+        symbols,
+        min_train_periods=args.min_train_periods,
+        rebalance_frequency=args.rebalance,
+        top_quantile=args.top_quantile,
+        max_positions=args.max_positions,
+    )
+
+    report_path = _write_walk_forward_report(result, args.report_path)
+    print(f"Status: {result.get('status', 'UNKNOWN')}")
+    print(f"Net CAGR: {_fmt_pct(result.get('cagr'))}")
+    print(f"Alpha CAGR: {_fmt_pct(result.get('alpha_cagr'), signed=True)}")
+    print(f"Information Ratio: {_fmt_num(result.get('information_ratio'))}")
+    print(f"Report saved: {report_path}")
+    return result
+
 # ══════════════════════════════════════════════════════════════════════════════
 # COMMAND: SYSTEM Group
 # ══════════════════════════════════════════════════════════════════════════════
@@ -429,6 +593,24 @@ async def main():
     qarp_parser.add_argument("--universe", choices=["top-50", "top-100", "nifty-500"], default="top-50")
     engine_parser = bt_sub.add_parser("engine", help="Main backtest engine (VectorBT)")
     engine_parser.add_argument("--symbol", default="RELIANCE.NS")
+    wf_parser = bt_sub.add_parser(
+        "walk-forward",
+        aliases=["walkforward", "wf"],
+        help="XGBoost expanding-window portfolio backtest",
+    )
+    wf_parser.add_argument("--symbols", help="Comma-separated symbols. Defaults to DB top scores.")
+    wf_parser.add_argument("--universe-size", type=int, default=50)
+    wf_parser.add_argument("--period", default="5y")
+    wf_parser.add_argument("--rebalance", choices=["monthly", "quarterly", "M", "Q"], default="quarterly")
+    wf_parser.add_argument("--min-train-periods", type=int, default=12)
+    wf_parser.add_argument("--top-quantile", type=float, default=0.8)
+    wf_parser.add_argument("--max-positions", type=int, default=None)
+    wf_parser.add_argument("--benchmark", default="^CNX500")
+    wf_parser.add_argument("--transaction-cost", type=float, default=0.006)
+    wf_parser.add_argument(
+        "--report-path",
+        default=os.path.join("reports", "walk_forward_backtest_report.md"),
+    )
 
     # SYSTEM Group
     sys_parser = subparsers.add_parser("sys", help="System operations")
@@ -474,6 +656,8 @@ async def main():
         elif args.command == "engine":
             cmd = [sys.executable, "scripts/internal/backtest_engine.py", "--symbol", args.symbol]
             subprocess.run(cmd)
+        elif args.command in {"walk-forward", "walkforward", "wf"}:
+            await cmd_backtest_walk_forward(args)
     elif args.group == "sys":
         if args.command == "health": await cmd_health(args)
         elif args.command == "regime": await cmd_regime(args)
