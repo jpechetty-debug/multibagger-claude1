@@ -96,17 +96,18 @@ Agents: security-auditor → penetration-tester → synthesis
 | `orchestrator` | Coordination | "comprehensive", "multi-perspective" |
 | `security-auditor` | Security | "security", "auth", "vulnerabilities" |
 | `penetration-tester` | Security Testing | "pentest", "red team", "exploit" |
-| `backend-specialist` | Backend | "API", "server", "Node.js", "Express" |
+| `backend-specialist` | Backend | "API", "server", "Node.js", "FastAPI" |
+| `financial-data-engineer` | Indian market data | "Shoonya", "NSE", "BSE", "screener", "OHLCV" |
 | `frontend-specialist` | Frontend | "React", "UI", "components", "Next.js" |
 | `test-engineer` | Testing | "tests", "coverage", "TDD" |
 | `devops-engineer` | DevOps | "deploy", "CI/CD", "infrastructure" |
 | `database-architect` | Database | "schema", "Prisma", "migrations" |
 | `mobile-developer` | Mobile | "React Native", "Flutter", "mobile" |
-| `api-designer` | API Design | "REST", "GraphQL", "OpenAPI" |
 | `debugger` | Debugging | "bug", "error", "not working" |
 | `explorer-agent` | Discovery | "explore", "map", "structure" |
 | `documentation-writer` | Documentation | "write docs", "create README", "generate API docs" |
 | `performance-optimizer` | Performance | "slow", "optimize", "profiling" |
+| `product-strategist` | Product | "requirements", "PRD", "backlog", "MVP" |
 | `project-planner` | Planning | "plan", "roadmap", "milestones" |
 | `seo-specialist` | SEO | "SEO", "meta tags", "search ranking" |
 | `game-developer` | Game Development | "game", "Unity", "Godot", "Phaser" |

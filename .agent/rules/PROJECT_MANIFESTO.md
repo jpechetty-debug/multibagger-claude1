@@ -7,6 +7,18 @@
 ## 🎯 Core Objective
 Build a world-class **Sovereign Trading Dashboard** and **AI-Native LMS** that leverages high-fidelity UI/UX and resilient backend architecture.
 
+## Technical Constraints (All Agents Must Know)
+
+- **Platform**: Indian equity markets (NSE/BSE), not a global platform.
+- **Data Source**: Shoonya (Finvasia) API only. Do not add yfinance or scraping.
+- **Backend**: FastAPI (Python) on Railway. Use async/await for I/O-bound work.
+- **Frontend**: React + Vite on Vercel. Use TanStack Query for server state and Zustand for client state.
+- **Database**: Neon PostgreSQL. SQLite is banned for production because write-locking is incompatible with multi-worker deployment.
+- **Cache**: Upstash Redis. Use REST credentials for REST clients; Celery and standard Redis clients require the `rediss://` TCP URL.
+- **Auth**: Shoonya unattended refresh requires TOTP automation via `pyotp`.
+- **Market Hours**: IST (UTC+5:30). Cron schedules must account for Indian market hours and holidays.
+- **Cost Ceiling**: Keep recurring infrastructure under Rs. 500/month unless a plan explicitly approves higher spend.
+
 ## 🛠️ The "Antigravity" Workflow (Superpowers)
 
 All agents are "trained" to use the following process engine:

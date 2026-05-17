@@ -47,7 +47,8 @@ graph TD
 | **Deployment**      | "deploy", "production", "CI/CD", "docker"  | `devops-engineer`                           | ✅ YES       |
 | **Security Review** | "security", "vulnerability", "exploit"     | `security-auditor` + `penetration-tester`   | ✅ YES       |
 | **Performance**     | "slow", "optimize", "performance", "speed" | `performance-optimizer`                     | ✅ YES       |
-| **Product Def**     | "requirements", "user story", "backlog", "MVP" | `product-owner`                             | ✅ YES       |
+| **Product Def**     | "requirements", "user story", "backlog", "MVP" | `product-strategist`                       | YES          |
+| **Financial Data**  | "shoonya", "nse", "bse", "screener", "ohlcv", "fundamentals" | `financial-data-engineer`                  | YES          |
 | **New Feature**     | "build", "create", "implement", "new app"  | `orchestrator` → multi-agent                | ⚠️ ASK FIRST |
 | **Complex Task**    | Multiple domains detected                  | `orchestrator` → multi-agent                | ⚠️ ASK FIRST |
 
@@ -105,6 +106,8 @@ function analyzeRequest(userMessage) {
 | **Security**    | auth, login, jwt, password, hash, token    | `security-auditor`      |
 | **Frontend**    | component, react, vue, css, html, tailwind | `frontend-specialist`   |
 | **Backend**     | api, server, express, fastapi, node        | `backend-specialist`    |
+| **Financial Data** | shoonya, nse, bse, screener, ohlcv, fundamentals, sebi | `financial-data-engineer` |
+| **Product**     | requirements, user story, backlog, MVP, PRD | `product-strategist`    |
 | **Mobile**      | react native, flutter, ios, android, expo  | `mobile-developer`      |
 | **Database**    | prisma, sql, mongodb, schema, migration    | `database-architect`    |
 | **Testing**     | test, jest, vitest, playwright, cypress    | `test-engineer`         |
