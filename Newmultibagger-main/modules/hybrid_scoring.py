@@ -81,8 +81,8 @@ def _finite_or_none(value):
 
 def _build_training_frame(df: pd.DataFrame, current_prices: dict) -> pd.DataFrame:
     out = df.copy()
-    # Same pattern as ic_analyzer.fetch_forward_prices()
-    from scripts.internal.ic_analyzer import fetch_forward_prices
+    # Use shared utility to avoid upward dependency into scripts/
+    from modules.price_utils import fetch_forward_prices
     
     out["forward_price"] = fetch_forward_prices(out, months=3)
     out = out.dropna(subset=["pit_price", "forward_price"])
