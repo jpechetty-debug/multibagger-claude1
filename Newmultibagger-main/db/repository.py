@@ -518,7 +518,7 @@ def prune_fundamentals_pit_retention(keep_days=PIT_RETENTION_DAYS):
 SCORE_DRIFT_THRESHOLD = 15.0  # Alert if score changes by more than this
 _FUNDAMENTAL_FIELDS = [
     "sales_cagr_5y", "avg_roe_5y", "pe_ratio", "debt_equity", "cfo_pat_ratio",
-    "ret_1m", "ret_3m", "ret_6m", "vol_breakout", "dist_from_52w_high", "price"
+    "ret_1m", "ret_3m", "ret_6m", "vol_breakout", "dist_from_52w_high"
 ]
 
 

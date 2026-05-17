@@ -81,13 +81,16 @@ def _finite_or_none(value):
 
 def _build_training_frame(df: pd.DataFrame, current_prices: dict) -> pd.DataFrame:
     out = df.copy()
-    out["current_price"] = out["symbol"].map(current_prices)
-    out = out.dropna(subset=["pit_price", "current_price"])
+    # Same pattern as ic_analyzer.fetch_forward_prices()
+    from scripts.internal.ic_analyzer import fetch_forward_prices
+    
+    out["forward_price"] = fetch_forward_prices(out, months=3)
+    out = out.dropna(subset=["pit_price", "forward_price"])
     out = out[out["pit_price"] > 0]
     if out.empty:
         return out
 
-    out["forward_return"] = (out["current_price"] - out["pit_price"]) / out["pit_price"]
+    out["forward_return"] = (out["forward_price"] - out["pit_price"]) / out["pit_price"]
     out.replace([np.inf, -np.inf], np.nan, inplace=True)
     train_df = out.dropna(subset=["forward_return"]).copy()
     if not train_df.empty:

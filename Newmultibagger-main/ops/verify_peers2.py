@@ -3,7 +3,12 @@ import sqlite3
 
 import pandas as pd
 
-conn = sqlite3.connect("d:/Tradeidesa/Multibagger/stocks.db")
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from db.repository import get_connection
+
+conn = get_connection()
 symbol = "MAHABANK.NS"
 
 # 1. Get Target Metrics

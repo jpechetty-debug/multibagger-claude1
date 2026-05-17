@@ -256,7 +256,9 @@ def _fmt_num(value):
 
 def _write_walk_forward_report(result, report_path):
     report_path = os.path.abspath(report_path)
-    os.makedirs(os.path.dirname(report_path), exist_ok=True)
+    parent = os.path.dirname(report_path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
 
     folds = result.get("fold_details", []) or []
     generated_at = datetime.now().isoformat(timespec="seconds")
