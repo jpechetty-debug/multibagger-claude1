@@ -85,6 +85,7 @@ uvicorn main:app --reload --port 9005
 |----------|---------|---------|
 | `SOVEREIGN_API_KEY` | Production API Security | None (Required) |
 | `SOVEREIGN_ENV` | Environment Context | `local` |
+| `REDIS_URL` | Redis cache/Celery broker; falls back to in-memory cache if unavailable | `redis://localhost:6379/0` |
 | `OLLAMA_MODEL` | LLM for Thesis Generation | `llama3.2:3b-instruct-fp16` |
 
 ---

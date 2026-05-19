@@ -221,7 +221,32 @@ class TestScoringContracts:
         from modules.scoring import calculate_institutional_score
 
         result = calculate_institutional_score(
-            self._build_stock_data(PE_Ratio=None, Debt_Equity=None, CFO_PAT_Ratio=None)
+            self._build_stock_data(
+                **{
+                    "PE_Ratio": None,
+                    "PEG_Ratio": None,
+                    "Debt_Equity": None,
+                    "CFO_PAT_Ratio": None,
+                    "Sales_Growth_5Y%": None,
+                    "Sales_Growth_TTM%": None,
+                    "EPS_Growth%": None,
+                    "Avg_ROE_5Y%": None,
+                    "ROE%": None,
+                    "Profit_Margin%": None,
+                    "Value_Gap%": None,
+                    "Market_Cap_Cr": None,
+                    "Down_From_52W_High%": None,
+                    "Analyst_Upside%": None,
+                    "Estimate_Score_Adj": None,
+                    "Earnings_Inflection_Score": None,
+                    "Inst_Holding%": None,
+                    "Promoter_Holding%": None,
+                    "F_Score": None,
+                    "RS_Rating": None,
+                    "Price": None,
+                    "ATR": None,
+                }
+            )
         )
         assert isinstance(result["total_score"], (int, float))
 

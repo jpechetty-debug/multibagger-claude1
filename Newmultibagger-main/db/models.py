@@ -4,7 +4,7 @@ SQLAlchemy 2.0 ORM Models — Sovereign AI Trading Engine v4.0
 Mirrors the existing SQLite schema for seamless PostgreSQL/TimescaleDB migration.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import (
     CheckConstraint,
@@ -22,6 +22,10 @@ from sqlalchemy.orm import DeclarativeBase
 
 class Base(DeclarativeBase):
     pass
+
+
+def _utc_now() -> datetime:
+    return datetime.now(UTC)
 
 
 class Multibagger(Base):
@@ -101,7 +105,7 @@ class FundamentalsPIT(Base):
     market_cap_cr = Column(Float)
     cfo_pat_ratio = Column(Float)
     source_updated_at = Column(DateTime)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=_utc_now)
 
     __table_args__ = (Index("idx_fundamentals_pit_as_of_date", "as_of_date"),)
 
@@ -111,7 +115,7 @@ class ScoreHistory(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     symbol = Column(String, ForeignKey("multibaggers.symbol"))
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=_utc_now)
     total_score = Column(Float)
     close_price = Column(Float)
     pe_ratio = Column(Float)
@@ -122,7 +126,7 @@ class FactorPenalty(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     symbol = Column(String, ForeignKey("multibaggers.symbol"))
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=_utc_now)
     penalty_name = Column(String)
     penalty_value = Column(Float)
 
@@ -199,4 +203,4 @@ class BuyThesis(Base):
     checklist_passes_at_buy = Column(Integer)
     regime_at_buy = Column(String)
     raw_thesis_json = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=_utc_now)

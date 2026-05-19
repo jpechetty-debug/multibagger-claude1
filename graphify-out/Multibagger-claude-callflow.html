@@ -60,7 +60,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
 <div class="container">
 
 <h1>Multibagger-claude — Complete Call Flow &amp; Architecture Documentation</h1>
-<p class="subtitle">Generated from graphify knowledge graph: 16506 nodes, 23539 edges, 1329 communities. Commit: 9569ca6</p>
+<p class="subtitle">Generated from graphify knowledge graph: 16563 nodes, 23613 edges, 1330 communities. Commit: 5a5767d</p>
 
 <div class="nav">
     <a href="#overview">Architecture Overview</a>
@@ -88,21 +88,21 @@ hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
 
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    EXTRACT_PIPELINE_5F350230("Extraction Pipeline<br/><small>23 nodes</small>")
+    EXTRACT_PIPELINE_5F350230("Extraction Pipeline<br/><small>56 nodes</small>")
     class EXTRACT_PIPELINE_5F350230 module;
     BUILD_GRAPH_321CBB04("Graph Build<br/><small>30 nodes</small>")
     class BUILD_GRAPH_321CBB04 module;
     ANALYSIS_CLUSTERING_C79796DA("Analysis &amp; Clustering<br/><small>8 nodes</small>")
     class ANALYSIS_CLUSTERING_C79796DA module;
-    OUTPUTS_DOCS_ED82387C("Outputs &amp; Docs<br/><small>73 nodes</small>")
+    OUTPUTS_DOCS_ED82387C("Outputs &amp; Docs<br/><small>76 nodes</small>")
     class OUTPUTS_DOCS_ED82387C module;
-    CLI_SKILLS_9964CBB8("CLI &amp; Skill Installers<br/><small>12605 nodes</small>")
+    CLI_SKILLS_9964CBB8("CLI &amp; Skill Installers<br/><small>12612 nodes</small>")
     class CLI_SKILLS_9964CBB8 module;
     INGEST_CACHE_UPDATE_FF457338("Ingestion &amp; Updates<br/><small>90 nodes</small>")
     class INGEST_CACHE_UPDATE_FF457338 module;
-    SERVE_API_35EC8E86("Serving API<br/><small>347 nodes</small>")
+    SERVE_API_35EC8E86("Serving API<br/><small>371 nodes</small>")
     class SERVE_API_35EC8E86 module;
-    TESTS_FIXTURES_B84B1DCC("Tests &amp; Fixtures<br/><small>3168 nodes</small>")
+    TESTS_FIXTURES_B84B1DCC("Tests &amp; Fixtures<br/><small>3158 nodes</small>")
     class TESTS_FIXTURES_B84B1DCC module;
     MASTERMD_DESIGN_SYSTEM_DE6D0742("Mastermd Design System<br/><small>22 nodes</small>")
     class MASTERMD_DESIGN_SYSTEM_DE6D0742 module;
@@ -118,14 +118,14 @@ flowchart LR
     class CHECK_MEMORY_DBPY_74981455 module;
     OTHER_D0941E68("Other<br/><small>79 nodes</small>")
     class OTHER_D0941E68 module;
-    CLI_SKILLS_9964CBB8 -->|contains x127| TESTS_FIXTURES_B84B1DCC
-    TESTS_FIXTURES_B84B1DCC -->|method x92| CLI_SKILLS_9964CBB8
-    TESTS_FIXTURES_B84B1DCC -->|contains x30| SERVE_API_35EC8E86
-    SERVE_API_35EC8E86 -->|contains x16| TESTS_FIXTURES_B84B1DCC
-    SERVE_API_35EC8E86 -->|imports x12| CLI_SKILLS_9964CBB8
-    CLI_SKILLS_9964CBB8 -->|contains x9| SERVE_API_35EC8E86
+    CLI_SKILLS_9964CBB8 -->|contains x149| TESTS_FIXTURES_B84B1DCC
+    TESTS_FIXTURES_B84B1DCC -->|method x115| CLI_SKILLS_9964CBB8
+    SERVE_API_35EC8E86 -->|contains x42| TESTS_FIXTURES_B84B1DCC
+    TESTS_FIXTURES_B84B1DCC -->|method x17| SERVE_API_35EC8E86
+    CLI_SKILLS_9964CBB8 -->|inherits x12| SERVE_API_35EC8E86
+    SERVE_API_35EC8E86 -->|contains x10| CLI_SKILLS_9964CBB8
     INGEST_CACHE_UPDATE_FF457338 -->|contains x7| TESTS_FIXTURES_B84B1DCC
-    CLI_SKILLS_9964CBB8 -->|contains x3| OUTPUTS_DOCS_ED82387C
+    CLI_SKILLS_9964CBB8 -->|contains x4| OUTPUTS_DOCS_ED82387C
     TESTS_FIXTURES_B84B1DCC -->|calls x3| INGEST_CACHE_UPDATE_FF457338
     CLI_SKILLS_9964CBB8 -->|imports| INGEST_CACHE_UPDATE_FF457338
     classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
@@ -144,7 +144,7 @@ flowchart LR
     <h4>Architecture Layers</h4>
     <table style="width:100%;font-size:0.85rem;">
       <tr><th>Layer</th><th>Nodes</th><th>Communities</th></tr>
-      <tr><td>Extraction Pipeline</td><td>23</td><td><code>724, 1122, 1156, 1157, 1158, 1159, 1162, 1177, 1180, 1226, 1238, 1241, 1243, 1244, 1245, 1246, 1251, 1252, 1255</code></td></tr><tr><td>Graph Build</td><td>30</td><td><code>270, 1115, 1139, 1176, 1179, 1186, 1231, 1237, 1249, 1250, 1256</code></td></tr><tr><td>Analysis &amp; Clustering</td><td>8</td><td><code>563</code></td></tr><tr><td>Outputs &amp; Docs</td><td>73</td><td><code>453, 474, 480, 508, 739, 740, 741, 837, 838, 839, 932, 1006, 1310</code></td></tr><tr><td>CLI &amp; Skill Installers</td><td>12605</td><td><code>0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 18, 19, 20, 22, 23, 24, 30, 36, 37, 39, 40, 41, 42, 43, 44, 45, 51, 52, 53, 54, 55, 56, 58, 61, 62, 63, 64, 65, 67, 68, 71, 72, 74, 75, 76, 77, 78, 81, 82, 85, 86, 87, 88, 90, 91, 92, 93, 94, 95, 96, 100, 102, 97, 98, 99, 103, 104, 105, 106, 107, 109, 110, 111, 112, 113, 114, 116, 119, 120, 121, 124, 125, 127, 128, 129, 131, 132, 133, 134, 135, 136, 140, 142, 143, 144, 145, 146, 147, 148, 149, 152, 153, 154, 155, 156, 157, 159, 160, 161, 162, 164, 165, 166, 167, 168, 171, 172, 173, 174, 175, 178, 179, 180, 182, 183, 186, 187, 188, 189, 190, 195, 196, 197, 198, 199, 200, 201, 202, 204, 205, 206, 208, 212, 213, 214, 215, 216, 217, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255, 257, 258, 260, 262, 263, 264, 265, 266, 267, 268, 271, 272, 273, 274, 275, 276, 277, 278, 281, 282, 283, 284, 285, 286, 287, 288, 290, 291, 292, 293, 294, 295, 296, 299, 300, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 318, 319, 320, 324, 325, 327, 328, 329, 330, 331, 332, 333, 334, 335, 336, 337, 338, 339, 340, 341, 343, 344, 345, 347, 348, 350, 353, 354, 355, 356, 357, 358, 359, 360, 361, 363, 366, 367, 368, 369, 370, 371, 372, 373, 374, 375, 376, 377, 378, 379, 380, 381, 382, 383, 384, 386, 387, 389, 391, 392, 394, 395, 396, 397, 398, 399, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 419, 421, 422, 424, 425, 426, 427, 428, 429, 430, 431, 432, 433, 434, 435, 436, 437, 438, 439, 440, 442, 443, 444, 445, 446, 448, 450, 455, 456, 457, 458, 459, 460, 461, 462, 463, 464, 465, 466, 467, 468, 469, 470, 471, 473, 475, 478, 479, 483, 484, 485, 486, 487, 488, 489, 490, 491, 492, 493, 494, 495, 496, 497, 498, 499, 500, 501, 502, 503, 504, 505, 506, 507, 509, 510, 511, 512, 514, 516, 518, 523, 524, 525, 526, 527, 528, 529, 530, 531, 532, 533, 534, 535, 536, 537, 538, 539, 540, 541, 542, 543, 544, 545, 546, 547, 548, 549, 550, 551, 552, 553, 554, 555, 558, 559, 560, 561, 564, 565, 570, 571, 572, 573, 574, 575, 576, 577, 578, 579, 580, 581, 582, 583, 584, 585, 586, 587, 588, 589, 590, 591, 592, 593, 594, 595, 596, 597, 598, 599, 600, 602, 603, 606, 607, 609, 612, 613, 614, 615, 616, 617, 618, 619, 620, 621, 622, 623, 624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635, 636, 637, 638, 639, 640, 641, 642, 643, 644, 645, 646, 647, 648, 649, 650, 651, 652, 653, 654, 655, 656, 657, 658, 659, 660, 661, 662, 663, 665, 666, 667, 668, 670, 674, 680, 681, 682, 683, 684, 685, 686, 687, 688, 689, 690, 691, 692, 693, 694, 695, 696, 697, 698, 699, 700, 701, 702, 703, 704, 705, 706, 707, 708, 709, 710, 711, 712, 713, 714, 715, 716, 717, 718, 719, 720, 722, 723, 726, 728, 729, 731, 733, 734, 736, 738, 742, 743, 744, 745, 746, 747, 748, 749, 750, 751, 752, 753, 754, 755, 756, 757, 758, 759, 760, 761, 762, 763, 764, 765, 766, 767, 768, 769, 770, 771, 772, 773, 774, 775, 776, 777, 778, 779, 780, 781, 782, 783, 784, 785, 786, 787, 788, 789, 790, 791, 792, 793, 794, 795, 796, 797, 798, 799, 800, 801, 802, 803, 804, 805, 806, 807, 808, 809, 810, 811, 812, 813, 814, 815, 816, 818, 819, 824, 825, 826, 828, 829, 830, 834, 840, 841, 842, 843, 844, 845, 846, 847, 848, 849, 850, 851, 852, 853, 854, 855, 856, 857, 858, 859, 860, 861, 862, 863, 864, 865, 866, 867, 868, 869, 870, 871, 872, 873, 874, 875, 876, 877, 878, 879, 880, 881, 882, 883, 884, 885, 886, 887, 888, 889, 890, 891, 892, 893, 894, 895, 896, 897, 898, 899, 900, 901, 902, 903, 904, 905, 906, 907, 908, 909, 910, 911, 912, 913, 914, 915, 917, 918, 919, 920, 924, 925, 928, 929, 930, 933, 934, 935, 936, 937, 938, 939, 940, 941, 942, 943, 944, 945, 946, 947, 948, 949, 950, 951, 952, 953, 954, 955, 956, 957, 958, 959, 960, 961, 962, 963, 964, 965, 966, 967, 968, 969, 970, 971, 972, 973, 974, 975, 1000, 1001, 1002, 1004, 1005, 1007, 1008, 1009, 1010, 1011, 1012, 1013, 1014, 1015, 1016, 1017, 1018, 1019, 1024, 1026, 1028, 1029, 1030, 1031, 1032, 1033, 1034, 1035, 1036, 1041, 1042, 1043, 1044, 1045, 1046, 1047, 1048, 1049, 1050, 1051, 1052, 1053, 1054, 1055, 1056, 1057, 1058, 1059, 1060, 1061, 1062, 1063, 1064, 1065, 1066, 1067, 1068, 1069, 1070, 1071, 1072, 1073, 1074, 1075, 1076, 1077, 1078, 1079, 1080, 1081, 1082, 1083, 976, 977, 979, 982, 983, 984, 985, 990, 991, 992, 993, 994, 995, 996, 998, 999, 1114, 1116, 1117, 1118, 1119, 1120, 1121, 1191, 1313, 1314, 1315, 1316, 1317, 1318, 1319, 1320, 1321</code></td></tr><tr><td>Ingestion &amp; Updates</td><td>90</td><td><code>150, 289, 476, 515, 827, 923, 1003, 980, 981, 986, 997, 1096, 1099, 1100, 1101, 1130, 1134, 1322</code></td></tr><tr><td>Serving API</td><td>347</td><td><code>25, 32, 59, 117, 122, 126, 139, 151, 449, 611, 1027, 1169, 1185, 1294, 1327</code></td></tr><tr><td>Tests &amp; Fixtures</td><td>3168</td><td><code>10, 16, 17, 21, 26, 27, 28, 29, 31, 33, 34, 35, 38, 46, 47, 48, 49, 50, 57, 60, 66, 69, 70, 73, 79, 80, 83, 84, 89, 101, 108, 115, 118, 123, 130, 137, 138, 141, 158, 163, 169, 170, 176, 177, 181, 184, 185, 191, 192, 193, 194, 203, 207, 218, 256, 259, 261, 269, 279, 280, 297, 298, 321, 322, 323, 326, 342, 346, 349, 351, 352, 362, 364, 365, 385, 388, 390, 393, 418, 420, 423, 441, 447, 451, 452, 454, 472, 477, 481, 513, 517, 519, 520, 521, 522, 556, 557, 562, 566, 567, 568, 569, 601, 604, 605, 608, 610, 664, 669, 671, 672, 673, 675, 676, 677, 678, 679, 721, 725, 727, 730, 732, 735, 817, 820, 821, 822, 823, 831, 832, 833, 835, 836, 916, 921, 922, 926, 927, 931, 1020, 1021, 1022, 1023, 1037, 1038, 1039, 1040, 1084, 1085, 978, 987, 988, 989, 1089, 1133, 1192, 1193, 1194, 1195, 1196, 1197, 1198, 1199, 1200, 1201, 1202, 1203, 1204, 1205, 1206, 1207, 1208, 1209, 1210, 1211, 1212, 1213, 1214, 1215, 1216, 1217, 1218, 1219, 1220, 1221, 1222, 1223, 1224, 1225, 1227, 1228, 1229, 1230, 1232, 1233, 1234, 1235, 1236, 1239, 1240, 1242, 1247, 1248, 1253, 1254, 1257, 1258, 1259, 1260, 1261, 1262, 1263, 1264, 1265, 1266, 1267, 1268, 1269, 1270, 1271, 1272, 1273, 1274, 1275, 1276, 1277, 1278, 1279, 1280, 1281, 1282, 1283, 1284, 1285, 1286, 1287, 1288, 1289, 1290, 1291, 1292, 1293, 1295, 1296, 1297, 1298, 1299, 1300, 1301, 1302, 1303, 1304, 1305, 1306, 1307, 1308, 1312, 1323, 1324, 1325</code></td></tr><tr><td>Mastermd Design System</td><td>22</td><td><code>209</code></td></tr><tr><td>Mastermd Design System</td><td>22</td><td><code>210</code></td></tr><tr><td>Mastermd Design System</td><td>22</td><td><code>211</code></td></tr><tr><td>Dashboardmd Design System</td><td>10</td><td><code>482</code></td></tr><tr><td>Readmemd Sovereign Research</td><td>5</td><td><code>737</code></td></tr><tr><td>Check Memory Dbpy</td><td>2</td><td><code>1025</code></td></tr><tr><td>Other</td><td>79</td><td><code>1086, 1087, 1088, 1090, 1091, 1092, 1093, 1094, 1095, 1097, 1098, 1102, 1103, 1104, 1105, 1106, 1107, 1108, 1109, 1110, 1111, 1112, 1113, 1123, 1124, 1125, 1126, 1127, 1128, 1129, 1131, 1132, 1135, 1136, 1137, 1138, 1140, 1141, 1142, 1143, 1144, 1145, 1146, 1147, 1148, 1149, 1150, 1151, 1152, 1153, 1154, 1155, 1160, 1161, 1163, 1164, 1165, 1166, 1167, 1168, 1170, 1171, 1172, 1173, 1174, 1175, 1178, 1181, 1182, 1183, 1184, 1187, 1188, 1189, 1190, 1309, 1311, 1326, 1328</code></td></tr>
+      <tr><td>Extraction Pipeline</td><td>56</td><td><code>120, 727, 1123, 1157, 1158, 1159, 1160, 1163, 1178, 1181, 1227, 1239, 1242, 1244, 1245, 1246, 1247, 1252, 1253, 1256</code></td></tr><tr><td>Graph Build</td><td>30</td><td><code>267, 1116, 1140, 1177, 1180, 1187, 1232, 1238, 1250, 1251, 1257</code></td></tr><tr><td>Analysis &amp; Clustering</td><td>8</td><td><code>562</code></td></tr><tr><td>Outputs &amp; Docs</td><td>76</td><td><code>429, 460, 474, 486, 742, 743, 744, 841, 842, 843, 939, 1008, 1311</code></td></tr><tr><td>CLI &amp; Skill Installers</td><td>12612</td><td><code>0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 19, 21, 23, 24, 25, 26, 27, 31, 32, 34, 35, 36, 37, 38, 41, 44, 45, 46, 47, 49, 50, 51, 52, 55, 56, 57, 59, 60, 61, 62, 63, 65, 66, 67, 68, 69, 72, 73, 75, 77, 78, 79, 81, 82, 84, 85, 86, 87, 88, 89, 92, 93, 94, 95, 96, 97, 98, 99, 105, 107, 108, 109, 110, 113, 115, 118, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 138, 141, 142, 143, 144, 145, 149, 152, 153, 154, 155, 156, 157, 158, 159, 162, 163, 164, 168, 169, 171, 172, 173, 174, 176, 177, 178, 179, 180, 182, 183, 184, 185, 189, 190, 191, 192, 193, 197, 198, 199, 200, 201, 202, 203, 205, 208, 212, 213, 214, 215, 216, 217, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255, 256, 257, 260, 261, 262, 264, 266, 268, 269, 270, 271, 274, 276, 278, 280, 281, 282, 283, 284, 285, 286, 287, 288, 290, 291, 292, 293, 298, 299, 300, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 314, 315, 316, 317, 318, 321, 322, 323, 324, 325, 326, 327, 328, 329, 330, 331, 332, 333, 335, 336, 337, 338, 339, 340, 341, 342, 343, 344, 345, 346, 347, 348, 349, 352, 353, 356, 357, 358, 359, 360, 361, 362, 363, 366, 368, 369, 370, 371, 375, 376, 377, 378, 380, 382, 383, 384, 385, 386, 387, 388, 389, 390, 391, 392, 393, 394, 395, 397, 398, 399, 401, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 419, 420, 421, 422, 424, 425, 428, 430, 431, 433, 434, 435, 436, 437, 438, 439, 440, 441, 442, 443, 444, 445, 446, 447, 448, 449, 450, 451, 452, 453, 454, 456, 457, 461, 462, 463, 464, 465, 466, 467, 468, 469, 470, 471, 472, 473, 475, 477, 478, 479, 480, 481, 482, 484, 485, 490, 491, 492, 493, 494, 495, 496, 497, 498, 499, 500, 501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511, 512, 514, 515, 516, 517, 518, 519, 520, 521, 524, 525, 528, 529, 530, 531, 532, 533, 534, 535, 536, 537, 538, 539, 540, 541, 542, 543, 544, 545, 546, 547, 548, 549, 550, 551, 552, 553, 554, 555, 556, 557, 558, 559, 560, 563, 564, 565, 566, 569, 570, 571, 572, 576, 577, 578, 579, 580, 581, 582, 583, 584, 585, 586, 587, 588, 589, 590, 591, 592, 593, 594, 595, 596, 597, 598, 599, 600, 601, 603, 604, 605, 606, 607, 609, 610, 612, 616, 617, 618, 619, 620, 621, 622, 623, 624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635, 636, 637, 638, 639, 640, 641, 642, 643, 644, 645, 646, 647, 648, 649, 650, 651, 652, 653, 654, 655, 656, 657, 658, 659, 660, 661, 662, 663, 664, 665, 666, 667, 669, 670, 671, 672, 678, 682, 683, 684, 685, 686, 687, 688, 689, 690, 691, 692, 693, 694, 695, 696, 697, 698, 699, 700, 701, 702, 703, 704, 705, 706, 707, 708, 709, 710, 711, 712, 713, 714, 715, 716, 717, 718, 719, 720, 721, 722, 724, 725, 726, 728, 730, 731, 733, 734, 736, 738, 741, 745, 746, 747, 748, 749, 750, 751, 752, 753, 754, 755, 756, 757, 758, 759, 760, 761, 762, 763, 764, 765, 766, 767, 768, 769, 770, 771, 772, 773, 774, 775, 776, 777, 778, 779, 780, 781, 782, 783, 784, 785, 786, 787, 788, 789, 790, 791, 792, 793, 794, 795, 796, 797, 798, 799, 800, 801, 802, 803, 804, 805, 806, 807, 808, 809, 810, 811, 812, 813, 814, 815, 816, 817, 818, 819, 820, 822, 823, 828, 829, 830, 832, 833, 837, 840, 844, 845, 846, 847, 848, 849, 850, 851, 852, 853, 854, 855, 856, 857, 858, 859, 860, 861, 862, 863, 864, 865, 866, 867, 868, 869, 870, 871, 872, 873, 874, 875, 876, 877, 878, 879, 880, 881, 882, 883, 884, 885, 886, 887, 888, 889, 890, 891, 892, 893, 894, 895, 896, 897, 898, 899, 900, 901, 902, 903, 904, 905, 906, 907, 908, 909, 910, 911, 912, 913, 914, 915, 916, 917, 918, 919, 920, 921, 922, 923, 925, 926, 927, 928, 929, 933, 934, 937, 940, 941, 942, 943, 944, 945, 946, 947, 948, 949, 950, 951, 952, 953, 954, 955, 956, 957, 958, 959, 960, 961, 962, 963, 964, 965, 966, 967, 968, 969, 970, 971, 972, 973, 974, 975, 976, 977, 978, 1000, 1001, 1002, 1003, 1004, 1006, 1007, 1009, 1010, 1011, 1012, 1013, 1014, 1015, 1016, 1017, 1018, 1019, 1020, 1021, 1026, 1028, 1030, 1033, 1034, 1035, 1036, 1037, 1038, 1040, 1041, 1042, 1043, 1044, 1045, 1046, 1047, 1048, 1049, 1050, 1051, 1052, 1053, 1054, 1055, 1056, 1057, 1058, 1059, 1060, 1061, 1062, 1063, 1064, 1065, 1066, 1067, 1068, 1069, 1070, 1071, 1072, 1073, 1074, 1075, 1076, 1077, 1078, 1079, 1080, 1081, 1082, 1083, 1084, 979, 980, 982, 985, 986, 987, 992, 993, 994, 995, 996, 997, 998, 1115, 1117, 1118, 1119, 1120, 1121, 1122, 1192, 1314, 1315, 1316, 1317, 1318, 1319, 1320, 1321, 1322</code></td></tr><tr><td>Ingestion &amp; Updates</td><td>90</td><td><code>148, 289, 487, 513, 831, 932, 1005, 983, 984, 988, 999, 1097, 1100, 1101, 1102, 1131, 1135, 1323</code></td></tr><tr><td>Serving API</td><td>371</td><td><code>18, 40, 101, 103, 104, 117, 137, 140, 187, 614, 1029, 1170, 1186, 1295, 1328</code></td></tr><tr><td>Tests &amp; Fixtures</td><td>3158</td><td><code>10, 17, 20, 22, 28, 29, 30, 33, 39, 42, 43, 48, 53, 54, 58, 64, 70, 71, 74, 76, 80, 83, 90, 91, 100, 102, 106, 111, 112, 114, 116, 119, 136, 139, 146, 147, 150, 151, 160, 161, 165, 166, 167, 170, 175, 181, 186, 188, 194, 195, 196, 204, 206, 207, 218, 258, 259, 263, 265, 272, 273, 275, 277, 279, 294, 295, 296, 297, 313, 319, 320, 334, 350, 351, 354, 355, 364, 365, 367, 372, 373, 374, 379, 381, 396, 400, 402, 423, 426, 427, 432, 455, 458, 459, 476, 483, 488, 522, 523, 526, 527, 561, 567, 568, 573, 574, 575, 602, 608, 611, 613, 615, 668, 673, 674, 675, 676, 677, 679, 680, 681, 723, 729, 732, 735, 737, 739, 821, 824, 825, 826, 827, 834, 835, 836, 838, 839, 924, 930, 931, 935, 936, 938, 1022, 1023, 1024, 1025, 1031, 1032, 1039, 1085, 1086, 981, 989, 990, 991, 1090, 1134, 1193, 1194, 1195, 1196, 1197, 1198, 1199, 1200, 1201, 1202, 1203, 1204, 1205, 1206, 1207, 1208, 1209, 1210, 1211, 1212, 1213, 1214, 1215, 1216, 1217, 1218, 1219, 1220, 1221, 1222, 1223, 1224, 1225, 1226, 1228, 1229, 1230, 1231, 1233, 1234, 1235, 1236, 1237, 1240, 1241, 1243, 1248, 1249, 1254, 1255, 1258, 1259, 1260, 1261, 1262, 1263, 1264, 1265, 1266, 1267, 1268, 1269, 1270, 1271, 1272, 1273, 1274, 1275, 1276, 1277, 1278, 1279, 1280, 1281, 1282, 1283, 1284, 1285, 1286, 1287, 1288, 1289, 1290, 1291, 1292, 1293, 1294, 1296, 1297, 1298, 1299, 1300, 1301, 1302, 1303, 1304, 1305, 1306, 1307, 1308, 1309, 1313, 1324, 1325, 1326</code></td></tr><tr><td>Mastermd Design System</td><td>22</td><td><code>209</code></td></tr><tr><td>Mastermd Design System</td><td>22</td><td><code>210</code></td></tr><tr><td>Mastermd Design System</td><td>22</td><td><code>211</code></td></tr><tr><td>Dashboardmd Design System</td><td>10</td><td><code>489</code></td></tr><tr><td>Readmemd Sovereign Research</td><td>5</td><td><code>740</code></td></tr><tr><td>Check Memory Dbpy</td><td>2</td><td><code>1027</code></td></tr><tr><td>Other</td><td>79</td><td><code>1087, 1088, 1089, 1091, 1092, 1093, 1094, 1095, 1096, 1098, 1099, 1103, 1104, 1105, 1106, 1107, 1108, 1109, 1110, 1111, 1112, 1113, 1114, 1124, 1125, 1126, 1127, 1128, 1129, 1130, 1132, 1133, 1136, 1137, 1138, 1139, 1141, 1142, 1143, 1144, 1145, 1146, 1147, 1148, 1149, 1150, 1151, 1152, 1153, 1154, 1155, 1156, 1161, 1162, 1164, 1165, 1166, 1167, 1168, 1169, 1171, 1172, 1173, 1174, 1175, 1176, 1179, 1182, 1183, 1184, 1185, 1188, 1189, 1190, 1191, 1310, 1312, 1327, 1329</code></td></tr>
     </table>
   </div>
   <div class="card">
@@ -156,7 +156,7 @@ flowchart LR
   <div class="card">
     <h4>Graph Report Highlights</h4>
     <ul>
-      <li>16506 nodes · 23539 edges · 1329 communities (1036 shown, 293 thin omitted)</li>
+      <li>16563 nodes · 23613 edges · 1330 communities (1040 shown, 290 thin omitted)</li>
       <li>Extraction: 90% EXTRACTED · 10% INFERRED · 0% AMBIGUOUS · INFERRED: 2254 edges (avg confidence: 0.73)</li>
       <li>Token cost: 0 input · 0 output</li>
       <li>1. `Cursor Support Now Available 🎉` - 167 edges</li>
@@ -168,57 +168,53 @@ flowchart LR
 <hr>
 <!-- ====== 2. Extraction Pipeline ====== -->
 <h2 id="extract-pipeline">2. Extraction Pipeline</h2>
-<p>Extraction Pipeline groups implementation around tree, claude, free, tools, mostly in tests/messaging/test_tree_concurrency.py, scripts/extraction/extract-all-xml.py, free-claude/config/settings.py. This section covers 23 nodes and 5 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Extraction Pipeline groups implementation around roadmap, patch, upgrade, notesmd, mostly in docs/roadmap-v3-upgrade-patch-notes.md, tests/messaging/test_tree_concurrency.py, scripts/extraction/extract-all-xml.py. This section covers 56 nodes and 37 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Extraction Pipeline (23 nodes, 5 edges)
+    %% Section: Extraction Pipeline (56 nodes, 37 edges)
+    subgraph extract_pipeline_docs_roadmap_v3_upgrade_patch_n_f51098d7["docs/roadmap-v3-upgrade-patch-notes.md"]
+        docs_roadmap_v3_upgrade_patch_notes_add_frontend_a23c53fd("Add Frontend Reconnection Logic<br/><small>docs/roadmap-v3-upgrade-patch-notes.md</small>")
+        docs_roadmap_v3_upgrade_patch_notes_add_phase_0_27770eee("Add Phase 0: Current State Audit<br/><small>docs/roadmap-v3-upgrade-patch-notes.md</small>")
+        docs_roadmap_v3_upgrade_patch_notes_add_shoonya_d2adf862("Add Shoonya Session Health Check<br/><small>docs/roadmap-v3-upgrade-patch-notes.md</small>")
+        docs_roadmap_v3_upgrade_patch_notes_add_zustand_d8d481f8("Add Zustand Persistence Warning<br/><small>docs/roadmap-v3-upgrade-patch-notes.md</small>")
+        docs_roadmap_v3_upgrade_patch_notes_authenticate_403221ac("Authenticate /ws/prices<br/><small>docs/roadmap-v3-upgrade-patch-notes.md</small>")
+        docs_roadmap_v3_upgrade_patch_notes_canonicalize_759c9e63("Canonicalize Screener Cache Keys<br/><small>docs/roadmap-v3-upgrade-patch-notes.md</small>")
+        docs_roadmap_v3_upgrade_patch_notes_celery_requi_a29129b3("Celery Requires Upstash Native Redis TC...<br/><small>docs/roadmap-v3-upgrade-patch-notes.md</small>")
+        docs_roadmap_v3_upgrade_patch_notes_critical_fix_be02506c("Critical Fixes<br/><small>docs/roadmap-v3-upgrade-patch-notes.md</small>")
+        docs_roadmap_v3_upgrade_patch_notes_cross_cuttin_0284de51("Cross-Cutting Roadmap Rule<br/><small>docs/roadmap-v3-upgrade-patch-notes.md</small>")
+        docs_roadmap_v3_upgrade_patch_notes_document_neo_496b1faf("Document Neon Pool Math<br/><small>docs/roadmap-v3-upgrade-patch-notes.md</small>")
+        docs_roadmap_v3_upgrade_patch_notes_high_priorit_c8e1dea2("High-Priority Design Changes<br/><small>docs/roadmap-v3-upgrade-patch-notes.md</small>")
+        docs_roadmap_v3_upgrade_patch_notes_low_priority_6475db7a("Low-Priority Additions<br/><small>docs/roadmap-v3-upgrade-patch-notes.md</small>")
+        docs_roadmap_v3_upgrade_patch_notes_medium_prior_10461a0b("Medium-Priority Additions<br/><small>docs/roadmap-v3-upgrade-patch-notes.md</small>")
+        docs_roadmap_v3_upgrade_patch_notes_multibagger_8f616932("MultiBagger Implementation Roadmap v3.0...<br/><small>docs/roadmap-v3-upgrade-patch-notes.md</small>")
+    end
     subgraph extract_pipeline_scripts_extraction_extract_all_d2935881["scripts/extraction/extract-all-xml.py"]
         extraction_extract_all_xml_extract_xml_blocks_afc891f5("extract_xml_blocks()<br/><small>scripts/extraction/extract-all-xml.py</small>")
         extraction_extract_all_xml_process_transcript_fi_46941105("process_transcript_file()<br/><small>scripts/extraction/extract-all-xml.py</small>")
         newmultibagger_main_runtime_claude_mem_scripts_e_75398dcd("extract-all-xml.py")
-        extraction_extract_all_xml_rationale_9_ef750cdb("Extract complete XML blocks from text<br/><small>scripts/extraction/extract-all-xml.py</small>")
-        extraction_extract_all_xml_rationale_44_6f87ffa4("Process a single transcript file and ex...<br/><small>scripts/extraction/extract-all-xml.py</small>")
     end
-    subgraph extract_pipeline_tests_messaging_test_tree_concu_b611dca9["tests/messaging/test_tree_concurrency.py"]
-        messaging_test_tree_concurrency_rationale_310_14ef69eb("Adding replies to a tree concurrently s...<br/><small>tests/messaging/test_tree_concurrency.py</small>")
-        messaging_test_tree_concurrency_rationale_39_98638815("Concurrent add_node calls should all su...<br/><small>tests/messaging/test_tree_concurrency.py</small>")
-        messaging_test_tree_concurrency_rationale_494_88f71999("Enqueue for a node not in any tree retu...<br/><small>tests/messaging/test_tree_concurrency.py</small>")
-        messaging_test_tree_concurrency_rationale_344_0c4459e4("Enqueue should process immediately if t...<br/><small>tests/messaging/test_tree_concurrency.py</small>")
-        messaging_test_tree_concurrency_rationale_363_174c2156("Enqueue should queue when tree is alrea...<br/><small>tests/messaging/test_tree_concurrency.py</small>")
-    end
-    subgraph extract_pipeline_free_claude_config_settings_py_67d82407["free-claude/config/settings.py"]
-        config_settings_rationale_509_360d5061("Extract model name from any 'provider/m...<br/><small>free-claude/config/settings.py</small>")
-        config_settings_rationale_504_c31f2e8c("Extract provider type from any 'provide...<br/><small>free-claude/config/settings.py</small>")
-        config_settings_rationale_436_7c26a018("Extract provider type from the default...<br/><small>free-claude/config/settings.py</small>")
-        config_settings_rationale_441_dd628293("Extract the actual model name from the...<br/><small>free-claude/config/settings.py</small>")
-    end
-    subgraph extract_pipeline_messaging_trees_data_py_9b1da8ed["messaging/trees/data.py"]
-        trees_data_rationale_184_666a8c09("Check if tree is currently processing a...<br/><small>messaging/trees/data.py</small>")
-        trees_data_rationale_406_390c90d9("Deserialize tree from dictionary.<br/><small>messaging/trees/data.py</small>")
-    end
-    messaging_handler_rationale_89_a8833361("Accessor for the current tree queue man...<br/><small>free-claude/messaging/handler.py</small>")
     newmultibagger_main_runtime_claude_mem_src_types_a8bab72c("tree-kill.d.ts")
     extraction_extract_all_xml_extract_xml_blocks_afc891f5 -->|calls| extraction_extract_all_xml_process_transcript_fi_46941105
-    %% Omitted for readability: 5 nodes, 0 edges
+    %% Omitted for readability: 38 nodes, 0 edges
+    class docs_roadmap_v3_upgrade_patch_notes_add_frontend_a23c53fd concept;
+    class docs_roadmap_v3_upgrade_patch_notes_add_phase_0_27770eee concept;
+    class docs_roadmap_v3_upgrade_patch_notes_add_shoonya_d2adf862 concept;
+    class docs_roadmap_v3_upgrade_patch_notes_add_zustand_d8d481f8 concept;
+    class docs_roadmap_v3_upgrade_patch_notes_authenticate_403221ac concept;
+    class docs_roadmap_v3_upgrade_patch_notes_canonicalize_759c9e63 concept;
+    class docs_roadmap_v3_upgrade_patch_notes_celery_requi_a29129b3 concept;
+    class docs_roadmap_v3_upgrade_patch_notes_critical_fix_be02506c concept;
+    class docs_roadmap_v3_upgrade_patch_notes_cross_cuttin_0284de51 concept;
+    class docs_roadmap_v3_upgrade_patch_notes_document_neo_496b1faf concept;
+    class docs_roadmap_v3_upgrade_patch_notes_high_priorit_c8e1dea2 concept;
+    class docs_roadmap_v3_upgrade_patch_notes_low_priority_6475db7a concept;
+    class docs_roadmap_v3_upgrade_patch_notes_medium_prior_10461a0b concept;
+    class docs_roadmap_v3_upgrade_patch_notes_multibagger_8f616932 concept;
     class extraction_extract_all_xml_extract_xml_blocks_afc891f5 function;
     class extraction_extract_all_xml_process_transcript_fi_46941105 function;
     class newmultibagger_main_runtime_claude_mem_scripts_e_75398dcd module;
-    class extraction_extract_all_xml_rationale_9_ef750cdb concept;
-    class extraction_extract_all_xml_rationale_44_6f87ffa4 concept;
-    class messaging_test_tree_concurrency_rationale_310_14ef69eb concept;
-    class messaging_test_tree_concurrency_rationale_39_98638815 concept;
-    class messaging_test_tree_concurrency_rationale_494_88f71999 concept;
-    class messaging_test_tree_concurrency_rationale_344_0c4459e4 concept;
-    class messaging_test_tree_concurrency_rationale_363_174c2156 concept;
-    class config_settings_rationale_509_360d5061 concept;
-    class config_settings_rationale_504_c31f2e8c concept;
-    class config_settings_rationale_436_7c26a018 concept;
-    class config_settings_rationale_441_dd628293 concept;
-    class trees_data_rationale_184_666a8c09 concept;
-    class trees_data_rationale_406_390c90d9 concept;
-    class messaging_handler_rationale_89_a8833361 concept;
     class newmultibagger_main_runtime_claude_mem_src_types_a8bab72c module;
     classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
     classDef api fill:#450a0a,stroke:#f87171,color:#fee2e2,stroke-width:1px;
@@ -243,187 +239,243 @@ flowchart LR
 </tr>
 <tr>
   <td>1</td>
-  <td><code>extract-all-xml.py</code><br><small style="color:var(--muted)">scripts/extraction/extract-all-xml.py</small></td>
-  <td><span class="tag tag-class">Module</span></td>
+  <td><code>roadmap-v3-upgrade-patch-notes.md</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Module file in scripts/extraction/extract-all-xml.py.</td>
+  <td>Documentation node describing roadmap-v3-upgrade-patch-notes.md.</td>
 </tr>
 <tr>
   <td>2</td>
-  <td><code>extract_xml_blocks()</code><br><small style="color:var(--muted)">scripts/extraction/extract-all-xml.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
+  <td><code>MultiBagger Implementation Roadmap v3.0 - Required Patch Notes</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>process_transcript_file()</code><br><small style="color:var(--muted)">scripts/extraction/extract-all-xml.py</small></td>
-  <td>extract_xml_blocks() node in scripts/extraction/extract-all-xml.py.</td>
+  <td>No direct outbound edge</td>
+  <td>Documentation node describing MultiBagger Implementation Roadmap v3.0 - Required Patch Notes.</td>
 </tr>
 <tr>
   <td>3</td>
-  <td><code>process_transcript_file()</code><br><small style="color:var(--muted)">scripts/extraction/extract-all-xml.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>extract_xml_blocks()</code><br><small style="color:var(--muted)">scripts/extraction/extract-all-xml.py</small></td>
+  <td><code>Critical Fixes</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
+  <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>process_transcript_file() node in scripts/extraction/extract-all-xml.py.</td>
+  <td>Documentation node describing Critical Fixes.</td>
 </tr>
 <tr>
   <td>4</td>
-  <td><code>Extract complete XML blocks from text</code><br><small style="color:var(--muted)">scripts/extraction/extract-all-xml.py</small></td>
+  <td><code>WebSocket Live Feed Must Be Multi-Worker Safe</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Design note for Extract complete XML blocks from text.</td>
+  <td>Documentation node describing WebSocket Live Feed Must Be Multi-Worker Safe.</td>
 </tr>
 <tr>
   <td>5</td>
-  <td><code>Process a single transcript file and extract XML with timestamps</code><br><small style="color:var(--muted)">scripts/extraction/extract-all-xml.py</small></td>
+  <td><code>code:python (connected_clients: list[WebSocket] = [])</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Design note for Process a single transcript file and extract XML with timestamps.</td>
+  <td>Documentation node describing code:python (connected_clients: list[WebSocket] = []).</td>
 </tr>
 <tr>
   <td>6</td>
-  <td><code>tree-kill.d.ts</code><br><small style="color:var(--muted)">src/types/tree-kill.d.ts</small></td>
-  <td><span class="tag tag-class">Module</span></td>
+  <td><code>code:python (# services/live_broadcaster.py)</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Module file in src/types/tree-kill.d.ts.</td>
+  <td>Documentation node describing code:python (# services/live_broadcaster.py).</td>
 </tr>
 <tr>
   <td>7</td>
-  <td><code>Extract provider type from the default model string.</code><br><small style="color:var(--muted)">free-claude/config/settings.py</small></td>
+  <td><code>Shoonya `on_tick` Must Be Thread-Safe</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Design note for Extract provider type from the default model string..</td>
+  <td>Documentation node describing Shoonya `on_tick` Must Be Thread-Safe.</td>
 </tr>
 <tr>
   <td>8</td>
-  <td><code>Extract the actual model name from the default model string.</code><br><small style="color:var(--muted)">free-claude/config/settings.py</small></td>
+  <td><code>code:python (import asyncio)</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Design note for Extract the actual model name from the default model string..</td>
+  <td>Documentation node describing code:python (import asyncio).</td>
 </tr>
 <tr>
   <td>9</td>
-  <td><code>Extract provider type from any &#x27;provider/model&#x27; string.</code><br><small style="color:var(--muted)">free-claude/config/settings.py</small></td>
+  <td><code>WebSocket Disconnect Handling Must Be Idempotent</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Design note for Extract provider type from any &#x27;provider/model&#x27; string..</td>
+  <td>Documentation node describing WebSocket Disconnect Handling Must Be Idempotent.</td>
 </tr>
 <tr>
   <td>10</td>
-  <td><code>Extract model name from any &#x27;provider/model&#x27; string.</code><br><small style="color:var(--muted)">free-claude/config/settings.py</small></td>
+  <td><code>code:python (connected_clients.remove(ws))</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Design note for Extract model name from any &#x27;provider/model&#x27; string..</td>
+  <td>Documentation node describing code:python (connected_clients.remove(ws)).</td>
 </tr>
 <tr>
   <td>11</td>
-  <td><code>Accessor for the current tree queue manager.</code><br><small style="color:var(--muted)">free-claude/messaging/handler.py</small></td>
+  <td><code>code:python (finally:)</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Design note for Accessor for the current tree queue manager..</td>
+  <td>Documentation node describing code:python (finally:).</td>
 </tr>
 <tr>
   <td>12</td>
-  <td><code>Check if tree is currently processing a message.</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
+  <td><code>Celery Requires Upstash Native Redis TCP URL</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Design note for Check if tree is currently processing a message..</td>
+  <td>Documentation node describing Celery Requires Upstash Native Redis TCP URL.</td>
 </tr>
 <tr>
   <td>13</td>
-  <td><code>Deserialize tree from dictionary.</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
+  <td><code>code:python (CELERY_BROKER = os.environ[&quot;UPSTASH_REDIS_TCP_URL&quot;])</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Design note for Deserialize tree from dictionary..</td>
+  <td>Documentation node describing code:python (CELERY_BROKER = os.environ[&quot;UPSTASH_REDIS_TCP_URL&quot;]).</td>
 </tr>
 <tr>
   <td>14</td>
-  <td><code>Concurrent add_node calls should all succeed via lock serialization.</code><br><small style="color:var(--muted)">tests/messaging/test_tree_concurrency.py</small></td>
+  <td><code>High-Priority Design Changes</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Design note for Concurrent add_node calls should all succeed via lock serialization..</td>
+  <td>Documentation node describing High-Priority Design Changes.</td>
 </tr>
 <tr>
   <td>15</td>
-  <td><code>Tree should survive serialization round-trip.</code><br><small style="color:var(--muted)">tests/messaging/test_tree_concurrency.py</small></td>
+  <td><code>Store NSE Tokens In The Database</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Design note for Tree should survive serialization round-trip..</td>
+  <td>Documentation node describing Store NSE Tokens In The Database.</td>
 </tr>
 <tr>
   <td>16</td>
-  <td><code>Adding replies to a tree concurrently should all succeed.</code><br><small style="color:var(--muted)">tests/messaging/test_tree_concurrency.py</small></td>
+  <td><code>code:sql (ALTER TABLE stocks ADD COLUMN nse_token TEXT;)</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Design note for Adding replies to a tree concurrently should all succeed..</td>
+  <td>Documentation node describing code:sql (ALTER TABLE stocks ADD COLUMN nse_token TEXT;).</td>
 </tr>
 <tr>
   <td>17</td>
-  <td><code>Enqueue should process immediately if tree is free.</code><br><small style="color:var(--muted)">tests/messaging/test_tree_concurrency.py</small></td>
+  <td><code>Canonicalize Screener Cache Keys</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Design note for Enqueue should process immediately if tree is free..</td>
+  <td>Documentation node describing Canonicalize Screener Cache Keys.</td>
 </tr>
 <tr>
   <td>18</td>
-  <td><code>Enqueue should queue when tree is already processing.</code><br><small style="color:var(--muted)">tests/messaging/test_tree_concurrency.py</small></td>
+  <td><code>code:python (import hashlib)</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Design note for Enqueue should queue when tree is already processing..</td>
+  <td>Documentation node describing code:python (import hashlib).</td>
 </tr>
 <tr>
   <td>19</td>
-  <td><code>cancel_tree should cancel in-progress and queued nodes.</code><br><small style="color:var(--muted)">tests/messaging/test_tree_concurrency.py</small></td>
+  <td><code>Authenticate `/ws/prices`</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Design note for cancel_tree should cancel in-progress and queued nodes..</td>
+  <td>Documentation node describing Authenticate `/ws/prices`.</td>
 </tr>
 <tr>
   <td>20</td>
-  <td><code>cancel_tree for nonexistent tree returns empty list.</code><br><small style="color:var(--muted)">tests/messaging/test_tree_concurrency.py</small></td>
+  <td><code>Add Frontend Reconnection Logic</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Design note for cancel_tree for nonexistent tree returns empty list..</td>
+  <td>Documentation node describing Add Frontend Reconnection Logic.</td>
 </tr>
 <tr>
   <td>21</td>
-  <td><code>get_tree_for_node returns the right tree.</code><br><small style="color:var(--muted)">tests/messaging/test_tree_concurrency.py</small></td>
+  <td><code>Medium-Priority Additions</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Design note for get_tree_for_node returns the right tree..</td>
+  <td>Documentation node describing Medium-Priority Additions.</td>
 </tr>
 <tr>
   <td>22</td>
-  <td><code>Enqueue for a node not in any tree returns False.</code><br><small style="color:var(--muted)">tests/messaging/test_tree_concurrency.py</small></td>
+  <td><code>Add Phase 0: Current State Audit</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Design note for Enqueue for a node not in any tree returns False..</td>
+  <td>Documentation node describing Add Phase 0: Current State Audit.</td>
 </tr>
 <tr>
   <td>23</td>
-  <td><code>Processing in one tree shouldn&#x27;t affect another.</code><br><small style="color:var(--muted)">tests/messaging/test_tree_concurrency.py</small></td>
+  <td><code>Subscribe To Dynamic Watchlist Tokens</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Design note for Processing in one tree shouldn&#x27;t affect another..</td>
+  <td>Documentation node describing Subscribe To Dynamic Watchlist Tokens.</td>
+</tr>
+<tr>
+  <td>24</td>
+  <td><code>code:python (api.subscribe([&quot;NSE|22597&quot;, &quot;NSE|16669&quot;, &quot;NSE|538&quot;]))</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>Documentation node describing code:python (api.subscribe([&quot;NSE|22597&quot;, &quot;NSE|16669&quot;, &quot;NSE|538&quot;])).</td>
+</tr>
+<tr>
+  <td>25</td>
+  <td><code>code:python (tokens = fetch_all_nse_tokens())</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>Documentation node describing code:python (tokens = fetch_all_nse_tokens()).</td>
+</tr>
+<tr>
+  <td>26</td>
+  <td><code>Revisit Upstash Free-Tier Economics</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>Documentation node describing Revisit Upstash Free-Tier Economics.</td>
+</tr>
+<tr>
+  <td>27</td>
+  <td><code>Document Neon Pool Math</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>Documentation node describing Document Neon Pool Math.</td>
+</tr>
+<tr>
+  <td>28</td>
+  <td><code>code:python (engine = create_engine(DATABASE_URL, pool_size=2, max_overfl)</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>Documentation node describing code:python (engine = create_engine(DATABASE_URL, pool_size=2, max_overfl).</td>
+</tr>
+<tr>
+  <td>29</td>
+  <td><code>Low-Priority Additions</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>Documentation node describing Low-Priority Additions.</td>
+</tr>
+<tr>
+  <td>30</td>
+  <td><code>Add Shoonya Session Health Check</code><br><small style="color:var(--muted)">docs/roadmap-v3-upgrade-patch-notes.md</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>Documentation node describing Add Shoonya Session Health Check.</td>
 </tr>
 </table>
 
@@ -432,7 +484,8 @@ flowchart LR
     <h4>Key Files</h4>
     <table style="width:100%;font-size:0.85rem;">
       <tr><th>File</th><th>Coverage</th></tr>
-      <tr><td><code>tests/messaging/test_tree_concurrency.py</code></td><td>10 nodes</td></tr>
+      <tr><td><code>docs/roadmap-v3-upgrade-patch-notes.md</code></td><td>33 nodes</td></tr>
+<tr><td><code>tests/messaging/test_tree_concurrency.py</code></td><td>10 nodes</td></tr>
 <tr><td><code>scripts/extraction/extract-all-xml.py</code></td><td>5 nodes</td></tr>
 <tr><td><code>free-claude/config/settings.py</code></td><td>4 nodes</td></tr>
 <tr><td><code>messaging/trees/data.py</code></td><td>2 nodes</td></tr>
@@ -442,7 +495,7 @@ flowchart LR
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: contains x2, explains x2, calls x1. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: contains x34, explains x2, calls x1. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
@@ -929,12 +982,12 @@ flowchart LR
 
 <!-- ====== 5. Outputs & Docs ====== -->
 <h2 id="outputs-docs">5. Outputs &amp; Docs</h2>
-<p>Outputs &amp; Docs groups implementation around newmultibagger, report, reportmd, backtest, mostly in Newmultibagger-main/report_generator.py, Newmultibagger-main/app_routes/score_report.py, smoke/lib/report_summary.py. This section covers 73 nodes and 75 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Outputs &amp; Docs groups implementation around newmultibagger, report, reportmd, backtest, mostly in Newmultibagger-main/report_generator.py, Newmultibagger-main/app_routes/score_report.py, smoke/lib/report_summary.py. This section covers 76 nodes and 78 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Outputs &amp; Docs (73 nodes, 75 edges)
+    %% Section: Outputs &amp; Docs (76 nodes, 78 edges)
     subgraph outputs_docs_Newmultibagger_main_report_generato_ece6776b["Newmultibagger-main/report_generator.py"]
         newmultibagger_main_report_generator_sha256_969c1ba9("_sha256()<br/><small>Newmultibagger-main/report_generator.py</small>")
         newmultibagger_main_report_generator_signature_p_bb393f6a("_signature_path()<br/><small>Newmultibagger-main/report_generator.py</small>")
@@ -973,7 +1026,7 @@ flowchart LR
     newmultibagger_main_report_generator_render_repo_24961eaf -->|calls| newmultibagger_main_report_generator_generate_an_5355cdb6
     modules_html_report_safe_float_cd107a22 -->|calls| modules_html_report_generate_premium_html_report_68d39bea
     lib_report_summary_smokesummary_8a746257 -->|calls| lib_report_summary_summarize_reports_39534fcc
-    %% Omitted for readability: 55 nodes, 0 edges
+    %% Omitted for readability: 58 nodes, 0 edges
     class newmultibagger_main_report_generator_sha256_969c1ba9 function;
     class newmultibagger_main_report_generator_signature_p_bb393f6a function;
     class newmultibagger_main_report_generator_cache_key_1a8fee25 function;
@@ -1015,6 +1068,102 @@ flowchart LR
 </tr>
 <tr>
   <td>1</td>
+  <td><code>get_stock_report_html()</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/public.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>premium html report()</code><br><small style="color:var(--muted)">Newmultibagger-main/modules/html_report.py</small></td>
+  <td>Exports documentation data to a target format.</td>
+</tr>
+<tr>
+  <td>2</td>
+  <td><code>Serve the premium HTML report with cache busting.</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/public.py</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>Design note for Serve the premium HTML report with cache busting..</td>
+</tr>
+<tr>
+  <td>3</td>
+  <td><code>get_shareholding()</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/stocks.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>get_shareholding_pattern()</code><br><small style="color:var(--muted)">Newmultibagger-main/modules/shareholding.py</small></td>
+  <td>get_shareholding() node in Newmultibagger-main/app_routes/stocks.py.</td>
+</tr>
+<tr>
+  <td>4</td>
+  <td><code>html_report.py</code><br><small style="color:var(--muted)">Newmultibagger-main/modules/html_report.py</small></td>
+  <td><span class="tag tag-class">Module</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>Module file in Newmultibagger-main/modules/html_report.py.</td>
+</tr>
+<tr>
+  <td>5</td>
+  <td><code>_safe_float()</code><br><small style="color:var(--muted)">Newmultibagger-main/modules/html_report.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>premium html report()</code><br><small style="color:var(--muted)">Newmultibagger-main/modules/html_report.py</small></td>
+  <td>_safe_float() node in Newmultibagger-main/modules/html_report.py.</td>
+</tr>
+<tr>
+  <td>6</td>
+  <td><code>generate_premium_html_report()</code><br><small style="color:var(--muted)">Newmultibagger-main/modules/html_report.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>_safe_float()</code><br><small style="color:var(--muted)">Newmultibagger-main/modules/html_report.py</small><br><code>get_stock_report_html()</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/public.py</small></td>
+  <td><code>Environment</code><br><small style="color:var(--muted)">free-claude/smoke/README.md</small><br><code>generate_watchlist_batch()</code><br><small style="color:var(--muted)">Newmultibagger-main/ops/batch_reports.py</small><br><code>get_shareholding_pattern()</code><br><small style="color:var(--muted)">Newmultibagger-main/modules/shareholding.py</small></td>
+  <td>Exports documentation data to a target format.</td>
+</tr>
+<tr>
+  <td>7</td>
+  <td><code>Generate a stunning HTML investment report using the premium template and Jinja2</code><br><small style="color:var(--muted)">Newmultibagger-main/modules/html_report.py</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>Design note for Generate a stunning HTML investment report using the premium template and Jinja2.</td>
+</tr>
+<tr>
+  <td>8</td>
+  <td><code>shareholding.py</code><br><small style="color:var(--muted)">Newmultibagger-main/modules/shareholding.py</small></td>
+  <td><span class="tag tag-class">Module</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>Module file in Newmultibagger-main/modules/shareholding.py.</td>
+</tr>
+<tr>
+  <td>9</td>
+  <td><code>get_shareholding_pattern()</code><br><small style="color:var(--muted)">Newmultibagger-main/modules/shareholding.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>get_shareholding()</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/stocks.py</small><br><code>premium html report()</code><br><small style="color:var(--muted)">Newmultibagger-main/modules/html_report.py</small></td>
+  <td>No direct outbound edge</td>
+  <td>get_shareholding_pattern() node in Newmultibagger-main/modules/shareholding.py.</td>
+</tr>
+<tr>
+  <td>10</td>
+  <td><code>batch_reports.py</code><br><small style="color:var(--muted)">Newmultibagger-main/ops/batch_reports.py</small></td>
+  <td><span class="tag tag-class">Module</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>Module file in Newmultibagger-main/ops/batch_reports.py.</td>
+</tr>
+<tr>
+  <td>11</td>
+  <td><code>generate_watchlist_batch()</code><br><small style="color:var(--muted)">Newmultibagger-main/ops/batch_reports.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>premium html report()</code><br><small style="color:var(--muted)">Newmultibagger-main/modules/html_report.py</small></td>
+  <td>No direct outbound edge</td>
+  <td>generate_watchlist_batch() node in Newmultibagger-main/ops/batch_reports.py.</td>
+</tr>
+<tr>
+  <td>12</td>
+  <td><code>Environment</code><br><small style="color:var(--muted)">free-claude/smoke/README.md</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
+  <td><code>premium html report()</code><br><small style="color:var(--muted)">Newmultibagger-main/modules/html_report.py</small></td>
+  <td>No direct outbound edge</td>
+  <td>Documentation node describing Environment.</td>
+</tr>
+<tr>
+  <td>13</td>
   <td><code>report_summary.py</code><br><small style="color:var(--muted)">smoke/lib/report_summary.py</small></td>
   <td><span class="tag tag-class">Module</span></td>
   <td>External entry / no inbound edge</td>
@@ -1022,7 +1171,7 @@ flowchart LR
   <td>Module file in smoke/lib/report_summary.py.</td>
 </tr>
 <tr>
-  <td>2</td>
+  <td>14</td>
   <td><code>SmokeSummary</code><br><small style="color:var(--muted)">smoke/lib/report_summary.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
@@ -1030,7 +1179,7 @@ flowchart LR
   <td>SmokeSummary node in smoke/lib/report_summary.py.</td>
 </tr>
 <tr>
-  <td>3</td>
+  <td>15</td>
   <td><code>has_regression()</code><br><small style="color:var(--muted)">smoke/lib/report_summary.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -1038,7 +1187,7 @@ flowchart LR
   <td>has_regression() node in smoke/lib/report_summary.py.</td>
 </tr>
 <tr>
-  <td>4</td>
+  <td>16</td>
   <td><code>summarize_reports()</code><br><small style="color:var(--muted)">smoke/lib/report_summary.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>SmokeSummary</code><br><small style="color:var(--muted)">smoke/lib/report_summary.py</small></td>
@@ -1046,7 +1195,7 @@ flowchart LR
   <td>summarize_reports() node in smoke/lib/report_summary.py.</td>
 </tr>
 <tr>
-  <td>5</td>
+  <td>17</td>
   <td><code>format_summary()</code><br><small style="color:var(--muted)">smoke/lib/report_summary.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -1054,7 +1203,7 @@ flowchart LR
   <td>format_summary() node in smoke/lib/report_summary.py.</td>
 </tr>
 <tr>
-  <td>6</td>
+  <td>18</td>
   <td><code>Summarize smoke JSON reports for local and workflow triage.</code><br><small style="color:var(--muted)">smoke/lib/report_summary.py</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
@@ -1062,7 +1211,7 @@ flowchart LR
   <td>Design note for Summarize smoke JSON reports for local and workflow triage..</td>
 </tr>
 <tr>
-  <td>7</td>
+  <td>19</td>
   <td><code>Read all report JSON files and count outcome classifications.</code><br><small style="color:var(--muted)">smoke/lib/report_summary.py</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
@@ -1070,7 +1219,7 @@ flowchart LR
   <td>Design note for Read all report JSON files and count outcome classifications..</td>
 </tr>
 <tr>
-  <td>8</td>
+  <td>20</td>
   <td><code>Return a compact human-readable summary.</code><br><small style="color:var(--muted)">smoke/lib/report_summary.py</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
@@ -1078,7 +1227,7 @@ flowchart LR
   <td>Design note for Return a compact human-readable summary..</td>
 </tr>
 <tr>
-  <td>9</td>
+  <td>21</td>
   <td><code>test_smoke_tiers.py</code><br><small style="color:var(--muted)">tests/contracts/test_smoke_tiers.py</small></td>
   <td><span class="tag tag-func">Test</span></td>
   <td>External entry / no inbound edge</td>
@@ -1086,7 +1235,7 @@ flowchart LR
   <td>Module file in tests/contracts/test_smoke_tiers.py.</td>
 </tr>
 <tr>
-  <td>10</td>
+  <td>22</td>
   <td><code>test_smoke_readme_uses_env_gated_serial_commands()</code><br><small style="color:var(--muted)">tests/contracts/test_smoke_tiers.py</small></td>
   <td><span class="tag tag-func">Test</span></td>
   <td>External entry / no inbound edge</td>
@@ -1094,7 +1243,7 @@ flowchart LR
   <td>Verifies imports, entry points, or version behavior.</td>
 </tr>
 <tr>
-  <td>11</td>
+  <td>23</td>
   <td><code>test_smoke_report_summary_counts_regression_classes()</code><br><small style="color:var(--muted)">tests/contracts/test_smoke_tiers.py</small></td>
   <td><span class="tag tag-func">Test</span></td>
   <td><code>format_summary()</code><br><small style="color:var(--muted)">smoke/lib/report_summary.py</small><br><code>summarize_reports()</code><br><small style="color:var(--muted)">smoke/lib/report_summary.py</small></td>
@@ -1102,7 +1251,7 @@ flowchart LR
   <td>Verifies imports, entry points, or version behavior.</td>
 </tr>
 <tr>
-  <td>12</td>
+  <td>24</td>
   <td><code>score_report.py</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/score_report.py</small></td>
   <td><span class="tag tag-class">Module</span></td>
   <td>External entry / no inbound edge</td>
@@ -1110,7 +1259,7 @@ flowchart LR
   <td>Module file in Newmultibagger-main/app_routes/score_report.py.</td>
 </tr>
 <tr>
-  <td>13</td>
+  <td>25</td>
   <td><code>score_distribution()</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/score_report.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -1118,7 +1267,7 @@ flowchart LR
   <td>score_distribution() node in Newmultibagger-main/app_routes/score_report.py.</td>
 </tr>
 <tr>
-  <td>14</td>
+  <td>26</td>
   <td><code>score_explain()</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/score_report.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -1126,7 +1275,7 @@ flowchart LR
   <td>score_explain() node in Newmultibagger-main/app_routes/score_report.py.</td>
 </tr>
 <tr>
-  <td>15</td>
+  <td>27</td>
   <td><code>calibration_report()</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/score_report.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -1134,7 +1283,7 @@ flowchart LR
   <td>calibration_report() node in Newmultibagger-main/app_routes/score_report.py.</td>
 </tr>
 <tr>
-  <td>16</td>
+  <td>28</td>
   <td><code>Return decile breakdown, sector distribution, and cap reason counts.</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/score_report.py</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
@@ -1142,116 +1291,20 @@ flowchart LR
   <td>Design note for Return decile breakdown, sector distribution, and cap reason counts..</td>
 </tr>
 <tr>
-  <td>17</td>
-  <td><code>Return full score explanation for one stock.</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/score_report.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Design note for Return full score explanation for one stock..</td>
-</tr>
-<tr>
-  <td>18</td>
-  <td><code>Return overall calibration health report.</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/score_report.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Design note for Return overall calibration health report..</td>
-</tr>
-<tr>
-  <td>19</td>
-  <td><code>_json_safe_clean()</code><br><small style="color:var(--muted)">Newmultibagger-main/modules/dependencies.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>calibration_report()</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/score_report.py</small><br><code>score_distribution()</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/score_report.py</small><br><code>score_explain()</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/score_report.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>_json_safe_clean() node in Newmultibagger-main/modules/dependencies.py.</td>
-</tr>
-<tr>
-  <td>20</td>
-  <td><code>Return full score explanation for one stock.</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/score_report.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Design note for Return full score explanation for one stock..</td>
-</tr>
-<tr>
-  <td>21</td>
-  <td><code>Return overall calibration health report.</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/score_report.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Design note for Return overall calibration health report..</td>
-</tr>
-<tr>
-  <td>22</td>
-  <td><code>report_generator.py</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small></td>
-  <td><span class="tag tag-class">Module</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Module file in Newmultibagger-main/report_generator.py.</td>
-</tr>
-<tr>
-  <td>23</td>
-  <td><code>_cache_key()</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td><code>generate_analyst_report()</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small></td>
-  <td>Caches analysis results or computes cache keys.</td>
-</tr>
-<tr>
-  <td>24</td>
-  <td><code>_signature_path()</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td><code>_read_verified_cache()</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small><br><code>_write_verified_cache()</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small></td>
-  <td>_signature_path() node in Newmultibagger-main/report_generator.py.</td>
-</tr>
-<tr>
-  <td>25</td>
-  <td><code>_sha256()</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td><code>_read_verified_cache()</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small><br><code>_write_verified_cache()</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small></td>
-  <td>_sha256() node in Newmultibagger-main/report_generator.py.</td>
-</tr>
-<tr>
-  <td>26</td>
-  <td><code>_read_verified_cache()</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>_sha256()</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small><br><code>_signature_path()</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small></td>
-  <td><code>generate_analyst_report()</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small></td>
-  <td>Caches analysis results or computes cache keys.</td>
-</tr>
-<tr>
-  <td>27</td>
-  <td><code>_write_verified_cache()</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>_sha256()</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small><br><code>_signature_path()</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small></td>
-  <td><code>generate_analyst_report()</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small></td>
-  <td>Caches analysis results or computes cache keys.</td>
-</tr>
-<tr>
-  <td>28</td>
-  <td><code>_fmt_money()</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td><code>_render_report()</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small></td>
-  <td>_fmt_money() node in Newmultibagger-main/report_generator.py.</td>
-</tr>
-<tr>
   <td>29</td>
-  <td><code>_fmt_pct()</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
+  <td><code>Return full score explanation for one stock.</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/score_report.py</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>_render_report()</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small></td>
-  <td>_fmt_pct() node in Newmultibagger-main/report_generator.py.</td>
+  <td>No direct outbound edge</td>
+  <td>Design note for Return full score explanation for one stock..</td>
 </tr>
 <tr>
   <td>30</td>
-  <td><code>_render_report()</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>_fmt_money()</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small><br><code>_fmt_pct()</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small></td>
-  <td><code>generate_analyst_report()</code><br><small style="color:var(--muted)">Newmultibagger-main/report_generator.py</small></td>
-  <td>_render_report() node in Newmultibagger-main/report_generator.py.</td>
+  <td><code>Return overall calibration health report.</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/score_report.py</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>Design note for Return overall calibration health report..</td>
 </tr>
 </table>
 
@@ -1272,19 +1325,19 @@ flowchart LR
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: contains x44, calls x12, explains x11. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: contains x45, calls x12, explains x11. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
 
 <!-- ====== 6. CLI & Skill Installers ====== -->
 <h2 id="cli-skills">6. CLI &amp; Skill Installers</h2>
-<p>CLI &amp; Skill Installers groups implementation around claude, newmultibagger, mem, runtime, mostly in runtime/claude-mem/CHANGELOG.md, plugin/ui/viewer-bundle.js, docs/public/platform-integration.mdx. This section covers 12605 nodes and 17280 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>CLI &amp; Skill Installers groups implementation around claude, newmultibagger, mem, runtime, mostly in runtime/claude-mem/CHANGELOG.md, plugin/ui/viewer-bundle.js, docs/public/platform-integration.mdx. This section covers 12612 nodes and 17329 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: CLI &amp; Skill Installers (12605 nodes, 17280 edges)
+    %% Section: CLI &amp; Skill Installers (12612 nodes, 17329 edges)
     subgraph cli_skills_Newmultibagger_main_sovereign_cli_py_6b462668["Newmultibagger-main/sovereign_cli.py"]
         newmultibagger_main_sovereign_cli_print_header_3c53868b("print_header()<br/><small>Newmultibagger-main/sovereign_cli.py</small>")
         newmultibagger_main_sovereign_cli_cmd_db_init_630b1e0d("cmd_db_init()<br/><small>Newmultibagger-main/sovereign_cli.py</small>")
@@ -1317,7 +1370,7 @@ flowchart LR
     newmultibagger_main_sovereign_cli_print_header_3c53868b -->|calls| newmultibagger_main_sovereign_cli_cmd_ml_train_2b7d9f19
     newmultibagger_main_sovereign_cli_print_header_3c53868b -->|calls| newmultibagger_main_sovereign_cli_cmd_ml_explain_c871d6f3
     newmultibagger_main_runtime_claude_mem_src_servi_a6d58d21 -->|imports| sqlite_sessionstore_sessionstore_c4211da6
-    %% Omitted for readability: 12587 nodes, 0 edges
+    %% Omitted for readability: 12594 nodes, 0 edges
     class newmultibagger_main_sovereign_cli_print_header_3c53868b function;
     class newmultibagger_main_sovereign_cli_cmd_db_init_630b1e0d function;
     class newmultibagger_main_sovereign_cli_cmd_db_verify_2d050114 function;
@@ -1359,243 +1412,243 @@ flowchart LR
 </tr>
 <tr>
   <td>1</td>
-  <td><code>IncomingMessage</code><br><small style="color:var(--muted)">free-claude/messaging/models.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td><code>ClaudeMessageHandler</code><br><small style="color:var(--muted)">free-claude/messaging/handler.py</small></td>
-  <td><code>_DiscordClient</code><br><small style="color:var(--muted)">messaging/platforms/discord.py</small><br><code>_handle_voice_note()</code><br><small style="color:var(--muted)">messaging/platforms/discord.py</small><br><code>_on_discord_message()</code><br><small style="color:var(--muted)">messaging/platforms/discord.py</small><br>+63 more</td>
-  <td>IncomingMessage node in free-claude/messaging/models.py.</td>
+  <td><code>parser.ts</code><br><small style="color:var(--muted)">src/sdk/parser.ts</small></td>
+  <td><span class="tag tag-class">Module</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>ChromaSync.ts</code><br><small style="color:var(--muted)">services/sync/ChromaSync.ts</small><br><code>Logger</code><br><small style="color:var(--muted)">src/utils/logger.ts</small><br><code>logger.ts</code><br><small style="color:var(--muted)">src/utils/logger.ts</small><br>+6 more</td>
+  <td>Module file in src/sdk/parser.ts.</td>
 </tr>
 <tr>
   <td>2</td>
-  <td><code>.is_reply()</code><br><small style="color:var(--muted)">free-claude/messaging/models.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>IncomingMessage</code><br><small style="color:var(--muted)">free-claude/messaging/models.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.is_reply() node in free-claude/messaging/models.py.</td>
+  <td><code>ParsedObservation</code><br><small style="color:var(--muted)">src/sdk/parser.ts</small></td>
+  <td><span class="tag tag-class">Class</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>ChromaSync.ts</code><br><small style="color:var(--muted)">services/sync/ChromaSync.ts</small><br><code>ResponseProcessor.ts</code><br><small style="color:var(--muted)">worker/agents/ResponseProcessor.ts</small><br><code>types.ts</code><br><small style="color:var(--muted)">worker/agents/types.ts</small></td>
+  <td>ParsedObservation node in src/sdk/parser.ts.</td>
 </tr>
 <tr>
   <td>3</td>
-  <td><code>Platform-agnostic incoming message.      Adapters convert platform-specific ev</code><br><small style="color:var(--muted)">free-claude/messaging/models.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
+  <td><code>ParsedSummary</code><br><small style="color:var(--muted)">src/sdk/parser.ts</small></td>
+  <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Design note for Platform-agnostic incoming message.      Adapters convert platform-specific ev.</td>
+  <td><code>ChromaSync.ts</code><br><small style="color:var(--muted)">services/sync/ChromaSync.ts</small><br><code>ResponseProcessor.ts</code><br><small style="color:var(--muted)">worker/agents/ResponseProcessor.ts</small><br><code>types.ts</code><br><small style="color:var(--muted)">worker/agents/types.ts</small></td>
+  <td>ParsedSummary node in src/sdk/parser.ts.</td>
 </tr>
 <tr>
   <td>4</td>
-  <td><code>Check if this message is a reply to another message.</code><br><small style="color:var(--muted)">free-claude/messaging/models.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
+  <td><code>parseObservations()</code><br><small style="color:var(--muted)">src/sdk/parser.ts</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Design note for Check if this message is a reply to another message..</td>
+  <td><code>extractArrayElements()</code><br><small style="color:var(--muted)">src/sdk/parser.ts</small><br><code>extractField()</code><br><small style="color:var(--muted)">src/sdk/parser.ts</small><br><code>parser.test.ts</code><br><small style="color:var(--muted)">tests/sdk/parser.test.ts</small><br>+2 more</td>
+  <td>parseObservations() node in src/sdk/parser.ts.</td>
 </tr>
 <tr>
   <td>5</td>
-  <td><code>MessageState</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td><code>IncomingMessage</code><br><small style="color:var(--muted)">free-claude/messaging/models.py</small></td>
-  <td><code>from_dict()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small><br><code>TestMessageTreeConcurrency</code><br><small style="color:var(--muted)">tests/messaging/test_tree_concurrency.py</small><br><code>TestMessageTreeNavigation</code><br><small style="color:var(--muted)">tests/messaging/test_tree_concurrency.py</small><br>+4 more</td>
-  <td>MessageState node in messaging/trees/data.py.</td>
+  <td><code>parseSummary()</code><br><small style="color:var(--muted)">src/sdk/parser.ts</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>extractField()</code><br><small style="color:var(--muted)">src/sdk/parser.ts</small><br><code>parse-summary.test.ts</code><br><small style="color:var(--muted)">tests/sdk/parse-summary.test.ts</small><br><code>ResponseProcessor.ts</code><br><small style="color:var(--muted)">worker/agents/ResponseProcessor.ts</small></td>
+  <td>parseSummary() node in src/sdk/parser.ts.</td>
 </tr>
 <tr>
   <td>6</td>
-  <td><code>MessageNode</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td><code>IncomingMessage</code><br><small style="color:var(--muted)">free-claude/messaging/models.py</small></td>
-  <td><code>add_node()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small><br><code>and updates ui()</code><br><small style="color:var(--muted)">tests/messaging/test_handler_markdown_and_status_edges.py</small><br><code>create_tree()</code><br><small style="color:var(--muted)">messaging/trees/queue_manager.py</small><br>+25 more</td>
-  <td>MessageNode node in messaging/trees/data.py.</td>
+  <td><code>extractField()</code><br><small style="color:var(--muted)">src/sdk/parser.ts</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>parseObservations()</code><br><small style="color:var(--muted)">src/sdk/parser.ts</small><br><code>parseSummary()</code><br><small style="color:var(--muted)">src/sdk/parser.ts</small></td>
+  <td>No direct outbound edge</td>
+  <td>extractField() node in src/sdk/parser.ts.</td>
 </tr>
 <tr>
   <td>7</td>
-  <td><code>.set_context()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
+  <td><code>extractArrayElements()</code><br><small style="color:var(--muted)">src/sdk/parser.ts</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>MessageNode</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
+  <td><code>parseObservations()</code><br><small style="color:var(--muted)">src/sdk/parser.ts</small></td>
   <td>No direct outbound edge</td>
-  <td>.set_context() node in messaging/trees/data.py.</td>
+  <td>extractArrayElements() node in src/sdk/parser.ts.</td>
 </tr>
 <tr>
   <td>8</td>
-  <td><code>.to_dict()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>MessageNode</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.to_dict() node in messaging/trees/data.py.</td>
+  <td><code>prompts.ts</code><br><small style="color:var(--muted)">src/sdk/prompts.ts</small></td>
+  <td><span class="tag tag-class">Module</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>GeminiAgent.ts</code><br><small style="color:var(--muted)">services/worker/GeminiAgent.ts</small><br><code>Logger</code><br><small style="color:var(--muted)">src/utils/logger.ts</small><br><code>logger.ts</code><br><small style="color:var(--muted)">src/utils/logger.ts</small><br>+5 more</td>
+  <td>Module file in src/sdk/prompts.ts.</td>
 </tr>
 <tr>
   <td>9</td>
-  <td><code>from_dict()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>IncomingMessage</code><br><small style="color:var(--muted)">free-claude/messaging/models.py</small><br><code>MessageState</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td><code>_add_node_from_dict()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td>from_dict() node in messaging/trees/data.py.</td>
+  <td><code>Observation</code><br><small style="color:var(--muted)">src/sdk/prompts.ts</small></td>
+  <td><span class="tag tag-class">Class</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>Observation node in src/sdk/prompts.ts.</td>
 </tr>
 <tr>
   <td>10</td>
-  <td><code>MessageTree</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
+  <td><code>SDKSession</code><br><small style="color:var(--muted)">src/sdk/prompts.ts</small></td>
   <td><span class="tag tag-class">Class</span></td>
-  <td><code>IncomingMessage</code><br><small style="color:var(--muted)">free-claude/messaging/models.py</small></td>
-  <td><code>__init__()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small><br><code>_add_node_from_dict()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small><br><code>add_node()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small><br>+43 more</td>
-  <td>MessageTree node in messaging/trees/data.py.</td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>SDKSession node in src/sdk/prompts.ts.</td>
 </tr>
 <tr>
   <td>11</td>
-  <td><code>.set_current_task()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
+  <td><code>buildInitPrompt()</code><br><small style="color:var(--muted)">src/sdk/prompts.ts</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>MessageTree</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.set_current_task() node in messaging/trees/data.py.</td>
+  <td>External entry / no inbound edge</td>
+  <td><code>createMessageGenerator()</code><br><small style="color:var(--muted)">services/worker/SDKAgent.ts</small><br><code>GeminiAgent.ts</code><br><small style="color:var(--muted)">services/worker/GeminiAgent.ts</small><br><code>OpenRouterAgent.ts</code><br><small style="color:var(--muted)">services/worker/OpenRouterAgent.ts</small><br>+3 more</td>
+  <td>Builds structured prompts for model calls.</td>
 </tr>
 <tr>
   <td>12</td>
-  <td><code>.add_node()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
+  <td><code>buildObservationPrompt()</code><br><small style="color:var(--muted)">src/sdk/prompts.ts</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>MessageNode</code><br><small style="color:var(--muted)">messaging/trees/data.py</small><br><code>MessageTree</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.add_node() node in messaging/trees/data.py.</td>
+  <td>External entry / no inbound edge</td>
+  <td><code>createMessageGenerator()</code><br><small style="color:var(--muted)">services/worker/SDKAgent.ts</small><br><code>GeminiAgent.ts</code><br><small style="color:var(--muted)">services/worker/GeminiAgent.ts</small><br><code>OpenRouterAgent.ts</code><br><small style="color:var(--muted)">services/worker/OpenRouterAgent.ts</small><br>+4 more</td>
+  <td>Builds structured prompts for model calls.</td>
 </tr>
 <tr>
   <td>13</td>
-  <td><code>.get_node()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
+  <td><code>buildSummaryPrompt()</code><br><small style="color:var(--muted)">src/sdk/prompts.ts</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>MessageTree</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.get_node() node in messaging/trees/data.py.</td>
+  <td>External entry / no inbound edge</td>
+  <td><code>createMessageGenerator()</code><br><small style="color:var(--muted)">services/worker/SDKAgent.ts</small><br><code>GeminiAgent.ts</code><br><small style="color:var(--muted)">services/worker/GeminiAgent.ts</small><br><code>OpenRouterAgent.ts</code><br><small style="color:var(--muted)">services/worker/OpenRouterAgent.ts</small><br>+3 more</td>
+  <td>Builds structured prompts for model calls.</td>
 </tr>
 <tr>
   <td>14</td>
-  <td><code>.get_root()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
+  <td><code>buildContinuationPrompt()</code><br><small style="color:var(--muted)">src/sdk/prompts.ts</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>MessageTree</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.get_root() node in messaging/trees/data.py.</td>
+  <td>External entry / no inbound edge</td>
+  <td><code>createMessageGenerator()</code><br><small style="color:var(--muted)">services/worker/SDKAgent.ts</small><br><code>GeminiAgent.ts</code><br><small style="color:var(--muted)">services/worker/GeminiAgent.ts</small><br><code>OpenRouterAgent.ts</code><br><small style="color:var(--muted)">services/worker/OpenRouterAgent.ts</small><br>+3 more</td>
+  <td>Builds structured prompts for model calls.</td>
 </tr>
 <tr>
   <td>15</td>
-  <td><code>.get_children()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>MessageTree</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.get_children() node in messaging/trees/data.py.</td>
+  <td><code>worker-types.ts</code><br><small style="color:var(--muted)">src/services/worker-types.ts</small></td>
+  <td><span class="tag tag-class">Module</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>DatabaseManager.ts</code><br><small style="color:var(--muted)">services/worker/DatabaseManager.ts</small><br><code>GeminiAgent.ts</code><br><small style="color:var(--muted)">services/worker/GeminiAgent.ts</small><br><code>OpenRouterAgent.ts</code><br><small style="color:var(--muted)">services/worker/OpenRouterAgent.ts</small><br>+14 more</td>
+  <td>Module file in src/services/worker-types.ts.</td>
 </tr>
 <tr>
   <td>16</td>
-  <td><code>.get_parent()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>MessageTree</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td><code>get_parent_session_id()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small><br><code>remove_branch()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td>.get_parent() node in messaging/trees/data.py.</td>
+  <td><code>ConversationMessage</code><br><small style="color:var(--muted)">src/services/worker-types.ts</small></td>
+  <td><span class="tag tag-class">Class</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>GeminiAgent.ts</code><br><small style="color:var(--muted)">services/worker/GeminiAgent.ts</small><br><code>OpenRouterAgent.ts</code><br><small style="color:var(--muted)">services/worker/OpenRouterAgent.ts</small></td>
+  <td>ConversationMessage node in src/services/worker-types.ts.</td>
 </tr>
 <tr>
   <td>17</td>
-  <td><code>.get_parent_session_id()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>get_parent()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small><br><code>MessageTree</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.get_parent_session_id() node in messaging/trees/data.py.</td>
+  <td><code>ActiveSession</code><br><small style="color:var(--muted)">src/services/worker-types.ts</small></td>
+  <td><span class="tag tag-class">Class</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>GeminiAgent.ts</code><br><small style="color:var(--muted)">services/worker/GeminiAgent.ts</small><br><code>OpenRouterAgent.ts</code><br><small style="color:var(--muted)">services/worker/OpenRouterAgent.ts</small><br><code>response-processor.test.ts</code><br><small style="color:var(--muted)">worker/agents/response-processor.test.ts</small><br>+7 more</td>
+  <td>ActiveSession node in src/services/worker-types.ts.</td>
 </tr>
 <tr>
   <td>18</td>
-  <td><code>.update_state()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>MessageTree</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.update_state() node in messaging/trees/data.py.</td>
+  <td><code>PendingMessage</code><br><small style="color:var(--muted)">src/services/worker-types.ts</small></td>
+  <td><span class="tag tag-class">Class</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>PendingMessageStore.test.ts</code><br><small style="color:var(--muted)">services/sqlite/PendingMessageStore.test.ts</small><br><code>PendingMessageStore.ts</code><br><small style="color:var(--muted)">services/sqlite/PendingMessageStore.ts</small><br><code>SessionManager.ts</code><br><small style="color:var(--muted)">services/worker/SessionManager.ts</small><br>+1 more</td>
+  <td>PendingMessage node in src/services/worker-types.ts.</td>
 </tr>
 <tr>
   <td>19</td>
-  <td><code>.set_processing_state()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>MessageTree</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.set_processing_state() node in messaging/trees/data.py.</td>
+  <td><code>PendingMessageWithId</code><br><small style="color:var(--muted)">src/services/worker-types.ts</small></td>
+  <td><span class="tag tag-class">Class</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>SessionManager.ts</code><br><small style="color:var(--muted)">services/worker/SessionManager.ts</small><br><code>SessionQueueProcessor.ts</code><br><small style="color:var(--muted)">services/queue/SessionQueueProcessor.ts</small></td>
+  <td>PendingMessageWithId node in src/services/worker-types.ts.</td>
 </tr>
 <tr>
   <td>20</td>
-  <td><code>.clear_current_node()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>MessageTree</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.clear_current_node() node in messaging/trees/data.py.</td>
+  <td><code>ObservationData</code><br><small style="color:var(--muted)">src/services/worker-types.ts</small></td>
+  <td><span class="tag tag-class">Class</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>SessionManager.ts</code><br><small style="color:var(--muted)">services/worker/SessionManager.ts</small></td>
+  <td>ObservationData node in src/services/worker-types.ts.</td>
 </tr>
 <tr>
   <td>21</td>
-  <td><code>.is_current_node()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>MessageTree</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.is_current_node() node in messaging/trees/data.py.</td>
+  <td><code>PaginatedResult</code><br><small style="color:var(--muted)">src/services/worker-types.ts</small></td>
+  <td><span class="tag tag-class">Class</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>PaginationHelper.ts</code><br><small style="color:var(--muted)">services/worker/PaginationHelper.ts</small></td>
+  <td>PaginatedResult node in src/services/worker-types.ts.</td>
 </tr>
 <tr>
   <td>22</td>
-  <td><code>.cancel_current_task()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>MessageTree</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
+  <td><code>PaginationParams</code><br><small style="color:var(--muted)">src/services/worker-types.ts</small></td>
+  <td><span class="tag tag-class">Class</span></td>
+  <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>.cancel_current_task() node in messaging/trees/data.py.</td>
+  <td>PaginationParams node in src/services/worker-types.ts.</td>
 </tr>
 <tr>
   <td>23</td>
-  <td><code>.reset_processing_state()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>MessageTree</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.reset_processing_state() node in messaging/trees/data.py.</td>
+  <td><code>ViewerSettings</code><br><small style="color:var(--muted)">src/services/worker-types.ts</small></td>
+  <td><span class="tag tag-class">Class</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>SettingsManager.ts</code><br><small style="color:var(--muted)">services/worker/SettingsManager.ts</small></td>
+  <td>ViewerSettings node in src/services/worker-types.ts.</td>
 </tr>
 <tr>
   <td>24</td>
-  <td><code>.to_dict()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>MessageTree</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.to_dict() node in messaging/trees/data.py.</td>
+  <td><code>Observation</code><br><small style="color:var(--muted)">src/services/worker-types.ts</small></td>
+  <td><span class="tag tag-class">Class</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>PaginationHelper.ts</code><br><small style="color:var(--muted)">services/worker/PaginationHelper.ts</small></td>
+  <td>Observation node in src/services/worker-types.ts.</td>
 </tr>
 <tr>
   <td>25</td>
-  <td><code>._add_node_from_dict()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>from_dict()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small><br><code>MessageTree</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>._add_node_from_dict() node in messaging/trees/data.py.</td>
+  <td><code>Summary</code><br><small style="color:var(--muted)">src/services/worker-types.ts</small></td>
+  <td><span class="tag tag-class">Class</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>PaginationHelper.ts</code><br><small style="color:var(--muted)">services/worker/PaginationHelper.ts</small></td>
+  <td>Summary node in src/services/worker-types.ts.</td>
 </tr>
 <tr>
   <td>26</td>
-  <td><code>.has_node()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>MessageTree</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.has_node() node in messaging/trees/data.py.</td>
+  <td><code>UserPrompt</code><br><small style="color:var(--muted)">src/services/worker-types.ts</small></td>
+  <td><span class="tag tag-class">Class</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>PaginationHelper.ts</code><br><small style="color:var(--muted)">services/worker/PaginationHelper.ts</small></td>
+  <td>Builds structured prompts for model calls.</td>
 </tr>
 <tr>
   <td>27</td>
-  <td><code>.find_node_by_status_message()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>MessageTree</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.find_node_by_status_message() node in messaging/trees/data.py.</td>
+  <td><code>DBSession</code><br><small style="color:var(--muted)">src/services/worker-types.ts</small></td>
+  <td><span class="tag tag-class">Class</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>DatabaseManager.ts</code><br><small style="color:var(--muted)">services/worker/DatabaseManager.ts</small></td>
+  <td>DBSession node in src/services/worker-types.ts.</td>
 </tr>
 <tr>
   <td>28</td>
-  <td><code>.get_descendants()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>MessageTree</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td><code>remove_branch()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td>.get_descendants() node in messaging/trees/data.py.</td>
+  <td><code>ParsedObservation</code><br><small style="color:var(--muted)">src/services/worker-types.ts</small></td>
+  <td><span class="tag tag-class">Class</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>ParsedObservation node in src/services/worker-types.ts.</td>
 </tr>
 <tr>
   <td>29</td>
-  <td><code>.remove_branch()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>get_descendants()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small><br><code>get_parent()</code><br><small style="color:var(--muted)">messaging/trees/data.py</small><br><code>MessageTree</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
+  <td><code>ParsedSummary</code><br><small style="color:var(--muted)">src/services/worker-types.ts</small></td>
+  <td><span class="tag tag-class">Class</span></td>
+  <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>.remove_branch() node in messaging/trees/data.py.</td>
+  <td>ParsedSummary node in src/services/worker-types.ts.</td>
 </tr>
 <tr>
   <td>30</td>
-  <td><code>State of a message node in the tree.</code><br><small style="color:var(--muted)">messaging/trees/data.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
+  <td><code>DatabaseStats</code><br><small style="color:var(--muted)">src/services/worker-types.ts</small></td>
+  <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Design note for State of a message node in the tree..</td>
+  <td>DatabaseStats node in src/services/worker-types.ts.</td>
 </tr>
 </table>
 
@@ -1611,12 +1664,12 @@ flowchart LR
 <tr><td><code>docs/public/architecture-evolution.mdx</code></td><td>121 nodes</td></tr>
 <tr><td><code>docs/public/development.mdx</code></td><td>104 nodes</td></tr>
 <tr><td><code>public/architecture/worker-service.mdx</code></td><td>97 nodes</td></tr>
-<tr><td><code>messaging/trees/queue_manager.py</code></td><td>96 nodes</td></tr>
+<tr><td><code>docs/reports/2026-01-02--generator-failure-investigation.md</code></td><td>93 nodes</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: contains x9792, calls x2797, imports x1220, method x1002. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: contains x9767, calls x2841, imports x1225, method x1014. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
@@ -1975,12 +2028,12 @@ flowchart LR
 
 <!-- ====== 8. Serving API ====== -->
 <h2 id="serve-api">8. Serving API</h2>
-<p>Serving API groups implementation around tools, claude, free, api, mostly in free-claude/api/routes.py, tests/api/test_response_models.py, providers/deepseek/request.py. This section covers 347 nodes and 573 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Serving API groups implementation around tools, claude, free, api, mostly in free-claude/api/routes.py, tests/api/test_response_models.py, providers/deepseek/request.py. This section covers 371 nodes and 624 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Serving API (347 nodes, 573 edges)
+    %% Section: Serving API (371 nodes, 624 edges)
     subgraph serve_api_scripts_internal_enrich_rs_signals_py_1c170e3a["scripts/internal/enrich_rs_signals.py"]
         internal_enrich_rs_signals_calculate_institution_5d5753dd("calculate institutional score()<br/><small>scripts/internal/enrich_rs_signals.py</small>")
         internal_enrich_rs_signals_enrich_e8cc3d5e("enrich()<br/><small>scripts/internal/enrich_rs_signals.py</small>")
@@ -1989,54 +2042,49 @@ flowchart LR
         internal_enrich_rs_signals_main_afe3ec64("main()<br/><small>scripts/internal/enrich_rs_signals.py</small>")
         internal_enrich_rs_signals_build_parser_d039ee59("build_parser()<br/><small>scripts/internal/enrich_rs_signals.py</small>")
     end
-    subgraph serve_api_src_lib_api_ts_4018941b["src/lib/api.ts"]
-        lib_api_asnumber_5ff7134a("asNumber()<br/><small>src/lib/api.ts</small>")
-        lib_api_normalizestockrecord_cbeb7dbf("normalizeStockRecord()<br/><small>src/lib/api.ts</small>")
-        lib_api_normalizeregimeresponse_d509f186("normalizeRegimeResponse()<br/><small>src/lib/api.ts</small>")
-        lib_api_asstring_e8843d6a("asString()<br/><small>src/lib/api.ts</small>")
-        lib_api_normalizeaction_47b41bbd("normalizeAction()<br/><small>src/lib/api.ts</small>")
+    subgraph serve_api_free_claude_api_gateway_model_ids_py_3a97f288["free-claude/api/gateway_model_ids.py"]
+        api_gateway_model_ids_decodedgatewaymodelid_c9d865b0("DecodedGatewayModelId<br/><small>free-claude/api/gateway_model_ids.py</small>")
+        api_gateway_model_ids_decode_gateway_model_id_c60617bd("decode_gateway_model_id()<br/><small>free-claude/api/gateway_model_ids.py</small>")
+        api_gateway_model_ids_gateway_model_id_9b3b4fb8("gateway_model_id()<br/><small>free-claude/api/gateway_model_ids.py</small>")
     end
-    subgraph serve_api_tests_api_test_response_models_py_4ff82b39["tests/api/test_response_models.py"]
-        api_test_response_models_testmessagesresponse_26b5e639("TestMessagesResponse<br/><small>tests/api/test_response_models.py</small>")
-        api_test_response_models_testusage_c3ba3b7f("TestUsage<br/><small>tests/api/test_response_models.py</small>")
+    subgraph serve_api_tests_api_test_request_utils_filepaths_a7424263["tests/api/test_request_utils_filepaths_and_suggestions.py"]
+        api_test_request_utils_filepaths_and_suggestions_a09a31c5("_mk_msg()<br/><small>tests/api/test_request_utils_filepaths_and_suggestions.py</small>")
+        api_test_request_utils_filepaths_and_suggestions_5ff2934c("_mk_req()<br/><small>tests/api/test_request_utils_filepaths_and_suggestions.py</small>")
+        api_test_request_utils_filepaths_and_suggestions_3329c22f("TestFilepathExtractionDetection<br/><small>tests/api/test_request_utils_filepaths_and_suggestions.py</small>")
     end
-    subgraph serve_api_tests_api_test_web_server_tools_py_8cc590fe["tests/api/test_web_server_tools.py"]
-        api_test_web_server_tools_aiohttp_client_session_07326dbb("client session patch()<br/><small>tests/api/test_web_server_tools.py</small>")
-        api_test_web_server_tools_aiohttp_response_13b82c8e("_aiohttp_response()<br/><small>tests/api/test_web_server_tools.py</small>")
-    end
-    api_gateway_model_ids_decodedgatewaymodelid_c9d865b0("DecodedGatewayModelId<br/><small>free-claude/api/gateway_model_ids.py</small>")
+    api_detection_is_suggestion_mode_request_0dc60c96("is_suggestion_mode_request()<br/><small>free-claude/api/detection.py</small>")
     api_model_router_modelrouter_6644ebcc("ModelRouter<br/><small>free-claude/api/model_router.py</small>")
-    api_routes_probe_response_804fc31f("_probe_response()<br/><small>free-claude/api/routes.py</small>")
+    api_optimization_handlers_try_suggestion_skip_811f1dad("try_suggestion_skip()<br/><small>free-claude/api/optimization_handlers.py</small>")
+    api_routes_append_provider_model_variants_53cdcfcf("provider model variants()<br/><small>free-claude/api/routes.py</small>")
+    api_test_response_models_testmessagesresponse_26b5e639("TestMessagesResponse<br/><small>tests/api/test_response_models.py</small>")
+    api_test_web_server_tools_aiohttp_client_session_07326dbb("client session patch()<br/><small>tests/api/test_web_server_tools.py</small>")
     internal_enrich_rs_signals_calculate_institution_5d5753dd -->|calls| internal_enrich_rs_signals_enrich_e8cc3d5e
     internal_enrich_rs_signals_calculate_piotroski_f_795842f9 -->|calls| internal_enrich_rs_signals_enrich_e8cc3d5e
     internal_enrich_rs_signals_resolve_path_ead95a8b -->|calls| internal_enrich_rs_signals_enrich_e8cc3d5e
     internal_enrich_rs_signals_enrich_e8cc3d5e -->|calls| internal_enrich_rs_signals_main_afe3ec64
     internal_enrich_rs_signals_build_parser_d039ee59 -->|calls| internal_enrich_rs_signals_main_afe3ec64
-    lib_api_asnumber_5ff7134a -->|calls| lib_api_normalizestockrecord_cbeb7dbf
-    lib_api_asnumber_5ff7134a -->|calls| lib_api_normalizeregimeresponse_d509f186
-    lib_api_asstring_e8843d6a -->|calls| lib_api_normalizeaction_47b41bbd
-    lib_api_asstring_e8843d6a -->|calls| lib_api_normalizestockrecord_cbeb7dbf
-    lib_api_asstring_e8843d6a -->|calls| lib_api_normalizeregimeresponse_d509f186
-    lib_api_normalizeaction_47b41bbd -->|calls| lib_api_normalizestockrecord_cbeb7dbf
-    %% Omitted for readability: 329 nodes, 0 edges
+    api_detection_is_suggestion_mode_request_0dc60c96 -->|calls| api_optimization_handlers_try_suggestion_skip_811f1dad
+    api_gateway_model_ids_decodedgatewaymodelid_c9d865b0 -->|calls| api_gateway_model_ids_decode_gateway_model_id_c60617bd
+    api_gateway_model_ids_gateway_model_id_9b3b4fb8 -->|calls| api_routes_append_provider_model_variants_53cdcfcf
+    %% Omitted for readability: 353 nodes, 0 edges
     class internal_enrich_rs_signals_calculate_institution_5d5753dd function;
     class internal_enrich_rs_signals_enrich_e8cc3d5e function;
     class internal_enrich_rs_signals_calculate_piotroski_f_795842f9 function;
     class internal_enrich_rs_signals_resolve_path_ead95a8b function;
     class internal_enrich_rs_signals_main_afe3ec64 function;
     class internal_enrich_rs_signals_build_parser_d039ee59 function;
-    class lib_api_asnumber_5ff7134a function;
-    class lib_api_normalizestockrecord_cbeb7dbf function;
-    class lib_api_normalizeregimeresponse_d509f186 function;
-    class lib_api_asstring_e8843d6a function;
-    class lib_api_normalizeaction_47b41bbd function;
-    class api_test_response_models_testmessagesresponse_26b5e639 test;
-    class api_test_response_models_testusage_c3ba3b7f test;
-    class api_test_web_server_tools_aiohttp_client_session_07326dbb test;
-    class api_test_web_server_tools_aiohttp_response_13b82c8e test;
     class api_gateway_model_ids_decodedgatewaymodelid_c9d865b0 klass;
+    class api_gateway_model_ids_decode_gateway_model_id_c60617bd function;
+    class api_gateway_model_ids_gateway_model_id_9b3b4fb8 function;
+    class api_test_request_utils_filepaths_and_suggestions_a09a31c5 test;
+    class api_test_request_utils_filepaths_and_suggestions_5ff2934c test;
+    class api_test_request_utils_filepaths_and_suggestions_3329c22f test;
+    class api_detection_is_suggestion_mode_request_0dc60c96 function;
     class api_model_router_modelrouter_6644ebcc api;
-    class api_routes_probe_response_804fc31f function;
+    class api_optimization_handlers_try_suggestion_skip_811f1dad function;
+    class api_routes_append_provider_model_variants_53cdcfcf function;
+    class api_test_response_models_testmessagesresponse_26b5e639 test;
+    class api_test_web_server_tools_aiohttp_client_session_07326dbb test;
     classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
     classDef api fill:#450a0a,stroke:#f87171,color:#fee2e2,stroke-width:1px;
     classDef async fill:#2e1065,stroke:#a78bfa,color:#ede9fe,stroke-width:1px;
@@ -2060,243 +2108,243 @@ flowchart LR
 </tr>
 <tr>
   <td>1</td>
-  <td><code>contracts.py</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/contracts.py</small></td>
+  <td><code>constants.py</code><br><small style="color:var(--muted)">api/web_tools/constants.py</small></td>
   <td><span class="tag tag-class">Module</span></td>
   <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Module file in Newmultibagger-main/app_routes/contracts.py.</td>
+  <td><code>outbound.py</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small><br><code>streaming.py</code><br><small style="color:var(--muted)">api/web_tools/streaming.py</small></td>
+  <td>Module file in api/web_tools/constants.py.</td>
 </tr>
 <tr>
   <td>2</td>
-  <td><code>HealthResponse</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/contracts.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
+  <td><code>Limits and defaults for outbound web server tool HTTP.</code><br><small style="color:var(--muted)">api/web_tools/constants.py</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>HealthResponse node in Newmultibagger-main/app_routes/contracts.py.</td>
+  <td>Design note for Limits and defaults for outbound web server tool HTTP..</td>
 </tr>
 <tr>
   <td>3</td>
-  <td><code>BaseModel</code><br><small style="color:var(--muted)"></small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>BaseModel node in project.</td>
+  <td><code>egress.py</code><br><small style="color:var(--muted)">api/web_tools/egress.py</small></td>
+  <td><span class="tag tag-class">Module</span></td>
+  <td><code>services.py</code><br><small style="color:var(--muted)">free-claude/api/services.py</small></td>
+  <td><code>__init__.py</code><br><small style="color:var(--muted)">api/web_tools/__init__.py</small><br><code>outbound.py</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small><br><code>streaming.py</code><br><small style="color:var(--muted)">api/web_tools/streaming.py</small></td>
+  <td>Module file in api/web_tools/egress.py.</td>
 </tr>
 <tr>
   <td>4</td>
-  <td><code>SwarmStatusResponse</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/contracts.py</small></td>
+  <td><code>WebFetchEgressPolicy</code><br><small style="color:var(--muted)">api/web_tools/egress.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>SwarmStatusResponse node in Newmultibagger-main/app_routes/contracts.py.</td>
+  <td><code>create_message()</code><br><small style="color:var(--muted)">free-claude/api/services.py</small></td>
+  <td><code>_PinnedEgressStaticResolver</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small><br><code>FixedProviderModelRouter</code><br><small style="color:var(--muted)">tests/api/test_web_server_tools.py</small><br><code>when opted in()</code><br><small style="color:var(--muted)">tests/api/test_web_server_tools.py</small></td>
+  <td>WebFetchEgressPolicy node in api/web_tools/egress.py.</td>
 </tr>
 <tr>
   <td>5</td>
-  <td><code>SwarmReportResponse</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/contracts.py</small></td>
+  <td><code>WebFetchEgressViolation</code><br><small style="color:var(--muted)">api/web_tools/egress.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>SwarmReportResponse node in Newmultibagger-main/app_routes/contracts.py.</td>
+  <td><code>_PinnedEgressStaticResolver</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small><br><code>_run_web_fetch()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small><br><code>addrinfos for egress()</code><br><small style="color:var(--muted)">api/web_tools/egress.py</small><br>+2 more</td>
+  <td>WebFetchEgressViolation node in api/web_tools/egress.py.</td>
 </tr>
 <tr>
   <td>6</td>
-  <td><code>NewsSignalResponse</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/contracts.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
+  <td><code>_port_for_url()</code><br><small style="color:var(--muted)">api/web_tools/egress.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>NewsSignalResponse node in Newmultibagger-main/app_routes/contracts.py.</td>
+  <td><code>addrinfos for egress()</code><br><small style="color:var(--muted)">api/web_tools/egress.py</small></td>
+  <td>_port_for_url() node in api/web_tools/egress.py.</td>
 </tr>
 <tr>
   <td>7</td>
-  <td><code>MarketCalendarResponse</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/contracts.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>MarketCalendarResponse node in Newmultibagger-main/app_routes/contracts.py.</td>
+  <td><code>_stream_getaddrinfo_or_raise()</code><br><small style="color:var(--muted)">api/web_tools/egress.py</small></td>
+  <td><span class="tag tag-async">Async</span></td>
+  <td><code>WebFetchEgressViolation</code><br><small style="color:var(--muted)">api/web_tools/egress.py</small></td>
+  <td><code>addrinfos for egress()</code><br><small style="color:var(--muted)">api/web_tools/egress.py</small></td>
+  <td>_stream_getaddrinfo_or_raise() node in api/web_tools/egress.py.</td>
 </tr>
 <tr>
   <td>8</td>
-  <td><code>MarkdownReportResponse</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/contracts.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Exports documentation data to a target format.</td>
+  <td><code>get_validated_stream_addrinfos_for_egress()</code><br><small style="color:var(--muted)">api/web_tools/egress.py</small></td>
+  <td><span class="tag tag-async">Async</span></td>
+  <td><code>_port_for_url()</code><br><small style="color:var(--muted)">api/web_tools/egress.py</small><br><code>getaddrinfo or raise()</code><br><small style="color:var(--muted)">api/web_tools/egress.py</small><br><code>WebFetchEgressViolation</code><br><small style="color:var(--muted)">api/web_tools/egress.py</small></td>
+  <td><code>enforce_web_fetch_egress()</code><br><small style="color:var(--muted)">api/web_tools/egress.py</small></td>
+  <td>get_validated_stream_addrinfos_for_egress() node in api/web_tools/egress.py.</td>
 </tr>
 <tr>
   <td>9</td>
-  <td><code>PerformanceResponse</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/contracts.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>PerformanceResponse node in Newmultibagger-main/app_routes/contracts.py.</td>
+  <td><code>enforce_web_fetch_egress()</code><br><small style="color:var(--muted)">api/web_tools/egress.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>addrinfos for egress()</code><br><small style="color:var(--muted)">api/web_tools/egress.py</small></td>
+  <td><code>global literal ip()</code><br><small style="color:var(--muted)">tests/api/test_web_server_tools.py</small><br><code>internal or disallowed()</code><br><small style="color:var(--muted)">tests/api/test_web_server_tools.py</small><br><code>when opted in()</code><br><small style="color:var(--muted)">tests/api/test_web_server_tools.py</small></td>
+  <td>enforce_web_fetch_egress() node in api/web_tools/egress.py.</td>
 </tr>
 <tr>
   <td>10</td>
-  <td><code>RegimeStatusResponse</code><br><small style="color:var(--muted)">Newmultibagger-main/app_routes/contracts.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
+  <td><code>Egress policy for user-controlled web_fetch URLs (SSRF guard).</code><br><small style="color:var(--muted)">api/web_tools/egress.py</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>RegimeStatusResponse node in Newmultibagger-main/app_routes/contracts.py.</td>
+  <td>Design note for Egress policy for user-controlled web_fetch URLs (SSRF guard)..</td>
 </tr>
 <tr>
   <td>11</td>
-  <td><code>anthropic.py</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
-  <td><span class="tag tag-class">Module</span></td>
-  <td><code>model_router.py</code><br><small style="color:var(--muted)">free-claude/api/model_router.py</small><br><code>routes.py</code><br><small style="color:var(--muted)">free-claude/api/routes.py</small><br><code>services.py</code><br><small style="color:var(--muted)">free-claude/api/services.py</small></td>
-  <td><code>__init__.py</code><br><small style="color:var(--muted)">api/models/__init__.py</small><br><code>responses.py</code><br><small style="color:var(--muted)">api/models/responses.py</small></td>
-  <td>Module file in api/models/anthropic.py.</td>
+  <td><code>Egress rules for user-influenced web_fetch URLs.</code><br><small style="color:var(--muted)">api/web_tools/egress.py</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>Design note for Egress rules for user-influenced web_fetch URLs..</td>
 </tr>
 <tr>
   <td>12</td>
-  <td><code>_AnthropicBlockBase</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
+  <td><code>Raised when a web_fetch URL is rejected by egress policy (SSRF guard).</code><br><small style="color:var(--muted)">api/web_tools/egress.py</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>_AnthropicBlockBase node in api/models/anthropic.py.</td>
+  <td>Design note for Raised when a web_fetch URL is rejected by egress policy (SSRF guard)..</td>
 </tr>
 <tr>
   <td>13</td>
-  <td><code>ContentBlockText</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
+  <td><code>Resolve and validate a URL for web_fetch, returning getaddrinfo rows for pinning</code><br><small style="color:var(--muted)">api/web_tools/egress.py</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>MessagesResponse</code><br><small style="color:var(--muted)">api/models/responses.py</small><br><code>ModelResponse</code><br><small style="color:var(--muted)">api/models/responses.py</small><br><code>ModelsListResponse</code><br><small style="color:var(--muted)">api/models/responses.py</small><br>+11 more</td>
-  <td>ContentBlockText node in api/models/anthropic.py.</td>
+  <td>No direct outbound edge</td>
+  <td>Design note for Resolve and validate a URL for web_fetch, returning getaddrinfo rows for pinning.</td>
 </tr>
 <tr>
   <td>14</td>
-  <td><code>ContentBlockImage</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
+  <td><code>Validate ``url`` (scheme, host, and resolved addresses) for web_fetch.</code><br><small style="color:var(--muted)">api/web_tools/egress.py</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>ContentBlockImage node in api/models/anthropic.py.</td>
+  <td>Design note for Validate ``url`` (scheme, host, and resolved addresses) for web_fetch..</td>
 </tr>
 <tr>
   <td>15</td>
-  <td><code>ContentBlockDocument</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>ContentBlockDocument node in api/models/anthropic.py.</td>
+  <td><code>outbound.py</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td><span class="tag tag-class">Module</span></td>
+  <td><code>constants.py</code><br><small style="color:var(--muted)">api/web_tools/constants.py</small><br><code>egress.py</code><br><small style="color:var(--muted)">api/web_tools/egress.py</small></td>
+  <td><code>__init__.py</code><br><small style="color:var(--muted)">api/web_tools/__init__.py</small><br><code>parsers.py</code><br><small style="color:var(--muted)">api/web_tools/parsers.py</small></td>
+  <td>Module file in api/web_tools/outbound.py.</td>
 </tr>
 <tr>
   <td>16</td>
-  <td><code>ContentBlockToolUse</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
+  <td><code>_safe_public_host_for_logs()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>MessagesResponse</code><br><small style="color:var(--muted)">api/models/responses.py</small><br><code>ModelResponse</code><br><small style="color:var(--muted)">api/models/responses.py</small><br><code>ModelsListResponse</code><br><small style="color:var(--muted)">api/models/responses.py</small><br>+7 more</td>
-  <td>ContentBlockToolUse node in api/models/anthropic.py.</td>
+  <td><code>_log_web_tool_failure()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td>_safe_public_host_for_logs() node in api/web_tools/outbound.py.</td>
 </tr>
 <tr>
   <td>17</td>
-  <td><code>ContentBlockToolResult</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td>External entry / no inbound edge</td>
+  <td><code>_log_web_tool_failure()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>_safe_public_host_for_logs()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
   <td>No direct outbound edge</td>
-  <td>ContentBlockToolResult node in api/models/anthropic.py.</td>
+  <td>_log_web_tool_failure() node in api/web_tools/outbound.py.</td>
 </tr>
 <tr>
   <td>18</td>
-  <td><code>ContentBlockThinking</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
+  <td><code>_web_tool_client_error_summary()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td><span class="tag tag-cmd">Entry</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>MessagesResponse</code><br><small style="color:var(--muted)">api/models/responses.py</small><br><code>ModelResponse</code><br><small style="color:var(--muted)">api/models/responses.py</small><br><code>ModelsListResponse</code><br><small style="color:var(--muted)">api/models/responses.py</small><br>+7 more</td>
-  <td>ContentBlockThinking node in api/models/anthropic.py.</td>
+  <td>No direct outbound edge</td>
+  <td>_web_tool_client_error_summary() node in api/web_tools/outbound.py.</td>
 </tr>
 <tr>
   <td>19</td>
-  <td><code>ContentBlockRedactedThinking</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
+  <td><code>_iter_response_body_under_cap()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>MessagesResponse</code><br><small style="color:var(--muted)">api/models/responses.py</small><br><code>ModelResponse</code><br><small style="color:var(--muted)">api/models/responses.py</small><br><code>ModelsListResponse</code><br><small style="color:var(--muted)">api/models/responses.py</small><br>+2 more</td>
-  <td>ContentBlockRedactedThinking node in api/models/anthropic.py.</td>
+  <td><code>_read_response_body_capped()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small><br><code>response body capped()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td>_iter_response_body_under_cap() node in api/web_tools/outbound.py.</td>
 </tr>
 <tr>
   <td>20</td>
-  <td><code>ContentBlockServerToolUse</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>ContentBlockServerToolUse node in api/models/anthropic.py.</td>
+  <td><code>_drain_response_body_capped()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>body under cap()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td><code>chunk when oversized()</code><br><small style="color:var(--muted)">tests/api/test_web_server_tools.py</small></td>
+  <td>_drain_response_body_capped() node in api/web_tools/outbound.py.</td>
 </tr>
 <tr>
   <td>21</td>
-  <td><code>ContentBlockWebSearchToolResult</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>ContentBlockWebSearchToolResult node in api/models/anthropic.py.</td>
+  <td><code>_read_response_body_capped()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>body under cap()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td><code>_run_web_search()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small><br><code>single oversized chunk()</code><br><small style="color:var(--muted)">tests/api/test_web_server_tools.py</small></td>
+  <td>_read_response_body_capped() node in api/web_tools/outbound.py.</td>
 </tr>
 <tr>
   <td>22</td>
-  <td><code>ContentBlockWebFetchToolResult</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
+  <td><code>getaddrinfo_rows_to_resolve_results()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>ContentBlockWebFetchToolResult node in api/models/anthropic.py.</td>
+  <td><code>_run_web_fetch()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td>getaddrinfo_rows_to_resolve_results() node in api/web_tools/outbound.py.</td>
 </tr>
 <tr>
   <td>23</td>
-  <td><code>SystemContent</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>SystemContent node in api/models/anthropic.py.</td>
+  <td><code>_PinnedEgressStaticResolver</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>WebFetchEgressPolicy</code><br><small style="color:var(--muted)">api/web_tools/egress.py</small><br><code>WebFetchEgressViolation</code><br><small style="color:var(--muted)">api/web_tools/egress.py</small></td>
+  <td><code>__init__()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small><br><code>_run_web_fetch()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small><br><code>close()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small><br>+3 more</td>
+  <td>_PinnedEgressStaticResolver node in api/web_tools/outbound.py.</td>
 </tr>
 <tr>
   <td>24</td>
-  <td><code>Tool</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
+  <td><code>AbstractResolver</code><br><small style="color:var(--muted)"></small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Tool node in api/models/anthropic.py.</td>
+  <td>AbstractResolver node in project.</td>
 </tr>
 <tr>
   <td>25</td>
-  <td><code>ThinkingConfig</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td>External entry / no inbound edge</td>
+  <td><code>.__init__()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>_PinnedEgressStaticResolver</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
   <td>No direct outbound edge</td>
-  <td>Reads, resolves, or persists project configuration.</td>
+  <td>.__init__() node in api/web_tools/outbound.py.</td>
 </tr>
 <tr>
   <td>26</td>
-  <td><code>Pydantic models for Anthropic-compatible requests.</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
-  <td>External entry / no inbound edge</td>
+  <td><code>.resolve()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>_PinnedEgressStaticResolver</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
   <td>No direct outbound edge</td>
-  <td>Design note for Pydantic models for Anthropic-compatible requests..</td>
+  <td>.resolve() node in api/web_tools/outbound.py.</td>
 </tr>
 <tr>
   <td>27</td>
-  <td><code>Pass through provider fields (e.g. ``cache_control``) for native transports.</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Design note for Pass through provider fields (e.g. ``cache_control``) for native transports..</td>
+  <td><code>.close()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>_PinnedEgressStaticResolver</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td><code>_run_web_fetch()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td>.close() node in api/web_tools/outbound.py.</td>
 </tr>
 <tr>
   <td>28</td>
-  <td><code>Anthropic document block (e.g. PDF files via the Files API).</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
+  <td><code>_read_aiohttp_body_capped()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Design note for Anthropic document block (e.g. PDF files via the Files API)..</td>
+  <td><code>_run_web_fetch()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td>_read_aiohttp_body_capped() node in api/web_tools/outbound.py.</td>
 </tr>
 <tr>
   <td>29</td>
-  <td><code>Anthropic server-side tool invocation (e.g. ``web_search``, ``web_fetch``).</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
+  <td><code>_drain_aiohttp_body_capped()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Design note for Anthropic server-side tool invocation (e.g. ``web_search``, ``web_fetch``)..</td>
+  <td><code>_run_web_fetch()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td>_drain_aiohttp_body_capped() node in api/web_tools/outbound.py.</td>
 </tr>
 <tr>
   <td>30</td>
-  <td><code>responses.py</code><br><small style="color:var(--muted)">api/models/responses.py</small></td>
-  <td><span class="tag tag-class">Module</span></td>
-  <td><code>anthropic.py</code><br><small style="color:var(--muted)">api/models/anthropic.py</small><br><code>routes.py</code><br><small style="color:var(--muted)">free-claude/api/routes.py</small><br><code>services.py</code><br><small style="color:var(--muted)">free-claude/api/services.py</small></td>
-  <td><code>__init__.py</code><br><small style="color:var(--muted)">api/models/__init__.py</small></td>
-  <td>Module file in api/models/responses.py.</td>
+  <td><code>_run_web_search()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>_read_response_body_capped()</code><br><small style="color:var(--muted)">api/web_tools/outbound.py</small></td>
+  <td><code>SearchResultParser</code><br><small style="color:var(--muted)">api/web_tools/parsers.py</small></td>
+  <td>_run_web_search() node in api/web_tools/outbound.py.</td>
 </tr>
 </table>
 
@@ -2309,27 +2357,27 @@ flowchart LR
 <tr><td><code>tests/api/test_response_models.py</code></td><td>25 nodes</td></tr>
 <tr><td><code>providers/deepseek/request.py</code></td><td>24 nodes</td></tr>
 <tr><td><code>core/anthropic/native_messages_request.py</code></td><td>22 nodes</td></tr>
-<tr><td><code>api/models/anthropic.py</code></td><td>20 nodes</td></tr>
+<tr><td><code>tests/api/test_web_server_tools.py</code></td><td>21 nodes</td></tr>
 <tr><td><code>api/web_tools/outbound.py</code></td><td>20 nodes</td></tr>
-<tr><td><code>api/web_tools/parsers.py</code></td><td>17 nodes</td></tr>
-<tr><td><code>api/web_tools/request.py</code></td><td>17 nodes</td></tr>
+<tr><td><code>api/models/anthropic.py</code></td><td>19 nodes</td></tr>
+<tr><td><code>providers/nvidia_nim/request.py</code></td><td>19 nodes</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: contains x151, calls x112, explains x101, inherits x33. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: contains x160, calls x118, explains x113, method x45. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
 
 <!-- ====== 9. Tests & Fixtures ====== -->
 <h2 id="tests-fixtures">9. Tests &amp; Fixtures</h2>
-<p>Tests &amp; Fixtures groups implementation around test, claude, tests, tools, mostly in tests/config/test_config.py, tests/api/test_request_utils.py, Newmultibagger-main/tests/test_data_correctness.py. This section covers 3168 nodes and 4720 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Tests &amp; Fixtures groups implementation around test, claude, tests, tools, mostly in tests/config/test_config.py, tests/api/test_request_utils.py, Newmultibagger-main/tests/test_data_correctness.py. This section covers 3158 nodes and 4551 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Tests &amp; Fixtures (3168 nodes, 4720 edges)
+    %% Section: Tests &amp; Fixtures (3158 nodes, 4551 edges)
     subgraph tests_fixtures_Newmultibagger_main_modules_cagr_6cfad066["Newmultibagger-main/modules/cagr_engine.py"]
         modules_cagr_engine_safe_cagr_a6e6f0a7("_safe_cagr()<br/><small>Newmultibagger-main/modules/cagr_engine.py</small>")
         modules_cagr_engine_compute_multi_period_cagr_8d02bcfc("_compute_multi_period_cagr()<br/><small>Newmultibagger-main/modules/cagr_engine.py</small>")
@@ -2338,13 +2386,13 @@ flowchart LR
         modules_cagr_engine_calculate_all_cagrs_f9d8e04b("calculate_all_cagrs()<br/><small>Newmultibagger-main/modules/cagr_engine.py</small>")
         modules_cagr_engine_calculate_all_cagrs_from_nor_cfd886e5("cagrs from normalized()<br/><small>Newmultibagger-main/modules/cagr_engine.py</small>")
     end
-    subgraph tests_fixtures_Newmultibagger_main_modules_estim_18bf46dc["Newmultibagger-main/modules/estimates.py"]
-        modules_estimates_safe_float_fa6e2398("_safe_float()<br/><small>Newmultibagger-main/modules/estimates.py</small>")
-        modules_estimates_compute_own_estimate_0f115039("compute_own_estimate()<br/><small>Newmultibagger-main/modules/estimates.py</small>")
-        modules_estimates_analyze_earnings_surprises_26c4869a("analyze_earnings_surprises()<br/><small>Newmultibagger-main/modules/estimates.py</small>")
-        modules_estimates_analyze_estimate_revisions_a30ac849("analyze_estimate_revisions()<br/><small>Newmultibagger-main/modules/estimates.py</small>")
-        modules_estimates_get_estimate_data_7c7c99dc("get_estimate_data()<br/><small>Newmultibagger-main/modules/estimates.py</small>")
-        modules_estimates_analyze_estimate_momentum_7a9b7086("analyze_estimate_momentum()<br/><small>Newmultibagger-main/modules/estimates.py</small>")
+    subgraph tests_fixtures_Newmultibagger_main_modules_data_b92b82f5["Newmultibagger-main/modules/data_service.py"]
+        modules_data_service_datamanager_ebd9d6d6("DataManager<br/><small>Newmultibagger-main/modules/data_service.py</small>")
+        modules_data_service_datamanager_aenter_e40ba107("__aenter__()<br/><small>Newmultibagger-main/modules/data_service.py</small>")
+        modules_data_service_datamanager_aexit_77c6ea22("__aexit__()<br/><small>Newmultibagger-main/modules/data_service.py</small>")
+        modules_data_service_datamanager_fetch_fundament_a36bd3bc("fetch_fundamentals()<br/><small>Newmultibagger-main/modules/data_service.py</small>")
+        modules_data_service_datamanager_async_fetch_his_d875f507("async_fetch_history()<br/><small>Newmultibagger-main/modules/data_service.py</small>")
+        modules_data_service_datamanager_fetch_history_30868562("fetch_history()<br/><small>Newmultibagger-main/modules/data_service.py</small>")
     end
     subgraph tests_fixtures_tests_providers_test_converter_py_8fdcd767["tests/providers/test_converter.py"]
         providers_test_converter_mockmessage_61c9ce5d("MockMessage<br/><small>tests/providers/test_converter.py</small>")
@@ -2359,25 +2407,25 @@ flowchart LR
     modules_cagr_engine_extract_series_1a3694c3 -->|calls| modules_cagr_engine_calculate_all_cagrs_f9d8e04b
     modules_cagr_engine_compute_multi_period_cagr_8d02bcfc -->|calls| modules_cagr_engine_calculate_all_cagrs_f9d8e04b
     modules_cagr_engine_cagr_from_series_385003c9 -->|calls| modules_cagr_engine_calculate_all_cagrs_from_nor_cfd886e5
-    modules_estimates_safe_float_fa6e2398 -->|calls| modules_estimates_compute_own_estimate_0f115039
-    modules_estimates_safe_float_fa6e2398 -->|calls| modules_estimates_analyze_earnings_surprises_26c4869a
-    modules_estimates_safe_float_fa6e2398 -->|calls| modules_estimates_analyze_estimate_revisions_a30ac849
-    modules_estimates_compute_own_estimate_0f115039 -->|calls| modules_estimates_get_estimate_data_7c7c99dc
-    modules_estimates_analyze_earnings_surprises_26c4869a -->|calls| modules_estimates_analyze_estimate_momentum_7a9b7086
-    modules_estimates_analyze_estimate_revisions_a30ac849 -->|calls| modules_estimates_analyze_estimate_momentum_7a9b7086
-    %% Omitted for readability: 3150 nodes, 0 edges
+    modules_data_service_datamanager_ebd9d6d6 -->|method| modules_data_service_datamanager_aenter_e40ba107
+    modules_data_service_datamanager_ebd9d6d6 -->|method| modules_data_service_datamanager_aexit_77c6ea22
+    modules_data_service_datamanager_ebd9d6d6 -->|method| modules_data_service_datamanager_fetch_fundament_a36bd3bc
+    modules_data_service_datamanager_ebd9d6d6 -->|method| modules_data_service_datamanager_async_fetch_his_d875f507
+    modules_data_service_datamanager_ebd9d6d6 -->|method| modules_data_service_datamanager_fetch_history_30868562
+    modules_data_service_datamanager_async_fetch_his_d875f507 -->|calls| modules_data_service_datamanager_fetch_history_30868562
+    %% Omitted for readability: 3140 nodes, 0 edges
     class modules_cagr_engine_safe_cagr_a6e6f0a7 function;
     class modules_cagr_engine_compute_multi_period_cagr_8d02bcfc function;
     class modules_cagr_engine_cagr_from_series_385003c9 function;
     class modules_cagr_engine_extract_series_1a3694c3 function;
     class modules_cagr_engine_calculate_all_cagrs_f9d8e04b function;
     class modules_cagr_engine_calculate_all_cagrs_from_nor_cfd886e5 function;
-    class modules_estimates_safe_float_fa6e2398 function;
-    class modules_estimates_compute_own_estimate_0f115039 function;
-    class modules_estimates_analyze_earnings_surprises_26c4869a function;
-    class modules_estimates_analyze_estimate_revisions_a30ac849 function;
-    class modules_estimates_get_estimate_data_7c7c99dc function;
-    class modules_estimates_analyze_estimate_momentum_7a9b7086 function;
+    class modules_data_service_datamanager_ebd9d6d6 klass;
+    class modules_data_service_datamanager_aenter_e40ba107 function;
+    class modules_data_service_datamanager_aexit_77c6ea22 function;
+    class modules_data_service_datamanager_fetch_fundament_a36bd3bc function;
+    class modules_data_service_datamanager_async_fetch_his_d875f507 async;
+    class modules_data_service_datamanager_fetch_history_30868562 function;
     class providers_test_converter_mockmessage_61c9ce5d test;
     class providers_test_converter_mockblock_25dbc563 test;
     class api_test_dependencies_make_mock_settings_fc6247d0 test;
@@ -2407,22 +2455,6 @@ flowchart LR
 </tr>
 <tr>
   <td>1</td>
-  <td><code>detection.py</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small></td>
-  <td><span class="tag tag-class">Module</span></td>
-  <td>External entry / no inbound edge</td>
-  <td><code>optimization_handlers.py</code><br><small style="color:var(--muted)">free-claude/api/optimization_handlers.py</small></td>
-  <td>Module file in free-claude/api/detection.py.</td>
-</tr>
-<tr>
-  <td>2</td>
-  <td><code>is_quota_check_request()</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td><code>check empty messages()</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small><br><code>extract_text_from_content()</code><br><small style="color:var(--muted)">core/anthropic/content.py</small><br><code>quota check parametrized()</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small><br>+8 more</td>
-  <td>is_quota_check_request() node in free-claude/api/detection.py.</td>
-</tr>
-<tr>
-  <td>3</td>
   <td><code>is_prefix_detection_request()</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -2430,39 +2462,7 @@ flowchart LR
   <td>is_prefix_detection_request() node in free-claude/api/detection.py.</td>
 </tr>
 <tr>
-  <td>4</td>
-  <td><code>is_suggestion_mode_request()</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td><code>extract_text_from_content()</code><br><small style="color:var(--muted)">core/anthropic/content.py</small><br><code>test_detects_suggestion_mode_in_any_user_message()</code><br><small style="color:var(--muted)">tests/api/test_request_utils_filepaths_and_suggestions.py</small><br><code>test_suggestion_mode_ignores_non_user_messages()</code><br><small style="color:var(--muted)">tests/api/test_request_utils_filepaths_and_suggestions.py</small><br>+1 more</td>
-  <td>is_suggestion_mode_request() node in free-claude/api/detection.py.</td>
-</tr>
-<tr>
-  <td>5</td>
-  <td><code>is_filepath_extraction_request()</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td><code>extract_text_from_content()</code><br><small style="color:var(--muted)">core/anthropic/content.py</small><br><code>test_detects_filepath_extraction_via_system_block()</code><br><small style="color:var(--muted)">tests/api/test_request_utils_filepaths_and_suggestions.py</small><br><code>test_extracts_command_and_output_and_cleans_output()</code><br><small style="color:var(--muted)">tests/api/test_request_utils_filepaths_and_suggestions.py</small><br>+7 more</td>
-  <td>is_filepath_extraction_request() node in free-claude/api/detection.py.</td>
-</tr>
-<tr>
-  <td>6</td>
-  <td><code>Request detection utilities for API optimizations.  Detects quota checks, titl</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Design note for Request detection utilities for API optimizations.  Detects quota checks, titl.</td>
-</tr>
-<tr>
-  <td>7</td>
-  <td><code>Check if this is a quota probe request.      Quota checks are typically simple</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Design note for Check if this is a quota probe request.      Quota checks are typically simple.</td>
-</tr>
-<tr>
-  <td>8</td>
+  <td>2</td>
   <td><code>Check if this is a fast prefix detection request.      Prefix detection reques</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
@@ -2470,180 +2470,228 @@ flowchart LR
   <td>Design note for Check if this is a fast prefix detection request.      Prefix detection reques.</td>
 </tr>
 <tr>
-  <td>9</td>
-  <td><code>Check if this is a suggestion mode request.      Suggestion mode requests cont</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small></td>
+  <td>3</td>
+  <td><code>ClaudeProxyService</code><br><small style="color:var(--muted)">free-claude/api/services.py</small></td>
+  <td><span class="tag tag-class">Class</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>__init__()</code><br><small style="color:var(--muted)">free-claude/api/services.py</small><br><code>always returns 500()</code><br><small style="color:var(--muted)">tests/api/test_safe_logging.py</small><br><code>exclude exception text()</code><br><small style="color:var(--muted)">tests/api/test_safe_logging.py</small><br>+7 more</td>
+  <td>ClaudeProxyService node in free-claude/api/services.py.</td>
+</tr>
+<tr>
+  <td>4</td>
+  <td><code>.__init__()</code><br><small style="color:var(--muted)">free-claude/api/services.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>ClaudeProxyService</code><br><small style="color:var(--muted)">free-claude/api/services.py</small></td>
+  <td>No direct outbound edge</td>
+  <td>.__init__() node in free-claude/api/services.py.</td>
+</tr>
+<tr>
+  <td>5</td>
+  <td><code>Coordinate request optimization, model routing, token count, and providers.</code><br><small style="color:var(--muted)">free-claude/api/services.py</small></td>
   <td><span class="tag tag-func">Concept</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Design note for Check if this is a suggestion mode request.      Suggestion mode requests cont.</td>
+  <td>Design note for Coordinate request optimization, model routing, token count, and providers..</td>
+</tr>
+<tr>
+  <td>6</td>
+  <td><code>Message</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
+  <td><span class="tag tag-class">Class</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>_make_request()</code><br><small style="color:var(--muted)">tests/api/test_optimization_handlers.py</small><br><code>_make_request()</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small><br><code>always returns 500()</code><br><small style="color:var(--muted)">tests/api/test_safe_logging.py</small><br>+44 more</td>
+  <td>Message node in api/models/anthropic.py.</td>
+</tr>
+<tr>
+  <td>7</td>
+  <td><code>MessagesRequest</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
+  <td><span class="tag tag-class">Class</span></td>
+  <td><code>ClaudeProxyService</code><br><small style="color:var(--muted)">free-claude/api/services.py</small></td>
+  <td><code>_make_request()</code><br><small style="color:var(--muted)">tests/api/test_optimization_handlers.py</small><br><code>_make_request()</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small><br><code>always returns 500()</code><br><small style="color:var(--muted)">tests/api/test_safe_logging.py</small><br>+45 more</td>
+  <td>MessagesRequest node in api/models/anthropic.py.</td>
+</tr>
+<tr>
+  <td>8</td>
+  <td><code>stream_web_server_tool_response()</code><br><small style="color:var(--muted)">api/web_tools/streaming.py</small></td>
+  <td><span class="tag tag-async">Async</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>generic by default()</code><br><small style="color:var(--muted)">tests/api/test_web_server_tools.py</small><br><code>includes exception class()</code><br><small style="color:var(--muted)">tests/api/test_web_server_tools.py</small><br><code>prior user turns()</code><br><small style="color:var(--muted)">tests/api/test_web_server_tools.py</small><br>+2 more</td>
+  <td>stream_web_server_tool_response() node in api/web_tools/streaming.py.</td>
+</tr>
+<tr>
+  <td>9</td>
+  <td><code>Stream a minimal Anthropic-shaped turn for forced `web_search` / `web_fetch` (lo</code><br><small style="color:var(--muted)">api/web_tools/streaming.py</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>Design note for Stream a minimal Anthropic-shaped turn for forced `web_search` / `web_fetch` (lo.</td>
 </tr>
 <tr>
   <td>10</td>
-  <td><code>Check if this is a filepath extraction request.      Filepath extraction reque</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
-  <td>External entry / no inbound edge</td>
+  <td><code>test_build_base_native_body_includes_cache_control()</code><br><small style="color:var(--muted)">tests/api/test_anthropic_request_passthrough.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td><code>Message</code><br><small style="color:var(--muted)">api/models/anthropic.py</small><br><code>MessagesRequest</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
   <td>No direct outbound edge</td>
-  <td>Design note for Check if this is a filepath extraction request.      Filepath extraction reque.</td>
+  <td>Caches analysis results or computes cache keys.</td>
 </tr>
 <tr>
   <td>11</td>
-  <td><code>extract_text_from_content()</code><br><small style="color:var(--muted)">core/anthropic/content.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>filepath extraction request()</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small><br><code>is_quota_check_request()</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small><br><code>is_suggestion_mode_request()</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small><br>+2 more</td>
-  <td><code>and empty parametrized()</code><br><small style="color:var(--muted)">tests/messaging/test_extract_text.py</small><br><code>extract functions unicode()</code><br><small style="color:var(--muted)">tests/messaging/test_extract_text.py</small><br><code>functions whitespace only()</code><br><small style="color:var(--muted)">tests/messaging/test_extract_text.py</small><br>+10 more</td>
-  <td>extract_text_from_content() node in core/anthropic/content.py.</td>
+  <td><code>test_detection.py</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>Module file in tests/api/test_detection.py.</td>
 </tr>
 <tr>
   <td>12</td>
-  <td><code>Extract concatenated text from message content.</code><br><small style="color:var(--muted)">core/anthropic/content.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Design note for Extract concatenated text from message content..</td>
+  <td><code>_make_request()</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td><code>Message</code><br><small style="color:var(--muted)">api/models/anthropic.py</small><br><code>MessagesRequest</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
+  <td><code>test_exception_in_try_returns_false()</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small><br><code>test_output_has_angle_bracket_splits()</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small><br><code>test_output_has_double_newline_splits()</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small><br>+3 more</td>
+  <td>_make_request() node in tests/api/test_detection.py.</td>
 </tr>
 <tr>
   <td>13</td>
-  <td><code>TestQuotaCheckRequest</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
+  <td><code>TestIsPrefixDetectionRequest</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
   <td><span class="tag tag-func">Test</span></td>
   <td><code>Message</code><br><small style="color:var(--muted)">api/models/anthropic.py</small><br><code>MessagesRequest</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
-  <td><code>test_not_quota_check_multiple_messages()</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small><br><code>test_not_quota_check_no_quota_keyword()</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small><br><code>test_not_quota_check_wrong_max_tokens()</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small><br>+4 more</td>
+  <td><code>test_exception_in_try_returns_false()</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small><br><code>test_output_marker_handling()</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small><br><code>test_prefix_detection_with_empty_command_section()</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
   <td>Verifies imports, entry points, or version behavior.</td>
 </tr>
 <tr>
   <td>14</td>
-  <td><code>.test_quota_check_simple_string()</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
+  <td><code>.test_output_marker_handling()</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
   <td><span class="tag tag-func">Test</span></td>
-  <td><code>is_quota_check_request()</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small><br><code>TestQuotaCheckRequest</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
+  <td><code>_make_request()</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small><br><code>prefix detection request()</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small><br><code>TestIsPrefixDetectionRequest</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
   <td>No direct outbound edge</td>
   <td>Verifies imports, entry points, or version behavior.</td>
 </tr>
 <tr>
   <td>15</td>
-  <td><code>.test_quota_check_case_insensitive()</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
+  <td><code>.test_prefix_detection_with_empty_command_section()</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
   <td><span class="tag tag-func">Test</span></td>
-  <td><code>is_quota_check_request()</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small><br><code>TestQuotaCheckRequest</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
+  <td><code>_make_request()</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small><br><code>prefix detection request()</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small><br><code>TestIsPrefixDetectionRequest</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
   <td>No direct outbound edge</td>
   <td>Verifies imports, entry points, or version behavior.</td>
 </tr>
 <tr>
   <td>16</td>
-  <td><code>.test_quota_check_list_content()</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
+  <td><code>.test_exception_in_try_returns_false()</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
   <td><span class="tag tag-func">Test</span></td>
-  <td><code>is_quota_check_request()</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small><br><code>TestQuotaCheckRequest</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
+  <td><code>_make_request()</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small><br><code>prefix detection request()</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small><br><code>TestIsPrefixDetectionRequest</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
   <td>No direct outbound edge</td>
   <td>Verifies imports, entry points, or version behavior.</td>
 </tr>
 <tr>
   <td>17</td>
-  <td><code>.test_not_quota_check_wrong_max_tokens()</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
+  <td><code>TestIsFilepathExtractionRequest</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
   <td><span class="tag tag-func">Test</span></td>
-  <td><code>is_quota_check_request()</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small><br><code>TestQuotaCheckRequest</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
-  <td>No direct outbound edge</td>
+  <td><code>Message</code><br><small style="color:var(--muted)">api/models/anthropic.py</small><br><code>MessagesRequest</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
+  <td><code>test_output_has_angle_bracket_splits()</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small><br><code>test_output_has_double_newline_splits()</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small><br><code>test_output_marker_minus_one_returns_false()</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
   <td>Verifies imports, entry points, or version behavior.</td>
 </tr>
 <tr>
   <td>18</td>
-  <td><code>.test_not_quota_check_multiple_messages()</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
+  <td><code>.test_output_marker_minus_one_returns_false()</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
   <td><span class="tag tag-func">Test</span></td>
-  <td><code>is_quota_check_request()</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small><br><code>TestQuotaCheckRequest</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
+  <td><code>_make_request()</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small><br><code>TestIsFilepathExtractionRequest</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
   <td>No direct outbound edge</td>
   <td>Verifies imports, entry points, or version behavior.</td>
 </tr>
 <tr>
   <td>19</td>
-  <td><code>.test_not_quota_check_wrong_role()</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
+  <td><code>.test_output_has_angle_bracket_splits()</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
   <td><span class="tag tag-func">Test</span></td>
-  <td><code>is_quota_check_request()</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small><br><code>TestQuotaCheckRequest</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
+  <td><code>_make_request()</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small><br><code>TestIsFilepathExtractionRequest</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
   <td>No direct outbound edge</td>
   <td>Verifies imports, entry points, or version behavior.</td>
 </tr>
 <tr>
   <td>20</td>
-  <td><code>.test_not_quota_check_no_quota_keyword()</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
+  <td><code>.test_output_has_double_newline_splits()</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
   <td><span class="tag tag-func">Test</span></td>
-  <td><code>is_quota_check_request()</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small><br><code>TestQuotaCheckRequest</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
+  <td><code>_make_request()</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small><br><code>TestIsFilepathExtractionRequest</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
   <td>No direct outbound edge</td>
   <td>Verifies imports, entry points, or version behavior.</td>
 </tr>
 <tr>
   <td>21</td>
-  <td><code>TestPrefixDetectionRequest</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>Message</code><br><small style="color:var(--muted)">api/models/anthropic.py</small><br><code>MessagesRequest</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
-  <td><code>test_not_prefix_detection_multiple_messages()</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small><br><code>test_not_prefix_detection_no_policy_spec()</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small><br><code>test_not_prefix_detection_wrong_role()</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small><br>+3 more</td>
-  <td>Verifies imports, entry points, or version behavior.</td>
+  <td><code>Edge case tests for api/detection.py.</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>Design note for Edge case tests for api/detection.py..</td>
 </tr>
 <tr>
   <td>22</td>
-  <td><code>.test_prefix_detection_with_policy_spec()</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>prefix detection request()</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small><br><code>TestPrefixDetectionRequest</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
+  <td><code>Content with Command: but Output: after cmd_start; output has &lt; or \\n\\n.</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
+  <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Verifies imports, entry points, or version behavior.</td>
+  <td>Design note for Content with Command: but Output: after cmd_start; output has &lt; or \\n\\n..</td>
 </tr>
 <tr>
   <td>23</td>
-  <td><code>.test_prefix_detection_case_sensitive()</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>prefix detection request()</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small><br><code>TestPrefixDetectionRequest</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
+  <td><code>Command: at end with no content returns empty command.</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
+  <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Verifies imports, entry points, or version behavior.</td>
+  <td>Design note for Command: at end with no content returns empty command..</td>
 </tr>
 <tr>
   <td>24</td>
-  <td><code>.test_not_prefix_detection_no_policy_spec()</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>prefix detection request()</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small><br><code>TestPrefixDetectionRequest</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
+  <td><code>Exception in try block (e.g. content slice) returns False, &#x27;&#x27;.</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
+  <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Verifies imports, entry points, or version behavior.</td>
+  <td>Design note for Exception in try block (e.g. content slice) returns False, &#x27;&#x27;..</td>
 </tr>
 <tr>
   <td>25</td>
-  <td><code>.test_not_prefix_detection_multiple_messages()</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>prefix detection request()</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small><br><code>TestPrefixDetectionRequest</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
+  <td><code>Output: not found after Command: returns False.</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
+  <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Verifies imports, entry points, or version behavior.</td>
+  <td>Design note for Output: not found after Command: returns False..</td>
 </tr>
 <tr>
   <td>26</td>
-  <td><code>.test_not_prefix_detection_wrong_role()</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>prefix detection request()</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small><br><code>TestPrefixDetectionRequest</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
+  <td><code>Output containing &lt; is split and first part used.</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
+  <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Verifies imports, entry points, or version behavior.</td>
+  <td>Design note for Output containing &lt; is split and first part used..</td>
 </tr>
 <tr>
   <td>27</td>
-  <td><code>.test_prefix_detection_list_content()</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
+  <td><code>Output containing \\n\\n is split and first part used.</code><br><small style="color:var(--muted)">tests/api/test_detection.py</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>Design note for Output containing \\n\\n is split and first part used..</td>
+</tr>
+<tr>
+  <td>28</td>
+  <td><code>test_messages_request_parses_without_model_mapping_side_effects()</code><br><small style="color:var(--muted)">tests/api/test_models_validators.py</small></td>
   <td><span class="tag tag-func">Test</span></td>
-  <td><code>prefix detection request()</code><br><small style="color:var(--muted)">free-claude/api/detection.py</small><br><code>TestPrefixDetectionRequest</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
+  <td><code>Message</code><br><small style="color:var(--muted)">api/models/anthropic.py</small><br><code>MessagesRequest</code><br><small style="color:var(--muted)">api/models/anthropic.py</small></td>
   <td>No direct outbound edge</td>
   <td>Verifies imports, entry points, or version behavior.</td>
 </tr>
 <tr>
-  <td>28</td>
-  <td><code>Tests for is_quota_check_request function.</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Design note for Tests for is_quota_check_request function..</td>
-</tr>
-<tr>
   <td>29</td>
-  <td><code>Test quota check with simple string content.</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
+  <td><code>test_model_router.py</code><br><small style="color:var(--muted)">tests/api/test_model_router.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Design note for Test quota check with simple string content..</td>
+  <td>Module file in tests/api/test_model_router.py.</td>
 </tr>
 <tr>
   <td>30</td>
-  <td><code>Test quota check is case insensitive.</code><br><small style="color:var(--muted)">tests/api/test_request_utils.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
+  <td><code>settings()</code><br><small style="color:var(--muted)">tests/api/test_model_router.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Design note for Test quota check is case insensitive..</td>
+  <td>settings() node in tests/api/test_model_router.py.</td>
 </tr>
 </table>
 
@@ -2658,13 +2706,13 @@ flowchart LR
 <tr><td><code>tests/providers/test_streaming_errors.py</code></td><td>79 nodes</td></tr>
 <tr><td><code>tests/cli/test_cli.py</code></td><td>66 nodes</td></tr>
 <tr><td><code>tests/messaging/test_tree_concurrency.py</code></td><td>63 nodes</td></tr>
-<tr><td><code>tests/providers/test_converter.py</code></td><td>60 nodes</td></tr>
+<tr><td><code>tests/providers/test_converter.py</code></td><td>57 nodes</td></tr>
 <tr><td><code>tests/api/test_dependencies.py</code></td><td>55 nodes</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: contains x1424, explains x786, calls x696, method x587. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: contains x1427, explains x778, calls x631, method x554. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
@@ -4155,17 +4203,17 @@ flowchart LR
   <div class="card">
     <h4>Graph</h4>
     <table style="width:100%;font-size:0.85rem;">
-      <tr><td>Nodes</td><td>16506</td></tr>
-      <tr><td>Edges</td><td>23539</td></tr>
+      <tr><td>Nodes</td><td>16563</td></tr>
+      <tr><td>Edges</td><td>23613</td></tr>
       <tr><td>Hyperedges</td><td>0</td></tr>
-      <tr><td>Communities</td><td>1329</td></tr>
+      <tr><td>Communities</td><td>1330</td></tr>
       <tr><td>Documented Sections</td><td>15</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Edge Confidence</h4>
     <table style="width:100%;font-size:0.85rem;">
-      <tr><td>EXTRACTED</td><td>21285</td></tr>
+      <tr><td>EXTRACTED</td><td>21359</td></tr>
       <tr><td>INFERRED</td><td>2254</td></tr>
       <tr><td>AMBIGUOUS</td><td>0</td></tr>
     </table>
@@ -4174,7 +4222,7 @@ flowchart LR
 
 <div style="text-align:center; padding:40px 0; color: var(--muted); font-size:0.9rem;">
   <p>Multibagger-claude — Architecture Documentation</p>
-  <p>Generated: 2026-05-17 03:32 UTC · graphify callflow-html</p>
+  <p>Generated: 2026-05-19 02:41 UTC · graphify callflow-html</p>
 </div>
 
 </div><!-- .container -->

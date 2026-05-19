@@ -1,3 +1,13 @@
+def _num(stock_data, key, default=0.0):
+    value = stock_data.get(key)
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def audit_stock_data(stock_data):
     """
     Phase 19: Performs a Data Integrity Audit on the stock data.
@@ -18,12 +28,12 @@ def audit_stock_data(stock_data):
             is_clean = False
 
     # 2. Outlier / Sanity Check
-    price = stock_data.get("Price", 0)
+    price = _num(stock_data, "Price")
     if price <= 0:
         flags.append("Invalid Price")
         is_clean = False
 
-    pe = stock_data.get("PE_Ratio", 0)
+    pe = _num(stock_data, "PE_Ratio")
     if pe > 500:
         flags.append("PE > 500 (Outlier)")
         # Not 'dirty' but risky
@@ -38,7 +48,7 @@ def audit_stock_data(stock_data):
         flags.append("Unknown Sector")
 
     # 5. Zero Values where there shouldn't be
-    if stock_data.get("Market_Cap_Cr", 0) == 0:
+    if _num(stock_data, "Market_Cap_Cr") == 0:
         flags.append("Zero Market Cap")
         is_clean = False
 

@@ -9,6 +9,16 @@ sys.path.append(BASE_DIR)
 import screener
 
 
+def _num(data, key, default=0.0):
+    value = data.get(key)
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 async def test_extraction():
     symbol = "RELIANCE.NS"
     print(f"--- Testing Data Extraction for {symbol} ---")
@@ -23,12 +33,12 @@ async def test_extraction():
         print(f"Avg ROE 5Y%: {data.get('Avg_ROE_5Y%')}%")
 
         # Check if ROE is still 0
-        if data.get("ROE%", 0) > 0:
+        if _num(data, "ROE%") > 0:
             print("\nSUCCESS: Current ROE extracted!")
         else:
             print("\nFAILURE: Current ROE still 0.")
 
-        if data.get("Sales_Growth_TTM%", 0) > 0 or data.get("Sales_Growth_5Y%", 0) > 0:
+        if _num(data, "Sales_Growth_TTM%") > 0 or _num(data, "Sales_Growth_5Y%") > 0:
             print("SUCCESS: Sales Growth captured!")
         else:
             print("FAILURE: Sales Growth still 0.")

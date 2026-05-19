@@ -27,7 +27,7 @@ OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "llama3.2:3b-instruct-fp16")
 FORCED_REGIME = os.getenv("FORCED_REGIME") or None
 
 # ── System Settings ───────────────────────────────────────────────────────────
-VERSION = "v4.0.0"
+VERSION = "v4.2.0"
 CAPITAL_LIMIT = 50_000_000  # 5 Cr pilot limit
 
 # ── Model Integrity ───────────────────────────────────────────────────────────

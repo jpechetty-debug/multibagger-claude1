@@ -14,6 +14,16 @@ from typing import Any, cast
 from modules.connections import DB_PATH, DB_BUSY_TIMEOUT_MS
 
 
+def _num(data: dict, key: str, default: float = 0.0) -> float:
+    value = data.get(key)
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def _get_conn():
     conn = sqlite3.connect(DB_PATH, timeout=5, check_same_thread=False)
     conn.execute(f"PRAGMA busy_timeout={DB_BUSY_TIMEOUT_MS}")
@@ -87,13 +97,11 @@ def record_buy_thesis(
 
     # Extract key metrics for thesis thresholds
     # Revenue growth: use 80% of current as minimum threshold
-    rev_growth = (
-        stock_data.get("Sales_Growth_TTM%", 0) or stock_data.get("Sales_Growth_5Y%", 0) or 0
-    )
+    rev_growth = _num(stock_data, "Sales_Growth_TTM%") or _num(stock_data, "Sales_Growth_5Y%")
     revenue_growth_min = round(rev_growth * 0.8, 1) if rev_growth > 0 else 0
 
     # Operating margin: use current profit margin as baseline
-    profit_margin = stock_data.get("Profit_Margin%", 0) or 0
+    profit_margin = _num(stock_data, "Profit_Margin%")
     operating_margin_min = round(profit_margin * 0.8, 1) if profit_margin > 0 else 0
 
     # Build primary driver description
@@ -103,15 +111,15 @@ def record_buy_thesis(
     drivers = []
     if rev_growth > 15:
         drivers.append("strong revenue growth")
-    if stock_data.get("Avg_ROE_5Y%", 0) > 20:
+    if _num(stock_data, "Avg_ROE_5Y%") > 20:
         drivers.append("high ROE")
-    if stock_data.get("F_Score", 0) >= 7:
+    if _num(stock_data, "F_Score") >= 7:
         drivers.append("financial fortress")
-    if stock_data.get("Value_Gap%", 0) > 20:
+    if _num(stock_data, "Value_Gap%") > 20:
         drivers.append("undervalued")
-    if stock_data.get("Promoter_Holding%", 0) > 60:
+    if _num(stock_data, "Promoter_Holding%") > 60:
         drivers.append("owner-operator")
-    if stock_data.get("EPS_Growth%", 0) > 15:
+    if _num(stock_data, "EPS_Growth%") > 15:
         drivers.append("earnings acceleration")
 
     primary_driver = f"{industry}: {', '.join(drivers)}" if drivers else f"{industry} play"

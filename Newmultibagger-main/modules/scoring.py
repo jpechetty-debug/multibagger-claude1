@@ -18,6 +18,30 @@ _StockData = dict[str, Any]
 _SectorMedians = dict[str, dict[str, float]]
 
 
+def _safe_number(value: Any, default: float = 0.0) -> float:
+    if value is None:
+        return default
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return default
+    return numeric if np.isfinite(numeric) else default
+
+
+def _optional_number(value: Any) -> float | None:
+    if value is None:
+        return None
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return None
+    return numeric if np.isfinite(numeric) else None
+
+
+def _metric(data: _StockData, key: str, default: float = 0.0) -> float:
+    return _safe_number(data.get(key), default)
+
+
 @dataclass(frozen=True)
 class FactorState:
     score_sales: float
@@ -160,9 +184,9 @@ def _calculate_sentiment_factor(
 
 
 def _calculate_roe_metrics(data: _StockData) -> tuple[float, float, float]:
-    roe_5y = data.get("Avg_ROE_5Y%", 0)
-    roe_current = data.get("ROE%", 0)
-    profit_margin = data.get("Profit_Margin%", 0)
+    roe_5y = _metric(data, "Avg_ROE_5Y%")
+    roe_current = _metric(data, "ROE%")
+    profit_margin = _metric(data, "Profit_Margin%")
     reported_roe = roe_5y if roe_5y != 0 else roe_current
     if roe_5y > 0:
         return roe_5y, reported_roe, 1.0
@@ -174,16 +198,18 @@ def _calculate_roe_metrics(data: _StockData) -> tuple[float, float, float]:
 
 
 def _build_factor_state(data: _StockData, score_sentiment: float) -> FactorState:
-    sg_val = data.get("Sales_Growth_5Y%", 0) or data.get("Sales_Growth_TTM%", 0) or 0
-    score_sales = normalize_metric(data.get("Sales_Growth_5Y%", 0), 0, 40)
+    sales_growth_5y = _metric(data, "Sales_Growth_5Y%")
+    sales_growth_ttm = _metric(data, "Sales_Growth_TTM%")
+    sg_val = sales_growth_5y or sales_growth_ttm
+    score_sales = normalize_metric(sales_growth_5y, 0, 40)
 
     roe_val, best_roe, roe_confidence = _calculate_roe_metrics(data)
     score_roe = normalize_metric(roe_val, 10, 30) * roe_confidence
 
-    score_cfo = normalize_metric(data.get("CFO_PAT_Ratio", 0), 0.5, 1.5)
+    score_cfo = normalize_metric(_metric(data, "CFO_PAT_Ratio"), 0.5, 1.5)
 
-    pe = data.get("PE_Ratio")
-    peg = data.get("PEG_Ratio")
+    pe = _optional_number(data.get("PE_Ratio"))
+    peg = _optional_number(data.get("PEG_Ratio"))
     score_pe = normalize_metric(pe, 15, 60, invert=True) if (pe is not None and pe > 0) else 0
     score_peg = normalize_metric(peg, 0.8, 2.5, invert=True) if (peg is not None and peg > 0) else 0
     if score_pe > 0 and score_peg > 0:
@@ -193,9 +219,9 @@ def _build_factor_state(data: _StockData, score_sentiment: float) -> FactorState
     else:
         score_val = score_peg
 
-    score_eps = normalize_metric(data.get("EPS_Growth%", 0), 5, 30)
+    score_eps = normalize_metric(_metric(data, "EPS_Growth%"), 5, 30)
 
-    f_score_val = data.get("F_Score")
+    f_score_val = _optional_number(data.get("F_Score"))
     if f_score_val is None:
         # Phase 2.3: Missing F_Score → neutral, not penalized
         score_fscore = 50.0
@@ -206,14 +232,14 @@ def _build_factor_state(data: _StockData, score_sentiment: float) -> FactorState
     if "Bank" in stock_sector or "Financial" in stock_sector:
         score_de = 80.0
     else:
-        score_de = normalize_metric(data.get("Debt_Equity", 0), 0, 1.0, invert=True)
+        score_de = normalize_metric(_metric(data, "Debt_Equity"), 0, 1.0, invert=True)
 
-    price = data.get("Price", 0) or 0
-    atr = data.get("ATR", 0) or 0
-    down_from_high = data.get("Down_From_52W_High%", 0)
+    price = _metric(data, "Price")
+    atr = _metric(data, "ATR")
+    down_from_high = _metric(data, "Down_From_52W_High%")
     score_mom_tech = normalize_metric(down_from_high, 0, 40, invert=True) if price > 0 else 0
 
-    rs_rating = data.get("RS_Rating")
+    rs_rating = _optional_number(data.get("RS_Rating"))
     # Phase 2.5: Smooth sigmoid replaces coarse 25-point cliff bucketing
     score_rs = normalize_metric(rs_rating, 0.5, 1.5) if rs_rating is not None else 50.0
     score_mom_combined = (score_mom_tech * 0.5) + (score_rs * 0.5)
@@ -225,12 +251,8 @@ def _build_factor_state(data: _StockData, score_sentiment: float) -> FactorState
         anchor_discount = max(0.5, fundamental_quality / 40.0)
         score_mom_combined *= anchor_discount
 
-    inst_hold = data.get("Inst_Holding%")
-    if inst_hold is None:
-        inst_hold = 0
-    prom_hold = data.get("Promoter_Holding%")
-    if prom_hold is None:
-        prom_hold = 0
+    inst_hold = _metric(data, "Inst_Holding%")
+    prom_hold = _metric(data, "Promoter_Holding%")
 
     return FactorState(
         score_sales=score_sales,
@@ -262,15 +284,15 @@ def _get_available_factors(
     w_sentiment: float,
 ) -> list[tuple[str, float, float]]:
     available = []
-    if data.get("Sales_Growth_5Y%", 0) != 0 or data.get("Sales_Growth_TTM%", 0) != 0:
+    if _metric(data, "Sales_Growth_5Y%") != 0 or _metric(data, "Sales_Growth_TTM%") != 0:
         available.append(("sales", state.score_sales, weights["w_sales"]))
     if state.roe_val != 0:
         available.append(("roe", state.score_roe, weights["w_roe"]))
-    if data.get("CFO_PAT_Ratio", 0) != 0:
+    if _metric(data, "CFO_PAT_Ratio") != 0:
         available.append(("cfo", state.score_cfo, weights["w_cfo"]))
     if (state.pe is not None and state.pe > 0) or (state.peg is not None and state.peg > 0):
         available.append(("val", state.score_val, weights["w_val"]))
-    if data.get("EPS_Growth%", 0) != 0:
+    if _metric(data, "EPS_Growth%") != 0:
         available.append(("eps", state.score_eps, weights["w_eps"]))
     available.append(("fscore", state.score_fscore, weights["w_fscore"]))
     available.append(("de", state.score_de, weights["w_de"]))
@@ -300,7 +322,7 @@ def _calculate_base_score(
         data_multiplier = max(0.1, min(1.0, (factor_count / 6.0) ** 1.5))
         base_score *= data_multiplier
 
-    base_score += data.get("Estimate_Score_Adj", 0)
+    base_score += _metric(data, "Estimate_Score_Adj")
     return base_score, data_confidence
 
 
@@ -330,9 +352,7 @@ def _apply_sector_relative_adjustment(
 
 def _calculate_bonus_total(data: _StockData, state: FactorState, sector_boost: _Number) -> float:
     total_bonus: float = 0.0
-    inflection_score = data.get("Earnings_Inflection_Score")
-    if inflection_score is None:
-        inflection_score = 0
+    inflection_score = _metric(data, "Earnings_Inflection_Score")
     if inflection_score >= 4:
         total_bonus += 8
     elif inflection_score >= 3:
@@ -344,13 +364,13 @@ def _calculate_bonus_total(data: _StockData, state: FactorState, sector_boost: _
 
     total_bonus += sector_boost
 
-    value_gap = data.get("Value_Gap%", 0)
+    value_gap = _metric(data, "Value_Gap%")
     if value_gap > 50:
         total_bonus += 10
     elif value_gap > 20:
         total_bonus += 5
 
-    f_score_check = data.get("F_Score")
+    f_score_check = _optional_number(data.get("F_Score"))
     if f_score_check is not None and f_score_check >= 8:
         total_bonus += 5
 
@@ -358,9 +378,7 @@ def _calculate_bonus_total(data: _StockData, state: FactorState, sector_boost: _
         total_bonus += 5
 
     rating = str(data.get("Analyst_Rating") or "").lower()
-    upside = data.get("Analyst_Upside%")
-    if upside is None:
-        upside = 0
+    upside = _metric(data, "Analyst_Upside%")
     if "strong buy" in rating:
         total_bonus += 5
     elif "buy" in rating:
@@ -380,9 +398,10 @@ def _calculate_bonus_total(data: _StockData, state: FactorState, sector_boost: _
         if atr_pct < 0.03:
             total_bonus += 2
 
-    if state.pe is not None and 0 < state.pe < 12 and data.get("Avg_ROE_5Y%", 0) > 25:
+    avg_roe_5y = _metric(data, "Avg_ROE_5Y%")
+    if state.pe is not None and 0 < state.pe < 12 and avg_roe_5y > 25:
         total_bonus += 7
-    if state.pe is not None and 0 < state.pe < 7 and data.get("Avg_ROE_5Y%", 0) > 15:
+    if state.pe is not None and 0 < state.pe < 7 and avg_roe_5y > 15:
         total_bonus += 7
 
     if (
@@ -390,8 +409,8 @@ def _calculate_bonus_total(data: _StockData, state: FactorState, sector_boost: _
         or "Energy" in state.stock_sector
         or "Power" in state.stock_sector
     ):
-        de_check = data.get("Debt_Equity")
-        fs_check = data.get("F_Score")
+        de_check = _optional_number(data.get("Debt_Equity"))
+        fs_check = _optional_number(data.get("F_Score"))
         if (de_check is not None and de_check > 1.0) and (fs_check is not None and fs_check >= 6):
             total_bonus += 5
 
@@ -415,8 +434,8 @@ def _apply_penalty_rules(
             total_penalty += 5
             factor_audit.append({"name": "Extreme Volatility", "value": -5})
 
-    sales_5y = data.get("Sales_Growth_5Y%", 0)
-    sales_ttm = data.get("Sales_Growth_TTM%", 0)
+    sales_5y = _metric(data, "Sales_Growth_5Y%")
+    sales_ttm = _metric(data, "Sales_Growth_TTM%")
     if sales_5y < 0 and sales_ttm < 0:
         total_penalty += 5
         factor_audit.append({"name": "Declining Revenue (Long & Short)", "value": -5})
@@ -451,40 +470,39 @@ def _apply_checklist_gate(
     checklist_pass = 0
     checklist_total = 12
 
-    mcap_cr = data.get("Market_Cap_Cr")
+    mcap_cr = _optional_number(data.get("Market_Cap_Cr"))
     if mcap_cr is not None and mcap_cr > 1000:
         checklist_pass += 1
     if state.pe is not None and 0 < state.pe < 25:
         checklist_pass += 1
     if state.best_roe > 17:
         checklist_pass += 1
-    de_val = data.get("Debt_Equity")
+    de_val = _optional_number(data.get("Debt_Equity"))
     if de_val is not None and 0 <= de_val < 1.0:
         checklist_pass += 1
-    cfo_pat = data.get("CFO_PAT_Ratio")
+    cfo_pat = _optional_number(data.get("CFO_PAT_Ratio"))
     if cfo_pat is not None and cfo_pat > 1.0:
         checklist_pass += 1
-    down_pct = data.get("Down_From_52W_High%")
+    down_pct = _optional_number(data.get("Down_From_52W_High%"))
     if down_pct is not None and 0 <= down_pct < 25:
         checklist_pass += 1
 
-    sg_5y = data.get("Sales_Growth_5Y%")
-    sg_ttm = data.get("Sales_Growth_TTM%")
+    sg_5y = _optional_number(data.get("Sales_Growth_5Y%"))
+    sg_ttm = _optional_number(data.get("Sales_Growth_TTM%"))
     sg = sg_5y if sg_5y is not None else (sg_ttm if sg_ttm is not None else 0)
     if sg > 15:
         checklist_pass += 1
-    eps_g = data.get("EPS_Growth%")
-    eps_g = eps_g if eps_g is not None else 0
+    eps_g = _metric(data, "EPS_Growth%")
     if eps_g > 0:
         checklist_pass += 1
     if state.prom_hold > 50:
         checklist_pass += 1
-    f_val_check = data.get("F_Score")
+    f_val_check = _optional_number(data.get("F_Score"))
     if f_val_check is not None and f_val_check >= 6:
         checklist_pass += 1
     if sg > 10 and eps_g > 10:
         checklist_pass += 1
-    value_gap = data.get("Value_Gap%", 0)
+    value_gap = _metric(data, "Value_Gap%")
     if value_gap > 0 or (state.pe is not None and 0 < state.pe < 20):
         checklist_pass += 1
 
@@ -510,11 +528,11 @@ def _apply_checklist_gate(
 def _build_conviction_input(data: _StockData) -> _StockData:
     return {
         "symbol": data.get("Symbol", ""),
-        "sales_growth": data.get("Sales_Growth_5Y%", 0),
-        "profit_growth": data.get("EPS_Growth%", 0),
-        "roce": data.get("Avg_ROE_5Y%", 0),
-        "debt_to_equity": data.get("Debt_Equity", 0),
-        "promoter_holding": data.get("Promoter_Holding%", 0),
+        "sales_growth": _metric(data, "Sales_Growth_5Y%"),
+        "profit_growth": _metric(data, "EPS_Growth%"),
+        "roce": _metric(data, "Avg_ROE_5Y%"),
+        "debt_to_equity": _metric(data, "Debt_Equity"),
+        "promoter_holding": _metric(data, "Promoter_Holding%"),
         "pledge": 0,
     }
 
@@ -528,7 +546,8 @@ def _apply_spline_cap(
     score_ceiling: float,
     disqualifiers: list[str],
 ) -> float:
-    if val is None or not np.isfinite(val):
+    val = _optional_number(val)
+    if val is None:
         return score_ceiling
 
     cap = 100.0
@@ -611,7 +630,7 @@ def _apply_score_ceiling_rules(
             disqualifiers,
         )
 
-    profit_margin = data.get("Profit_Margin%", 0)
+    profit_margin = _optional_number(data.get("Profit_Margin%"))
     if profit_margin is not None:
         score_ceiling = _apply_spline_cap(
             profit_margin,
@@ -623,14 +642,14 @@ def _apply_score_ceiling_rules(
             disqualifiers,
         )
 
-    f_score_val = data.get("F_Score")
+    f_score_val = _optional_number(data.get("F_Score"))
     if f_score_val is None:
         f_score_val = 0
     if f_score_val <= 4:
         score_ceiling = min(score_ceiling, 65 + (f_score_val * 5.9))
         disqualifiers.append(f"Quality Floor Spline (F:{f_score_val})")
 
-    value_gap = data.get("Value_Gap%", 0)
+    value_gap = _metric(data, "Value_Gap%")
     if value_gap < 0:
         score_ceiling = _apply_spline_cap(
             value_gap,
@@ -642,7 +661,7 @@ def _apply_score_ceiling_rules(
             disqualifiers,
         )
 
-    cfo_pat = data.get("CFO_PAT_Ratio", 0)
+    cfo_pat = _optional_number(data.get("CFO_PAT_Ratio"))
     if cfo_pat is not None:
         score_ceiling = _apply_spline_cap(
             cfo_pat,
@@ -665,7 +684,7 @@ def _apply_score_ceiling_rules(
             disqualifiers,
         )
 
-    eps_check = data.get("EPS_Growth%", 0)
+    eps_check = _optional_number(data.get("EPS_Growth%"))
     if eps_check is not None:
         score_ceiling = _apply_spline_cap(
             eps_check,
