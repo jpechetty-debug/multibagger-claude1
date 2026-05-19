@@ -33,12 +33,38 @@ CAPITAL_LIMIT = 50_000_000  # 5 Cr pilot limit
 # ── Model Integrity ───────────────────────────────────────────────────────────
 MODEL_VERSION = VERSION
 
-import subprocess
-try:
-    _git_hash = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL).decode("utf-8").strip()
-    MODEL_VERSION_HASH = _git_hash
-except Exception:
-    MODEL_VERSION_HASH = "bc2a3187"
+_git_hash_cache: str | None = None
+
+
+def get_git_hash() -> str:
+    """Lazy git hash — resolved on first call, never at import time.
+
+    Priority: GIT_COMMIT_SHA env var → ``git rev-parse`` → "unknown".
+    """
+    global _git_hash_cache
+    if _git_hash_cache is None:
+        env_hash = os.getenv("GIT_COMMIT_SHA")
+        if env_hash:
+            _git_hash_cache = env_hash[:8]
+        else:
+            try:
+                import subprocess
+
+                _git_hash_cache = (
+                    subprocess.check_output(
+                        ["git", "rev-parse", "--short", "HEAD"],
+                        stderr=subprocess.DEVNULL,
+                    )
+                    .decode("utf-8")
+                    .strip()
+                )
+            except Exception:
+                _git_hash_cache = "unknown"
+    return _git_hash_cache
+
+
+# Backward compat — consumers should migrate to get_git_hash()
+MODEL_VERSION_HASH = "deferred"
 
 # ── Risk Limits ───────────────────────────────────────────────────────────────
 MAX_SECTOR_EXPOSURE = 0.25

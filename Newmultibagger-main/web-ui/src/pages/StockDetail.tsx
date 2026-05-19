@@ -14,6 +14,7 @@ import {
 import { api } from '../lib/api'
 import type { SignalData, HistoryPoint } from '../lib/contracts'
 import { MetricExplainer } from '../components/metrics/MetricExplainer'
+import { StockDetailSkeleton } from '../components/ui/Skeleton'
 import QuarterlyTimeline from '../components/signals/QuarterlyTimeline'
 import { ScoreExplainer } from '../components/signals/ScoreExplainer'
 import { RedFlagPanel } from '../components/signals/RedFlagPanel'
@@ -69,13 +70,7 @@ export function StockDetail() {
   }, [symbol])
 
   if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-brand-bg text-brand-text">
-        <div className="animate-pulse font-mono tracking-widest text-brand-accent uppercase font-bold">
-          [ DECRYPTING TERMINAL FEED ]
-        </div>
-      </div>
-    )
+    return <StockDetailSkeleton />
   }
 
   if (error || !stock) {
@@ -83,7 +78,7 @@ export function StockDetail() {
       <div className="p-8 font-mono text-brand-rose">
         <h2 className="text-2xl font-black mb-4">SYSTEM ERROR</h2>
         <p>{error || 'Stock not found in current signal universe.'}</p>
-        <Link to="/" className="mt-8 inline-block border-2 border-brand-rose px-4 py-2 hover:bg-brand-rose/20 text-brand-rose">
+        <Link to="/" className="mt-8 inline-flex items-center justify-center border-2 border-brand-rose px-4 py-2 hover:bg-brand-rose/20 text-brand-rose touch-target">
           &lt; RETURN TO MAIN TERMINAL
         </Link>
       </div>
@@ -99,7 +94,7 @@ export function StockDetail() {
       <div className="flex items-center gap-4 mb-8">
         <Link 
           to="/" 
-          className="inline-flex items-center gap-2 font-mono text-sm tracking-widest text-brand-text-dim hover:text-brand-accent transition-colors uppercase border border-transparent hover:border-brand-accent/20 px-3 py-1.5 rounded"
+          className="inline-flex items-center gap-2 font-mono text-sm tracking-widest text-brand-text-dim hover:text-brand-accent transition-colors uppercase border border-transparent hover:border-brand-accent/20 px-3 py-1.5 rounded touch-target"
         >
           <ArrowLeft size={16} /> 
           Back to Dashboard
@@ -108,7 +103,7 @@ export function StockDetail() {
         <button
           type="button"
           onClick={() => toggleWatchlist(stock.symbol)}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono font-bold uppercase tracking-widest transition-all ${
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono font-bold uppercase tracking-widest transition-all touch-target ${
             watched
               ? 'border-brand-rose/30 bg-brand-rose/10 text-brand-rose hover:bg-brand-rose/20'
               : 'border-brand-border text-brand-text-dim hover:border-brand-accent/40 hover:text-brand-accent'
@@ -120,7 +115,7 @@ export function StockDetail() {
         <button
           type="button"
           onClick={() => window.print()}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-border text-xs font-mono font-bold uppercase tracking-widest text-brand-text-dim hover:border-brand-accent/40 hover:text-brand-accent transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-border text-xs font-mono font-bold uppercase tracking-widest text-brand-text-dim hover:border-brand-accent/40 hover:text-brand-accent transition-colors touch-target"
         >
           <Printer size={14} />
           Export

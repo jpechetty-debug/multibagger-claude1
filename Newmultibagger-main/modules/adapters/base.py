@@ -1,9 +1,10 @@
 # modules/adapters/base.py
-import logging
+from modules.structured_logger import SovereignLogger
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
-logger = logging.getLogger(__name__)
+_sov = SovereignLogger("adapters.base")
+logger = _sov.logger
 
 
 class DataProvider(ABC):

@@ -106,14 +106,14 @@ function HeaderNavLinks() {
     <div className="flex items-center gap-2">
       <Link
         to="/watchlist"
-        className="inline-flex items-center gap-1.5 rounded-lg border border-brand-border px-2.5 py-1.5 text-[10px] font-mono font-bold uppercase tracking-widest text-brand-text-dim hover:border-brand-primary/40 hover:text-brand-primary transition-colors"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-brand-border px-2.5 py-1.5 text-[10px] font-mono font-bold uppercase tracking-widest text-brand-text-dim hover:border-brand-primary/40 hover:text-brand-primary transition-colors touch-target"
       >
         <Heart className="h-3 w-3" />
         {count > 0 && <span className="text-brand-primary">{count}</span>}
       </Link>
       <Link
         to="/score-report"
-        className="inline-flex items-center gap-1.5 rounded-lg border border-brand-border px-2.5 py-1.5 text-[10px] font-mono font-bold uppercase tracking-widest text-brand-text-dim hover:border-brand-primary/40 hover:text-brand-primary transition-colors"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-brand-border px-2.5 py-1.5 text-[10px] font-mono font-bold uppercase tracking-widest text-brand-text-dim hover:border-brand-primary/40 hover:text-brand-primary transition-colors touch-target"
       >
         <BarChart3 className="h-3 w-3" />
       </Link>

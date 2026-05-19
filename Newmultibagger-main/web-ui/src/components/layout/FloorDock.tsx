@@ -18,7 +18,7 @@ export function FloorDock({ activeTab, onTabChange }: FloorDockProps) {
           <button
             key={tab.name}
             onClick={() => onTabChange(tab.name)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 relative ${activeTab === tab.name ? 'bg-brand-primary text-brand-bg font-bold shadow-lg shadow-brand-primary/20' : 'text-brand-text-dim hover:text-brand-text'}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 relative touch-target ${activeTab === tab.name ? 'bg-brand-primary text-brand-bg font-bold shadow-lg shadow-brand-primary/20' : 'text-brand-text-dim hover:text-brand-text'}`}
           >
             <tab.icon className={`w-4 h-4 ${activeTab === tab.name ? 'animate-pulse' : ''}`} />
             <span className="text-[10px] font-mono uppercase tracking-widest leading-none hidden md:inline">{tab.name}</span>
@@ -31,7 +31,7 @@ export function FloorDock({ activeTab, onTabChange }: FloorDockProps) {
       <div className="w-[1px] h-8 bg-white/10 mx-2" />
       <button 
         aria-label="Open Menu"
-        className="w-10 h-10 flex items-center justify-center rounded-xl bg-brand-card/50 text-brand-text-dim hover:text-brand-primary hover:border-brand-primary/30 border border-transparent transition-all"
+        className="w-11 h-11 flex items-center justify-center rounded-xl bg-brand-card/50 text-brand-text-dim hover:text-brand-primary hover:border-brand-primary/30 border border-transparent transition-all touch-target"
       >
         <Menu className="w-5 h-5" />
       </button>

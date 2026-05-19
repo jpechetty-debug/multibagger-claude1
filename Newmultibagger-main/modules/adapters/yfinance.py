@@ -1,6 +1,6 @@
 # modules/adapters/yfinance.py
 import asyncio
-import logging
+from modules.structured_logger import SovereignLogger
 from typing import Any
 
 import pandas as pd
@@ -10,7 +10,8 @@ from modules.normalization.cleaner import _has_value, is_payload_skeletal
 
 from .base import DataProvider
 
-logger = logging.getLogger(__name__)
+_sov = SovereignLogger("adapters.yfinance")
+logger = _sov.logger
 
 
 async def _run_executor_safe(loop, executor, fn, default):

@@ -60,6 +60,8 @@ const sampleSignals: SignalData[] = [
     convictionScore: 77,
     asOfDate: '2026-04-02',
     raw: { symbol: 'INFY.NS' },
+    dataQuality: 95,
+    dataQualityFlags: '',
   },
   {
     symbol: 'HDFCBANK.NS',
@@ -72,6 +74,8 @@ const sampleSignals: SignalData[] = [
     convictionScore: 64,
     asOfDate: '2026-04-02',
     raw: { symbol: 'HDFCBANK.NS' },
+    dataQuality: 98,
+    dataQualityFlags: '',
   },
 ]
 

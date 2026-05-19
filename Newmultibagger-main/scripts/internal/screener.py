@@ -1316,10 +1316,10 @@ def main(argv=None):
     logger = ScanLogger()
     current_hash = logger._generate_version_hash()
 
-    if current_hash != config.MODEL_VERSION_HASH:
+    if current_hash != config.get_git_hash():
         print("\n" + "!" * 60)
         print("  MODEL INTEGRITY WARNING: Version Mismatch!")
-        print(f"Expected: {config.MODEL_VERSION} ({config.MODEL_VERSION_HASH})")
+        print(f"Expected: {config.MODEL_VERSION} ({config.get_git_hash()})")
         print(f"Actual:   {current_hash}")
         print("Code logic has changed since version freeze.")
         print("!" * 60 + "\n")

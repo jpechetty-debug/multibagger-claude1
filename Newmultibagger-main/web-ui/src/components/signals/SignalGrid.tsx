@@ -83,7 +83,7 @@ function SearchPanel({
               placeholder="PROMPT TICKER..."
               disabled={disabled}
               onChange={(event) => onSearch(event.target.value)}
-              className="w-full bg-brand-bg/50 border border-brand-border rounded-xl px-4 py-3 text-xs font-mono focus:border-brand-primary outline-none font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full bg-brand-bg/50 border border-brand-border rounded-xl px-4 py-3 text-xs font-mono focus:border-brand-primary outline-none font-bold disabled:opacity-40 disabled:cursor-not-allowed touch-target"
             />
           </div>
           
@@ -91,7 +91,7 @@ function SearchPanel({
             type="button"
             disabled={disabled}
             onClick={() => onToggleReliability(!highReliabilityOnly)}
-            className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${
+            className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all touch-target ${
                 highReliabilityOnly 
                 ? 'bg-brand-primary/20 border-brand-primary text-brand-primary' 
                 : 'bg-white/5 border-white/10 text-brand-text-dim hover:border-white/20'
@@ -266,7 +266,7 @@ export function SignalGrid({
               <button
                 type="button"
                 onClick={onRetry}
-                className="inline-flex items-center gap-2 rounded-xl border border-brand-rose/30 px-4 py-2 text-xs font-mono font-bold uppercase tracking-widest text-brand-rose transition-colors hover:border-brand-rose/60 hover:bg-brand-rose/10"
+                className="inline-flex items-center gap-2 rounded-xl border border-brand-rose/30 px-4 py-2 text-xs font-mono font-bold uppercase tracking-widest text-brand-rose transition-colors hover:border-brand-rose/60 hover:bg-brand-rose/10 touch-target"
               >
                 <RefreshCcw className="h-3.5 w-3.5" />
                 Retry sync
@@ -344,7 +344,7 @@ export function SignalGrid({
               <button
                 type="button"
                 onClick={() => onSearch('')}
-                className="rounded-xl border border-white/10 px-3 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-brand-text-dim transition-colors hover:border-brand-primary/40 hover:text-brand-primary"
+                className="rounded-xl border border-white/10 px-3 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-brand-text-dim transition-colors hover:border-brand-primary/40 hover:text-brand-primary touch-target"
               >
                 Clear
               </button>

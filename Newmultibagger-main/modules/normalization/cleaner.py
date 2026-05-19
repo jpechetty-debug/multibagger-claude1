@@ -1,10 +1,11 @@
 # modules/normalization/cleaner.py
-import logging
+from modules.structured_logger import SovereignLogger
 from typing import Any
 
 import numpy as np
 
-logger = logging.getLogger(__name__)
+_sov = SovereignLogger("normalization.cleaner")
+logger = _sov.logger
 
 _FUNDAMENTAL_KEYS = (
     "marketCap",

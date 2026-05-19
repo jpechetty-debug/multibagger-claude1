@@ -155,3 +155,6 @@ extracted_*/
 
 # Local Numba cache
 numba_cache/
+
+# Graphify Cache
+graphify-out/cache/

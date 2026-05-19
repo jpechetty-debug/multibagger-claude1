@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { api } from '../lib/api'
 import type { ScoreDistributionResponse, CalibrationReportResponse } from '../lib/contracts'
 import { ProviderHealthPanel } from '../components/metrics/ProviderHealthPanel'
+import { ScoreReportSkeleton } from '../components/ui/Skeleton'
 
 export function ScoreReport() {
   const [dist, setDist] = useState<ScoreDistributionResponse | null>(null)
@@ -26,13 +27,7 @@ export function ScoreReport() {
   }, [])
 
   if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-brand-bg text-brand-text">
-        <div className="animate-pulse font-mono tracking-widest text-brand-accent uppercase font-bold">
-          [ COMPUTING SCORE DISTRIBUTION ]
-        </div>
-      </div>
-    )
+    return <ScoreReportSkeleton />
   }
 
   const decileEntries = dist ? Object.entries(dist.deciles) : []
@@ -42,7 +37,7 @@ export function ScoreReport() {
     <div className="min-h-screen bg-brand-bg text-brand-text p-4 md:p-8 pb-32">
       <Link
         to="/"
-        className="inline-flex items-center gap-2 mb-8 font-mono text-sm tracking-widest text-brand-text-dim hover:text-brand-accent transition-colors uppercase"
+        className="inline-flex items-center gap-2 mb-8 font-mono text-sm tracking-widest text-brand-text-dim hover:text-brand-accent transition-colors uppercase touch-target"
       >
         <ArrowLeft size={16} />
         Dashboard
@@ -52,9 +47,9 @@ export function ScoreReport() {
         <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-text-dim font-bold">
           Score Intelligence
         </p>
-        <h2 className="font-display text-3xl font-black tracking-tight mt-1">
+        <h1 className="font-display text-3xl font-black tracking-tight mt-1">
           Distribution & Calibration Report
-        </h2>
+        </h1>
         <p className="text-sm text-brand-text-dim mt-2">
           Analyze scoring engine health, identify clustering, and validate differentiation.
         </p>

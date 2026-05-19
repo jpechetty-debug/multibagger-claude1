@@ -28,7 +28,7 @@ def pytest_runtest_setup(item):
     """
     if item.module.__name__.endswith("test_new_features"):
         estimates = _load_real_module("modules.estimates", "modules/estimates.py")
-        promoter_intel = _load_real_module("modules.promoter_intel", "modules/promoter_intel.py")
+        promoter_intel = _load_real_module("modules.promoter_intel", "modules/intelligence/promoter_intel.py")
 
         item.module.analyze_estimate_momentum = estimates.analyze_estimate_momentum
         item.module.compute_own_estimate = estimates.compute_own_estimate

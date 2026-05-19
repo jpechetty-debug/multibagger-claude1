@@ -82,6 +82,10 @@ class SovereignLogger:
     def __init__(self, name="sovereign"):
         self._logger = get_structured_logger(name)
 
+    @property
+    def logger(self):
+        return self._logger
+
     def _log(self, level, msg, **kwargs):
         if kwargs:
             self._logger.log(level, msg, extra={"extra_context": kwargs})

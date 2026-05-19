@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { api } from '../lib/api'
 import type { SignalData } from '../lib/contracts'
 import { useWatchlist } from '../lib/useWatchlist'
+import { WatchlistSkeleton } from '../components/ui/Skeleton'
 
 export function Watchlist() {
   const { watchlist, removeFromWatchlist, clearWatchlist } = useWatchlist()
@@ -33,7 +34,7 @@ export function Watchlist() {
       <div className="flex items-center gap-4 mb-8">
         <Link
           to="/"
-          className="inline-flex items-center gap-2 font-mono text-sm tracking-widest text-brand-text-dim hover:text-brand-accent transition-colors uppercase"
+          className="inline-flex items-center gap-2 font-mono text-sm tracking-widest text-brand-text-dim hover:text-brand-accent transition-colors uppercase touch-target"
         >
           <ArrowLeft size={16} />
           Dashboard
@@ -43,7 +44,7 @@ export function Watchlist() {
           <button
             type="button"
             onClick={clearWatchlist}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-rose/30 text-xs font-mono font-bold uppercase tracking-widest text-brand-rose hover:bg-brand-rose/10 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-rose/30 text-xs font-mono font-bold uppercase tracking-widest text-brand-rose hover:bg-brand-rose/10 transition-colors touch-target"
           >
             <Trash2 size={12} />
             Clear All
@@ -55,9 +56,9 @@ export function Watchlist() {
         <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-text-dim font-bold">
           Personal Watchlist
         </p>
-        <h2 className="font-display text-3xl font-black tracking-tight mt-1">
+        <h1 className="font-display text-3xl font-black tracking-tight mt-1">
           Tracked Convictions
-        </h2>
+        </h1>
         <p className="text-sm text-brand-text-dim mt-2">
           {watchlist.length} {watchlist.length === 1 ? 'stock' : 'stocks'} in your watchlist.
           These persist in your browser across sessions.
@@ -65,11 +66,7 @@ export function Watchlist() {
       </div>
 
       {loading && (
-        <div className="flex justify-center py-20">
-          <div className="animate-pulse font-mono text-brand-accent uppercase tracking-widest font-bold">
-            [ LOADING WATCHLIST ]
-          </div>
-        </div>
+        <WatchlistSkeleton />
       )}
 
       {!loading && watchlist.length === 0 && (
@@ -85,7 +82,7 @@ export function Watchlist() {
           </p>
           <Link
             to="/"
-            className="mt-4 inline-flex items-center gap-2 rounded-xl border border-brand-accent/30 bg-brand-accent/10 px-4 py-2 text-xs font-mono font-bold uppercase tracking-widest text-brand-accent hover:bg-brand-accent/20 transition-colors"
+            className="mt-4 inline-flex items-center gap-2 rounded-xl border border-brand-accent/30 bg-brand-accent/10 px-4 py-2 text-xs font-mono font-bold uppercase tracking-widest text-brand-accent hover:bg-brand-accent/20 transition-colors touch-target"
           >
             Browse Signals
           </Link>
@@ -122,7 +119,7 @@ export function Watchlist() {
                     <button
                       type="button"
                       onClick={() => removeFromWatchlist(stock.symbol)}
-                      className="p-1 rounded hover:bg-brand-rose/10 text-brand-text-dim hover:text-brand-rose transition-colors"
+                      className="p-1 rounded hover:bg-brand-rose/10 text-brand-text-dim hover:text-brand-rose transition-colors touch-target"
                     >
                       <Trash2 size={14} />
                     </button>

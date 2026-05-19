@@ -110,7 +110,9 @@ export function RedFlagPanel({ stock }: RedFlagPanelProps) {
     flags.push({
       severity: 'CRITICAL',
       label: 'Data Integrity Audit Failure',
-      value: stock.data_quality_flags,
+      value: Array.isArray(stock.data_quality_flags)
+        ? stock.data_quality_flags.join(', ')
+        : String(stock.data_quality_flags || ''),
       icon: ShieldAlert,
     })
   }
