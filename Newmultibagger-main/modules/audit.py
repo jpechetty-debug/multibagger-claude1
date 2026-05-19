@@ -1,11 +1,4 @@
-def _num(stock_data, key, default=0.0):
-    value = stock_data.get(key)
-    if value is None:
-        return default
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return default
+from modules.data_utils import safe_float
 
 
 def audit_stock_data(stock_data):
@@ -28,12 +21,12 @@ def audit_stock_data(stock_data):
             is_clean = False
 
     # 2. Outlier / Sanity Check
-    price = _num(stock_data, "Price")
+    price = safe_float(stock_data.get("Price"))
     if price <= 0:
         flags.append("Invalid Price")
         is_clean = False
 
-    pe = _num(stock_data, "PE_Ratio")
+    pe = safe_float(stock_data.get("PE_Ratio"))
     if pe > 500:
         flags.append("PE > 500 (Outlier)")
         # Not 'dirty' but risky
@@ -48,7 +41,7 @@ def audit_stock_data(stock_data):
         flags.append("Unknown Sector")
 
     # 5. Zero Values where there shouldn't be
-    if _num(stock_data, "Market_Cap_Cr") == 0:
+    if safe_float(stock_data.get("Market_Cap_Cr")) == 0:
         flags.append("Zero Market Cap")
         is_clean = False
 

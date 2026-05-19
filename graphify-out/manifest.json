@@ -128,8 +128,8 @@
     "hash": "dc137ea9c4def71c60292a4099cb5081"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\modules\\audit.py": {
-    "mtime": 1779158372.0067272,
-    "hash": "9ced38d47b0da231165946e06c521f41"
+    "mtime": 1779158961.59878,
+    "hash": "6640e6b00972f6e5d66fad78bffa8ef5"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\modules\\auth.py": {
     "mtime": 1778134609.2644167,
@@ -172,8 +172,8 @@
     "hash": "8f7214a58f9856836bd5a039e213833b"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\modules\\data_utils.py": {
-    "mtime": 1778134609.2952065,
-    "hash": "81a95e07c7e81fd3a60da982ab5f4bab"
+    "mtime": 1779158899.8793054,
+    "hash": "6d145ea3ae0373a2acf032661ddd7e07"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\modules\\db_utils.py": {
     "mtime": 1778908237.899014,
@@ -368,8 +368,8 @@
     "hash": "1b77eb0bc50f0b5c8a4c7b2704a46a6d"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\modules\\scoring.py": {
-    "mtime": 1779158205.049721,
-    "hash": "0e4ad3783f0b66c70f5197c93ef1f3b4"
+    "mtime": 1779159008.948598,
+    "hash": "07d2faeac2ce9c9e0525a074d58371d9"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\modules\\sector_mapping.py": {
     "mtime": 1778134609.4567387,
@@ -412,8 +412,8 @@
     "hash": "2ede66ae08620c0215789680cc5d9566"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\modules\\thesis_monitor.py": {
-    "mtime": 1779158372.0067272,
-    "hash": "78393b24800d928d34f6422961512a48"
+    "mtime": 1779158974.1421854,
+    "hash": "5e0e90a9dab2f166c9e6b9a3bbec3037"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\modules\\tracker.py": {
     "mtime": 1778222554.8272223,
@@ -596,8 +596,8 @@
     "hash": "78cbee76ed87d0a9358368db4377b1f9"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\ops\\verify_roe_fix.py": {
-    "mtime": 1779158372.007733,
-    "hash": "d36b0503fc925848e3f58d96d654af8a"
+    "mtime": 1779159013.85823,
+    "hash": "6f1b1cd61cb1417efbad288f043534e7"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\ops\\__init__.py": {
     "mtime": 1778134609.5809999,
@@ -2536,8 +2536,8 @@
     "hash": "f1f1350c71641830a126b0454aa536f3"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\tests\\test_hardening_contracts.py": {
-    "mtime": 1779158254.0610645,
-    "hash": "1e37011ff1c46ba7d73c669084e639ab"
+    "mtime": 1779159069.4071798,
+    "hash": "43b6b4c0027e648e0b84428fac92e6c1"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\tests\\test_hybrid_scoring_walk_forward.py": {
     "mtime": 1778911968.5262594,

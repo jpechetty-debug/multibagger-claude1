@@ -5,7 +5,6 @@ Phase 4.3: Contract regression tests for the data hardening framework.
 These tests enforce that the Phase 1-4 data correctness guarantees
 cannot silently regress without test failures.
 """
-import math
 import sys
 from pathlib import Path
 
@@ -19,6 +18,25 @@ if str(ROOT) not in sys.path:
 # ════════════════════════════════════════════════════════════════════════════
 # CONTRACT 1: DQ Gate Invariants
 # ════════════════════════════════════════════════════════════════════════════
+
+class TestDataUtilsContracts:
+    """Validate shared numeric coercion helpers used across scoring/audit paths."""
+
+    def test_safe_float_handles_missing_invalid_and_nan(self):
+        from modules.data_utils import safe_float
+
+        assert safe_float(None) == 0.0
+        assert safe_float("bad", default=-1.0) == -1.0
+        assert safe_float(float("nan"), default=7.0) == 7.0
+        assert safe_float("12.5") == pytest.approx(12.5)
+
+    def test_optional_float_preserves_missing_semantics(self):
+        from modules.data_utils import optional_float
+
+        assert optional_float(None) is None
+        assert optional_float("bad") is None
+        assert optional_float(float("inf")) is None
+        assert optional_float("12.5") == pytest.approx(12.5)
 
 
 class TestDQGateContracts:

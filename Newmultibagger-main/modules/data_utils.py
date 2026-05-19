@@ -1,5 +1,6 @@
 # modules/data_utils.py
 import asyncio
+import math
 import os
 import threading
 
@@ -7,6 +8,28 @@ import pandas as pd
 import pandas_market_calendars as mcal
 
 from modules.symbol_utils import canonical_symbol
+
+
+def safe_float(value, default: float = 0.0) -> float:
+    """None/NaN/non-numeric safe coercion to float."""
+    if value is None:
+        return default
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return default
+    return result if math.isfinite(result) else default
+
+
+def optional_float(value) -> float | None:
+    """Return None if value is missing/invalid, float otherwise."""
+    if value is None:
+        return None
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return None
+    return result if math.isfinite(result) else None
 
 
 def run_coroutine_sync(coro):
