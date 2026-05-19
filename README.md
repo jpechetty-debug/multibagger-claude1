@@ -12,7 +12,7 @@ The core implementation, including the Unified CLI, MCP integration, and scoring
 
 ## 🏗️ Core Capabilities
 
-- **Institutional Scoring**: 9-vector Nexus Alpha (v12.0) engine.
+- **Institutional Scoring**: 9-vector Nexus Alpha (v12.5) engine.
 - **Agentic Intelligence**: FastMCP integration with Research Memory and Swarm Intelligence.
 - **Unified Operations**: Centralized CLI for data ingestion, scanning, and ML training.
 - **Hybrid Data Layer**: SQLite + DuckDB optimization for vectorized research.
