@@ -58,12 +58,20 @@ def detect_project_type(project_path: Path) -> dict:
     if (project_path / "pyproject.toml").exists() or (project_path / "requirements.txt").exists():
         result["type"] = "python"
         
+        def resolve_executable(name: str) -> str:
+            venv_bin = Path(sys.executable).parent
+            for ext in ("", ".exe", ".cmd", ".bat"):
+                candidate = venv_bin / f"{name}{ext}"
+                if candidate.exists():
+                    return str(candidate)
+            return name
+        
         # Check for ruff
-        result["linters"].append({"name": "ruff", "cmd": ["ruff", "check", "."]})
+        result["linters"].append({"name": "ruff", "cmd": [resolve_executable("ruff"), "check", "."]})
         
         # Check for mypy
         if (project_path / "mypy.ini").exists() or (project_path / "pyproject.toml").exists():
-            result["linters"].append({"name": "mypy", "cmd": ["mypy", "."]})
+            result["linters"].append({"name": "mypy", "cmd": [resolve_executable("mypy"), "."]})
     
     return result
 

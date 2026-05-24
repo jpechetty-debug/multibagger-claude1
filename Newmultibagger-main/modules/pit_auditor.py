@@ -9,6 +9,7 @@ import hashlib
 import logging
 import os
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 
 import pandas as pd
@@ -59,6 +60,27 @@ release_lag_map = {
     "cashflow": pd.Timedelta(days=75),
     "default": pd.Timedelta(days=45),
 }
+_DATE_FORMATS = ("%Y-%m-%d", "%d-%b-%Y", "%d/%m/%Y", "%Y/%m/%d", "%Y%m%d")
+
+
+def _normalize_iso_date(value: str) -> str:
+    """Normalize PIT boundary dates to ISO YYYY-MM-DD before persistence."""
+    if value is None:
+        return ""
+    text = str(value).strip()
+    if not text:
+        return ""
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00")).date().isoformat()
+    except ValueError:
+        pass
+    for fmt in _DATE_FORMATS:
+        try:
+            return datetime.strptime(text[:11] if fmt == "%d-%b-%Y" else text[:10], fmt).date().isoformat()
+        except ValueError:
+            continue
+    parsed = pd.to_datetime(text, errors="coerce")
+    return "" if pd.isna(parsed) else parsed.date().isoformat()
 
 
 def checksum(row: pd.Series) -> str:
@@ -99,7 +121,7 @@ class PITDataStore:
                     metric_name TEXT,
                     value REAL,
                     report_date TEXT,
-                    as_of_date TEXT,
+                    as_of_date DATE,
                     source TEXT,
                     checksum TEXT,
                     PRIMARY KEY(symbol, metric_name, report_date, as_of_date)
@@ -117,6 +139,8 @@ class PITDataStore:
         source: str,
     ):
         """Inserts a tightly controlled PIT record using an auto-computed checksum."""
+        report_date = _normalize_iso_date(report_date)
+        as_of_date = _normalize_iso_date(as_of_date)
         row_s = pd.Series([symbol, metric_name, value, report_date, as_of_date, source])
         chksum = checksum(row_s)
 

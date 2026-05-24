@@ -1,4 +1,8 @@
+import os
+
 import numpy as np
+
+RF_ANNUAL = float(os.getenv("RISK_FREE_RATE_ANNUAL", "0.065"))
 
 
 class ValuationEngine:
@@ -14,7 +18,7 @@ class ValuationEngine:
         - beta: float (optional, default 1.0)
         """
         self.data = data
-        self.risk_free_rate = 0.07  # India 10Y Bond Yield approx
+        self.risk_free_rate = RF_ANNUAL  # India 10Y G-Sec proxy; override via env.
         self.market_return = 0.12  # Expected Nifty Return
 
     def calculate_dcf(self, projection_years=10, terminal_growth=0.04):

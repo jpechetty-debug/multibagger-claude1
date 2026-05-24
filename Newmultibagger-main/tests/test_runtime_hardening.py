@@ -18,6 +18,13 @@ from modules.runtime_settings import load_runtime_settings
 from worker.background_jobs import run_price_update_loop, run_weekly_audit_loop
 
 
+def test_db_core_reuses_canonical_sqlalchemy_engine():
+    from db.db_core import db_engine as db_core_engine
+    from db.engine import engine
+
+    assert db_core_engine is engine
+
+
 def test_runtime_settings_loads_worker_flags(monkeypatch):
     monkeypatch.setenv("EMBED_PRICE_UPDATER_IN_WEB", "true")
     monkeypatch.setenv("EMBED_WEEKLY_AUDIT_IN_WEB", "yes")

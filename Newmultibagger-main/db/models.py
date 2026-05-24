@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from sqlalchemy import (
     CheckConstraint,
     Column,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -66,7 +67,7 @@ class Multibagger(Base):
     atr = Column(Float)
     stop_loss_atr = Column(Float)
     max_qty_1l = Column(Float)
-    as_of_date = Column(String)
+    as_of_date = Column(Date)
     last_audited = Column(DateTime)
     updated_at = Column(DateTime)
     conviction_score = Column(Float)
@@ -94,7 +95,7 @@ class FundamentalsPIT(Base):
     __tablename__ = "fundamentals_pit"
 
     symbol = Column(String, primary_key=True)
-    as_of_date = Column(String, primary_key=True)
+    as_of_date = Column(Date, primary_key=True, nullable=False)
     price = Column(Float)
     sector = Column(String)
     score = Column(Integer)
@@ -142,7 +143,7 @@ class ValuationMetric(Base):
     margin_of_safety = Column(Float)
     verdict = Column(String)
     confidence_score = Column(Integer)
-    as_of_date = Column(String)
+    as_of_date = Column(Date)
     calculated_at = Column(DateTime)
 
 

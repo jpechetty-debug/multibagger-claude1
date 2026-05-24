@@ -1,4 +1,6 @@
+from pathlib import Path
 from typing import Any, cast
+import logging
 import numpy as np
 import pandas as pd
 import vectorbt as vbt
@@ -8,6 +10,7 @@ import os
 
 
 TRANSACTION_COST = 0.006
+RF_ANNUAL = float(os.getenv("RISK_FREE_RATE_ANNUAL", "0.065"))
 DEFAULT_BENCHMARK_SYMBOL = "^CNX500"
 DEFAULT_WALK_FORWARD_FEATURES = [
     "score",
@@ -24,6 +27,8 @@ DEFAULT_WALK_FORWARD_FEATURES = [
     "dist_from_52w_high",
     "roce",
 ]
+
+logger = logging.getLogger(__name__)
 
 
 def _canonical_symbol(symbol: str) -> str:
@@ -115,17 +120,23 @@ def _max_drawdown_pct(period_returns: pd.Series) -> float:
     return float(drawdown.min() * 100)
 
 
-def _sharpe_ratio(period_returns: pd.Series, periods_per_year: int = 12) -> float:
+def _sharpe_ratio(
+    period_returns: pd.Series,
+    periods_per_year: int = 12,
+    rf_annual: float = RF_ANNUAL,
+) -> float:
     returns = pd.to_numeric(period_returns, errors="coerce").dropna()
     if len(returns) < 2 or returns.std() <= 0:
         return 0.0
-    return float((returns.mean() / returns.std()) * np.sqrt(periods_per_year))
+    rf_per_period = float(rf_annual) / periods_per_year
+    excess = returns - rf_per_period
+    return float((excess.mean() / excess.std()) * np.sqrt(periods_per_year))
 
 
 def _clean_metrics(metrics: dict) -> dict:
     cleaned = {}
     for key, value in metrics.items():
-        if isinstance(value, (int, float, np.number)):
+        if isinstance(value, int | float | np.number):
             cleaned[key] = float(value) if np.isfinite(value) else 0.0
         else:
             cleaned[key] = value
@@ -162,6 +173,13 @@ def _entry_turnover(position: pd.Series) -> pd.Series:
 
 
 def _extract_close_series(df: pd.DataFrame, symbol: str, *, single_symbol: bool = False) -> pd.Series:
+    """
+    Extract adjusted close prices from a yfinance download.
+
+    All engine downloads call yfinance with auto_adjust=True, so the "Close"
+    field is already split/dividend-adjusted. Do not switch this to raw close
+    without also changing return calculations and tests.
+    """
     if df is None or df.empty:
         return pd.Series(dtype=float)
     if isinstance(df.columns, pd.MultiIndex):
@@ -193,6 +211,9 @@ def _forward_period_returns(prices: pd.DataFrame | pd.Series, frequency: str):
     if prices is None or prices.empty:
         return pd.Series(dtype=float) if isinstance(prices, pd.Series) else pd.DataFrame()
     period_prices = prices.sort_index().groupby(prices.sort_index().index.to_period(frequency)).last()
+    # Forward label semantics: period T score maps to period T+1 return.
+    # shift(-1) intentionally leaves the latest period unlabeled, and dropna
+    # removes that row so the backtest never scores a period with no future return.
     return period_prices.pct_change().shift(-1).dropna(how="all")
 
 
@@ -241,6 +262,8 @@ def _make_walk_forward_model():
 
 
 class VectorBTEngine:
+    _survivorship_warning_emitted = False
+
     def __init__(
         self,
         period="5y",
@@ -251,6 +274,30 @@ class VectorBTEngine:
         self.transaction_cost = float(transaction_cost)
         self.benchmark_symbol = benchmark_symbol
         self.db_path = os.path.join(os.path.dirname(__file__), "..", "runtime", "stocks.db")
+        self._warn_if_survivorship_metadata_missing()
+
+    def _warn_if_survivorship_metadata_missing(self) -> None:
+        if VectorBTEngine._survivorship_warning_emitted:
+            return
+
+        project_data = Path(__file__).resolve().parents[1] / "data"
+        cwd_data = Path("data")
+        data_dirs = [project_data]
+        if cwd_data.resolve() != project_data.resolve():
+            data_dirs.append(cwd_data)
+
+        has_metadata = any(
+            (data_dir / "nse_listing_dates.csv").exists()
+            or any(data_dir.glob("nifty500_*.csv"))
+            for data_dir in data_dirs
+        )
+        if not has_metadata:
+            logger.warning(
+                "SURVIVORSHIP BIAS: No listing/delisting data found. "
+                "Backtest returns will be overstated. "
+                "See backtest/survivorship_adjusted_loader.py."
+            )
+        VectorBTEngine._survivorship_warning_emitted = True
 
     @staticmethod
     def _sanitize_metric(value, default=0.0):
@@ -317,6 +364,7 @@ class VectorBTEngine:
                 interval="1mo",
                 progress=False,
                 group_by="ticker",
+                auto_adjust=True,
             )
             if raw_prices is None or raw_prices.empty:
                 return {"status": "NO_PRICE_DATA", "folds": 0}
@@ -527,6 +575,7 @@ class VectorBTEngine:
                 interval="1mo",
                 progress=False,
                 group_by="ticker",
+                auto_adjust=True,
             )
             if df.empty:
                 return {s: {"symbol": s, "status": "NO_DATA"} for s in clean_symbols}
@@ -555,13 +604,18 @@ class VectorBTEngine:
                 if self.benchmark_symbol
                 else pd.Series(dtype=float)
             )
+            # Forward benchmark labels: the latest month is dropped because it has
+            # no realized next-month return, matching the stock return labels.
             benchmark_returns = benchmark_close.sort_index().pct_change().shift(-1).dropna()
 
             if not close_prices:
                 return {s: {"symbol": s, "status": "INSUFFICIENT_DATA"} for s in clean_symbols}
 
             price_matrix = pd.DataFrame(close_prices).sort_index()
-            returns = price_matrix.pct_change().shift(-1) # Forward 1-month returns
+            # Forward 1-month labels: period T score maps to period T+1 return.
+            # The final month remains NaN after shift(-1) and is excluded when
+            # each symbol's return series is dropna()'d below.
+            returns = price_matrix.pct_change().shift(-1)
 
             results = {}
             # Base metrics fallback
@@ -609,6 +663,9 @@ class VectorBTEngine:
                     results[sym]["cagr"] = net_cagr
                     results[sym]["transaction_cost_drag"] = self._sanitize_metric(
                         gross_cagr - net_cagr, 0.0
+                    )
+                    results[sym]["sharpe_ratio"] = self._sanitize_metric(
+                        _sharpe_ratio(net_monthly_returns), 0.0
                     )
                     results[sym]["turnover"] = 1.0
                     metrics = benchmark_metrics(net_monthly_returns, benchmark_returns)
@@ -669,7 +726,7 @@ class VectorBTEngine:
                     cum_returns = (1 + sym_strat_returns).cumprod()
                     drawdown = cum_returns / cum_returns.cummax() - 1
                     max_dd = drawdown.min() * 100
-                    sharpe = (sym_strat_returns.mean() / sym_strat_returns.std()) * np.sqrt(12) if sym_strat_returns.std() > 0 else 0
+                    sharpe = _sharpe_ratio(sym_strat_returns)
 
                     results[sym]["cagr"] = self._sanitize_metric(cagr, 0.0)
                     results[sym]["gross_cagr"] = self._sanitize_metric(gross_cagr, 0.0)

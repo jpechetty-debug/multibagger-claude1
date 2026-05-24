@@ -4,10 +4,11 @@ import os
 from datetime import datetime
 
 import pandas as pd
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 import modules.dependencies as deps
 from modules.drift_monitor import monitor_drift
+from modules.rate_limit import limiter
 from modules.symbol_utils import normalize_symbol
 
 router = APIRouter()
@@ -83,7 +84,8 @@ async def get_thesis_breaks():
 
 
 @router.get("/api/revisions/{symbol}")
-async def get_revisions(symbol: str):
+@limiter.limit("10/minute")
+async def get_revisions(request: Request, symbol: str):
     """Fetch analyst recommendations trend and score impact."""
     try:
         import yfinance as yf

@@ -32,4 +32,4 @@ def test_api_v96_momentum_accel_sync():
     assert "details" in data
     assert "momentum_accel" in data
     # Acceleration should be a float
-    assert isinstance(data["momentum_accel"], (int, float))
+    assert isinstance(data["momentum_accel"], int | float)

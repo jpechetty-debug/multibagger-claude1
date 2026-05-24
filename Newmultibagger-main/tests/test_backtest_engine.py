@@ -101,6 +101,22 @@ def test_apply_transaction_costs_charges_only_turnover(monkeypatch):
     assert np.allclose(net.to_numpy(), [0.014, 0.01, -0.033])
 
 
+def test_sharpe_ratio_uses_risk_free_rate(monkeypatch):
+    backtest_engine_module = _load_backtest_engine_module(monkeypatch)
+
+    returns = pd.Series([0.03, 0.02, -0.01, 0.04])
+    observed = backtest_engine_module._sharpe_ratio(
+        returns,
+        periods_per_year=12,
+        rf_annual=0.12,
+    )
+    excess = returns - 0.01
+    expected = (excess.mean() / excess.std()) * np.sqrt(12)
+
+    assert observed == pytest.approx(expected)
+    assert observed < (returns.mean() / returns.std()) * np.sqrt(12)
+
+
 def test_benchmark_metrics_aligns_returns_and_reports_relative_stats(monkeypatch):
     backtest_engine_module = _load_backtest_engine_module(monkeypatch)
 
@@ -152,6 +168,34 @@ def test_run_batch_momentum_backtest_includes_benchmark_relative_metrics(monkeyp
     assert abc_result["tracking_error"] >= 0
 
 
+def test_run_batch_momentum_backtest_requests_adjusted_yfinance_close(monkeypatch):
+    backtest_engine_module = _load_backtest_engine_module(monkeypatch)
+
+    monkeypatch.setattr(
+        pd,
+        "read_sql_query",
+        lambda *args, **kwargs: pd.DataFrame(columns=["symbol", "as_of_date", "score"]),
+    )
+    dates = pd.date_range("2025-01-01", periods=4, freq="ME")
+    fake_download = pd.concat(
+        {"ABC.NS": pd.DataFrame({"Close": [100.0, 102.0, 103.0, 104.0]}, index=dates)},
+        axis=1,
+    )
+    calls = []
+
+    def fake_yf_download(*args, **kwargs):
+        calls.append(kwargs)
+        return fake_download
+
+    monkeypatch.setattr(backtest_engine_module.yf, "download", fake_yf_download)
+
+    engine = backtest_engine_module.VectorBTEngine(period="1y")
+    engine.run_batch_momentum_backtest(["ABC"])
+
+    assert calls
+    assert calls[0]["auto_adjust"] is True
+
+
 class _ScoreModel:
     def fit(self, X, y):
         return self
@@ -186,7 +230,7 @@ def test_walk_forward_strategy_backtest_trains_past_only_and_reports_portfolio_m
     score_map = {"AAA.NS": 90.0, "BBB.NS": 50.0, "CCC.NS": 10.0}
     for date in pit_dates:
         for symbol, score in score_map.items():
-            row = {feature: 0.0 for feature in feature_cols}
+            row = dict.fromkeys(feature_cols, 0.0)
             row.update({"symbol": symbol, "as_of_date": date.strftime("%Y-%m-%d"), "score": score})
             rows.append(row)
     pit_df = pd.DataFrame(rows)

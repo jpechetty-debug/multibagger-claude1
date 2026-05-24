@@ -1,11 +1,12 @@
 """Initial schema baseline
 
 Revision ID: c9ef2c6838ab
-Revises: 
+Revises:
 Create Date: 2026-05-19 18:08:57.871682
 
 """
-from typing import Sequence, Union
+from typing import Union
+from collections.abc import Sequence
 
 from alembic import op
 import sqlalchemy as sa
@@ -20,9 +21,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    pass
 
 
 def downgrade() -> None:
     """Downgrade schema."""
-    pass

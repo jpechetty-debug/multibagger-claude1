@@ -4,34 +4,24 @@ from contextlib import contextmanager
 from pathlib import Path
 
 import structlog
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
+
+from db.engine import DATABASE_URL, DEFAULT_SQLITE_PATH, engine as db_engine
 
 logger = structlog.get_logger("db_core")
 
 # Database Configuration
 # CRITICAL: The canonical data lives in runtime/stocks.db, NOT the root stocks.db
 DB_NAME = "stocks.db"
-_RUNTIME_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "runtime"))
-DB_PATH = os.path.join(_RUNTIME_DIR, DB_NAME)
+_ENGINE_SQLITE_PATH = db_engine.url.database if db_engine.dialect.name == "sqlite" else None
+DB_PATH = os.path.abspath(str(_ENGINE_SQLITE_PATH or DEFAULT_SQLITE_PATH))
 
 
 def get_engine():
-    """Returns the SQLAlchemy Engine instance based on environment configuration."""
-    _db_url = os.getenv("DATABASE_URL", f"sqlite:///{DB_PATH}")
-
-    # Initialize Engine
-    if _db_url.startswith("sqlite"):
+    """Return the canonical SQLAlchemy Engine from db.engine."""
+    if DATABASE_URL.startswith("sqlite"):
         Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-        # SQLite specific tweaks
-        engine = create_engine(_db_url, connect_args={"check_same_thread": False, "timeout": 5})
-    else:
-        # PostgreSQL specific tweaks
-        engine = create_engine(_db_url, pool_pre_ping=True, pool_size=10, max_overflow=20)
-    return engine
-
-
-# Global Engine Instance
-db_engine = get_engine()
+    return db_engine
 
 
 @contextmanager

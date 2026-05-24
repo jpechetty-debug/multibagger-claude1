@@ -25,6 +25,7 @@ from modules.dependencies import (
     runtime_logger,
     update_prices_background,
 )
+from modules.rate_limit import RateLimitExceeded, limiter, rate_limit_exceeded_handler
 from modules.runtime_settings import runtime_settings
 from worker.background_jobs import start_weekly_audit_thread
 
@@ -62,14 +63,17 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan, dependencies=[Depends(get_api_key)])
+app.state.limiter = limiter
+if RateLimitExceeded is not None and rate_limit_exceeded_handler is not None:
+    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 # Setup CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cfg.CORS_ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "X-API-Key"],
 )
 
 # Prometheus metrics

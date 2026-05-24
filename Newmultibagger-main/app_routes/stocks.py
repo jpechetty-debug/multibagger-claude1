@@ -3,9 +3,10 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import yfinance as yf
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 import modules.dependencies as deps
+from modules.rate_limit import limiter
 from modules.retry_utils import run_with_exponential_backoff
 
 router = APIRouter()
@@ -97,7 +98,8 @@ async def get_multibagger_hunt():
 
 
 @router.get("/api/thesis/{symbol}")
-async def get_llm_thesis(symbol: str):
+@limiter.limit("10/minute")
+async def get_llm_thesis(request: Request, symbol: str):
     """Generate concise AI investment thesis via local Ollama."""
     try:
         from sqlalchemy import text
@@ -185,7 +187,8 @@ async def get_thesis_status(symbol: str):
 
 
 @router.get("/api/valuation/{symbol}")
-async def get_valuation(symbol: str, as_of_date: str | None = None):
+@limiter.limit("10/minute")
+async def get_valuation(request: Request, symbol: str, as_of_date: str | None = None):
     try:
         valuation_as_of = (as_of_date or datetime.now().date().isoformat())[:10]
 
@@ -236,7 +239,7 @@ async def get_valuation(symbol: str, as_of_date: str | None = None):
             with deps.get_sqla_connection() as conn:
                 conn.execute(
                     text(
-                        "CREATE TABLE IF NOT EXISTS valuation_metrics (symbol TEXT PRIMARY KEY, dcf_value REAL, graham_value REAL, epv_value REAL, intrinsic_value REAL, margin_of_safety REAL, verdict TEXT, confidence_score INTEGER, as_of_date TEXT, calculated_at TIMESTAMP)"
+                        "CREATE TABLE IF NOT EXISTS valuation_metrics (symbol TEXT PRIMARY KEY, dcf_value REAL, graham_value REAL, epv_value REAL, intrinsic_value REAL, margin_of_safety REAL, verdict TEXT, confidence_score INTEGER, as_of_date DATE, calculated_at TIMESTAMP)"
                     )
                 )
 
@@ -259,7 +262,7 @@ async def get_valuation(symbol: str, as_of_date: str | None = None):
                     ]
 
                 if "as_of_date" not in columns:
-                    conn.execute(text("ALTER TABLE valuation_metrics ADD COLUMN as_of_date TEXT"))
+                    conn.execute(text("ALTER TABLE valuation_metrics ADD COLUMN as_of_date DATE"))
                 conn.commit()
 
         await deps._run_sqlite_write_with_retry(_ensure_valuation_table, "valuation table init")
@@ -367,7 +370,8 @@ async def get_financials(symbol: str):
 
 
 @router.get("/api/governance/{symbol}")
-async def get_governance_data(symbol: str):
+@limiter.limit("20/minute")
+async def get_governance_data(request: Request, symbol: str):
     """8-Point Governance Checklist Data"""
     try:
         if not symbol.endswith(".NS") and not symbol.endswith(".BO"):
@@ -461,7 +465,8 @@ async def get_stock_peers(symbol: str):
 
 
 @router.get("/api/technicals/{symbol}")
-async def get_technicals(symbol: str):
+@limiter.limit("20/minute")
+async def get_technicals(request: Request, symbol: str):
     try:
         from modules.technicals import get_technical_analysis
 
@@ -483,7 +488,8 @@ async def get_promoter_intel(symbol: str):
 
 
 @router.get("/api/shareholding/{symbol}")
-async def get_shareholding(symbol: str):
+@limiter.limit("20/minute")
+async def get_shareholding(request: Request, symbol: str):
     try:
         from modules.shareholding import get_shareholding_pattern
 
@@ -493,7 +499,8 @@ async def get_shareholding(symbol: str):
 
 
 @router.get("/api/quarterly-results/{symbol}")
-async def quarterly_results_endpoint(symbol: str, quarters: int = 12):
+@limiter.limit("20/minute")
+async def quarterly_results_endpoint(request: Request, symbol: str, quarters: int = 12):
     try:
         from modules.quarterly_results import get_quarterly_timeline
 
@@ -512,7 +519,8 @@ async def quarterly_results_endpoint(symbol: str, quarters: int = 12):
 
 
 @router.get("/api/price-fundamentals/{symbol}")
-async def price_fundamentals_endpoint(symbol: str, years: int = 5):
+@limiter.limit("10/minute")
+async def price_fundamentals_endpoint(request: Request, symbol: str, years: int = 5):
     try:
         years = min(max(years, 3), 10)
         cache_key = f"{symbol}:{years}"
@@ -533,7 +541,8 @@ async def price_fundamentals_endpoint(symbol: str, years: int = 5):
 
 
 @router.get("/api/estimates/{symbol}")
-async def get_estimates(symbol: str):
+@limiter.limit("20/minute")
+async def get_estimates(request: Request, symbol: str):
     try:
         from modules.estimates import get_estimate_data
 
@@ -545,7 +554,8 @@ async def get_estimates(symbol: str):
 
 
 @router.get("/api/swarm/{symbol}")
-async def get_swarm_report_simulation(symbol: str):
+@limiter.limit("5/minute")
+async def get_swarm_report_simulation(request: Request, symbol: str):
     """Trigger Swarm Intelligence simulation via MiroFish."""
     try:
         from modules.mirofish_client import MiroFishClient

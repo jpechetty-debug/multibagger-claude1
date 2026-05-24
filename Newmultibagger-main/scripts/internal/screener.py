@@ -130,7 +130,7 @@ def _is_missing_info_value(value):
         return True
     if isinstance(value, str):
         return not bool(value.strip())
-    if isinstance(value, (list, tuple, set, dict)):
+    if isinstance(value, list | tuple | set | dict):
         return len(value) == 0
     return False
 
@@ -164,7 +164,7 @@ def _merge_info(primary_info, fallback_info):
 def _is_finite_number(value):
     if value is None:
         return False
-    if isinstance(value, (int, float, np.floating)):
+    if isinstance(value, int | float | np.floating):
         return np.isfinite(value)
     try:
         parsed = float(value)

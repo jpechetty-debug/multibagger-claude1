@@ -3,10 +3,11 @@ import json
 import os
 import sys
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 
 import modules.dependencies as deps
+from modules.rate_limit import limiter
 
 router = APIRouter()
 _price_refresh_task: asyncio.Task | None = None
@@ -31,7 +32,8 @@ async def websocket_signals(websocket: WebSocket):
 
 
 @router.post("/api/scan")
-async def run_scan():
+@limiter.limit("2/minute")
+async def run_scan(request: Request):
     """Trigger full market scan."""
     try:
         process = await asyncio.create_subprocess_exec(
@@ -46,7 +48,8 @@ async def run_scan():
 
 
 @router.post("/api/refresh-prices")
-async def refresh_prices():
+@limiter.limit("3/minute")
+async def refresh_prices(request: Request):
     """Start one market-data refresh cycle for prices and swing tactical fields."""
     global _price_refresh_task
 

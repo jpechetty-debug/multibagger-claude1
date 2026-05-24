@@ -13,7 +13,7 @@ for backwards compatibility.
 import os
 import sqlite3
 import time
-from datetime import datetime
+from datetime import date, datetime
 
 import pandas as pd
 
@@ -29,6 +29,7 @@ DB_BUSY_TIMEOUT_MS = runtime_settings.sqlite_busy_timeout_ms
 SQLITE_WRITE_RETRIES = runtime_settings.sqlite_write_retries
 SQLITE_RETRY_BASE_SECONDS = runtime_settings.sqlite_retry_base_seconds
 PIT_RETENTION_DAYS = 365 * 3
+_DATE_FORMATS = ("%Y-%m-%d", "%d-%b-%Y", "%d/%m/%Y", "%Y/%m/%d", "%Y%m%d")
 
 
 # ── Internal Utilities ────────────────────────────────────────────────────────
@@ -44,17 +45,33 @@ def _normalize_as_of_date(value=None):
 
     if isinstance(value, datetime):
         return value.date().isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    if isinstance(value, pd.Timestamp):
+        if pd.isna(value):
+            return datetime.now().date().isoformat()
+        return value.date().isoformat()
 
     text = str(value).strip()
     if not text:
         return datetime.now().date().isoformat()
 
     try:
-        if len(text) <= 10:
-            return datetime.fromisoformat(text[:10]).date().isoformat()
-        return datetime.fromisoformat(text).date().isoformat()
+        return datetime.fromisoformat(text.replace("Z", "+00:00")).date().isoformat()
     except ValueError:
-        return datetime.now().date().isoformat()
+        pass
+
+    for fmt in _DATE_FORMATS:
+        try:
+            return datetime.strptime(text[:11] if fmt == "%d-%b-%Y" else text[:10], fmt).date().isoformat()
+        except ValueError:
+            continue
+
+    parsed = pd.to_datetime(text, errors="coerce")
+    if not pd.isna(parsed):
+        return parsed.date().isoformat()
+
+    return datetime.now().date().isoformat()
 
 
 def _is_sqlite_lock_error(exc: Exception) -> bool:
@@ -131,7 +148,7 @@ def _ensure_fundamentals_pit_table(conn):
         """
         CREATE TABLE IF NOT EXISTS fundamentals_pit (
             symbol TEXT NOT NULL,
-            as_of_date TEXT NOT NULL,
+            as_of_date DATE NOT NULL,
             price REAL,
             sector TEXT,
             score INTEGER,
@@ -176,9 +193,9 @@ def _ensure_runtime_schema():
     conn = get_connection()
     try:
         if _table_exists(conn, "multibaggers"):
-            _ensure_column(conn, "multibaggers", "as_of_date", "TEXT")
+            _ensure_column(conn, "multibaggers", "as_of_date", "DATE")
         if _table_exists(conn, "valuation_metrics"):
-            _ensure_column(conn, "valuation_metrics", "as_of_date", "TEXT")
+            _ensure_column(conn, "valuation_metrics", "as_of_date", "DATE")
 
         if _table_exists(conn, "multibaggers"):
             # Phase 10: Research Layer
@@ -665,7 +682,7 @@ def init_db():
             atr REAL,
             stop_loss_atr REAL,
             max_qty_1l REAL,
-            as_of_date TEXT,
+            as_of_date DATE,
             last_audited TIMESTAMP,
             updated_at TIMESTAMP,
             conviction_score REAL,
@@ -724,7 +741,7 @@ def init_db():
             margin_of_safety REAL,
             verdict TEXT,
             confidence_score INTEGER,
-            as_of_date TEXT,
+            as_of_date DATE,
             calculated_at TIMESTAMP,
             FOREIGN KEY (symbol) REFERENCES multibaggers (symbol)
         )

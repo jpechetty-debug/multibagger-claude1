@@ -85,8 +85,8 @@ def perform_ic_analysis():
 
         ic_results.append({
             "Factor": factor,
-            "IC": float(correlation) if isinstance(correlation, (int, float, np.floating)) else 0.0,
-            "p_value": float(p_value) if isinstance(p_value, (int, float, np.floating)) else 1.0
+            "IC": float(correlation) if isinstance(correlation, int | float | np.floating) else 0.0,
+            "p_value": float(p_value) if isinstance(p_value, int | float | np.floating) else 1.0
         })
 
     # Sort by absolute IC (predictive power)

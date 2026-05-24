@@ -90,7 +90,7 @@ class FactValidator:
         # Flatten dictionary keys for matching (assuming simple depth 1 or 2 dictionary)
         flat_data = {}
         for k, v in data_vector.items():
-            if isinstance(v, (int, float)):
+            if isinstance(v, int | float):
                 if not math.isnan(v) and not math.isinf(v):
                     flat_data[k] = float(v)
             elif isinstance(v, str):
@@ -101,7 +101,7 @@ class FactValidator:
                     pass
             elif isinstance(v, dict):  # simple flattening of 1 level nested dicts
                 for nk, nv in v.items():
-                    if isinstance(nv, (int, float)) and not math.isnan(nv) and not math.isinf(nv):
+                    if isinstance(nv, int | float) and not math.isnan(nv) and not math.isinf(nv):
                         flat_data[f"{k}_{nk}"] = float(nv)
 
         if not flat_data:

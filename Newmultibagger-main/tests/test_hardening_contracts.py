@@ -266,7 +266,7 @@ class TestScoringContracts:
                 }
             )
         )
-        assert isinstance(result["total_score"], (int, float))
+        assert isinstance(result["total_score"], int | float)
 
     def test_sector_medians_exclude_none_values(self):
         """Phase 1 fix: None values must not participate in sector median calculation."""

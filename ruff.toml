@@ -1,0 +1,8 @@
+# Root Ruff configuration
+exclude = [
+    ".agent",
+    ".venv",
+    "venv",
+    "tools",
+    "Newmultibagger-main/scratch",
+]

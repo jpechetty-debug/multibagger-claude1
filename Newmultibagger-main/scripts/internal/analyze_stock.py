@@ -34,7 +34,7 @@ def evaluate_metric(name: str, value: Any, threshold: str, condition: bool, unit
         if condition
         else f"{Colors.FAIL}❌ FAIL{Colors.RESET}"
     )
-    safe_value = f"{round(value, 2)}{unit}" if isinstance(value, (int, float)) else str(value)
+    safe_value = f"{round(value, 2)}{unit}" if isinstance(value, int | float) else str(value)
     print(f" {name:<25} {threshold:<10} | {status} ({safe_value})")
 
 

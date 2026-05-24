@@ -72,13 +72,13 @@ def _json_safe_clean(obj):
     elif hasattr(obj, "model_dump") and callable(obj.model_dump):
         obj = obj.model_dump()
 
-    if isinstance(obj, (list, tuple, np.ndarray)):
+    if isinstance(obj, list | tuple | np.ndarray):
         return [_json_safe_clean(x) for x in obj]
-    if isinstance(obj, (dict, pd.Series)):
+    if isinstance(obj, dict | pd.Series):
         return {str(k): _json_safe_clean(v) for k, v in obj.items()}
     if isinstance(obj, float) and (np.isnan(obj) or np.isinf(obj)):
         return None
-    if isinstance(obj, (np.integer, np.floating)):
+    if isinstance(obj, np.integer | np.floating):
         val = obj.item()
         if isinstance(val, float) and (np.isnan(val) or np.isinf(val)):
             return None

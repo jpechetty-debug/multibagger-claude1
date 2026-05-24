@@ -4,12 +4,13 @@ from typing import Any, cast
 import numpy as np
 import pandas as pd
 import yfinance as yf
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import text
 
 import modules.dependencies as deps
 from modules.allocation_hrp import HRPAllocator
 from modules.models import OrderRequest
+from modules.rate_limit import limiter
 from modules.retry_utils import run_with_exponential_backoff
 from modules.symbol_utils import canonical_symbol
 
@@ -333,7 +334,8 @@ def _build_swing_trades(
 
 
 @router.post("/api/order")
-async def place_order(order: OrderRequest):
+@limiter.limit("30/minute")
+async def place_order(request: Request, order: OrderRequest):
     """Order lifecycle endpoint for paper execution (BUY/SELL)."""
     try:
         symbol = canonical_symbol(order.symbol)
@@ -452,7 +454,8 @@ async def get_trade_history():
 
 @router.get("/api/allocation/hrp")
 @router.get("/api/hrp")
-async def get_hrp_allocation():
+@limiter.limit("10/minute")
+async def get_hrp_allocation(request: Request):
     """Calculate HRP weights for top 15 stocks"""
     try:
 
@@ -519,7 +522,9 @@ async def get_slippage_stats():
 
 
 @router.get("/api/trades/swing")
+@limiter.limit("30/minute")
 async def get_swing_trades(
+    request: Request,
     limit: int = Query(20, ge=1, le=50),
     min_score: float = Query(55.0, ge=0.0, le=100.0),
     min_return_pct: float = Query(3.0, ge=-100.0, le=500.0),
