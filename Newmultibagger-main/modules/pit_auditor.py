@@ -6,14 +6,14 @@ from fundamental datasets used in quantitative trading engines.
 """
 
 import hashlib
-import logging
 import os
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import Any
 
 import pandas as pd
+from db.date_utils import normalize_date
 from modules.db_utils import get_db_connection
+from modules.structured_logger import get_logger
 
 # Configure logging to securely track all PIT violations
 PIT_LOG_PATH = os.getenv("PIT_LOG_PATH", "pit_violations.log")
@@ -22,25 +22,7 @@ PIT_LOG_PATH = os.getenv("PIT_LOG_PATH", "pit_violations.log")
 if os.path.dirname(PIT_LOG_PATH):
     os.makedirs(os.path.dirname(PIT_LOG_PATH), exist_ok=True)
 
-# Use a specific logger for PIT to avoid root pollution
-logger = logging.getLogger("pit_auditor")
-logger.setLevel(logging.WARNING)
-logger.propagate = False  # Don't bubble to root
-
-# Add file handler if not already present
-_has_pit_handler = False
-try:
-    for h in logger.handlers:
-        if isinstance(h, logging.FileHandler) and os.path.abspath(h.baseFilename) == os.path.abspath(PIT_LOG_PATH):
-            _has_pit_handler = True
-            break
-except Exception:
-    pass
-
-if not _has_pit_handler:
-    _fh = logging.FileHandler(PIT_LOG_PATH)
-    _fh.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
-    logger.addHandler(_fh)
+logger = get_logger("pit_auditor", log_file=PIT_LOG_PATH)
 
 
 @dataclass
@@ -60,27 +42,6 @@ release_lag_map = {
     "cashflow": pd.Timedelta(days=75),
     "default": pd.Timedelta(days=45),
 }
-_DATE_FORMATS = ("%Y-%m-%d", "%d-%b-%Y", "%d/%m/%Y", "%Y/%m/%d", "%Y%m%d")
-
-
-def _normalize_iso_date(value: str) -> str:
-    """Normalize PIT boundary dates to ISO YYYY-MM-DD before persistence."""
-    if value is None:
-        return ""
-    text = str(value).strip()
-    if not text:
-        return ""
-    try:
-        return datetime.fromisoformat(text.replace("Z", "+00:00")).date().isoformat()
-    except ValueError:
-        pass
-    for fmt in _DATE_FORMATS:
-        try:
-            return datetime.strptime(text[:11] if fmt == "%d-%b-%Y" else text[:10], fmt).date().isoformat()
-        except ValueError:
-            continue
-    parsed = pd.to_datetime(text, errors="coerce")
-    return "" if pd.isna(parsed) else parsed.date().isoformat()
 
 
 def checksum(row: pd.Series) -> str:
@@ -139,8 +100,8 @@ class PITDataStore:
         source: str,
     ):
         """Inserts a tightly controlled PIT record using an auto-computed checksum."""
-        report_date = _normalize_iso_date(report_date)
-        as_of_date = _normalize_iso_date(as_of_date)
+        report_date = normalize_date(report_date, default="") or ""
+        as_of_date = normalize_date(as_of_date, default="") or ""
         row_s = pd.Series([symbol, metric_name, value, report_date, as_of_date, source])
         chksum = checksum(row_s)
 
@@ -199,7 +160,7 @@ def audit_dataset(df: pd.DataFrame, feature_cols: list[str] | None = None) -> PI
         df_copy["report_date"] = pd.to_datetime(df_copy["report_date"])
         df_copy["as_of_date"] = pd.to_datetime(df_copy["as_of_date"])
     except Exception as e:
-        logger.error(f"Date conversion failure: {e}")
+        logger.error("Date conversion failure", error=str(e))
         return PITAuditReport(len(df), [], 100.0, "REJECT_DATASET (INVALID_DATES)")
 
     for _idx, row in df_copy.iterrows():
@@ -229,9 +190,12 @@ def audit_dataset(df: pd.DataFrame, feature_cols: list[str] | None = None) -> PI
             violations.append(v_dict)
 
             logger.warning(
-                f"PIT VIOLATION [{violation_type}]: Symbol={row.get('symbol', 'UNK')}, "
-                f"AsOf={row['as_of_date']}, Report={row['report_date']}, "
-                f"Expected>={expected_public_date}"
+                "PIT violation detected",
+                violation_type=violation_type,
+                symbol=row.get("symbol", "UNK"),
+                as_of_date=str(row["as_of_date"]),
+                report_date=str(row["report_date"]),
+                expected_public_date=str(expected_public_date),
             )
 
     violation_count = len(violations)
@@ -291,6 +255,6 @@ def sanitize(df: pd.DataFrame) -> pd.DataFrame:
 
     dropped = len(df_clean) - len(df_sanitized)
     if dropped > 0:
-        logger.info(f"Sanitization activated: dropped {dropped} structurally violating rows.")
+        logger.info("Sanitization activated", dropped_rows=dropped)
 
     return df_sanitized

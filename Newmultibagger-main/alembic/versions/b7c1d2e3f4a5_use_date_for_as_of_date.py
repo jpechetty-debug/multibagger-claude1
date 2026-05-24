@@ -9,11 +9,11 @@ Create Date: 2026-05-24 00:00:00.000000
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import date, datetime
 from typing import Union
 
 from alembic import op
 import sqlalchemy as sa
+from db.date_utils import normalize_date
 
 
 revision: str = "b7c1d2e3f4a5"
@@ -26,33 +26,6 @@ _TABLES = {
     "fundamentals_pit": False,
     "valuation_metrics": True,
 }
-_DATE_FORMATS = ("%Y-%m-%d", "%d-%b-%Y", "%d/%m/%Y", "%Y/%m/%d", "%Y%m%d")
-
-
-def _normalize_date(value) -> str | None:
-    if value is None:
-        return None
-    if isinstance(value, datetime):
-        return value.date().isoformat()
-    if isinstance(value, date):
-        return value.isoformat()
-
-    text = str(value).strip()
-    if not text:
-        return None
-    try:
-        return datetime.fromisoformat(text.replace("Z", "+00:00")).date().isoformat()
-    except ValueError:
-        pass
-    for fmt in _DATE_FORMATS:
-        try:
-            source = text[:11] if fmt == "%d-%b-%Y" else text[:10]
-            return datetime.strptime(source, fmt).date().isoformat()
-        except ValueError:
-            continue
-    return text
-
-
 def _table_has_column(bind, table_name: str, column_name: str) -> bool:
     inspector = sa.inspect(bind)
     if not inspector.has_table(table_name):
@@ -69,7 +42,7 @@ def _normalize_existing_sqlite_dates(table_name: str, nullable: bool) -> None:
         sa.text(f"SELECT rowid, as_of_date FROM {table_name} WHERE as_of_date IS NOT NULL")
     ).fetchall()
     for rowid, raw_value in rows:
-        normalized = _normalize_date(raw_value)
+        normalized = normalize_date(raw_value, default=str(raw_value))
         if normalized is None and not nullable:
             continue
         if normalized != raw_value:

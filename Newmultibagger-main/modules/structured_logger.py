@@ -60,8 +60,10 @@ def get_structured_logger(name="sovereign", log_file="logs/sovereign.json"):
     if logger.handlers:
         return logger
 
-    # Ensure log directory exists
-    os.makedirs(os.path.dirname(log_file), exist_ok=True)
+    # Ensure log directory exists when a directory component is provided.
+    log_dir = os.path.dirname(log_file)
+    if log_dir:
+        os.makedirs(log_dir, exist_ok=True)
 
     # 1. JSON File Handler (Machine Readable)
     fh = logging.FileHandler(log_file)
@@ -79,8 +81,8 @@ def get_structured_logger(name="sovereign", log_file="logs/sovereign.json"):
 class SovereignLogger:
     """Wrapper class to simplify extra context logging."""
 
-    def __init__(self, name="sovereign"):
-        self._logger = get_structured_logger(name)
+    def __init__(self, name="sovereign", log_file="logs/sovereign.json"):
+        self._logger = get_structured_logger(name, log_file=log_file)
 
     @property
     def logger(self):
@@ -103,6 +105,11 @@ class SovereignLogger:
 
     def debug(self, msg, **kwargs):
         self._log(logging.DEBUG, msg, **kwargs)
+
+
+def get_logger(name="sovereign", log_file="logs/sovereign.json"):
+    """Return the project-standard structured logger wrapper."""
+    return SovereignLogger(name, log_file=log_file)
 
 
 # Global default instance

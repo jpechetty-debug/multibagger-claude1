@@ -97,7 +97,8 @@ async def get_market_movers():
 
 
 @router.get("/api/backtest-metrics")
-async def get_backtest_metrics():
+@limiter.limit("10/minute")
+async def get_backtest_metrics(request: Request):
     """Aggregate backtesting metrics from reports."""
     try:
         if not os.path.exists("backtest_report.md"):

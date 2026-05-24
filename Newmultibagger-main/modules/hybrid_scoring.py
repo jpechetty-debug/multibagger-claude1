@@ -12,11 +12,13 @@ import pandas as pd
 import shap
 import xgboost as xgb
 from modules.price_utils import fetch_forward_prices
+from modules.structured_logger import get_logger
 
 warnings.filterwarnings("ignore")
 
 MODEL_PATH = os.path.join("runtime", "models", "xgboost_meta_model.pkl")
 WALK_FORWARD_REPORT_PATH = os.path.join("runtime", "models", "xgboost_walk_forward.json")
+logger = get_logger("hybrid_scoring")
 FEATURES = [
     "score",
     "sales_cagr_5y",
@@ -293,12 +295,10 @@ def predict_and_explain(factors_dict):
     Returns: {"ml_prediction": float|None, "shap_values": dict}
     """
     if not os.path.exists(MODEL_PATH):
-        import logging
-        logger = logging.getLogger(__name__)
         logger.warning(
-            "ML Meta-Model (%s) not found. Falling back to raw fundamental score. "
-            "To resolve this, run training via `python -m modules.hybrid_scoring`",
-            MODEL_PATH
+            "ML Meta-Model not found. Falling back to raw fundamental score.",
+            model_path=MODEL_PATH,
+            action="run python -m modules.hybrid_scoring",
         )
         return {"ml_prediction": None, "shap_values": {}}
 

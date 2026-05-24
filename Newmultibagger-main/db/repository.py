@@ -13,10 +13,11 @@ for backwards compatibility.
 import os
 import sqlite3
 import time
-from datetime import date, datetime
+from datetime import datetime
 
 import pandas as pd
 
+from db.date_utils import normalize_as_of_date
 from db.engine import IS_SQLITE, engine
 from modules.runtime_settings import runtime_settings
 
@@ -29,49 +30,14 @@ DB_BUSY_TIMEOUT_MS = runtime_settings.sqlite_busy_timeout_ms
 SQLITE_WRITE_RETRIES = runtime_settings.sqlite_write_retries
 SQLITE_RETRY_BASE_SECONDS = runtime_settings.sqlite_retry_base_seconds
 PIT_RETENTION_DAYS = 365 * 3
-_DATE_FORMATS = ("%Y-%m-%d", "%d-%b-%Y", "%d/%m/%Y", "%Y/%m/%d", "%Y%m%d")
 
 
 # ── Internal Utilities ────────────────────────────────────────────────────────
 
 
 def _normalize_as_of_date(value=None):
-    """
-    Normalize as-of values to YYYY-MM-DD.
-    If missing/invalid, defaults to today's date.
-    """
-    if value is None:
-        return datetime.now().date().isoformat()
-
-    if isinstance(value, datetime):
-        return value.date().isoformat()
-    if isinstance(value, date):
-        return value.isoformat()
-    if isinstance(value, pd.Timestamp):
-        if pd.isna(value):
-            return datetime.now().date().isoformat()
-        return value.date().isoformat()
-
-    text = str(value).strip()
-    if not text:
-        return datetime.now().date().isoformat()
-
-    try:
-        return datetime.fromisoformat(text.replace("Z", "+00:00")).date().isoformat()
-    except ValueError:
-        pass
-
-    for fmt in _DATE_FORMATS:
-        try:
-            return datetime.strptime(text[:11] if fmt == "%d-%b-%Y" else text[:10], fmt).date().isoformat()
-        except ValueError:
-            continue
-
-    parsed = pd.to_datetime(text, errors="coerce")
-    if not pd.isna(parsed):
-        return parsed.date().isoformat()
-
-    return datetime.now().date().isoformat()
+    """Compatibility wrapper for the shared DB date normalizer."""
+    return normalize_as_of_date(value)
 
 
 def _is_sqlite_lock_error(exc: Exception) -> bool:
