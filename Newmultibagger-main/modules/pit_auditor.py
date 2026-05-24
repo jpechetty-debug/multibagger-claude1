@@ -18,10 +18,6 @@ from modules.structured_logger import get_logger
 # Configure logging to securely track all PIT violations
 PIT_LOG_PATH = os.getenv("PIT_LOG_PATH", "pit_violations.log")
 
-# Ensure directory exists if path is provided
-if os.path.dirname(PIT_LOG_PATH):
-    os.makedirs(os.path.dirname(PIT_LOG_PATH), exist_ok=True)
-
 logger = get_logger("pit_auditor", log_file=PIT_LOG_PATH)
 
 
