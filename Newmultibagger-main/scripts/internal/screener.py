@@ -1809,7 +1809,7 @@ def main(argv=None):
             else:
                 print(f"Running VectorBT Optimization for {len(bt_symbols)} valid stocks...")
 
-            from backtest.engine import VectorBTEngine
+            from backtest.backtest_engine import VectorBTEngine
 
             bt_engine = VectorBTEngine(period="5y")
             batch_bt_results = bt_engine.run_batch_momentum_backtest(bt_symbols)

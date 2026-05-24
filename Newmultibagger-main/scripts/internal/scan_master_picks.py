@@ -69,7 +69,7 @@ def scan_master_picks():
         symbols_to_backtest = [s.get("Symbol") for s in results if s.get("Symbol")]
         if symbols_to_backtest:
             print(f"\nRunning VectorBT Optimization for {len(symbols_to_backtest)} valid stocks...")
-            from backtest.engine import VectorBTEngine
+            from backtest.backtest_engine import VectorBTEngine
 
             bt_engine = VectorBTEngine(period="5y")
             batch_bt_results = bt_engine.run_batch_momentum_backtest(symbols_to_backtest)

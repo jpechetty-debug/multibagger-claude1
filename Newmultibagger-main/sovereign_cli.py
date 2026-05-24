@@ -229,7 +229,7 @@ def _load_walk_forward_symbols(args):
 
 
 def _build_vectorbt_engine(period, transaction_cost, benchmark_symbol):
-    from backtest.engine import VectorBTEngine
+    from backtest.backtest_engine import VectorBTEngine
 
     return VectorBTEngine(
         period=period,

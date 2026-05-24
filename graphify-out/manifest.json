@@ -16,8 +16,8 @@
     "hash": "212c2c10ba873561dabdc703a55c8de1"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\sovereign_cli.py": {
-    "mtime": 1778987960.677489,
-    "hash": "978b0931ff33a57c7f69ce98c0ef6899"
+    "mtime": 1779591780.0385635,
+    "hash": "3b1b1f3e5599774e077a4e38efc53e9e"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\ticker_list.py": {
     "mtime": 1778134610.6716506,
@@ -79,7 +79,7 @@
     "mtime": 1778134609.1761477,
     "hash": "922a579b052a8a9e4039195453d5e590"
   },
-  "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\backtest\\engine.py": {
+  "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\backtest\\backtest_engine.py": {
     "mtime": 1778913066.7204096,
     "hash": "69084697b9b1ab9b6350fb5290955014"
   },
@@ -250,10 +250,6 @@
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\modules\\runtime_settings.py": {
     "mtime": 1778134609.4411001,
     "hash": "0d1529e8269882611d92a299869f791b"
-  },
-  "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\modules\\scoring_monolith_backup.py": {
-    "mtime": 1779159008.948598,
-    "hash": "07d2faeac2ce9c9e0525a074d58371d9"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\modules\\sector_mapping.py": {
     "mtime": 1778134609.4567387,
@@ -572,8 +568,8 @@
     "hash": "801ef86ed95e698d4d347644a48b60fc"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\ops\\compare_raw_vs_gold_backtest.py": {
-    "mtime": 1778134609.5365167,
-    "hash": "e997ca45f6405f01ea0134bdb7aae218"
+    "mtime": 1779591742.976554,
+    "hash": "4acffc7eff0bf36d82f1629856ba9686"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\ops\\debug_env.py": {
     "mtime": 1778134609.537524,
@@ -2304,8 +2300,8 @@
     "hash": "0c691b871b87dbd3d70fe165211ae6fc"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\scripts\\internal\\backfill_ml_backtest.py": {
-    "mtime": 1778134609.6651664,
-    "hash": "45f3a886ddf9bd6b0ba29828307cd9db"
+    "mtime": 1779591752.7316883,
+    "hash": "0e9fa127558ad7ab6dbe73d239e09d68"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\scripts\\internal\\backtest_engine.py": {
     "mtime": 1778134609.668677,
@@ -2428,8 +2424,8 @@
     "hash": "d0b7bec0aeb3de13d6b38ac009c878e0"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\scripts\\internal\\scan_master_picks.py": {
-    "mtime": 1778134609.7430077,
-    "hash": "cf6e6b5bb437474d67949bd5b07c134e"
+    "mtime": 1779591763.1671033,
+    "hash": "5068b7cba2bd1884fdd99a354a3445c9"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\scripts\\internal\\scan_missing.py": {
     "mtime": 1778134609.7450056,
@@ -2456,8 +2452,8 @@
     "hash": "d30542a1214f18652b1d4540d4cb1946"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\scripts\\internal\\screener.py": {
-    "mtime": 1779192888.5377734,
-    "hash": "96a3f9174617abc3fc82dda74fd5a6f6"
+    "mtime": 1779591769.949122,
+    "hash": "82251c07f3c25d969f112b386ced1770"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\scripts\\internal\\seed_market_data.py": {
     "mtime": 1778134609.8018897,
@@ -2552,8 +2548,8 @@
     "hash": "bc5ba64e6470b20ff531127204572057"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\tests\\test_backtest_engine.py": {
-    "mtime": 1778913110.4499831,
-    "hash": "483000ae795878c20ff16b63c9094433"
+    "mtime": 1779591817.1367607,
+    "hash": "744101b8a7dd2b3c80ad365f16af3ff7"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\tests\\test_blackbox.py": {
     "mtime": 1778134609.8687794,
@@ -2584,8 +2580,8 @@
     "hash": "6c8964b1e933106d4bf4a2db8140aa9d"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\tests\\test_extract_close.py": {
-    "mtime": 1778987991.0599577,
-    "hash": "4f18fd20a35ad31a708d2908534b2578"
+    "mtime": 1779591826.1263707,
+    "hash": "9e1df7dcb7d2ed5ff1b8b751b97a6628"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\tests\\test_garp_strategy.py": {
     "mtime": 1778134609.889557,

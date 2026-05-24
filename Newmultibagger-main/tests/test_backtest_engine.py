@@ -37,8 +37,8 @@ def _load_backtest_engine_module(monkeypatch):
         Portfolio=types.SimpleNamespace(from_signals=lambda *args, **kwargs: _FakePortfolio())
     )
     monkeypatch.setitem(sys.modules, "vectorbt", fake_vbt)
-    sys.modules.pop("backtest.engine", None)
-    return importlib.import_module("backtest.engine")
+    sys.modules.pop("backtest.backtest_engine", None)
+    return importlib.import_module("backtest.backtest_engine")
 
 
 def test_run_batch_momentum_backtest_handles_suffixing_and_sparse_symbols(monkeypatch):

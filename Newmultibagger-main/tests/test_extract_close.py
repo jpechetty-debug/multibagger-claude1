@@ -3,7 +3,7 @@ import pytest
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from backtest.engine import _extract_close_series
+from backtest.backtest_engine import _extract_close_series
 
 def test_extract_close_series_multiindex_yfinance_v0_2():
     """

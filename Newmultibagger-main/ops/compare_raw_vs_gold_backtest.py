@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from backtest.engine import VectorBTEngine
+from backtest.backtest_engine import VectorBTEngine
 
 VALID_IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 

@@ -125,7 +125,7 @@ def backfill_backtest_metrics():
     symbols = missing["symbol"].tolist()
 
     try:
-        from backtest.engine import VectorBTEngine
+        from backtest.backtest_engine import VectorBTEngine
     except ImportError as e:
         print(f"❌ Cannot import VectorBTEngine: {e}")
         return
