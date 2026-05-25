@@ -11,6 +11,7 @@ import hashlib
 from typing import Any
 
 from modules.data_utils import safe_float
+from modules.pit_auditor import enforce_pit_gate
 from research.conviction_engine import calculate_conviction_score
 
 from .adjustments import (
@@ -92,6 +93,12 @@ def calculate_institutional_score(
         - [x] Integrate `NewsSentimentEngine` into `modules/scoring.py`.
         - [x] Update `total_score` calculation to include the 9th factor.
     """
+    # ── PIT hard gate: block scoring if data is too fresh (SEBI 45-day lag) ──
+    quarter_end = data.get("Quarter_End")
+    as_of = data.get("As_Of_Date")
+    if quarter_end and as_of:
+        enforce_pit_gate(as_of, quarter_end, symbol=data.get("Symbol", "UNKNOWN"))
+
     _, weights, scoring_strategy = _resolve_mode_and_weights(market_regime, sector=data.get("Sector", ""))
     score_sentiment, w_sentiment = _calculate_sentiment_factor(data, weights)
     state = _build_factor_state(data, score_sentiment)
