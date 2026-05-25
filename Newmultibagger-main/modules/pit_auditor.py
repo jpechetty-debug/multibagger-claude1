@@ -5,6 +5,11 @@ Institutional-grade Point-In-Time (PIT) data auditor designed to eliminate look-
 from fundamental datasets used in quantitative trading engines.
 """
 
+
+class PITViolationError(Exception):
+    """Raised when a PIT hard gate detects look-ahead bias that must block scoring."""
+
+
 import hashlib
 import os
 from dataclasses import dataclass, field
@@ -199,11 +204,18 @@ def audit_dataset(df: pd.DataFrame, feature_cols: list[str] | None = None) -> PI
 
     bias_risk_score = (violation_count / total_rows * 100.0) if total_rows > 0 else 0.0
 
-    action = "PASS"
-    if bias_risk_score > 5.0:
-        action = "QUARANTINE"
-    if bias_risk_score > 20.0:
-        action = "REJECT_DATASET"
+    # Hard gate: if any violations exist, raise instead of silently passing
+    if violation_count > 0 and bias_risk_score > 0:
+        action = "PASS"
+        if bias_risk_score > 5.0:
+            action = "QUARANTINE"
+        if bias_risk_score > 20.0:
+            action = "REJECT_DATASET"
+
+        if action == "REJECT_DATASET":
+            raise PITViolationError(f"PIT Violation threshold exceeded: {bias_risk_score}% risk.")
+    else:
+        action = "PASS"
 
     return PITAuditReport(
         violation_count=violation_count,
@@ -254,3 +266,46 @@ def sanitize(df: pd.DataFrame) -> pd.DataFrame:
         logger.info("Sanitization activated", dropped_rows=dropped)
 
     return df_sanitized
+
+
+SEBI_FILING_LAG_DAYS = 45
+
+
+def enforce_pit_gate(
+    as_of_date,
+    quarter_end_date,
+    symbol: str = "UNKNOWN",
+    lag_days: int = SEBI_FILING_LAG_DAYS,
+) -> None:
+    """Hard gate: raise PITViolationError if data is used before SEBI filing deadline.
+
+    Indian listed companies have 45 days to file quarterly results.
+    Any score using Q4 data before the filing deadline is a lookahead.
+
+    Args:
+        as_of_date: The date at which the score is being computed.
+        quarter_end_date: The quarter-end date of the fundamental data.
+        symbol: Stock symbol for error reporting.
+        lag_days: Minimum days after quarter end before data is public (default 45).
+
+    Raises:
+        PITViolationError: If as_of_date is within lag_days of quarter_end_date.
+    """
+    as_of = pd.to_datetime(as_of_date)
+    q_end = pd.to_datetime(quarter_end_date)
+    days_elapsed = (as_of - q_end).days
+
+    if days_elapsed < lag_days:
+        raise PITViolationError(
+            f"PIT BLOCK: {symbol} — as_of_date {as_of.date()} is only "
+            f"{days_elapsed} days after quarter_end {q_end.date()} "
+            f"(minimum {lag_days} days required for SEBI filing lag)"
+        )
+
+    logger.debug(
+        "PIT gate passed",
+        symbol=symbol,
+        as_of_date=str(as_of.date()),
+        quarter_end=str(q_end.date()),
+        days_elapsed=days_elapsed,
+    )

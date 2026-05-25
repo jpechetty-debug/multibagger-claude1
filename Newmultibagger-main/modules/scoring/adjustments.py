@@ -50,7 +50,7 @@ def _calculate_bonus_total(data: _StockData, state: FactorState, sector_boost: _
         total_bonus += 5
     elif inflection_score >= 2:
         total_bonus += 3
-    elif data.get("Earnings_Accel"):
+    elif safe_float(data.get("Earnings_Accel")):
         total_bonus += 2
 
     total_bonus += sector_boost

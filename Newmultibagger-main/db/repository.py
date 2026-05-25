@@ -17,7 +17,7 @@ from datetime import datetime
 
 import pandas as pd
 
-from db.date_utils import normalize_as_of_date
+from db.date_utils import normalize_as_of_date, strict_normalize_date
 from db.engine import IS_SQLITE, engine
 from modules.runtime_settings import runtime_settings
 
@@ -38,6 +38,32 @@ PIT_RETENTION_DAYS = 365 * 3
 def _normalize_as_of_date(value=None):
     """Compatibility wrapper for the shared DB date normalizer."""
     return normalize_as_of_date(value)
+
+
+def _is_sqlite_lock_error(exc: Exception) -> bool:
+    msg = str(exc).lower()
+    return "database is locked" in msg or "database table is locked" in msg
+
+
+def _run_sqlite_write_with_retry(write_fn, operation_name):
+    """Retry wrapper for SQLite write operations with exponential backoff."""
+    if not IS_SQLITE:
+        # PostgreSQL handles concurrency natively; skip retry logic
+        return write_fn()
+
+    for attempt in range(SQLITE_WRITE_RETRIES):
+        try:
+            return write_fn()
+        except Exception as exc:
+            if _is_sqlite_lock_error(exc) and attempt < SQLITE_WRITE_RETRIES - 1:
+                wait = SQLITE_RETRY_BASE_SECONDS * (2**attempt)
+                print(f"SQLite lock during {operation_name}; retrying in {wait:.2f}s.")
+                time.sleep(wait)
+                continue
+            raise
+
+
+# ── Connection Factory ────────────────────────────────────────────────────────
 
 
 def _is_sqlite_lock_error(exc: Exception) -> bool:
@@ -117,7 +143,7 @@ def _ensure_fundamentals_pit_table(conn):
             as_of_date DATE NOT NULL,
             price REAL,
             sector TEXT,
-            score INTEGER,
+            score REAL,
             sales_cagr_5y REAL,
             avg_roe_5y REAL,
             pe_ratio REAL,
@@ -134,8 +160,7 @@ def _ensure_fundamentals_pit_table(conn):
             vol_breakout REAL,
             dist_from_52w_high REAL,
             ml_rank_score REAL,
-            source_updated_at TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            source_updated_at TEXT,
             PRIMARY KEY (symbol, as_of_date)
         )
         """
@@ -227,12 +252,13 @@ def _write_fundamentals_snapshot(df_db):
     if df_db.empty or "symbol" not in df_db.columns:
         return
 
-    as_of_date = (
+    raw_as_of = (
         df_db["as_of_date"].iloc[0]
         if "as_of_date" in df_db.columns and not df_db["as_of_date"].empty
-        else _normalize_as_of_date()
+        else None
     )
-    as_of_date = _normalize_as_of_date(as_of_date)
+    # Hard gate: reject malformed dates at the write boundary
+    as_of_date = strict_normalize_date(raw_as_of) if raw_as_of is not None else _normalize_as_of_date()
 
     def _to_sql_timestamp(value):
         if value is None:

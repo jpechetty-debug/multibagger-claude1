@@ -30,7 +30,7 @@ def _walk_forward_frame() -> pd.DataFrame:
     for quarter_idx, as_of_date in enumerate(quarter_starts):
         for symbol_idx, symbol in enumerate(["AAA.NS", "BBB.NS", "CCC.NS"]):
             score = 20 + quarter_idx * 5 + symbol_idx * 10
-            row = {feature: 0.0 for feature in hybrid_scoring.FEATURES}
+            row = dict.fromkeys(hybrid_scoring.FEATURES, 0.0)
             row.update(
                 {
                     "symbol": symbol,

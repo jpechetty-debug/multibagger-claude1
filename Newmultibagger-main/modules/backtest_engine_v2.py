@@ -1,9 +1,13 @@
+import os
+
 import numpy as np
 import pandas as pd
 import yfinance as yf
 
 from modules.recovery import calculate_recovery_metrics
 from modules.tax_efficiency import calculate_tax_efficiency
+
+RF_ANNUAL = float(os.getenv("RISK_FREE_RATE_ANNUAL", "0.065"))
 
 
 def run_performance_analysis(
@@ -100,10 +104,10 @@ def run_performance_analysis(
         drawdown = cum_strategy / rolling_max - 1
         max_dd = drawdown.min() * 100
 
-        # Sharpe Ratio (Risk Free Rate = 6%)
-        rf_daily = 0.06 / 252
+        # Sharpe Ratio (Risk Free Rate from env, default 6.5%)
+        rf_daily = RF_ANNUAL / 252
         excess_returns = strategy_returns - rf_daily
-        sharpe = (excess_returns.mean() / excess_returns.std()) * np.sqrt(252)
+        sharpe = (excess_returns.mean() / excess_returns.std()) * np.sqrt(252) if excess_returns.std() > 0 else 0.0
 
         # Alpha
         alpha = cagr_strategy - cagr_benchmark
