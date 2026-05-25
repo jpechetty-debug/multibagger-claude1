@@ -480,8 +480,8 @@
     "hash": "e99aaccf4eb43522015fc33013973f47"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\modules\\scoring\\engine.py": {
-    "mtime": 1779193363.078859,
-    "hash": "6a3736d72f1f0b62fd28c6532a209aff"
+    "mtime": 1779721361.5976586,
+    "hash": "91fae9227128e37af84ce67f23d5728b"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\modules\\scoring\\factors.py": {
     "mtime": 1779193249.6904645,
@@ -2638,6 +2638,10 @@
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\tests\\test_pipeline_resilience.py": {
     "mtime": 1778134609.9031332,
     "hash": "39f010864a4fe3cda512f88bc6fcd14b"
+  },
+  "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\tests\\test_pit_gate_integration.py": {
+    "mtime": 1779721391.7343125,
+    "hash": "8e41aa056a1578053258212b8c943aa4"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\tests\\test_price_fundamentals_api.py": {
     "mtime": 1778134609.904636,
