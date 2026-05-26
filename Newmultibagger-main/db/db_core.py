@@ -85,8 +85,11 @@ def get_duckdb_connection():
 
     # Load SQLite scanner extension and attach the primary database
     try:
-        conn.execute("INSTALL sqlite;")
-        conn.execute("LOAD sqlite;")
+        try:
+            conn.execute("LOAD sqlite;")
+        except Exception:
+            conn.execute("INSTALL sqlite;")
+            conn.execute("LOAD sqlite;")
         # Handle SQLite type mismatches (e.g. score column declared INT but contains floats)
         conn.execute("SET sqlite_all_varchar=true;")
         # Attach the existing SQLite database in read-only mode for analytical queries

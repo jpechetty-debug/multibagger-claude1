@@ -5,7 +5,7 @@ import sqlite3
 import pandas as pd
 import yfinance as yf
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "stocks.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "runtime", "stocks.db")
 
 
 def calculate_portfolio_correlation(limit=20, threshold=0.75):

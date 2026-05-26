@@ -12,7 +12,7 @@ from modules.structured_logger import SovereignLogger
 
 runtime_logger = SovereignLogger("sovereign.runtime")
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RUNTIME_DIR = PROJECT_ROOT / "runtime"
 DB_NAME = "stocks.db"
 DB_PATH = str(RUNTIME_DIR / DB_NAME)

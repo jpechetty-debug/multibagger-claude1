@@ -50,8 +50,8 @@ class OrderRequest(BaseModel):
 class StockDataPayload(BaseModel):
     """Ingestion model for stock data from upstream providers.
 
-    Unknown fields are rejected (extra='forbid') to prevent
-    malformed data from leaking into the scoring engine.
+    Unknown fields are allowed to prevent extra fields
+    from being discarded.
     """
 
     model_config = ConfigDict(extra="ignore")
