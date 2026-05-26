@@ -144,8 +144,11 @@ def validate_dataframe(df):
 
     total_fields = len(present_columns)
     penalties = pd.Series(0.0, index=df.index)
-    # Track flags for reporting (as comma-separated strings)
-    df["data_quality_flags"] = ""
+    # Track flags for reporting (as comma-separated strings), preserving existing flags
+    if "data_quality_flags" not in df.columns:
+        df["data_quality_flags"] = ""
+    else:
+        df["data_quality_flags"] = df["data_quality_flags"].fillna("").astype(str)
 
     for limit in METRIC_LIMITS:
         col = limit.column
@@ -196,5 +199,10 @@ def validate_dataframe(df):
 
     penalty_per_flag = 100.0 / max(total_fields, 1)
     df["data_quality"] = (100.0 - penalties * penalty_per_flag).clip(lower=0.0).round(1)
+
+    # Penalize mock history by 50 points if present
+    mock_mask = df["data_quality_flags"].str.contains("mock_history", na=False)
+    if mock_mask.any():
+        df.loc[mock_mask, "data_quality"] = (df.loc[mock_mask, "data_quality"] - 50.0).clip(lower=0.0)
 
     return df

@@ -54,7 +54,7 @@ class StockDataPayload(BaseModel):
     from being discarded.
     """
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
     Symbol: str
     Price: float | None = None
@@ -156,6 +156,16 @@ class StockDataPayload(BaseModel):
         ]
         non_null = sum(1 for f in key_fields if f is not None)
         return round((non_null / len(key_fields)) * 100)
+
+    @classmethod
+    def clean_dict(cls, data: dict) -> dict:
+        """Filter input dict keys to only allow fields or field aliases defined on this model."""
+        allowed_keys = set()
+        for field_name, field_def in cls.model_fields.items():
+            allowed_keys.add(field_name)
+            if field_def.alias:
+                allowed_keys.add(field_def.alias)
+        return {k: v for k, v in data.items() if k in allowed_keys}
 
     def model_dump(self, **kwargs):
         kwargs.setdefault("by_alias", True)

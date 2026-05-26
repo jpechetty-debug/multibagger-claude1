@@ -136,7 +136,7 @@ class DataStoreService(BaseService):
                     # Logic similar to IngestionService normalization
                     pass
 
-                payload = StockDataPayload(**cached)
+                payload = StockDataPayload(**StockDataPayload.clean_dict(cached))
                 # Side-load into memory
                 self._memory_cache[symbol] = {
                     "data": payload,

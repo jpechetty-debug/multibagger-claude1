@@ -122,18 +122,17 @@ class TestPydanticModelContracts:
     """Validate that the Pydantic ingestion boundary works correctly."""
 
     def test_extra_fields_are_ignored(self):
-        """Verify that extra fields are ignored and do not cause validation errors."""
+        """Verify that extra fields are forbidden and cause validation errors."""
+        from pydantic import ValidationError
         from modules.models import StockDataPayload
 
-        payload = StockDataPayload(
-            Symbol="TEST.NS",
-            Price=100.0,
-            unknown_field="should_be_dropped",
-            another_garbage=42,
-        )
-        assert payload.Symbol == "TEST.NS"
-        assert not hasattr(payload, "unknown_field")
-        assert not hasattr(payload, "another_garbage")
+        with pytest.raises(ValidationError):
+            StockDataPayload(
+                Symbol="TEST.NS",
+                Price=100.0,
+                unknown_field="should_be_dropped",
+                another_garbage=42,
+            )
 
     def test_roe_fraction_normalized_to_percent(self):
         from modules.models import StockDataPayload

@@ -105,21 +105,17 @@ class TestStockDataPayloadValidation:
         assert payload.Debt_Equity == 50.0
 
     def test_extra_fields_ignored(self):
-        """Unknown fields should be silently ignored (extra='ignore')."""
+        """Unknown fields should be rejected (extra='forbid')."""
+        from pydantic import ValidationError
         from modules.models import StockDataPayload
 
-        payload = StockDataPayload(
-            Symbol="TEST.NS",
-            Price=100.0,
-            bogus_field="should_not_appear",
-            another_junk=42,
-        )
-        # Verify that only expected fields are present in the model dump
-        dump = payload.model_dump()
-        assert "Symbol" in dump
-        assert "Price" in dump
-        assert "bogus_field" not in dump
-        assert "another_junk" not in dump
+        with pytest.raises(ValidationError):
+            StockDataPayload(
+                Symbol="TEST.NS",
+                Price=100.0,
+                bogus_field="should_not_appear",
+                another_junk=42,
+            )
 
     def test_data_quality_score(self):
         """Full payload should score 100, sparse should score lower."""

@@ -5,6 +5,7 @@ Modularized into: adapters/, normalization/, data_utils.py
 """
 
 import asyncio
+import os
 
 from modules.structured_logger import SovereignLogger
 import pickle
@@ -42,6 +43,7 @@ _TRANSIENT_ERROR_HINTS = (
 
 
 CACHE_SCHEMA_VERSION = 2  # Increment when field schema changes
+USE_MOCK_HISTORY = os.getenv("USE_MOCK_HISTORY", "false").lower() == "true"
 
 
 class PersistentCache:
@@ -259,6 +261,7 @@ class DataManager:
                 "Close": prices,
                 "Volume": np.random.randint(50000, 1000000, size=252)
             }, index=dates)
+            df.attrs["is_mock"] = True
             return df
         except Exception as e:
             logger.error(f"Error generating mock history for {symbol}: {e}")
@@ -279,14 +282,18 @@ class DataManager:
                     if attempt == 0:
                         await asyncio.sleep(0.6)
                         continue
-                    logger.warning(f"History fetch failed for {symbol}: {exc}. Using mock fallback.")
-                    return self._generate_mock_history(symbol)
+                    if USE_MOCK_HISTORY:
+                        logger.warning(f"History fetch failed for {symbol}: {exc}. Using mock fallback.")
+                        return self._generate_mock_history(symbol)
+                    raise
                 if df.empty or "Close" not in df.columns:
                     if attempt == 0:
                         await asyncio.sleep(0.5)
                         continue
-                    logger.warning(f"History fetch returned empty for {symbol}. Using mock fallback.")
-                    return self._generate_mock_history(symbol)
+                    if USE_MOCK_HISTORY:
+                        logger.warning(f"History fetch returned empty for {symbol}. Using mock fallback.")
+                        return self._generate_mock_history(symbol)
+                    return pd.DataFrame()
                 break
 
             pct_change = df["Close"].pct_change().abs()

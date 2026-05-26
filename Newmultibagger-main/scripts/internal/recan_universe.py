@@ -17,6 +17,18 @@ sys.path.insert(0, PROJECT_ROOT)
 print("Starting simulated recan for universe...")
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="Simulated recan for universe")
+    parser.add_argument("--confirm", action="store_true", help="Confirm execution to allow database updates")
+    parser.add_argument("--date", type=str, default=None, help="A specific As_Of_Date to use (defaults to today)")
+    args = parser.parse_args()
+
+    if not args.confirm:
+        print("❌ Error: Running this script with replace_existing=True will overwrite the entire multibaggers table.")
+        print("💡 Please run this script with the --confirm flag to acknowledge and proceed:")
+        print("   python scripts/internal/recan_universe.py --confirm")
+        sys.exit(1)
+
     db_path = os.path.join(PROJECT_ROOT, "runtime", "stocks.db")
     if not os.path.exists(db_path):
         print(f"❌ Database not found at {db_path}")
@@ -112,8 +124,8 @@ def main():
     reverse_mapping = {v: k for k, v in mapping.items()}
     df = df_db.rename(columns=reverse_mapping)
 
-    # 3. Set the date and timestamp to May 25, 2026
-    target_date = "2026-05-25"
+    # 3. Set the date and timestamp dynamically (or from CLI override)
+    target_date = args.date or date.today().isoformat()
     df["As_Of_Date"] = target_date
     df["updated_at"] = datetime.now()
 

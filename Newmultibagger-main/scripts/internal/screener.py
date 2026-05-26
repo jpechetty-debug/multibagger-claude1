@@ -649,6 +649,8 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             ds_logger.warning(f"History fetch failed for {ticker_symbol}: {e}")
             hist = pd.DataFrame()
 
+        is_mock_history = hist.attrs.get("is_mock", False) if hasattr(hist, "attrs") else False
+
         if hist.empty or "Close" not in hist.columns:
             return {
                 "Symbol": ticker_symbol,
@@ -1075,6 +1077,7 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             "Dividend_Payout": div_metrics.get("Dividend_Payout", 0),
             "Cap_Category": cap_category,
             "_dq_flags": dq_flags,
+            "Data_Quality_Flags": "mock_history" if is_mock_history else "",
         }
 
         # --- V7.1: FUNDAMENTALS OVERRIDE LAYER ---
@@ -1087,8 +1090,11 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
 
         # --- Pydantic Validation ---
         try:
-            payload = StockDataPayload(**final_data)
-            return payload.model_dump(by_alias=True)
+            clean_data = StockDataPayload.clean_dict(final_data)
+            payload = StockDataPayload(**clean_data)
+            validated_dump = payload.model_dump(by_alias=True)
+            final_data.update(validated_dump)
+            return final_data
         except Exception as e:
             import logging
 
