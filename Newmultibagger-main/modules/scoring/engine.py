@@ -99,6 +99,53 @@ def calculate_institutional_score(
     if quarter_end and as_of:
         enforce_pit_gate(as_of, quarter_end, symbol=data.get("Symbol", "UNKNOWN"))
 
+    # ── Validate and sanitize row using sector limits (DQ Gates) ──
+    from modules.dq_gates import validate_record
+    row = {
+        "pe_ratio": data.get("PE_Ratio") or data.get("pe_ratio"),
+        "roe": data.get("ROE%") or data.get("roe"),
+        "debt_equity": data.get("Debt_Equity") or data.get("debt_equity"),
+        "cfo_pat_ratio": data.get("CFO_PAT_Ratio") or data.get("cfo_pat_ratio"),
+        "avg_roe_5y": data.get("Avg_ROE_5Y%") or data.get("avg_roe_5y"),
+        "sales_cagr_5y": data.get("Sales_Growth_5Y%") or data.get("sales_cagr_5y"),
+        "eps_growth": data.get("EPS_Growth%") or data.get("eps_growth"),
+        "promoter_holding": data.get("Promoter_Holding%") or data.get("promoter_holding"),
+        "inst_holding": data.get("Inst_Holding%") or data.get("inst_holding"),
+        "f_score": data.get("F_Score") or data.get("f_score"),
+        "peg_ratio": data.get("PEG_Ratio") or data.get("peg_ratio"),
+        "value_gap": data.get("Value_Gap%") or data.get("value_gap"),
+        "atr": data.get("ATR") or data.get("atr"),
+        "down_from_52w_high": data.get("Down_From_52W_High%") or data.get("down_from_52w_high"),
+        "rs_rating": data.get("RS_Rating") or data.get("rs_rating"),
+        "symbol": data.get("Symbol") or data.get("symbol"),
+    }
+    sector = data.get("Sector") or data.get("sector")
+    sanitized, _ = validate_record(row, sector=sector)
+
+    # Write back sanitized values to a mutable copy of data
+    data = dict(data)
+    key_mapping = {
+        "pe_ratio": ["PE_Ratio", "pe_ratio"],
+        "roe": ["ROE%", "roe"],
+        "debt_equity": ["Debt_Equity", "debt_equity"],
+        "cfo_pat_ratio": ["CFO_PAT_Ratio", "cfo_pat_ratio"],
+        "avg_roe_5y": ["Avg_ROE_5Y%", "avg_roe_5y"],
+        "sales_cagr_5y": ["Sales_Growth_5Y%", "sales_cagr_5y"],
+        "eps_growth": ["EPS_Growth%", "eps_growth"],
+        "promoter_holding": ["Promoter_Holding%", "promoter_holding"],
+        "inst_holding": ["Inst_Holding%", "inst_holding"],
+        "f_score": ["F_Score", "f_score"],
+        "peg_ratio": ["PEG_Ratio", "peg_ratio"],
+        "value_gap": ["Value_Gap%", "value_gap"],
+        "atr": ["ATR", "atr"],
+        "down_from_52w_high": ["Down_From_52W_High%", "down_from_52w_high"],
+        "rs_rating": ["RS_Rating", "rs_rating"],
+    }
+    for k_low, target_keys in key_mapping.items():
+        if k_low in sanitized and sanitized[k_low] is not None:
+            for tk in target_keys:
+                data[tk] = sanitized[k_low]
+
     _, weights, scoring_strategy = _resolve_mode_and_weights(market_regime, sector=data.get("Sector", ""))
     score_sentiment, w_sentiment = _calculate_sentiment_factor(data, weights)
     state = _build_factor_state(data, score_sentiment)
