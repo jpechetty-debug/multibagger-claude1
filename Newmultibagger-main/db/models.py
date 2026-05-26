@@ -205,3 +205,20 @@ class BuyThesis(Base):
     regime_at_buy = Column(String)
     raw_thesis_json = Column(Text)
     created_at = Column(DateTime, default=_utc_now)
+
+
+class DqSectorLimit(Base):
+    """Per-sector metric limit overrides for data quality gates.
+
+    Rows in this table override the flat METRIC_LIMITS in dq_gates.py
+    for the given (sector, metric) pair. Metrics not present here
+    fall back to the global defaults.
+    """
+
+    __tablename__ = "dq_sector_limits"
+
+    sector = Column(String, primary_key=True)
+    metric = Column(String, primary_key=True)
+    min_val = Column(Float, nullable=False)
+    max_val = Column(Float, nullable=False)
+    auto_scale_threshold = Column(Float, nullable=True)

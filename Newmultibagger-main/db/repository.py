@@ -173,6 +173,22 @@ def _ensure_fundamentals_pit_table(conn):
     )
 
 
+def _ensure_dq_sector_limits_table(conn):
+    """Create the dq_sector_limits table if it does not exist (SQLite runtime path)."""
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS dq_sector_limits (
+            sector TEXT NOT NULL,
+            metric TEXT NOT NULL,
+            min_val REAL NOT NULL,
+            max_val REAL NOT NULL,
+            auto_scale_threshold REAL,
+            PRIMARY KEY (sector, metric)
+        )
+        """
+    )
+
+
 # ── Runtime Schema Migration ─────────────────────────────────────────────────
 
 
@@ -237,6 +253,7 @@ def _ensure_runtime_schema():
             _ensure_column(conn, "multibaggers", "cap_category", "TEXT")
 
         _ensure_fundamentals_pit_table(conn)
+        _ensure_dq_sector_limits_table(conn)
         conn.commit()
     finally:
         conn.close()
@@ -790,6 +807,9 @@ def init_db():
 
     # PIT table
     _ensure_fundamentals_pit_table(conn)
+
+    # DQ Sector Limits table
+    _ensure_dq_sector_limits_table(conn)
 
     # Phase 4.1: Score Drift Detection
     cursor.execute("""
