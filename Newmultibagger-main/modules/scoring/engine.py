@@ -99,6 +99,22 @@ def calculate_institutional_score(
     if quarter_end and as_of:
         enforce_pit_gate(as_of, quarter_end, symbol=data.get("Symbol", "UNKNOWN"))
 
+    # ── Data freshness hard gate: block scoring if fundamentals are too old ──
+    from datetime import date
+
+    from config import MAX_FUNDAMENTAL_AGE_DAYS, STALE_DATA_WARNING_DAYS
+    from modules.errors import stale_data_error
+
+    data_quality_flags: list[str] = []
+    as_of_str = data.get("As_Of_Date")
+    if as_of_str:
+        as_of_date = date.fromisoformat(str(as_of_str))
+        age_days = (date.today() - as_of_date).days
+        if age_days > MAX_FUNDAMENTAL_AGE_DAYS:
+            raise stale_data_error(data.get("Symbol", "UNKNOWN"), age_days)
+        if age_days > STALE_DATA_WARNING_DAYS:
+            data_quality_flags.append("stale_data")
+
     # ── Validate and sanitize row using sector limits (DQ Gates) ──
     from modules.dq_gates import validate_record
     row = {
@@ -214,6 +230,7 @@ def calculate_institutional_score(
         "raw_score": raw_score,
         "checklist_score": f"{checklist_pass}/{checklist_total}",
         "data_confidence": data_confidence,
+        "data_quality_flags": data_quality_flags,
         "conviction_score": capped_conviction_score,
         "conviction_boost": conviction["conviction_boost"],
         "institutional_interest": conviction["institutional_interest"],

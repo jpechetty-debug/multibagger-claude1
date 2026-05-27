@@ -6,6 +6,7 @@ Proves that calculate_institutional_score() raises PITViolationError
 when stock data has a quarter-end date within the SEBI 45-day filing lag.
 """
 import sys
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
@@ -33,19 +34,19 @@ class TestPITGateIntegration:
 
     def test_score_raises_for_30_day_old_filing(self):
         """Stock with quarter ending 30 days ago must be blocked (< 45 days)."""
-        data = _stock_with_pit_dates(
-            as_of="2025-02-01",       # 31 days after quarter end
-            quarter_end="2025-01-01",
-        )
+        today = date.today()
+        quarter_end = (today - timedelta(days=30)).isoformat()
+        as_of = today.isoformat()
+        data = _stock_with_pit_dates(as_of=as_of, quarter_end=quarter_end)
         with pytest.raises(PITViolationError, match="PIT BLOCK"):
             calculate_institutional_score(data)
 
     def test_score_passes_for_60_day_old_filing(self):
         """Stock with quarter ending 60 days ago must pass the gate."""
-        data = _stock_with_pit_dates(
-            as_of="2025-03-02",       # 60 days after quarter end
-            quarter_end="2025-01-01",
-        )
+        today = date.today()
+        quarter_end = (today - timedelta(days=60)).isoformat()
+        as_of = today.isoformat()
+        data = _stock_with_pit_dates(as_of=as_of, quarter_end=quarter_end)
         result = calculate_institutional_score(data)
         assert isinstance(result["total_score"], (int, float))
 
@@ -54,3 +55,4 @@ class TestPITGateIntegration:
         data = {"Symbol": "NOPIT.NS", "Sector": "Finance"}
         result = calculate_institutional_score(data)
         assert isinstance(result["total_score"], (int, float))
+

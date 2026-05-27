@@ -105,16 +105,32 @@ export function RedFlagPanel({ stock }: RedFlagPanelProps) {
     })
   }
   
-  // Data Quality Audit
+  // Data Quality Audit — stale_data gets a dedicated yellow warning badge
   if (stock.data_quality_flags) {
-    flags.push({
-      severity: 'CRITICAL',
-      label: 'Data Integrity Audit Failure',
-      value: Array.isArray(stock.data_quality_flags)
-        ? stock.data_quality_flags.join(', ')
-        : String(stock.data_quality_flags || ''),
-      icon: ShieldAlert,
-    })
+    const rawFlags = Array.isArray(stock.data_quality_flags)
+      ? stock.data_quality_flags
+      : String(stock.data_quality_flags || '').split(',').map(f => f.trim()).filter(Boolean)
+
+    const hasStale = rawFlags.includes('stale_data')
+    const otherFlags = rawFlags.filter(f => f !== 'stale_data')
+
+    if (hasStale) {
+      flags.push({
+        severity: 'WARNING',
+        label: '⚠ Stale Fundamental Data',
+        value: 'Data may be 60–90 days old — score confidence reduced',
+        icon: AlertTriangle,
+      })
+    }
+
+    if (otherFlags.length > 0) {
+      flags.push({
+        severity: 'CRITICAL',
+        label: 'Data Integrity Audit Failure',
+        value: otherFlags.join(', '),
+        icon: ShieldAlert,
+      })
+    }
   }
 
   if (flags.length === 0) return null

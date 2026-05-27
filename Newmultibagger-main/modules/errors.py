@@ -26,6 +26,20 @@ class SovereignError(BaseModel):
         super().__init__(**data)
 
 
+class SovereignErrorExc(Exception):
+    """Raisable exception that carries structured SovereignError fields.
+
+    Use this in scoring gates where you need ``raise stale_data_error(...)``.
+    Catch with ``except SovereignErrorExc`` and inspect ``.error_code`` / ``.details``.
+    """
+
+    def __init__(self, error_code: str, message: str, details: dict[str, Any] | None = None):
+        super().__init__(message)
+        self.error_code = error_code
+        self.message = message
+        self.details = details or {}
+
+
 def provider_error(provider: str, symbol: str, exc: Exception | str) -> SovereignError:
     return SovereignError(
         error_code="PROVIDER_FAILURE",
@@ -42,8 +56,9 @@ def data_error(message: str, **details: Any) -> SovereignError:
     )
 
 
-def stale_data_error(symbol: str, age_days: int) -> SovereignError:
-    return SovereignError(
+def stale_data_error(symbol: str, age_days: int) -> SovereignErrorExc:
+    """Return a raisable exception for stale fundamental data."""
+    return SovereignErrorExc(
         error_code="STALE_DATA",
         message=f"Data for {symbol} is {age_days} days old — exceeds freshness threshold",
         details={"symbol": symbol, "age_days": age_days},
