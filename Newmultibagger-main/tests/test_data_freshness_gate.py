@@ -73,7 +73,7 @@ class TestDataFreshnessGate:
     def test_custom_threshold_via_env(self):
         """MAX_FUNDAMENTAL_AGE_DAYS can be overridden via config."""
         data = _stock_with_age(50)
-        with patch("config.MAX_FUNDAMENTAL_AGE_DAYS", 45):
+        with patch("modules.scoring.engine.MAX_FUNDAMENTAL_AGE_DAYS", 45):
             with pytest.raises(SovereignErrorExc) as exc_info:
                 calculate_institutional_score(data)
             assert exc_info.value.error_code == "STALE_DATA"

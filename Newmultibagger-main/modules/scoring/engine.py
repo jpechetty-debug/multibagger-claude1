@@ -8,9 +8,14 @@ ceiling rules, and conviction scoring into the final composite score.
 from __future__ import annotations
 
 import hashlib
+from datetime import date
 from typing import Any
 
+from config import MAX_FUNDAMENTAL_AGE_DAYS, STALE_DATA_WARNING_DAYS
+from modules.errors import stale_data_error
+
 from modules.data_utils import safe_float
+from modules.data_layer.dq_gates import validate_record
 from modules.pit_auditor import enforce_pit_gate
 from research.conviction_engine import calculate_conviction_score
 
@@ -93,22 +98,18 @@ def calculate_institutional_score(
         - [x] Integrate `NewsSentimentEngine` into `modules/scoring.py`.
         - [x] Update `total_score` calculation to include the 9th factor.
     """
-    # ── PIT hard gate: block scoring if data is too fresh (SEBI 45-day lag) ──
-    quarter_end = data.get("Quarter_End")
+    # ── Extract shared date fields once ──
     as_of = data.get("As_Of_Date")
+    quarter_end = data.get("Quarter_End")
+
+    # ── PIT hard gate: block scoring if data is too fresh (SEBI 45-day lag) ──
     if quarter_end and as_of:
         enforce_pit_gate(as_of, quarter_end, symbol=data.get("Symbol", "UNKNOWN"))
 
     # ── Data freshness hard gate: block scoring if fundamentals are too old ──
-    from datetime import date
-
-    from config import MAX_FUNDAMENTAL_AGE_DAYS, STALE_DATA_WARNING_DAYS
-    from modules.errors import stale_data_error
-
     data_quality_flags: list[str] = []
-    as_of_str = data.get("As_Of_Date")
-    if as_of_str:
-        as_of_date = date.fromisoformat(str(as_of_str))
+    if as_of:
+        as_of_date = date.fromisoformat(str(as_of))
         age_days = (date.today() - as_of_date).days
         if age_days > MAX_FUNDAMENTAL_AGE_DAYS:
             raise stale_data_error(data.get("Symbol", "UNKNOWN"), age_days)
@@ -116,7 +117,6 @@ def calculate_institutional_score(
             data_quality_flags.append("stale_data")
 
     # ── Validate and sanitize row using sector limits (DQ Gates) ──
-    from modules.dq_gates import validate_record
     row = {
         "pe_ratio": data.get("PE_Ratio") or data.get("pe_ratio"),
         "roe": data.get("ROE%") or data.get("roe"),

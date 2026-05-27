@@ -112,13 +112,25 @@ export function RedFlagPanel({ stock }: RedFlagPanelProps) {
       : String(stock.data_quality_flags || '').split(',').map(f => f.trim()).filter(Boolean)
 
     const hasStale = rawFlags.includes('stale_data')
-    const otherFlags = rawFlags.filter(f => f !== 'stale_data')
+    const hasMock = rawFlags.includes('mock_history')
+    const otherFlags = rawFlags.filter(
+      f => f !== 'stale_data' && f !== 'mock_history'
+    )
 
     if (hasStale) {
       flags.push({
         severity: 'WARNING',
         label: '⚠ Stale Fundamental Data',
         value: 'Data may be 60–90 days old — score confidence reduced',
+        icon: AlertTriangle,
+      })
+    }
+
+    if (hasMock) {
+      flags.push({
+        severity: 'WARNING',
+        label: '⚠ Simulated Price Data',
+        value: 'Live price history unavailable — technical signals are not reliable',
         icon: AlertTriangle,
       })
     }

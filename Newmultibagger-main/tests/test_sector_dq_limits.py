@@ -364,19 +364,22 @@ class TestSectorCacheBehavior:
         with patch("modules.news_sentiment.engine.get_alpha_signal") as mock_signal:
             mock_signal.return_value = {"sentiment_score": 0.5}
             
-            # Since PE got clamped to 40 for Banking, the base score or factor breakdown PE value
-            # should reflect the validated/clamped PE.
-            # Let's inspect the calculated factor breakdown or resulting score.
-            res = calculate_institutional_score(banking_stock)
-            # PE factor score should be based on PE = 40 (clamped) rather than 50
-            # Let's verify that the clamped value is used
-            # If PE was 50, PE normalized metric would be different.
-            # We can also check if PE was clamped by passing a very high value like 500
-            extreme_stock = {**banking_stock, "PE_Ratio": 500.0}
-            res_extreme = calculate_institutional_score(extreme_stock)
-            
-            # If sector limits work, extreme PE = 500 gets clamped to 40 (max_pe) for Banks,
-            # so the scores should be identical to the PE = 40 case.
-            # If it fell back to flat limits (max_pe = 1000), PE = 500 would not be clamped to 40.
+            # PE=50 gets clamped to 40 under Banking limits
+            res_50 = calculate_institutional_score(banking_stock)
+
+            # PE=40 is already at the Banking ceiling — no clamping
             res_40 = calculate_institutional_score({**banking_stock, "PE_Ratio": 40.0})
-            assert res_extreme["total_score"] == res_40["total_score"]
+
+            # PE=500 is extreme but should also clamp to 40 for Banking
+            res_extreme = calculate_institutional_score(
+                {**banking_stock, "PE_Ratio": 500.0}
+            )
+
+            # All three should produce identical scores because sector
+            # limits clamp PE to 40 for Banking in every case.
+            assert res_50["total_score"] == res_40["total_score"], (
+                f"PE=50 score {res_50['total_score']} != PE=40 score {res_40['total_score']}"
+            )
+            assert res_extreme["total_score"] == res_40["total_score"], (
+                f"PE=500 score {res_extreme['total_score']} != PE=40 score {res_40['total_score']}"
+            )
