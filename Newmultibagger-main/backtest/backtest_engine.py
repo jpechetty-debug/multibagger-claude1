@@ -135,6 +135,51 @@ def _sharpe_ratio(
     return float((excess.mean() / excess.std()) * np.sqrt(periods_per_year))
 
 
+def _sortino_ratio(
+    period_returns: pd.Series,
+    periods_per_year: int = 12,
+    rf_annual: float = RF_ANNUAL,
+) -> float:
+    """Sortino ratio: excess return divided by downside deviation only.
+
+    Unlike Sharpe, upside volatility is not penalised. A strategy with large
+    positive months (momentum, midcap) is correctly rewarded.
+
+    Returns 0.0 when there are fewer than 3 below-Rf months — downside std
+    computed from 1-2 data points is statistically meaningless.
+    """
+    returns = pd.to_numeric(period_returns, errors="coerce").dropna()
+    if len(returns) < 2:
+        return 0.0
+    rf_per_period = float(rf_annual) / periods_per_year
+    excess = returns - rf_per_period
+    downside = excess[excess < 0]
+    if len(downside) < 3 or downside.std() <= 0:
+        return 0.0
+    return float((excess.mean() / downside.std()) * np.sqrt(periods_per_year))
+
+
+def _calmar_ratio(
+    period_returns: pd.Series,
+    periods_per_year: int = 12,
+) -> float:
+    """Calmar ratio: annualised CAGR divided by absolute max drawdown.
+
+    Answers: for every 1% of peak-to-trough loss, how much annual return was
+    delivered? Calmar of 0.5 = 20% CAGR on 40% drawdown. Higher is better.
+
+    Guard: uses `mdd < 0` (not `!= 0`) to handle flat/monotonic series where
+    float arithmetic may produce a tiny positive drawdown value.
+    """
+    ann_ret = _annualized_return_pct(period_returns, periods_per_year) / 100
+    mdd = _max_drawdown_pct(period_returns) / 100
+    if mdd >= 0:
+        return 0.0
+    if not np.isfinite(ann_ret):
+        return 0.0
+    return float(ann_ret / abs(mdd))
+
+
 def _clean_metrics(metrics: dict) -> dict:
     cleaned = {}
     for key, value in metrics.items():
@@ -549,6 +594,8 @@ class VectorBTEngine:
                 "win_rate": float((net_series > 0).mean() * 100),
                 "max_drawdown": _max_drawdown_pct(net_series),
                 "sharpe_ratio": _sharpe_ratio(net_series, periods_per_year),
+                "sortino_ratio": _sortino_ratio(net_series, periods_per_year),
+                "calmar_ratio": _calmar_ratio(net_series, periods_per_year),
                 "turnover": float(turnover_series.sum()),
                 "avg_turnover": float(turnover_series.mean()),
                 "top_quantile": float(top_quantile),
@@ -630,15 +677,6 @@ class VectorBTEngine:
             # no realized next-month return, matching the stock return labels.
             benchmark_returns = benchmark_close.sort_index().pct_change().shift(-1).dropna()
 
-            if not close_prices:
-                return {s: {"symbol": s, "status": "INSUFFICIENT_DATA"} for s in clean_symbols}
-
-            price_matrix = pd.DataFrame(close_prices).sort_index()
-            # Forward 1-month labels: period T score maps to period T+1 return.
-            # The final month remains NaN after shift(-1) and is excluded when
-            # each symbol's return series is dropna()'d below.
-            returns = price_matrix.pct_change().shift(-1)
-
             results = {}
             # Base metrics fallback
             for sym in clean_symbols:
@@ -650,6 +688,8 @@ class VectorBTEngine:
                     "win_rate": 0.0,
                     "max_drawdown": 0.0,
                     "sharpe_ratio": 0.0,
+                    "sortino_ratio": 0.0,
+                    "calmar_ratio": 0.0,
                     "transaction_cost_drag": 0.0,
                     "turnover": 0.0,
                     "benchmark_symbol": self.benchmark_symbol,
@@ -662,6 +702,15 @@ class VectorBTEngine:
                     "benchmark_status": "NO_DATA",
                     "status": status,
                 }
+
+            if not close_prices:
+                return results
+
+            price_matrix = pd.DataFrame(close_prices).sort_index()
+            # Forward 1-month labels: period T score maps to period T+1 return.
+            # The final month remains NaN after shift(-1) and is excluded when
+            # each symbol's return series is dropna()'d below.
+            returns = price_matrix.pct_change().shift(-1)
 
             if scores_df.empty:
                 print("[VectorBT] No historical scores found. Approximating with buy & hold.")
@@ -688,6 +737,12 @@ class VectorBTEngine:
                     )
                     results[sym]["sharpe_ratio"] = self._sanitize_metric(
                         _sharpe_ratio(net_monthly_returns), 0.0
+                    )
+                    results[sym]["sortino_ratio"] = self._sanitize_metric(
+                        _sortino_ratio(net_monthly_returns), 0.0
+                    )
+                    results[sym]["calmar_ratio"] = self._sanitize_metric(
+                        _calmar_ratio(net_monthly_returns), 0.0
                     )
                     results[sym]["turnover"] = 1.0
                     metrics = benchmark_metrics(net_monthly_returns, benchmark_returns)
@@ -777,11 +832,16 @@ class VectorBTEngine:
                     max_dd = drawdown.min() * 100
                     sharpe = _sharpe_ratio(sym_strat_returns)
 
+                    sortino = _sortino_ratio(sym_strat_returns)
+                    calmar = _calmar_ratio(sym_strat_returns)
+
                     results[sym]["cagr"] = self._sanitize_metric(cagr, 0.0)
                     results[sym]["gross_cagr"] = self._sanitize_metric(gross_cagr, 0.0)
                     results[sym]["win_rate"] = self._sanitize_metric(win_rate, 0.0)
                     results[sym]["max_drawdown"] = self._sanitize_metric(max_dd, 0.0)
                     results[sym]["sharpe_ratio"] = self._sanitize_metric(sharpe, 0.0)
+                    results[sym]["sortino_ratio"] = self._sanitize_metric(sortino, 0.0)
+                    results[sym]["calmar_ratio"] = self._sanitize_metric(calmar, 0.0)
                     results[sym]["transaction_cost_drag"] = self._sanitize_metric(
                         gross_cagr - cagr, 0.0
                     )
