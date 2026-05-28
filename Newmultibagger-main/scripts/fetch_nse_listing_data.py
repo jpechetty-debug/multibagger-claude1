@@ -31,6 +31,12 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
 }
 
+# Manual overrides for suspended/delisted symbols that still appear in active list or are missing in delisted XLSX.
+MANUAL_DELISTING_OVERRIDES = {
+    "RCOM": "2021-04-29",
+}
+
+
 
 def _download(session: requests.Session, url: str) -> bytes:
     response = session.get(url, headers=HEADERS, timeout=30)
@@ -103,29 +109,36 @@ def _load_delisted_equity(
     url: str,
     default_listing_date: str,
 ) -> pd.DataFrame:
-    df = pd.read_excel(BytesIO(_download(session, url)))
-    df = _normalize_columns(df).dropna(how="all")
-    symbol_col = _find_column(list(df.columns), "SYMBOL")
-    listing_col = _find_column(list(df.columns), "LISTING DATE", "DATE OF LISTING")
-    delisting_col = _find_column(list(df.columns), "DELISTING DATE", "DATE OF DELISTING", "DELISTED DATE")
-    if symbol_col is None or delisting_col is None:
-        raise RuntimeError(
-            f"Could not find Symbol/Delisting Date columns in NSE delisted file: {list(df.columns)}"
-        )
+    xls = pd.ExcelFile(BytesIO(_download(session, url)))
+    sheets_dfs = []
+    for sheet_name in xls.sheet_names:
+        df = pd.read_excel(xls, sheet_name=sheet_name)
+        df = _normalize_columns(df).dropna(how="all")
+        symbol_col = _find_column(list(df.columns), "SYMBOL")
+        delisting_col = _find_column(list(df.columns), "DELISTING DATE", "DATE OF DELISTING", "DELISTED DATE")
+        if symbol_col is None or delisting_col is None:
+            continue
 
-    listing_values = (
-        df[listing_col].apply(lambda value: _normalize_date(value, default_listing_date))
-        if listing_col is not None
-        else pd.Series([default_listing_date] * len(df), index=df.index)
-    )
-    out = pd.DataFrame(
-        {
-            "Symbol": df[symbol_col].astype(str).str.strip().str.upper(),
-            "Listing_Date": listing_values,
-            "Delisting_Date": df[delisting_col].apply(_normalize_date),
-        }
-    )
-    return out[(out["Symbol"] != "") & (out["Delisting_Date"] != "")]
+        listing_col = _find_column(list(df.columns), "LISTING DATE", "DATE OF LISTING")
+        listing_values = (
+            df[listing_col].apply(lambda value: _normalize_date(value, default_listing_date))
+            if listing_col is not None
+            else pd.Series([default_listing_date] * len(df), index=df.index)
+        )
+        out = pd.DataFrame(
+            {
+                "Symbol": df[symbol_col].astype(str).str.strip().str.upper(),
+                "Listing_Date": listing_values,
+                "Delisting_Date": df[delisting_col].apply(_normalize_date),
+            }
+        )
+        sheets_dfs.append(out[(out["Symbol"] != "") & (out["Delisting_Date"] != "")])
+
+    if not sheets_dfs:
+        raise RuntimeError(
+            f"Could not find Symbol/Delisting Date columns in any sheets of NSE delisted file: {xls.sheet_names}"
+        )
+    return pd.concat(sheets_dfs, ignore_index=True)
 
 
 def build_listing_metadata(args: argparse.Namespace) -> pd.DataFrame:
@@ -162,6 +175,13 @@ def build_listing_metadata(args: argparse.Namespace) -> pd.DataFrame:
 
     combined = pd.concat(frames, ignore_index=True)
     combined = combined.drop_duplicates(subset=["Symbol"], keep="last")
+    
+    # Apply manual overrides for delisted/suspended symbols
+    for symbol, delist_date in MANUAL_DELISTING_OVERRIDES.items():
+        mask = combined["Symbol"] == symbol
+        if mask.any():
+            combined.loc[mask, "Delisting_Date"] = delist_date
+
     combined = combined.sort_values("Symbol").reset_index(drop=True)
     return combined[["Symbol", "Listing_Date", "Delisting_Date"]]
 

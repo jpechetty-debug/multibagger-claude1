@@ -87,17 +87,18 @@ jobs:
           print(f"OK: listing data committed {age} days ago ({commit_date})")
           EOF
 
-      - name: Validate a known delisted stock is present (RCOM)
+      - name: Validate RCOM delisting date is populated
         run: |
           python - << 'EOF'
-          import sys
-          import pandas as pd
+          import sys, pandas as pd
           df = pd.read_csv("data/nse_listing_dates.csv")
           rcom = df[df["Symbol"] == "RCOM"]
           if rcom.empty:
-              print("WARN: RCOM not in listing data — delisted stock coverage may be incomplete")
-              # Don't fail — RCOM is just a canary
-          else:
-              delisting = rcom.iloc[0]["Delisting_Date"]
-              print(f"OK: RCOM present, Delisting_Date = {delisting}")
+              print("FAIL: RCOM missing entirely")
+              sys.exit(1)
+          delisting = rcom.iloc[0]["Delisting_Date"]
+          if not delisting or str(delisting).strip().lower() in ("", "nan", "nat"):
+              print(f"FAIL: RCOM Delisting_Date is blank — delisted stocks not loaded correctly")
+              sys.exit(1)
+          print(f"OK: RCOM Delisting_Date = {delisting}")
           EOF

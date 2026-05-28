@@ -67,3 +67,14 @@ class TestSurvivorshipIntegration:
         universe = loader.get_universe("2023-01-01", candidates=nifty50)
         assert len(universe) == len(nifty50), \
             f"Expected all Nifty 50 blue chips active in Jan 2023, got: {universe}"
+
+    @pytest.mark.backtest
+    def test_real_csv_rcom_delisted_correctly(self):
+        csv = Path("data/nse_listing_dates.csv")
+        if not csv.exists():
+            pytest.skip("data/nse_listing_dates.csv not present")
+        loader = SurvivorshipAdjustedLoader(data_dir="data")
+        # RCOM delisted April 2021 — must not appear in 2022 universe
+        post = loader.get_universe("2022-01-01", candidates=["RELIANCE", "RCOM"])
+        assert "RCOM" not in post, \
+            "RCOM appears in 2022 universe — Delisting_Date may be blank in the CSV"
