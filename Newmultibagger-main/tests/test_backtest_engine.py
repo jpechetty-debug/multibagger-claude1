@@ -41,6 +41,18 @@ def _load_backtest_engine_module(monkeypatch):
     return importlib.import_module("backtest.backtest_engine")
 
 
+def _bypass_survivorship(engine):
+    """Patch the survivorship loader to pass all candidates through.
+
+    Tests that exercise backtest *mechanics* use fake symbols that don't
+    exist in the real nse_listing_dates.csv.  Bypassing the loader here
+    keeps those tests focused on return/metric correctness.
+    """
+    engine._survivorship_loader.get_universe = lambda as_of_date, candidates=None: (
+        list(candidates) if candidates else []
+    )
+
+
 def test_run_batch_momentum_backtest_handles_suffixing_and_sparse_symbols(monkeypatch):
     backtest_engine_module = _load_backtest_engine_module(monkeypatch)
 
@@ -63,6 +75,7 @@ def test_run_batch_momentum_backtest_handles_suffixing_and_sparse_symbols(monkey
     )
 
     engine = backtest_engine_module.VectorBTEngine(period="1y")
+    _bypass_survivorship(engine)
     results = engine.run_batch_momentum_backtest(["ABC", "XYZ.NS"])
 
     assert results["ABC.NS"]["status"] == "OK"
@@ -155,6 +168,7 @@ def test_run_batch_momentum_backtest_includes_benchmark_relative_metrics(monkeyp
     )
 
     engine = backtest_engine_module.VectorBTEngine(period="1y")
+    _bypass_survivorship(engine)
     results = engine.run_batch_momentum_backtest(["ABC.NS"])
     abc_result = results["ABC.NS"]
 
@@ -258,6 +272,7 @@ def test_walk_forward_strategy_backtest_trains_past_only_and_reports_portfolio_m
     )
 
     engine = backtest_engine_module.VectorBTEngine(period="1y")
+    _bypass_survivorship(engine)
     result = engine.run_walk_forward_strategy_backtest(
         ["AAA", "BBB", "CCC"],
         min_train_periods=3,

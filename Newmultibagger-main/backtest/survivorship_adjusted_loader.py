@@ -34,6 +34,7 @@ Columns required:
 from __future__ import annotations
 
 import logging
+import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import cast
@@ -123,6 +124,12 @@ class SurvivorshipAdjustedLoader:
             "Returning all candidates unfiltered — backtest results MAY BE OVERSTATED. "
             "To fix: add data/nse_listing_dates.csv or data/nifty500_YYYY-MM.csv files.",
             self.data_dir,
+        )
+        warnings.warn(
+            "SURVIVORSHIP BIAS: No NSE listing data found at "
+            f"'{self.data_dir}'. Backtest CAGRs will be overstated by ~3–5% p.a. "
+            "Run: python scripts/fetch_nse_listing_data.py",
+            stacklevel=2,
         )
         return list(candidates) if candidates else []
 

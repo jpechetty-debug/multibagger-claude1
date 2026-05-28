@@ -107,7 +107,7 @@ def _load_delisted_equity(
     df = _normalize_columns(df).dropna(how="all")
     symbol_col = _find_column(list(df.columns), "SYMBOL")
     listing_col = _find_column(list(df.columns), "LISTING DATE", "DATE OF LISTING")
-    delisting_col = _find_column(list(df.columns), "DELISTING DATE", "DATE OF DELISTING")
+    delisting_col = _find_column(list(df.columns), "DELISTING DATE", "DATE OF DELISTING", "DELISTED DATE")
     if symbol_col is None or delisting_col is None:
         raise RuntimeError(
             f"Could not find Symbol/Delisting Date columns in NSE delisted file: {list(df.columns)}"

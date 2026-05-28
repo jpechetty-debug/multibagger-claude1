@@ -8,6 +8,8 @@ import yfinance as yf
 import sqlite3
 import os
 
+from backtest.survivorship_adjusted_loader import SurvivorshipAdjustedLoader
+
 
 TRANSACTION_COST = 0.006
 RF_ANNUAL = float(os.getenv("RISK_FREE_RATE_ANNUAL", "0.065"))
@@ -274,6 +276,11 @@ class VectorBTEngine:
         self.transaction_cost = float(transaction_cost)
         self.benchmark_symbol = benchmark_symbol
         self.db_path = os.path.join(os.path.dirname(__file__), "..", "runtime", "stocks.db")
+        # Resolve data dir using the same logic as _warn_if_survivorship_metadata_missing
+        project_data = Path(__file__).resolve().parents[1] / "data"
+        self._survivorship_loader = SurvivorshipAdjustedLoader(
+            data_dir=str(project_data)
+        )
         self._warn_if_survivorship_metadata_missing()
 
     def _warn_if_survivorship_metadata_missing(self) -> None:
@@ -443,6 +450,21 @@ class VectorBTEngine:
                 train_df = labeled[labeled["period"] < test_period]
                 test_df = labeled[labeled["period"] == test_period].copy()
                 if train_df.empty or test_df.empty:
+                    continue
+
+                # ── Survivorship filter: exclude delisted/unlisted stocks ──
+                period_date = str(test_period.start_time.date())
+                test_symbols_bare = [
+                    s.replace(".NS", "").replace(".BO", "")
+                    for s in test_df["symbol"].unique()
+                ]
+                valid_bare = self._survivorship_loader.get_universe(
+                    as_of_date=period_date,
+                    candidates=test_symbols_bare,
+                )
+                valid_canonical = {_canonical_symbol(s) for s in valid_bare}
+                test_df = test_df[test_df["symbol"].isin(valid_canonical)]
+                if test_df.empty:
                     continue
 
                 train_periods = train_df["period"].nunique()
@@ -695,14 +717,41 @@ class VectorBTEngine:
             # Align indices
             common_dates = monthly_scores.index.intersection(returns.index)
 
+            # ── Survivorship filter: mask scores of delisted/unlisted stocks ──
+            # Build a boolean mask (month × symbol) where True = valid at that date
+            survivorship_mask = pd.DataFrame(
+                False,
+                index=common_dates,
+                columns=monthly_scores.columns,
+            )
+            for period in common_dates:
+                period_date = str(period.start_time.date())
+                syms_bare = [
+                    s.replace(".NS", "").replace(".BO", "")
+                    for s in monthly_scores.columns
+                ]
+                valid_bare = set(
+                    self._survivorship_loader.get_universe(
+                        as_of_date=period_date,
+                        candidates=syms_bare,
+                    )
+                )
+                for sym_canonical in monthly_scores.columns:
+                    bare = sym_canonical.replace(".NS", "").replace(".BO", "")
+                    if bare in valid_bare:
+                        survivorship_mask.at[period, sym_canonical] = True
+
+            # Apply mask: NaN out scores for stocks not in the valid universe
+            filtered_scores = monthly_scores.reindex(common_dates).where(survivorship_mask)
+
             for sym in price_matrix.columns:
-                if sym not in monthly_scores.columns:
+                if sym not in filtered_scores.columns:
                     continue
 
-                sym_scores = monthly_scores[sym].reindex(common_dates)
+                sym_scores = filtered_scores[sym].reindex(common_dates)
                 sym_returns = returns[sym].reindex(common_dates)
 
-                row_scores = monthly_scores.reindex(common_dates)
+                row_scores = filtered_scores.reindex(common_dates)
                 top_q = row_scores.apply(lambda x: x >= x.quantile(0.8), axis=1)
 
                 position = top_q[sym].reindex(common_dates).fillna(False)
