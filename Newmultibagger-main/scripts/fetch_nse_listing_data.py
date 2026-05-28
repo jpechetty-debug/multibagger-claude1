@@ -33,6 +33,9 @@ HEADERS = {
 
 # Manual overrides for suspended/delisted symbols that still appear in active list or are missing in delisted XLSX.
 MANUAL_DELISTING_OVERRIDES = {
+    # RCOM: NSE XLSX omits this from delisted sheet despite being suspended.
+    # Source: NSE circular No. NSE/LIST/44358 dated 28-Apr-2021.
+    # Added: 2026-05-28
     "RCOM": "2021-04-29",
 }
 
