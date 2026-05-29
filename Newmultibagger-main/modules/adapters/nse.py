@@ -30,33 +30,40 @@ async def _run_executor_safe(loop, executor, fn, default):
         return default
 
 
-_PNSEA_INFO_ALIASES = {
-    "marketCap": ("marketCap", "marketCapTotal", "marketCapitalization"),
-    "trailingPE": ("trailingPE", "pe", "pE"),
+_PNSEA_INFO_ALIASES: dict[str, tuple[str, ...]] = {
+    # Priority order: most-specific Indian source key first, generic yfinance-style last.
+    # When multiple keys are found with non-None values, resolve_key picks [0] and logs
+    # a "key_conflict" warning so conflicts are visible and can be monitored.
+    "marketCap":      ("marketCap", "marketCapTotal", "marketCapitalization"),
+    "trailingPE":     ("trailingPE", "pe", "pE"),
     "returnOnEquity": ("returnOnEquity", "roe"),
-    "debtToEquity": ("debtToEquity", "debtEquity"),
-    "revenueGrowth": ("revenueGrowth", "salesGrowth"),
-    "earningsGrowth": ("earningsGrowth", "profitGrowth"),
-    "bookValue": ("bookValue",),
-    "trailingEps": ("trailingEps", "eps"),
+    "debtToEquity":   ("debtToEquity", "debtEquity"),
+    # revenueGrowth vs salesGrowth: these have different semantics in Indian data.
+    # salesGrowth is NSE-reported YoY; revenueGrowth may include other income.
+    # NSE salesGrowth is preferred — change order here if source semantics differ.
+    "revenueGrowth":  ("salesGrowth", "revenueGrowth"),
+    "earningsGrowth": ("profitGrowth", "earningsGrowth"),
+    "bookValue":      ("bookValue",),
+    "trailingEps":    ("eps", "trailingEps"),
     "fiftyTwoWeekHigh": ("fiftyTwoWeekHigh", "weekHigh52"),
-    "fiftyTwoWeekLow": ("fiftyTwoWeekLow", "weekLow52"),
-    "sector": ("sector", "sectorName"),
-    "industry": ("industry", "industryName"),
+    "fiftyTwoWeekLow":  ("fiftyTwoWeekLow", "weekLow52"),
+    # sector from NSE is authoritative for Indian stocks — prefer over yfinance
+    "sector":   ("sectorName", "sector"),
+    "industry": ("industryName", "industry"),
 }
 
-_NSEPYTHON_INFO_ALIASES = {
-    "marketCap": ("marketCap", "marketCapitalization"),
-    "trailingPE": ("trailingPE", "pe", "peRatio"),
-    "returnOnEquity": ("returnOnEquity", "roe"),
-    "debtToEquity": ("debtToEquity", "debtEquity", "deRatio"),
-    "revenueGrowth": ("revenueGrowth", "salesGrowth"),
-    "earningsGrowth": ("earningsGrowth", "profitGrowth", "epsGrowth"),
-    "bookValue": ("bookValue",),
-    "trailingEps": ("trailingEps", "eps"),
-    "fiftyTwoWeekHigh": ("fiftyTwoWeekHigh", "high52Week"),
-    "fiftyTwoWeekLow": ("fiftyTwoWeekLow", "low52Week"),
-    "sector": ("sector",),
+_NSEPYTHON_INFO_ALIASES: dict[str, tuple[str, ...]] = {
+    "marketCap":      ("marketCap", "marketCapitalization"),
+    "trailingPE":     ("pe", "peRatio", "trailingPE"),
+    "returnOnEquity": ("roe", "returnOnEquity"),
+    "debtToEquity":   ("debtEquity", "deRatio", "debtToEquity"),
+    "revenueGrowth":  ("salesGrowth", "revenueGrowth"),
+    "earningsGrowth": ("epsGrowth", "profitGrowth", "earningsGrowth"),
+    "bookValue":      ("bookValue",),
+    "trailingEps":    ("eps", "trailingEps"),
+    "fiftyTwoWeekHigh": ("high52Week", "fiftyTwoWeekHigh"),
+    "fiftyTwoWeekLow":  ("low52Week", "fiftyTwoWeekLow"),
+    "sector":   ("sector",),
     "industry": ("industry",),
 }
 
@@ -118,7 +125,9 @@ class PNSEAProvider(DataProvider):
         cf = await _run_executor_safe(
             loop, self.executor, lambda: getattr(yf_t, "cash_flow", pd.DataFrame()), pd.DataFrame()
         )
-        info = normalize_info(raw.get("info", {}), alias_map=_PNSEA_INFO_ALIASES)
+        raw_info = raw.get("info", {})
+        raw_info["_source"] = self.name   # enables resolve_key conflict logging
+        info = normalize_info(raw_info, alias_map=_PNSEA_INFO_ALIASES)
 
         cfo_pat = 0.0
         try:
@@ -203,6 +212,7 @@ class NSEPythonProvider(DataProvider):
         cf = await _run_executor_safe(
             loop, self.executor, lambda: getattr(yf_t, "cash_flow", pd.DataFrame()), pd.DataFrame()
         )
+        fundamentals["_source"] = self.name  # enables resolve_key conflict logging
         info = normalize_info(fundamentals, alias_map=_NSEPYTHON_INFO_ALIASES)
 
         return {

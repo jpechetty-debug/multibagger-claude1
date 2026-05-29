@@ -89,25 +89,54 @@ def normalize_info(
     fallback_info: dict[str, Any] | None = None,
     alias_map: dict[str, tuple] | None = None,
 ) -> dict[str, Any]:
-    """Build canonical info dict using provider payload + yfinance fallback."""
+    """Build canonical info dict using provider payload + yfinance fallback.
+
+    Resolution order:
+    1. Populate from fallback_info (lowest priority)
+    2. Resolve aliased canonical fields using resolve_key (with conflict logging)
+    3. Copy remaining non-aliased keys from primary_info (passthrough)
+
+    This order ensures the alias map always wins over raw key passthrough —
+    i.e. if the raw dict has both `revenueGrowth` and `salesGrowth`, the alias
+    map decides which one becomes the canonical `revenueGrowth` value, rather
+    than the raw copy blindly picking whichever key happens to match the target.
+    """
     normalized: dict[str, Any] = {}
+
+    # Step 1: fallback (lowest priority)
     if isinstance(fallback_info, dict):
         for key, value in fallback_info.items():
             if _has_value(value):
                 normalized[key] = value
-    if isinstance(primary_info, dict):
-        for key, value in primary_info.items():
-            if _has_value(value):
-                normalized[key] = value
+
+    # Step 2: alias-map resolution (runs before raw copy so it takes precedence)
+    aliased_targets: set[str] = set()
     if alias_map and isinstance(primary_info, dict):
+        from modules.adapters.base import resolve_key
+        source = primary_info.get("_source", "unknown")
         for target, aliases in alias_map.items():
+            aliased_targets.add(target)
             if _has_value(normalized.get(target)):
                 continue
-            for alias in aliases:
-                candidate = primary_info.get(alias)
-                if _has_value(candidate):
-                    normalized[target] = candidate
-                    break
+            value = resolve_key(
+                primary_info,
+                candidates=aliases if isinstance(aliases, tuple) else tuple(aliases),
+                source=source,
+                field=target,
+            )
+            if _has_value(value):
+                normalized[target] = value
+
+    # Step 3: copy remaining primary_info keys (non-aliased passthrough)
+    if isinstance(primary_info, dict):
+        for key, value in primary_info.items():
+            if key == "_source":
+                continue           # internal tag — never leak into output
+            if key in aliased_targets:
+                continue           # already resolved by alias map
+            if _has_value(value):
+                normalized[key] = value
+
     return normalized
 
 

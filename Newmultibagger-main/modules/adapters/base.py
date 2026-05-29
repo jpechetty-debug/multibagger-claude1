@@ -1,10 +1,64 @@
-# modules/adapters/base.py
 from modules.structured_logger import SovereignLogger
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
 _sov = SovereignLogger("adapters.base")
 logger = _sov.logger
+
+
+def resolve_key(
+    info: dict,
+    candidates: tuple[str, ...],
+    source: str,
+    field: str,
+) -> Any:
+    """Resolve a canonical field from an info dict using an ordered candidate list.
+
+    Selects the first candidate key that has a non-None value. When more than
+    one candidate key is present with a non-None value, emits a structured
+    warning so the ambiguity is visible in logs and can be monitored.
+
+    Args:
+        info:       Raw dict returned by a data provider.
+        candidates: Ordered tuple of key names to try, highest priority first.
+        source:     Provider name for the log line ("pnsea", "yfinance", etc.).
+        field:      Canonical field name being resolved ("revenue_growth", etc.).
+
+    Returns:
+        The value of the first matching candidate key, or None if none found.
+
+    Example:
+        >>> resolve_key(
+        ...     {"revenueGrowth": 0.15, "salesGrowth": 0.22},
+        ...     ("revenueGrowth", "salesGrowth"),
+        ...     source="yfinance",
+        ...     field="revenue_growth",
+        ... )
+        0.15   # revenueGrowth wins (first in candidates); conflict is logged
+    """
+    if not isinstance(info, dict):
+        return None
+
+    hits = [
+        (k, info[k])
+        for k in candidates
+        if k in info and info[k] is not None
+    ]
+
+    if not hits:
+        return None
+
+    if len(hits) > 1:
+        logger.warning(
+            "key_conflict | field=%s source=%s found=%s using=%s candidates=%s",
+            field,
+            source,
+            [k for k, _ in hits],
+            hits[0][0],
+            list(candidates),
+        )
+
+    return hits[0][1]
 
 
 class DataProvider(ABC):

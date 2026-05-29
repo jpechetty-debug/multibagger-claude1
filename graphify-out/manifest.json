@@ -304,12 +304,12 @@
     "hash": "fa7c280da96d14ee3adb73f740f81468"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\modules\\adapters\\base.py": {
-    "mtime": 1779192989.5113325,
-    "hash": "40115258d8a1072e7b30d24a16443948"
+    "mtime": 1780018753.0242453,
+    "hash": "42164d3eb9499df21dcf5e70f9e57551"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\modules\\adapters\\nse.py": {
-    "mtime": 1779192993.040532,
-    "hash": "ee576468e2b0d5d244ba42a47d0f2d2a"
+    "mtime": 1780018770.2666774,
+    "hash": "75b9d61df977712fb87dcecfe56672f8"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\modules\\adapters\\yfinance.py": {
     "mtime": 1779192995.6366115,
@@ -380,8 +380,8 @@
     "hash": "ea4f080460ac2bc243481f8d96e88317"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\modules\\normalization\\cleaner.py": {
-    "mtime": 1779594917.5941453,
-    "hash": "c8355bfec62151e235440f6c1e1de237"
+    "mtime": 1780018829.4172864,
+    "hash": "ce8e7a7ea680ebe8167325b78fd2c027"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\modules\\normalization\\__init__.py": {
     "mtime": 1777302821.7785964,
@@ -2558,6 +2558,10 @@
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\tests\\e2e_scoring_pipeline.py": {
     "mtime": 1778134609.8520217,
     "hash": "412be51f81b25923f5c5084b32741d02"
+  },
+  "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\tests\\test_adapter_key_resolution.py": {
+    "mtime": 1780018779.979999,
+    "hash": "a1571fb14185f07e35cc7e22a36d36b4"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\tests\\test_api.py": {
     "mtime": 1778134609.8535435,
