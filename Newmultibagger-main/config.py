@@ -190,3 +190,16 @@ SCORING_WEIGHTS = {
         "w_sentiment": 0.10,
     },
 }
+
+# ── Transaction Cost Model Components ──────────────────────────────────────────
+TRANSACTION_COST = float(os.getenv("TRANSACTION_COST", "0.006"))
+TC_STT_SELL = float(os.getenv("TC_STT_SELL", "0.001"))
+TC_EXCHANGE = float(os.getenv("TC_EXCHANGE", "0.0000335"))
+TC_SEBI_FEE = float(os.getenv("TC_SEBI_FEE", "0.000001"))
+TC_STAMP_BUY = float(os.getenv("TC_STAMP_BUY", "0.00015"))
+TC_IMPACT_ALPHA = float(os.getenv("TC_IMPACT_ALPHA", "0.0001"))
+
+TC_ADV_FRAC_LARGE = float(os.getenv("TC_ADV_FRAC_LARGE", "1.0"))
+TC_ADV_FRAC_MID = float(os.getenv("TC_ADV_FRAC_MID", "0.1"))
+TC_ADV_FRAC_SMALL = float(os.getenv("TC_ADV_FRAC_SMALL", "0.01"))
+

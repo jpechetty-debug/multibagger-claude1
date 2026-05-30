@@ -10,8 +10,17 @@ import os
 
 from backtest.survivorship_adjusted_loader import SurvivorshipAdjustedLoader
 
-
-TRANSACTION_COST = 0.006
+from config import (
+    TRANSACTION_COST,
+    TC_STT_SELL,
+    TC_EXCHANGE,
+    TC_SEBI_FEE,
+    TC_STAMP_BUY,
+    TC_IMPACT_ALPHA,
+    TC_ADV_FRAC_LARGE,
+    TC_ADV_FRAC_MID,
+    TC_ADV_FRAC_SMALL,
+)
 RF_ANNUAL = float(os.getenv("RISK_FREE_RATE_ANNUAL", "0.065"))
 DEFAULT_BENCHMARK_SYMBOL = "^CNX500"
 DEFAULT_WALK_FORWARD_FEATURES = [
@@ -190,24 +199,120 @@ def _clean_metrics(metrics: dict) -> dict:
     return cleaned
 
 
+def compute_round_trip_cost(
+    cap_category: str = "Mid",
+    trade_value: float = 1.0,
+    adv_30d: float | None = None,
+) -> float:
+    """Compute the full round-trip transaction cost for an Indian equity trade.
+
+    Components (2025 rates, all expressed as fraction of trade value):
+        Buy  side: stamp duty + exchange charge + SEBI fee
+        Sell side: STT + exchange charge + SEBI fee
+        Both sides: market impact (if adv_30d provided or inferred from cap)
+
+    Args:
+        cap_category:  "Large", "Mid", or "Small" (case-insensitive).
+                       Used to infer adv_30d when not explicitly provided.
+        trade_value:   Order size in rupees. Used only for impact calculation.
+                       Relative to adv_30d — can use any consistent unit.
+        adv_30d:       30-day avg daily value traded in rupees. When None,
+                       inferred from cap_category via TC_ADV_FRAC constants.
+
+    Returns:
+        Round-trip cost as a fraction of trade value (e.g. 0.0022 = 0.22%).
+    """
+    cap = str(cap_category).lower()
+
+    # Base charges — direction-asymmetric
+    buy_side  = TC_STAMP_BUY + TC_EXCHANGE + TC_SEBI_FEE   # stamp on buy, exchange+SEBI both sides
+    sell_side = TC_STT_SELL  + TC_EXCHANGE + TC_SEBI_FEE   # STT on sell, exchange+SEBI both sides
+    base_cost = buy_side + sell_side
+
+    # Market impact — infer ADV from cap category when not provided
+    if adv_30d is None or adv_30d <= 0:
+        if "large" in cap:
+            adv_frac = TC_ADV_FRAC_LARGE
+        elif "small" in cap:
+            adv_frac = TC_ADV_FRAC_SMALL
+        else:                               # mid, unknown, default
+            adv_frac = TC_ADV_FRAC_MID
+        # adv_30d is estimated as adv_frac × trade_value
+        # → sqrt(trade_value / adv_30d) = sqrt(1 / adv_frac)
+        impact = TC_IMPACT_ALPHA / (adv_frac ** 0.5)
+    else:
+        if trade_value <= 0 or not np.isfinite(trade_value):
+            impact = 0.0
+        else:
+            impact = TC_IMPACT_ALPHA * ((trade_value / adv_30d) ** 0.5)
+
+    # Round-trip impact is paid on both entry and exit
+    return float(base_cost + 2 * impact)
+
+
+def cost_breakdown(cap_category: str = "Mid") -> dict[str, float]:
+    """Return itemised cost breakdown for documentation and reporting.
+
+    Keys mirror the component names in config.py for traceability.
+    All values are fractions of trade value.
+    """
+    cap = str(cap_category).lower()
+    adv_frac = (
+        TC_ADV_FRAC_LARGE if "large" in cap else
+        TC_ADV_FRAC_SMALL if "small" in cap else
+        TC_ADV_FRAC_MID
+    )
+    impact_one_way = TC_IMPACT_ALPHA / (adv_frac ** 0.5)
+    return {
+        "stt_sell":          TC_STT_SELL,
+        "exchange_per_side": TC_EXCHANGE,
+        "sebi_fee_per_side": TC_SEBI_FEE,
+        "stamp_duty_buy":    TC_STAMP_BUY,
+        "impact_per_way":    impact_one_way,
+        "total_round_trip":  compute_round_trip_cost(cap_category),
+    }
+
+
 def apply_transaction_costs(
     gross_returns: pd.Series,
     turnover: pd.Series | float,
-    transaction_cost: float = TRANSACTION_COST,
+    transaction_cost: float | None = None,
+    cap_category: str = "Mid",
 ) -> pd.Series:
-    """
-    Subtract monthly turnover cost from gross returns.
+    """Subtract period transaction costs from gross returns.
 
-    `transaction_cost` is the full round-trip cost paid for the replaced
-    fraction of the portfolio. The default 0.6% reflects Indian equity
-    brokerage, STT, fees, and typical impact cost.
+    When `transaction_cost` is None (recommended), the cost is computed
+    from the component model via `compute_round_trip_cost(cap_category)`.
+    When provided explicitly (legacy / test override), that value is used
+    directly — enabling backward-compat and per-symbol overrides.
+
+    Args:
+        gross_returns:    Period gross return series.
+        turnover:         Portfolio turnover series or scalar (0–1 fraction).
+        transaction_cost: Override cost as fraction of trade value. Pass None
+                          to use the component model (recommended).
+        cap_category:     "Large", "Mid", or "Small". Used by component model.
+
+    The deduction each period is: turnover × round_trip_cost.
+    Turnover is clipped to [0, 1] — full portfolio replacement costs one
+    full round-trip, partial replacement costs proportionally less.
     """
+    if transaction_cost is None:
+        cost = compute_round_trip_cost(cap_category)
+    else:
+        cost = float(transaction_cost)
+
     returns = pd.to_numeric(gross_returns, errors="coerce").copy()
     if isinstance(turnover, pd.Series):
-        turnover_series = pd.to_numeric(turnover, errors="coerce").reindex(returns.index).fillna(0.0)
+        turnover_series = (
+            pd.to_numeric(turnover, errors="coerce")
+            .reindex(returns.index)
+            .fillna(0.0)
+        )
     else:
         turnover_series = pd.Series(float(turnover), index=returns.index)
-    return returns - turnover_series.clip(lower=0.0, upper=1.0) * float(transaction_cost)
+
+    return returns - turnover_series.clip(lower=0.0, upper=1.0) * cost
 
 
 def _entry_turnover(position: pd.Series) -> pd.Series:
@@ -314,11 +419,13 @@ class VectorBTEngine:
     def __init__(
         self,
         period="5y",
-        transaction_cost: float = TRANSACTION_COST,
+        transaction_cost: float | None = None,
         benchmark_symbol: str = DEFAULT_BENCHMARK_SYMBOL,
+        cap_category: str = "Mid",
     ):
         self.period = period
-        self.transaction_cost = float(transaction_cost)
+        self.cap_category = cap_category
+        self.transaction_cost = transaction_cost if transaction_cost is None else float(transaction_cost)
         self.benchmark_symbol = benchmark_symbol
         self.db_path = os.path.join(os.path.dirname(__file__), "..", "runtime", "stocks.db")
         # Resolve data dir using the same logic as _warn_if_survivorship_metadata_missing
@@ -547,7 +654,8 @@ class VectorBTEngine:
                     apply_transaction_costs(
                         pd.Series([period_gross_return]),
                         turnover,
-                        self.transaction_cost,
+                        transaction_cost=self.transaction_cost,
+                        cap_category=self.cap_category,
                     ).iloc[0]
                 )
 
@@ -722,7 +830,8 @@ class VectorBTEngine:
                     net_monthly_returns = apply_transaction_costs(
                         monthly_returns,
                         entry_turnover,
-                        self.transaction_cost,
+                        transaction_cost=self.transaction_cost,
+                        cap_category=self.cap_category,
                     )
                     gross_cagr = self._sanitize_metric(
                         _annualized_return_pct(monthly_returns), 0.0
@@ -816,7 +925,8 @@ class VectorBTEngine:
                 sym_strat_returns = apply_transaction_costs(
                     selected_returns,
                     selected_turnover,
-                    self.transaction_cost,
+                    transaction_cost=self.transaction_cost,
+                    cap_category=self.cap_category,
                 ).dropna()
 
                 if len(sym_strat_returns) > 0:

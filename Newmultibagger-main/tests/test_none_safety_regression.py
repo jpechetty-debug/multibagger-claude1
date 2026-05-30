@@ -46,7 +46,7 @@ class TestNoneSafetyRegression:
             **dict.fromkeys(_ALL_OPTIONAL_FIELDS)
         )
         result = calculate_institutional_score(data)
-        assert isinstance(result["total_score"], (int, float))
+        assert isinstance(result["total_score"], int | float)
         assert 0 <= result["total_score"] <= 100
 
     def test_all_fields_nan_no_crash(self):
@@ -61,7 +61,7 @@ class TestNoneSafetyRegression:
         }
         data = _build_minimal_stock_data(**nan_fields)
         result = calculate_institutional_score(data)
-        assert isinstance(result["total_score"], (int, float))
+        assert isinstance(result["total_score"], int | float)
 
     def test_all_fields_string_garbage_no_crash(self):
         """Scoring with string garbage in numeric fields must not crash."""
@@ -74,14 +74,14 @@ class TestNoneSafetyRegression:
         }
         data = _build_minimal_stock_data(**garbage_fields)
         result = calculate_institutional_score(data)
-        assert isinstance(result["total_score"], (int, float))
+        assert isinstance(result["total_score"], int | float)
 
     def test_empty_dict_no_crash(self):
         """Scoring with only Symbol should not crash."""
         from modules.scoring import calculate_institutional_score
 
         result = calculate_institutional_score({"Symbol": "EMPTY.NS"})
-        assert isinstance(result["total_score"], (int, float))
+        assert isinstance(result["total_score"], int | float)
 
     def test_safe_float_none_returns_zero(self):
         from modules.data_utils import safe_float

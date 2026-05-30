@@ -178,7 +178,7 @@ def build_listing_metadata(args: argparse.Namespace) -> pd.DataFrame:
 
     combined = pd.concat(frames, ignore_index=True)
     combined = combined.drop_duplicates(subset=["Symbol"], keep="last")
-    
+
     # Apply manual overrides for delisted/suspended symbols
     for symbol, delist_date in MANUAL_DELISTING_OVERRIDES.items():
         mask = combined["Symbol"] == symbol

@@ -363,7 +363,7 @@ class TestSectorCacheBehavior:
         # Let's mock news sentiment to avoid yfinance/web requests
         with patch("modules.news_sentiment.engine.get_alpha_signal") as mock_signal:
             mock_signal.return_value = {"sentiment_score": 0.5}
-            
+
             # PE=50 gets clamped to 40 under Banking limits
             res_50 = calculate_institutional_score(banking_stock)
 

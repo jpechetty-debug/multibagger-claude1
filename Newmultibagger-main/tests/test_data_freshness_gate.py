@@ -39,7 +39,7 @@ class TestDataFreshnessGate:
         """89 days is within the 90-day hard limit — score should succeed."""
         data = _stock_with_age(89)
         result = calculate_institutional_score(data)
-        assert isinstance(result["total_score"], (int, float))
+        assert isinstance(result["total_score"], int | float)
 
     def test_91_day_old_data_raises_stale_error(self):
         """91 days exceeds the 90-day hard limit — must raise SovereignErrorExc."""
@@ -53,21 +53,21 @@ class TestDataFreshnessGate:
         """65 days crosses the 60-day warning threshold — flag but don't block."""
         data = _stock_with_age(65)
         result = calculate_institutional_score(data)
-        assert isinstance(result["total_score"], (int, float))
+        assert isinstance(result["total_score"], int | float)
         assert "stale_data" in result["data_quality_flags"]
 
     def test_missing_as_of_date_skips_check(self):
         """When As_Of_Date is absent, freshness check is skipped entirely."""
         data = {"Symbol": "NODATE.NS", "Sector": "Finance"}
         result = calculate_institutional_score(data)
-        assert isinstance(result["total_score"], (int, float))
+        assert isinstance(result["total_score"], int | float)
         assert "stale_data" not in result.get("data_quality_flags", [])
 
     def test_30_day_old_data_no_flag(self):
         """30-day data is fresh — no stale_data flag expected."""
         data = _stock_with_age(30)
         result = calculate_institutional_score(data)
-        assert isinstance(result["total_score"], (int, float))
+        assert isinstance(result["total_score"], int | float)
         assert "stale_data" not in result.get("data_quality_flags", [])
 
     def test_custom_threshold_via_env(self):

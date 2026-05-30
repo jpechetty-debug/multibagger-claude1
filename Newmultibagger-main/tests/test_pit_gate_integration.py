@@ -48,11 +48,11 @@ class TestPITGateIntegration:
         as_of = today.isoformat()
         data = _stock_with_pit_dates(as_of=as_of, quarter_end=quarter_end)
         result = calculate_institutional_score(data)
-        assert isinstance(result["total_score"], (int, float))
+        assert isinstance(result["total_score"], int | float)
 
     def test_score_without_pit_fields_skips_gate(self):
         """Stock data without Quarter_End/As_Of_Date must not trigger the gate."""
         data = {"Symbol": "NOPIT.NS", "Sector": "Finance"}
         result = calculate_institutional_score(data)
-        assert isinstance(result["total_score"], (int, float))
+        assert isinstance(result["total_score"], int | float)
 
