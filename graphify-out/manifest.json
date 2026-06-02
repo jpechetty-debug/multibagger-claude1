@@ -4,8 +4,8 @@
     "hash": "a29046189a9cf9c55c1126d3b4bbe0e4"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\config.py": {
-    "mtime": 1780109360.2984233,
-    "hash": "db0e3f359fb5206888ac2ade3550e488"
+    "mtime": 1780284658.387097,
+    "hash": "e3902ff735957804834499c781c2cf94"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\main.py": {
     "mtime": 1779593528.6613593,
@@ -311,6 +311,10 @@
     "mtime": 1780018770.2666774,
     "hash": "75b9d61df977712fb87dcecfe56672f8"
   },
+  "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\modules\\adapters\\screener_in.py": {
+    "mtime": 1780374963.1502838,
+    "hash": "31d1e4ab9f2a2da5745bad989c1da331"
+  },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\modules\\adapters\\yfinance.py": {
     "mtime": 1779192995.6366115,
     "hash": "a940c31fc025dd584e7fe023987f95ea"
@@ -328,8 +332,8 @@
     "hash": "08c8b4c7babaf865963b0e7704f71bc9"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\modules\\data_layer\\data_service.py": {
-    "mtime": 1779770326.82981,
-    "hash": "2a9ef0046780bc90f9f5ccd03ff73940"
+    "mtime": 1780371064.1241815,
+    "hash": "15261491733076b343e1a342163fd702"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\modules\\data_layer\\data_utils.py": {
     "mtime": 1779158899.8793054,
@@ -2695,6 +2699,10 @@
     "mtime": 1778584365.5719912,
     "hash": "ff1f2094b9601585c68feb3f185d4104"
   },
+  "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\tests\\test_screener_in.py": {
+    "mtime": 1780371794.1832771,
+    "hash": "a41f0332ef9d1da229cc85e8cd171a88"
+  },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\tests\\test_sector_dq_limits.py": {
     "mtime": 1780109575.1758642,
     "hash": "4dfa2cff70d7ef67d21bfd1bec0c7723"
@@ -3992,8 +4000,8 @@
     "hash": "b0b0b7441a530de9a4b7b8d3a7979f18"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\requirements.txt": {
-    "mtime": 1779593640.422456,
-    "hash": "18c25bd71bb3a448020cbce31790940f"
+    "mtime": 1780371015.8087113,
+    "hash": "f9c693ef72607068e195e4798a98d864"
   },
   "D:\\Tradeidesa\\Multibagger-claude\\Newmultibagger-main\\schema_output.txt": {
     "mtime": 1778222357.2366965,

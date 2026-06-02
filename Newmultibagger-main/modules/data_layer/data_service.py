@@ -19,6 +19,7 @@ import yfinance as yf
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from modules.adapters.nse import NSEPythonProvider, PNSEAProvider
+from modules.adapters.screener_in import ScreenerInProvider
 from modules.adapters.yfinance import YFinanceProvider
 from modules.data_utils import get_valid_trading_days, run_coroutine_sync
 from modules.db_utils import get_db_connection
@@ -123,6 +124,7 @@ class DataManager:
 
         self.providers = [
             PNSEAProvider(self.executor),
+            ScreenerInProvider(self.executor),
             NSEPythonProvider(self.executor),
             YFinanceProvider(self.executor),
         ]
