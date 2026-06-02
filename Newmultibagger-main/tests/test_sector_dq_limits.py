@@ -344,12 +344,12 @@ class TestSectorCacheBehavior:
         """Verify that pre-existing flags are deduplicated and new flags don't duplicate existing ones."""
         from modules.data_layer.dq_gates import validate_dataframe
 
-        # DF has pre-existing duplicate flags, and some NaN fields that will trigger "invalid" flags
+        # DF has pre-existing duplicate flags, and some unparseable fields that will trigger "invalid" flags
         df = pd.DataFrame([
             {
                 "symbol": "TEST",
                 "sector": "Banking",
-                "pe_ratio": None,  # triggers pe_ratio_invalid
+                "pe_ratio": "unparseable_string",  # triggers pe_ratio_invalid
                 "score": 80,
                 "data_quality_flags": "pe_ratio_invalid,mock_history,pe_ratio_invalid",
             }
@@ -358,8 +358,8 @@ class TestSectorCacheBehavior:
         result = validate_dataframe(df)
         flags = result.loc[0, "data_quality_flags"]
 
-        # Ensure order is preserved and duplicates are cleaned up
-        assert flags == "pe_ratio_invalid,mock_history"
+        # Ensure duplicates are cleaned up and flags are re-evaluated
+        assert flags == "mock_history,pe_ratio_invalid"
 
     def test_calculate_institutional_score_sector_aware(self):
         """Verify that calculate_institutional_score validates inputs using the sector."""

@@ -271,6 +271,22 @@ def _deduplicate_flags(flags_str: str) -> str:
     return ",".join(ordered)
 
 
+def _clean_managed_flags(flags_str: str) -> str:
+    """Remove any flags managed by the DQ gates from the comma-separated string, preserving order and uniqueness."""
+    if not flags_str or flags_str == "nan":
+        return ""
+    managed_suffixes = ("_invalid", "_unparseable", "_non_finite", "_auto_scaled", "_clamped_low", "_clamped_high")
+    seen = set()
+    ordered = []
+    for p in str(flags_str).split(","):
+        p_clean = p.strip()
+        if p_clean and p_clean not in seen:
+            if not p_clean.endswith(managed_suffixes):
+                seen.add(p_clean)
+                ordered.append(p_clean)
+    return ",".join(ordered)
+
+
 def _append_flag(existing_flags: str, new_flag: str) -> str:
     """Append a flag to a comma-separated list of flags without introducing duplicates."""
     if existing_flags is None:
@@ -312,7 +328,7 @@ def validate_dataframe(df):
     if "data_quality_flags" not in df.columns:
         df["data_quality_flags"] = ""
     else:
-        df["data_quality_flags"] = df["data_quality_flags"].fillna("").astype(str).apply(_deduplicate_flags)
+        df["data_quality_flags"] = df["data_quality_flags"].fillna("").astype(str).apply(_clean_managed_flags)
 
     has_sector = "sector" in df.columns and bool(_sector_limits_cache)
 
@@ -321,16 +337,20 @@ def validate_dataframe(df):
         if col not in df.columns:
             continue
 
+        originally_nan = df[col].isna()
         # Ensure numeric and handle unparseable/non_finite
         df[col] = pd.to_numeric(df[col], errors="coerce")
-        mask_nan = df[col].isna()
         # Non-finite values will also be NaN after coerce + replace
         df[col] = df[col].replace([np.inf, -np.inf], np.nan)
         mask_nan = df[col].isna()
         penalties[mask_nan] += 1
-        df.loc[mask_nan, "data_quality_flags"] = df.loc[mask_nan, "data_quality_flags"].apply(
-            lambda x, col=col: _append_flag(x, f"{col}_invalid")
-        )
+
+        # Only flag unparseable values (values that were NOT originally NaN, but became NaN)
+        mask_unparseable = mask_nan & ~originally_nan
+        if mask_unparseable.any():
+            df.loc[mask_unparseable, "data_quality_flags"] = df.loc[mask_unparseable, "data_quality_flags"].apply(
+                lambda x, col=col: _append_flag(x, f"{col}_invalid")
+            )
 
         if has_sector:
             # Sector-aware path: apply per-sector limits
