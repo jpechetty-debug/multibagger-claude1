@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Newmultibagger-main
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install ruff==0.7.4
+      - run: ruff check .
+      - run: ruff format --check .
+
+  type-check:
+    name: Type Check (mypy)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Newmultibagger-main
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt mypy==1.13.0 types-requests types-PyYAML
+      - run: mypy --config-file pyproject.toml
+
+  test:
+    name: Tests (pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Newmultibagger-main
+    env:
+      ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
+      DATABASE_URL: "sqlite:///test_stocks.db"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: Run unit tests (exclude live/integration)
+        run: pytest -m "not live and not integration" --cov-report=xml --cov-report=term-missing -q
+      - uses: codecov/codecov-action@v4
+        with:
+          files: Newmultibagger-main/coverage.xml
+        continue-on-error: true
+
+  frontend:
+    name: Frontend (build + test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Newmultibagger-main/web-ui
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: Newmultibagger-main/web-ui/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: Run frontend tests
+        run: npm test -- --passWithNoTests
+
+  syntax-check:
+    name: Syntax Gate (no BOM / parse errors)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Check all Python files parse cleanly
+        run: |
+          python - << 'PYEOF'
+          import ast, os, sys
+          errors = []
+          for root, dirs, files in os.walk("Newmultibagger-main"):
+              dirs[:] = [d for d in dirs if d not in [".agent", "__pycache__", "node_modules"]]
+              for fn in files:
+                  if not fn.endswith(".py"):
+                      continue
+                  path = os.path.join(root, fn)
+                  raw = open(path, "rb").read()
+                  if raw.startswith(b"\xef\xbb\xbf"):
+                      errors.append(f"BOM detected: {path}")
+                      continue
+                  try:
+                      ast.parse(raw.decode("utf-8"))
+                  except SyntaxError as e:
+                      errors.append(f"SyntaxError in {path}: {e}")
+          if errors:
+              print("\n".join(errors))
+              sys.exit(1)
+          print(f"All Python files OK.")
+          PYEOF

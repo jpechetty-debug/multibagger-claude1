@@ -39,6 +39,8 @@ import types as _types
 
 _curl_stub = _types.ModuleType("curl_cffi")
 _curl_requests_stub = _types.ModuleType("curl_cffi.requests")
+_curl_requests_stub.Response = type("Response", (), {})
+_curl_requests_stub.RequestException = Exception
 _curl_stub.requests = _curl_requests_stub  # type: ignore[attr-defined]
 sys.modules.setdefault("curl_cffi", _curl_stub)
 sys.modules.setdefault("curl_cffi.requests", _curl_requests_stub)

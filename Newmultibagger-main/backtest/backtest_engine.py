@@ -16,6 +16,8 @@ from config import (
     TC_EXCHANGE,
     TC_SEBI_FEE,
     TC_STAMP_BUY,
+    TC_BROKERAGE_PER_SIDE,
+    TC_GST_RATE,
     TC_IMPACT_ALPHA,
     TC_ADV_FRAC_LARGE,
     TC_ADV_FRAC_MID,
@@ -207,8 +209,8 @@ def compute_round_trip_cost(
     """Compute the full round-trip transaction cost for an Indian equity trade.
 
     Components (2025 rates, all expressed as fraction of trade value):
-        Buy  side: stamp duty + exchange charge + SEBI fee
-        Sell side: STT + exchange charge + SEBI fee
+        Buy  side: brokerage + GST on brokerage + stamp duty + exchange + SEBI
+        Sell side: brokerage + GST on brokerage + STT + exchange + SEBI
         Both sides: market impact (if adv_30d provided or inferred from cap)
 
     Args:
@@ -225,8 +227,21 @@ def compute_round_trip_cost(
     cap = str(cap_category).lower()
 
     # Base charges — direction-asymmetric
-    buy_side  = TC_STAMP_BUY + TC_EXCHANGE + TC_SEBI_FEE   # stamp on buy, exchange+SEBI both sides
-    sell_side = TC_STT_SELL  + TC_EXCHANGE + TC_SEBI_FEE   # STT on sell, exchange+SEBI both sides
+    brokerage_gst = TC_BROKERAGE_PER_SIDE * TC_GST_RATE
+    buy_side = (
+        TC_BROKERAGE_PER_SIDE
+        + brokerage_gst
+        + TC_STAMP_BUY
+        + TC_EXCHANGE
+        + TC_SEBI_FEE
+    )
+    sell_side = (
+        TC_BROKERAGE_PER_SIDE
+        + brokerage_gst
+        + TC_STT_SELL
+        + TC_EXCHANGE
+        + TC_SEBI_FEE
+    )
     base_cost = buy_side + sell_side
 
     # Market impact — infer ADV from cap category when not provided
@@ -264,6 +279,8 @@ def cost_breakdown(cap_category: str = "Mid") -> dict[str, float]:
     )
     impact_one_way = TC_IMPACT_ALPHA / (adv_frac ** 0.5)
     return {
+        "brokerage_per_side": TC_BROKERAGE_PER_SIDE,
+        "gst_on_brokerage_per_side": TC_BROKERAGE_PER_SIDE * TC_GST_RATE,
         "stt_sell":          TC_STT_SELL,
         "exchange_per_side": TC_EXCHANGE,
         "sebi_fee_per_side": TC_SEBI_FEE,

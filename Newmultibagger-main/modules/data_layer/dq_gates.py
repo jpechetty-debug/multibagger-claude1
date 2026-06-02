@@ -67,6 +67,46 @@ _sector_limits_cache: dict[str, dict[str, MetricLimit]] = {}
 _cache_loaded: bool = False
 
 
+def _normalise_sector_key(sector: str | None) -> str:
+    """Collapse provider-specific sector labels to seeded DQ sector keys."""
+    if not sector:
+        return ""
+    text = str(sector).strip()
+    lowered = text.lower()
+
+    if "bank" in lowered:
+        return "Banking"
+    if "nbfc" in lowered or "finance" in lowered or "financial" in lowered:
+        return "NBFC"
+    if "information technology" in lowered or "it service" in lowered or lowered == "it":
+        return "IT"
+    if "fmcg" in lowered or "fast moving" in lowered or "consumer goods" in lowered:
+        return "FMCG"
+    if "pharma" in lowered or "health" in lowered or "drug" in lowered:
+        return "Pharma"
+    if "metal" in lowered or "steel" in lowered or "mining" in lowered:
+        return "Metals"
+    if "energy" in lowered or "power" in lowered or "utilities" in lowered or "o2c" in lowered:
+        return "Energy"
+    if "auto" in lowered or "automobile" in lowered:
+        return "Auto"
+    if "real" in lowered:
+        return "Realty"
+    if "chemical" in lowered:
+        return "Chemicals"
+    if "infra" in lowered or "construction" in lowered:
+        return "Infra"
+    if "aviation" in lowered or "airline" in lowered:
+        return "Aviation"
+    if "telecom" in lowered or "communication" in lowered:
+        return "Telecom"
+    if "cement" in lowered:
+        return "Cement"
+    if "textile" in lowered or "apparel" in lowered:
+        return "Textiles"
+    return text
+
+
 def load_sector_limits() -> None:
     """Load sector-specific limits from the dq_sector_limits DB table.
 
@@ -94,9 +134,10 @@ def load_sector_limits() -> None:
             ).fetchall()
 
             for sector, metric, min_val, max_val, auto_scale in rows:
-                if sector not in _sector_limits_cache:
-                    _sector_limits_cache[sector] = {}
-                _sector_limits_cache[sector][metric] = MetricLimit(
+                sector_key = _normalise_sector_key(sector)
+                if sector_key not in _sector_limits_cache:
+                    _sector_limits_cache[sector_key] = {}
+                _sector_limits_cache[sector_key][metric] = MetricLimit(
                     column=metric,
                     min_val=float(min_val),
                     max_val=float(max_val),
@@ -119,8 +160,9 @@ def load_sector_limits() -> None:
 
 def _get_limit_for(column: str, sector: str | None = None) -> MetricLimit | None:
     """Return the MetricLimit for a column, using sector override if available."""
-    if sector and sector in _sector_limits_cache:
-        sector_overrides = _sector_limits_cache[sector]
+    sector_key = _normalise_sector_key(sector)
+    if sector_key and sector_key in _sector_limits_cache:
+        sector_overrides = _sector_limits_cache[sector_key]
         if column in sector_overrides:
             return sector_overrides[column]
     return _DEFAULT_LIMITS_MAP.get(column)

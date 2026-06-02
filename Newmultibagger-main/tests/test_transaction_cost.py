@@ -83,8 +83,21 @@ class TestComputeRoundTripCost:
         import config
         # Manually compute expected value
         adv_frac = config.TC_ADV_FRAC_LARGE
-        buy  = config.TC_STAMP_BUY + config.TC_EXCHANGE + config.TC_SEBI_FEE
-        sell = config.TC_STT_SELL  + config.TC_EXCHANGE + config.TC_SEBI_FEE
+        gst = config.TC_BROKERAGE_PER_SIDE * config.TC_GST_RATE
+        buy = (
+            config.TC_BROKERAGE_PER_SIDE
+            + gst
+            + config.TC_STAMP_BUY
+            + config.TC_EXCHANGE
+            + config.TC_SEBI_FEE
+        )
+        sell = (
+            config.TC_BROKERAGE_PER_SIDE
+            + gst
+            + config.TC_STT_SELL
+            + config.TC_EXCHANGE
+            + config.TC_SEBI_FEE
+        )
         impact = config.TC_IMPACT_ALPHA / (adv_frac ** 0.5)
         expected = buy + sell + 2 * impact
 
@@ -95,8 +108,21 @@ class TestComputeRoundTripCost:
         mod = _load_engine(monkeypatch)
         import config
         adv_frac = config.TC_ADV_FRAC_MID
-        buy  = config.TC_STAMP_BUY + config.TC_EXCHANGE + config.TC_SEBI_FEE
-        sell = config.TC_STT_SELL  + config.TC_EXCHANGE + config.TC_SEBI_FEE
+        gst = config.TC_BROKERAGE_PER_SIDE * config.TC_GST_RATE
+        buy = (
+            config.TC_BROKERAGE_PER_SIDE
+            + gst
+            + config.TC_STAMP_BUY
+            + config.TC_EXCHANGE
+            + config.TC_SEBI_FEE
+        )
+        sell = (
+            config.TC_BROKERAGE_PER_SIDE
+            + gst
+            + config.TC_STT_SELL
+            + config.TC_EXCHANGE
+            + config.TC_SEBI_FEE
+        )
         impact = config.TC_IMPACT_ALPHA / (adv_frac ** 0.5)
         expected = buy + sell + 2 * impact
 
@@ -107,8 +133,21 @@ class TestComputeRoundTripCost:
         mod = _load_engine(monkeypatch)
         import config
         adv_frac = config.TC_ADV_FRAC_SMALL
-        buy  = config.TC_STAMP_BUY + config.TC_EXCHANGE + config.TC_SEBI_FEE
-        sell = config.TC_STT_SELL  + config.TC_EXCHANGE + config.TC_SEBI_FEE
+        gst = config.TC_BROKERAGE_PER_SIDE * config.TC_GST_RATE
+        buy = (
+            config.TC_BROKERAGE_PER_SIDE
+            + gst
+            + config.TC_STAMP_BUY
+            + config.TC_EXCHANGE
+            + config.TC_SEBI_FEE
+        )
+        sell = (
+            config.TC_BROKERAGE_PER_SIDE
+            + gst
+            + config.TC_STT_SELL
+            + config.TC_EXCHANGE
+            + config.TC_SEBI_FEE
+        )
         impact = config.TC_IMPACT_ALPHA / (adv_frac ** 0.5)
         expected = buy + sell + 2 * impact
 
@@ -150,9 +189,24 @@ class TestComputeRoundTripCost:
         import config
         # With infinite trade_value → impact should be 0 (guard)
         result = mod.compute_round_trip_cost("Mid", trade_value=float("inf"), adv_30d=1e6)
-        base = (config.TC_STAMP_BUY + config.TC_EXCHANGE + config.TC_SEBI_FEE +
-                config.TC_STT_SELL  + config.TC_EXCHANGE + config.TC_SEBI_FEE)
+        gst = config.TC_BROKERAGE_PER_SIDE * config.TC_GST_RATE
+        base = (
+            config.TC_BROKERAGE_PER_SIDE + gst + config.TC_STAMP_BUY
+            + config.TC_EXCHANGE + config.TC_SEBI_FEE
+            + config.TC_BROKERAGE_PER_SIDE + gst + config.TC_STT_SELL
+            + config.TC_EXCHANGE + config.TC_SEBI_FEE
+        )
         assert result == pytest.approx(base, rel=1e-9)
+
+    def test_market_impact_formula_matches_spec(self, monkeypatch):
+        mod = _load_engine(monkeypatch)
+        import config
+        trade_value = 10_000_000
+        adv = 1_000_000_000
+        result = mod.compute_round_trip_cost("Mid", trade_value=trade_value, adv_30d=adv)
+        base_only = mod.compute_round_trip_cost("Mid", trade_value=float("inf"), adv_30d=adv)
+        expected_impact_round_trip = 2 * config.TC_IMPACT_ALPHA * ((trade_value / adv) ** 0.5)
+        assert result - base_only == pytest.approx(expected_impact_round_trip, rel=1e-9)
 
     def test_case_insensitive_cap_category(self, monkeypatch):
         mod = _load_engine(monkeypatch)
@@ -210,7 +264,8 @@ class Test2025RateBounds:
         import inspect
         src = inspect.getsource(config)
         for var in ["TC_STT_SELL", "TC_EXCHANGE", "TC_SEBI_FEE",
-                    "TC_STAMP_BUY", "TC_IMPACT_ALPHA"]:
+                    "TC_STAMP_BUY", "TC_BROKERAGE_PER_SIDE",
+                    "TC_GST_RATE", "TC_IMPACT_ALPHA"]:
             assert f'os.getenv("{var}"' in src, \
                 f"{var} is not env-overridable in config.py"
 
@@ -226,8 +281,9 @@ class Test2025RateBounds:
 class TestCostBreakdown:
 
     REQUIRED_KEYS = {
-        "stt_sell", "exchange_per_side", "sebi_fee_per_side",
-        "stamp_duty_buy", "impact_per_way", "total_round_trip",
+        "brokerage_per_side", "gst_on_brokerage_per_side", "stt_sell",
+        "exchange_per_side", "sebi_fee_per_side", "stamp_duty_buy",
+        "impact_per_way", "total_round_trip",
     }
 
     def test_all_keys_present(self, monkeypatch):

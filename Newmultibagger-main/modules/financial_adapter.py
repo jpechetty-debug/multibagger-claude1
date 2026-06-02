@@ -10,9 +10,15 @@ be pure math functions that are trivially unit-testable.
 
 from __future__ import annotations
 
+import logging
+import os
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from typing import Any
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -29,6 +35,91 @@ class NormalizedFinancials:
     total_assets_series: dict[str, float] = field(default_factory=dict)
     equity_series: dict[str, float] = field(default_factory=dict)
     data_points: int = 0
+
+
+class FundamentalsProvider(ABC):
+    """Provider boundary for point-in-time fundamentals."""
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Provider name used for routing and audit logs."""
+
+    @abstractmethod
+    async def fetch_fundamentals(self, symbol: str) -> dict[str, Any]:
+        """Return canonical fundamental data for one symbol."""
+
+
+class _AdapterFundamentalsProvider(FundamentalsProvider):
+    """Wrap existing DataProvider implementations behind this module's interface."""
+
+    def __init__(self, provider: Any):
+        self.provider = provider
+
+    @property
+    def name(self) -> str:
+        return str(self.provider.name)
+
+    @property
+    def available(self) -> bool:
+        return bool(getattr(self.provider, "available", True))
+
+    @available.setter
+    def available(self, value: bool) -> None:
+        self.provider.available = value
+
+    @property
+    def fail_streak(self) -> int:
+        return int(getattr(self.provider, "fail_streak", 0))
+
+    @fail_streak.setter
+    def fail_streak(self, value: int) -> None:
+        self.provider.fail_streak = value
+
+    @property
+    def cooldown_until(self) -> float:
+        return float(getattr(self.provider, "cooldown_until", 0.0))
+
+    async def fetch_fundamentals(self, symbol: str) -> dict[str, Any]:
+        return await self.provider.fetch_fundamentals(symbol)
+
+    async def safe_fetch(self, symbol: str) -> dict[str, Any] | None:
+        return await self.provider.safe_fetch(symbol)
+
+
+def create_fundamentals_provider(
+    name: str | None = None,
+    *,
+    executor: Any = None,
+) -> FundamentalsProvider:
+    """Create the primary fundamentals provider.
+
+    Switching providers is intentionally one line:
+    ``FUNDAMENTALS_PROVIDER=screener_in|pnsea|nsepython``.
+    yFinance is intentionally absent here; it remains a price/history fallback.
+    """
+    provider_name = (name or os.getenv("FUNDAMENTALS_PROVIDER", "screener_in")).lower()
+
+    if provider_name == "screener":
+        provider_name = "screener_in"
+
+    if provider_name == "screener_in":
+        from modules.adapters.screener_in import ScreenerInProvider
+
+        return _AdapterFundamentalsProvider(ScreenerInProvider(executor))
+    if provider_name == "pnsea":
+        from modules.adapters.nse import PNSEAProvider
+
+        return _AdapterFundamentalsProvider(PNSEAProvider(executor))
+    if provider_name == "nsepython":
+        from modules.adapters.nse import NSEPythonProvider
+
+        return _AdapterFundamentalsProvider(NSEPythonProvider(executor))
+
+    raise ValueError(
+        "Unknown FUNDAMENTALS_PROVIDER="
+        f"{provider_name!r}; expected screener_in, pnsea, or nsepython"
+    )
 
 
 # ── Fuzzy Key Extraction ──────────────────────────────────────────────────────
@@ -64,16 +155,62 @@ _EQUITY_KEYS = [
     "Shareholders Equity",
 ]
 
+_FIELD_KEY_CANDIDATES = {
+    "revenue": _REVENUE_KEYS,
+    "net_income": _NET_INCOME_KEYS,
+    "shares": _SHARES_KEYS,
+    "total_assets": _TOTAL_ASSETS_KEYS,
+    "equity": _EQUITY_KEYS,
+}
 
-def _extract_series(df: pd.DataFrame, keys: list[str]) -> pd.Series | None:
+_SOURCE_KEY_PREFS = {
+    "screener": {
+        "revenue": "Revenue From Operations",
+        "net_income": "Net Profit",
+    },
+    "screener_in": {
+        "revenue": "Revenue From Operations",
+        "net_income": "Net Profit",
+    },
+    "yfinance": {
+        "revenue": "Total Revenue",
+        "net_income": "Net Income",
+        "shares": "Ordinary Shares Number",
+        "total_assets": "Total Assets",
+        "equity": "Stockholders Equity",
+    },
+}
+
+
+def _extract_series(
+    df: pd.DataFrame,
+    keys: list[str],
+    *,
+    field: str | None = None,
+    source: str = "yfinance",
+) -> pd.Series | None:
     """Extract a time-series row using exact then fuzzy matching."""
     if df is None or df.empty:
         return None
 
-    # Exact match first
-    for key in keys:
-        if key in df.index:
-            return df.loc[key]
+    source = (source or "unknown").lower()
+    preferred = _SOURCE_KEY_PREFS.get(source, {}).get(field or "")
+    exact_hits = [key for key in keys if key in df.index]
+
+    if len(exact_hits) > 1:
+        logger.warning(
+            "financial_key_conflict | field=%s source=%s found=%s using=%s",
+            field or "unknown",
+            source,
+            exact_hits,
+            preferred if preferred in exact_hits else exact_hits[0],
+        )
+
+    if preferred and preferred in df.index:
+        return df.loc[preferred]
+
+    for key in exact_hits:
+        return df.loc[key]
 
     # Fuzzy fallback
     for key in keys:
@@ -104,8 +241,17 @@ def _series_to_dict(series: pd.Series | None) -> dict[str, float]:
     return result
 
 
-def extract_normalized_financials(ticker) -> NormalizedFinancials:
-    """Extract and normalize financial data from a yfinance Ticker.
+def extract_normalized_financials(ticker, *, source: str = "yfinance") -> NormalizedFinancials:
+    """Extract and normalize financial data from a provider ticker-like object.
+
+    **Legacy yFinance path.** This function wraps the yFinance ``Ticker``
+    object shape (``ticker.financials``, ``ticker.balance_sheet`` DataFrames)
+    and is used only by the CAGR engine as a fallback when Screener.in data
+    is unavailable.
+
+    The primary fundamentals flow uses ``create_fundamentals_provider()``
+    which routes to ``ScreenerInProvider`` (or ``PNSEAProvider`` /
+    ``NSEPythonProvider`` via the ``FUNDAMENTALS_PROVIDER`` env var).
 
     This is the single place where fuzzy key matching happens.
     Downstream code receives clean, typed data.
@@ -124,11 +270,21 @@ def extract_normalized_financials(ticker) -> NormalizedFinancials:
     except Exception:
         bs = pd.DataFrame()
 
-    revenue = _series_to_dict(_extract_series(fin, _REVENUE_KEYS))
-    net_income = _series_to_dict(_extract_series(fin, _NET_INCOME_KEYS))
-    shares = _series_to_dict(_extract_series(bs, _SHARES_KEYS))
-    total_assets = _series_to_dict(_extract_series(bs, _TOTAL_ASSETS_KEYS))
-    equity = _series_to_dict(_extract_series(bs, _EQUITY_KEYS))
+    revenue = _series_to_dict(
+        _extract_series(fin, _REVENUE_KEYS, field="revenue", source=source)
+    )
+    net_income = _series_to_dict(
+        _extract_series(fin, _NET_INCOME_KEYS, field="net_income", source=source)
+    )
+    shares = _series_to_dict(
+        _extract_series(bs, _SHARES_KEYS, field="shares", source=source)
+    )
+    total_assets = _series_to_dict(
+        _extract_series(bs, _TOTAL_ASSETS_KEYS, field="total_assets", source=source)
+    )
+    equity = _series_to_dict(
+        _extract_series(bs, _EQUITY_KEYS, field="equity", source=source)
+    )
 
     data_points = max(len(revenue), len(net_income), 0)
 

@@ -20,9 +20,9 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_ex
 
 from modules.adapters.nse import NSEPythonProvider, PNSEAProvider
 from modules.adapters.screener_in import ScreenerInProvider
-from modules.adapters.yfinance import YFinanceProvider
 from modules.data_utils import get_valid_trading_days, run_coroutine_sync
 from modules.db_utils import get_db_connection
+from modules.financial_adapter import create_fundamentals_provider
 from modules.normalization.cleaner import is_payload_skeletal
 
 _sov = SovereignLogger("data_service")
@@ -122,18 +122,38 @@ class DataManager:
         self.yfinance_timeout_seconds = 10
         self.history_timeout_seconds = 6
 
-        self.providers = [
-            PNSEAProvider(self.executor),
-            ScreenerInProvider(self.executor),
-            NSEPythonProvider(self.executor),
-            YFinanceProvider(self.executor),
-        ]
+        self.providers = self._build_fundamental_provider_chain()
 
         self.cache = PersistentCache()
         current_year = datetime.now().year
         self.valid_trading_days = get_valid_trading_days(
             f"{current_year - 10}-01-01", f"{current_year + 2}-12-31"
         )
+
+    def _build_fundamental_provider_chain(self) -> list[Any]:
+        """Build non-yFinance fundamentals providers with env-selectable primary."""
+        primary = create_fundamentals_provider(executor=self.executor)
+        providers: list[Any] = [primary]
+        fallback_factories = (
+            lambda: ScreenerInProvider(self.executor),
+            lambda: PNSEAProvider(self.executor),
+            lambda: NSEPythonProvider(self.executor),
+        )
+        seen = {primary.name}
+        for make_provider in fallback_factories:
+            provider = make_provider()
+            if provider.name not in seen:
+                providers.append(provider)
+                seen.add(provider.name)
+
+        if os.getenv("ENABLE_YFINANCE_FUNDAMENTALS", "false").lower() == "true":
+            from modules.adapters.yfinance import YFinanceProvider
+
+            providers.append(YFinanceProvider(self.executor))
+            logger.warning(
+                "ENABLE_YFINANCE_FUNDAMENTALS=true: yFinance enabled for fundamentals fallback"
+            )
+        return providers
 
     async def __aenter__(self):
         return self
@@ -146,6 +166,50 @@ class DataManager:
             return
         pause_seconds = min(5.0, 0.5 * provider.fail_streak)
         await asyncio.sleep(pause_seconds)
+
+    async def _fetch_yfinance_price_fallback(self, symbol: str) -> float | None:
+        """Use yFinance only for price fallback, not fundamentals."""
+        loop = asyncio.get_running_loop()
+
+        def _read_price() -> float | None:
+            ticker = yf.Ticker(symbol)
+            try:
+                fast = dict(ticker.fast_info) if ticker.fast_info is not None else {}
+            except Exception:
+                fast = {}
+            price = (
+                fast.get("lastPrice")
+                or fast.get("regularMarketPrice")
+                or fast.get("last_price")
+            )
+            if price is None:
+                try:
+                    info = ticker.info if isinstance(ticker.info, dict) else {}
+                    price = info.get("currentPrice") or info.get("regularMarketPrice")
+                except Exception:
+                    price = None
+            try:
+                price_val = float(price)
+            except (TypeError, ValueError):
+                return None
+            return price_val if price_val > 0 else None
+
+        try:
+            return await asyncio.wait_for(
+                loop.run_in_executor(self.executor, _read_price),
+                timeout=self.provider_timeout_seconds,
+            )
+        except Exception as exc:
+            logger.debug("yfinance price fallback failed for %s: %s", symbol, exc)
+            return None
+
+    async def _enrich_price_if_missing(self, symbol: str, data: dict[str, Any]) -> None:
+        if data.get("Price") or data.get("price"):
+            return
+        price = await self._fetch_yfinance_price_fallback(symbol)
+        if price is not None:
+            data["Price"] = price
+            data["price_source"] = "yfinance_price_fallback"
 
     @retry(
         stop=stop_after_attempt(3),
@@ -185,11 +249,12 @@ class DataManager:
                     )
 
                     if data:
-                        if is_payload_skeletal(data):
+                        if "info" in data and is_payload_skeletal(data):
                             incomplete_payload = data
                             if provider.name != "yfinance":
                                 continue
 
+                        await self._enrich_price_if_missing(symbol, data)
                         data["data_freshness"] = "live"
                         self.cache.set(cache_key, data)
                         return data
@@ -202,6 +267,7 @@ class DataManager:
                     continue
 
             if incomplete_payload:
+                await self._enrich_price_if_missing(symbol, incomplete_payload)
                 incomplete_payload["data_freshness"] = "stale (incomplete fallback)"
                 return incomplete_payload
 
@@ -211,12 +277,14 @@ class DataManager:
                 stale_cached["error"] = "All providers failed, returning stale cache"
                 return cast(dict[str, Any], stale_cached)
 
-            return {
+            fallback_payload = {
                 "symbol": symbol,
                 "error": "All providers failed",
                 "data_freshness": "stale (no cache)",
                 "source": "fallback_failed",
             }
+            await self._enrich_price_if_missing(symbol, fallback_payload)
+            return fallback_payload
 
     def fetch_fundamentals(self, symbol: str) -> dict[str, Any]:
         return cast(dict[str, Any], run_coroutine_sync(self.async_fetch_fundamentals(symbol)))

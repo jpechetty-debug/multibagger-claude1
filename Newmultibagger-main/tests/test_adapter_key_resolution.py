@@ -293,3 +293,57 @@ class TestYFinanceAdapterUnchanged:
         src = inspect.getsource(YFinanceProvider.fetch_fundamentals)
         for key in ["PE_Ratio", "ROE%", "Debt_Equity", "Sales_Growth_5Y%", "source"]:
             assert f'"{key}"' in src, f"YFinanceProvider missing key {key!r} in return dict"
+
+
+class TestFinancialAdapterSourcePrefs:
+
+    def test_screener_revenue_prefers_revenue_from_operations(self, caplog):
+        from unittest.mock import MagicMock
+
+        import pandas as pd
+
+        from modules.financial_adapter import extract_normalized_financials
+
+        ticker = MagicMock()
+        dates = pd.to_datetime(["2023-03-31", "2022-03-31"])
+        ticker.financials = pd.DataFrame(
+            {
+                dates[0]: [100.0, 222.0, 10.0],
+                dates[1]: [90.0, 200.0, 8.0],
+            },
+            index=["Total Revenue", "Revenue From Operations", "Net Profit"],
+        )
+        ticker.balance_sheet = pd.DataFrame()
+
+        with caplog.at_level(logging.WARNING):
+            result = extract_normalized_financials(ticker, source="screener_in")
+
+        assert result.revenue_series["2023"] == 222.0
+        assert "financial_key_conflict" in caplog.text
+
+    def test_yfinance_revenue_prefers_total_revenue(self, caplog):
+        from unittest.mock import MagicMock
+
+        import pandas as pd
+
+        from modules.financial_adapter import extract_normalized_financials
+
+        ticker = MagicMock()
+        dates = pd.to_datetime(["2023-03-31"])
+        ticker.financials = pd.DataFrame(
+            {dates[0]: [100.0, 222.0, 10.0]},
+            index=["Total Revenue", "Revenue From Operations", "Net Income"],
+        )
+        ticker.balance_sheet = pd.DataFrame()
+
+        with caplog.at_level(logging.WARNING):
+            result = extract_normalized_financials(ticker, source="yfinance")
+
+        assert result.revenue_series["2023"] == 100.0
+        assert "financial_key_conflict" in caplog.text
+
+    def test_fundamentals_provider_factory_excludes_yfinance(self):
+        from modules.financial_adapter import create_fundamentals_provider
+
+        provider = create_fundamentals_provider("screener_in", executor=None)
+        assert provider.name == "screener_in"

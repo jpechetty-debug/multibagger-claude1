@@ -12,7 +12,6 @@ from datetime import date
 from typing import Any
 
 from config import MAX_FUNDAMENTAL_AGE_DAYS, STALE_DATA_WARNING_DAYS
-from modules.errors import stale_data_error
 
 from modules.data_utils import safe_float
 from modules.data_layer.dq_gates import validate_record
@@ -50,6 +49,51 @@ def _build_conviction_input(data: _StockData) -> _StockData:
 def _calculate_tiebreak_epsilon(symbol: str) -> float:
     sym_hash = int(hashlib.md5(symbol.encode(), usedforsecurity=False).hexdigest(), 16) % 1000
     return sym_hash / 100000.0
+
+
+def _stale_data_result(data: _StockData, age_days: int) -> dict[str, Any]:
+    symbol = data.get("Symbol") or data.get("symbol") or "UNKNOWN"
+    return {
+        "total_score": 0.0,
+        "raw_score": 0.0,
+        "checklist_score": "0/12",
+        "data_confidence": 0.0,
+        "data_quality_flags": ["stale_data"],
+        "conviction_score": 0.0,
+        "conviction_boost": 0.0,
+        "institutional_interest": False,
+        "super_investors": "",
+        "scoring_strategy": "STALE_DATA",
+        "factor_penalties": [
+            {
+                "name": "STALE_DATA",
+                "value": -100,
+                "age_days": age_days,
+                "max_age_days": MAX_FUNDAMENTAL_AGE_DAYS,
+            }
+        ],
+        "factor_breakdown": {
+            "Fundamentals": 0.0,
+            "Value": 0.0,
+            "Risk": 0.0,
+            "Momentum": 0.0,
+            "News_Sentiment": 0.0,
+            "Smart_Money": 0.0,
+            "Sector": 0.0,
+        },
+        "signal": "STALE_DATA",
+        "status": "STALE_DATA",
+        "error_code": "STALE_DATA",
+        "warning": (
+            f"Data for {symbol} is {age_days} days old; "
+            f"max allowed is {MAX_FUNDAMENTAL_AGE_DAYS} days."
+        ),
+        "stale_data": {
+            "symbol": symbol,
+            "age_days": age_days,
+            "max_age_days": MAX_FUNDAMENTAL_AGE_DAYS,
+        },
+    }
 
 
 def _build_factor_breakdown(
@@ -106,14 +150,20 @@ def calculate_institutional_score(
     if quarter_end and as_of:
         enforce_pit_gate(as_of, quarter_end, symbol=data.get("Symbol", "UNKNOWN"))
 
-    # ── Data freshness hard gate: block scoring if fundamentals are too old ──
+    # ── Data freshness soft gate: penalise stale data instead of blocking ──
     data_quality_flags: list[str] = []
+    _staleness_penalty: float = 0.0
+    _scoring_strategy_override: str | None = None
     if as_of:
         as_of_date = date.fromisoformat(str(as_of))
         age_days = (date.today() - as_of_date).days
         if age_days > MAX_FUNDAMENTAL_AGE_DAYS:
-            raise stale_data_error(data.get("Symbol", "UNKNOWN"), age_days)
-        if age_days > STALE_DATA_WARNING_DAYS:
+            # Soft penalty: -20 base, -1 per additional day, capped at -50
+            extra_days = age_days - MAX_FUNDAMENTAL_AGE_DAYS
+            _staleness_penalty = min(20.0 + extra_days, 50.0)
+            data_quality_flags.append("stale_data")
+            _scoring_strategy_override = "STALE_DATA_DEGRADED"
+        elif age_days > STALE_DATA_WARNING_DAYS:
             data_quality_flags.append("stale_data")
 
     # ── Validate and sanitize row using sector limits (DQ Gates) ──
@@ -214,6 +264,11 @@ def calculate_institutional_score(
         disqualifiers,
     )
 
+    # Apply staleness penalty (soft gate — degrades score instead of zeroing)
+    if _staleness_penalty > 0:
+        base_score -= _staleness_penalty
+        factor_audit.append({"name": "STALE_DATA_PENALTY", "value": -_staleness_penalty})
+
     base_score += _calculate_tiebreak_epsilon(data.get("Symbol", ""))
     final_score = min(base_score, score_ceiling)
 
@@ -235,7 +290,7 @@ def calculate_institutional_score(
         "conviction_boost": conviction["conviction_boost"],
         "institutional_interest": conviction["institutional_interest"],
         "super_investors": ", ".join(conviction["investors"]),
-        "scoring_strategy": scoring_strategy,
+        "scoring_strategy": _scoring_strategy_override or scoring_strategy,
         "factor_penalties": factor_audit,
         "factor_breakdown": _build_factor_breakdown(
             state,

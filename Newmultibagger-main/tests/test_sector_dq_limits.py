@@ -173,6 +173,28 @@ class TestValidateRecordSectorAware:
         assert sanitized["pe_ratio"] == 800.0
         assert not any("pe_ratio" in f for f in flags)
 
+    def test_provider_sector_aliases_hit_seeded_limits(self):
+        """Provider labels are canonicalized before sector-limit lookup."""
+        _inject_sector_cache(_make_multi_sector_cache())
+        from modules.data_layer.dq_gates import validate_record
+
+        it, _ = validate_record(
+            {"symbol": "TCS", "pe_ratio": 150.0},
+            sector="Information Technology",
+        )
+        bank, _ = validate_record(
+            {"symbol": "HDFCBANK", "pe_ratio": 50.0},
+            sector="Banking (PVT)",
+        )
+        metal, _ = validate_record(
+            {"symbol": "TATASTEEL", "pe_ratio": 150.0},
+            sector="Metals & Mining",
+        )
+
+        assert it["pe_ratio"] == 120.0
+        assert bank["pe_ratio"] == 40.0
+        assert metal["pe_ratio"] == 100.0
+
 
 # ── validate_dataframe tests ──────────────────────────────────────────────────
 
