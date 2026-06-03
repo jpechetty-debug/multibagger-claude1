@@ -15,9 +15,87 @@ Usage:
 import csv
 import json
 import os
+from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from pathlib import Path
 from core import search, DATA_DIR
+
+
+# ============ DESIGN SYSTEM REGISTRY ============
+_REGISTRY_FILE = Path(__file__).parent.parent / ".registry.json"
+
+
+@dataclass
+class _RegistryEntry:
+    slug: str
+    generated_at: str
+    category: str
+    master_path: str
+    pages: list[str] = field(default_factory=list)
+
+
+class DesignSystemRegistry:
+    """
+    Lightweight JSON-backed registry of all persisted design systems.
+    Stored at .agent/skills/ui-ux-pro-max/.registry.json.
+    """
+
+    def __init__(self, registry_file: Path = _REGISTRY_FILE) -> None:
+        self._path = registry_file
+        self._data: dict[str, dict] = self._load()
+
+    def _load(self) -> dict[str, dict]:
+        if self._path.exists():
+            try:
+                return json.loads(self._path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                pass
+        return {}
+
+    def _save(self) -> None:
+        try:
+            self._path.write_text(
+                json.dumps(self._data, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+        except OSError:
+            pass  # non-fatal — registry is metadata only
+
+    def record(
+        self,
+        slug: str,
+        category: str,
+        master_path: str,
+        page: str | None = None,
+    ) -> None:
+        """Upsert a project entry; append page path if provided."""
+        now = datetime.now().isoformat(timespec="seconds")
+        if slug not in self._data:
+            self._data[slug] = asdict(
+                _RegistryEntry(
+                    slug=slug,
+                    generated_at=now,
+                    category=category,
+                    master_path=master_path,
+                )
+            )
+        else:
+            self._data[slug]["generated_at"] = now
+            self._data[slug]["master_path"] = master_path
+
+        if page and page not in self._data[slug].get("pages", []):
+            self._data[slug].setdefault("pages", []).append(page)
+
+        self._save()
+
+    def list_projects(self) -> list[dict]:
+        return list(self._data.values())
+
+    def get(self, slug: str) -> dict | None:
+        return self._data.get(slug)
+
+
+_registry = DesignSystemRegistry()
 
 # ============ CONFIGURATION ============
 REASONING_FILE = "ui-reasoning.csv"
@@ -551,7 +629,7 @@ def generate_design_system(query: str, project_name: str = None, output_format: 
         return format_markdown(design_system)
     return format_ascii_box(design_system)
 
-def persist_design_system(design_system: dict, page: str = None, output_dir: str = None, page_query: str = None) -> dict:
+def persist_design_system(design_system: dict, page: str = None, output_dir: str = None, page_query: str = None) -> dict:  # noqa: E501
     """
     Persist design system to design-system/<project>/ folder using Master + Overrides pattern.
 
@@ -583,22 +661,31 @@ def persist_design_system(design_system: dict, page: str = None, output_dir: str
 
     # Generate and write MASTER.md
     master_content = format_master_md(design_system)
-    with open(master_file, 'w', encoding='utf-8') as f:
+    with open(master_file, "w", encoding="utf-8") as f:
         f.write(master_content)
     created_files.append(str(master_file))
+
+    # Update registry
+    _registry.record(
+        slug=project_slug,
+        category=design_system.get("category", "General"),
+        master_path=str(master_file),
+        page=page,
+    )
 
     # If page is specified, create page override file with intelligent content
     if page:
         page_file = pages_dir / f"{page.lower().replace(' ', '-')}.md"
         page_content = format_page_override_md(design_system, page, page_query)
-        with open(page_file, 'w', encoding='utf-8') as f:
+        with open(page_file, "w", encoding="utf-8") as f:
             f.write(page_content)
         created_files.append(str(page_file))
 
     return {
         "status": "success",
         "design_system_dir": str(design_system_dir),
-        "created_files": created_files
+        "created_files": created_files,
+        "registry": _registry.get(project_slug),
     }
 
 

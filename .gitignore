@@ -124,6 +124,7 @@ runtime/
 
 # Agent State
 .gemini/
+.agent/skills/ui-ux-pro-max/.registry.json
 
 # ── Artifacts that must never be committed ────────────────────────────────────
 *.zip
