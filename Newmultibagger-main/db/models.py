@@ -222,3 +222,21 @@ class DqSectorLimit(Base):
     min_val = Column(Float, nullable=False)
     max_val = Column(Float, nullable=False)
     auto_scale_threshold = Column(Float, nullable=True)
+
+
+class HoldoutResult(Base):
+    """Persists holdout evaluation metrics for overfitting detection."""
+
+    __tablename__ = "holdout_results"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    evaluated_at = Column(DateTime, default=_utc_now)
+    holdout_start = Column(String)
+    holdout_end = Column(String)
+    oos_r2 = Column(Float)
+    spearman_ic = Column(Float)
+    hit_rate = Column(Float)
+    holdout_sharpe = Column(Float)
+    wf_sharpe = Column(Float)
+    sharpe_gap = Column(Float)
+    overfitting_flag = Column(Integer, default=0)

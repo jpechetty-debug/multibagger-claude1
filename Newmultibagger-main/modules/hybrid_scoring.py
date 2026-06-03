@@ -19,6 +19,10 @@ warnings.filterwarnings("ignore")
 MODEL_PATH = os.path.join("runtime", "models", "xgboost_meta_model.pkl")
 WALK_FORWARD_REPORT_PATH = os.path.join("runtime", "models", "xgboost_walk_forward.json")
 logger = get_logger("hybrid_scoring")
+
+# Holdout period: locked off, never used for training or walk-forward folds.
+HOLDOUT_START = "2018-01-01"
+HOLDOUT_END = "2020-12-31"
 FEATURES = [
     "score",
     "sales_cagr_5y",
@@ -51,8 +55,20 @@ FEATURE_BOUNDS = {
 }
 
 
+# Guard: _sanitize_features is STATELESS (no fitted scaler). If a
+# StandardScaler/MinMaxScaler is ever added it MUST be fit per-fold.
+_SANITIZE_IS_STATELESS = True
+
+
 def _sanitize_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Coerce features to finite values and clip to safe ranges for XGBoost."""
+    """Coerce features to finite values and clip to safe ranges for XGBoost.
+
+    IMPORTANT — this function is intentionally stateless. It uses only
+    hardcoded FEATURE_BOUNDS, never data-dependent statistics. If you add
+    a fitted scaler here you MUST fit it per walk-forward fold to avoid
+    leaking future data into the training set.
+    """
+    assert _SANITIZE_IS_STATELESS, "_sanitize_features must remain stateless"
     out = df.copy()
     for col in FEATURES:
         if col not in out.columns:
@@ -119,6 +135,12 @@ def walk_forward_validate(
     df["as_of_date"] = pd.to_datetime(df["as_of_date"], errors="coerce")
     df["forward_return"] = pd.to_numeric(df["forward_return"], errors="coerce")
     df = df.dropna(subset=["as_of_date", "forward_return"]).sort_values("as_of_date")
+
+    # ── Exclude holdout period from walk-forward folds ──
+    holdout_mask = df["as_of_date"].between(HOLDOUT_START, HOLDOUT_END)
+    holdout_df = df[holdout_mask].copy()
+    df = df[~holdout_mask]
+
     if len(df) < min_train_rows:
         return {"status": "SKIPPED", "reason": "not enough valid rows"}
 
@@ -146,11 +168,18 @@ def walk_forward_validate(
         fold_predictions["prediction"] = model.predict(X_test)
         fold_predictions["test_period"] = str(test_period)
         predictions.append(fold_predictions)
+
+        # ── Per-fold IC ──
+        fold_true = pd.to_numeric(fold_predictions["forward_return"], errors="coerce")
+        fold_pred = pd.to_numeric(fold_predictions["prediction"], errors="coerce")
+        fold_ic = fold_true.corr(fold_pred, method="spearman") if len(fold_true) > 1 else np.nan
+
         windows.append(
             {
                 "test_period": str(test_period),
                 "train_rows": int(len(train_fold)),
                 "test_rows": int(len(test_fold)),
+                "fold_ic": _finite_or_none(fold_ic),
             }
         )
 
@@ -182,6 +211,7 @@ def walk_forward_validate(
         "rmse": _finite_or_none(np.sqrt(np.square(residual).mean())),
         "spearman_ic": _finite_or_none(spearman_ic),
         "hit_rate": _finite_or_none(hit_rate),
+        "holdout_rows_excluded": int(len(holdout_df)),
         "windows": windows,
     }
 
@@ -257,7 +287,35 @@ def train_hybrid_model():
         print("Too many invalid rows; not enough training data after cleanup.")
         return False
 
-    validation = walk_forward_validate(train_df)
+    # ── Feature leakage audit ──
+    try:
+        from modules.feature_leakage_audit import audit_features
+
+        leakage_report = audit_features(train_df)
+        if leakage_report.has_leaks:
+            for v in leakage_report.verdicts:
+                if v.classification == "LEAKING":
+                    logger.warning("Feature leakage detected", feature=v.feature,
+                                   spearman_r=v.spearman_r, reason=v.reason)
+        logger.info("Feature leakage audit complete",
+                     leaking=leakage_report.leaking_count,
+                     review=leakage_report.review_count)
+    except Exception as exc:
+        logger.warning("Feature leakage audit failed", error=str(exc))
+
+    # ── Holdout split ──
+    try:
+        from modules.holdout import compare_performance, evaluate_holdout, split_holdout
+
+        train_only, holdout_only = split_holdout(train_df)
+        logger.info("Holdout split", train_rows=len(train_only),
+                     holdout_rows=len(holdout_only))
+    except Exception as exc:
+        logger.warning("Holdout split failed, using all data", error=str(exc))
+        train_only = train_df
+        holdout_only = pd.DataFrame()
+
+    validation = walk_forward_validate(train_only)
     _save_walk_forward_report(validation)
     if validation.get("status") == "OK":
         print(
@@ -270,14 +328,30 @@ def train_hybrid_model():
     else:
         print(f"Walk-forward validation skipped: {validation.get('reason')}")
 
-    X = train_df[FEATURES]
-    y = train_df["forward_return"]
+    # Train on non-holdout data only
+    X = _sanitize_features(train_only[FEATURES])
+    y = train_only["forward_return"]
 
     # 3. Train XGBoost Regressor.
     model = _make_xgb_regressor()
 
     print("Training XGBoost regressor on historical factor signatures...")
     model.fit(X, y)
+
+    # ── Holdout evaluation ──
+    if not holdout_only.empty:
+        try:
+            holdout_metrics = evaluate_holdout(model, holdout_only)
+            if holdout_metrics.get("status") == "OK":
+                wf_ic = validation.get("spearman_ic", 0.0) or 0.0
+                holdout_ic = holdout_metrics.get("spearman_ic", 0.0) or 0.0
+                overfit = compare_performance(float(wf_ic), float(holdout_ic))
+                if overfit["overfitting_detected"]:
+                    logger.warning("OVERFITTING detected",
+                                   sharpe_gap=overfit["sharpe_gap"])
+                logger.info("Holdout evaluation", **holdout_metrics)
+        except Exception as exc:
+            logger.warning("Holdout evaluation failed", error=str(exc))
 
     r2 = model.score(X, y)
     print(f"Training complete. Final in-sample fit R2: {r2:.2f}")
