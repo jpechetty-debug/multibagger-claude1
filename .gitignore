@@ -163,7 +163,11 @@ numba_cache/
 graphify-out/cache/
 
 # ── Outer Repo Root Hygiene ──
-*.txt
+audit_results.txt
+checklist*.txt
+main_py_locations.txt
+seo_out*.txt
+ux_out*.txt
 graphify-out/
 *.html
 *.db

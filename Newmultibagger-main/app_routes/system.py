@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import sys
+from pathlib import Path
 
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
@@ -20,6 +21,7 @@ api_logger = SovereignLogger("sovereign.api")
 
 router = APIRouter()
 _price_refresh_task: asyncio.Task | None = None
+_SIGNALS_FILE = Path(__file__).resolve().parent.parent / "paper_trade_signals.json"
 
 
 @router.websocket("/ws/signals")
@@ -29,8 +31,8 @@ async def websocket_signals(websocket: WebSocket):
     try:
         while True:
             # Broadcast the latest paper trade signals from disk cache.
-            if os.path.exists("paper_trade_signals.json"):
-                with open("paper_trade_signals.json") as f:
+            if _SIGNALS_FILE.exists():
+                with open(_SIGNALS_FILE, encoding="utf-8") as f:
                     signals = json.load(f)
                 await websocket.send_json(signals)
             await asyncio.sleep(5)

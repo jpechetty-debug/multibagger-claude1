@@ -312,7 +312,7 @@ def run_backtest(years=3, universe_size=50, stress_mode=False, rebal_freq="MS"):
     table.add_row("Information Ratio", f"{m['IR']:.2f}")
     table.add_row("Annual Alpha", f"{m['Alpha']:+.2f}%")
     console.print(table)
-    with open("qarp_backtest_report.md", "w", encoding="utf-8") as f:
+    with open("qarp_backtest_report.md", "w", encoding="utf-8", newline="\n") as f:
         f.write(
             f"# QARP {'STRESS TEST ' if stress_mode else 'Institutional Validation'} Report (v5.0) [DATA LIMITED — NOT REPRESENTATIVE]\n\n"
         )
