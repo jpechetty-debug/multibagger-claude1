@@ -86,9 +86,9 @@ def audit_features(
                 classification = "LEAKING"
                 reason = f"|r|={abs(r):.3f} > {SPEARMAN_LEAK_THRESHOLD}, no documented lag"
                 report.leaking_count += 1
-        elif feat in _MOMENTUM_FEATURES:
+        elif feat in _MOMENTUM_FEATURES and abs(r) > 0.15:
             classification = "NEEDS_REVIEW"
-            reason = "momentum feature — verify price date <= as_of_date"
+            reason = f"momentum feature with significant correlation: |r|={abs(r):.3f} > 0.15 — verify price date <= as_of_date"
             report.review_count += 1
         else:
             classification = "SAFE"

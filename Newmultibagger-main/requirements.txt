@@ -33,6 +33,7 @@ alembic>=1.13.0
 # ── Task queue / cache ────────────────────────────────────────────────────────
 redis==5.2.0
 celery[redis]==5.4.0
+# upstash-redis>=1.0.0  # Optional: Upstash Redis REST client (if using REST Pub/Sub/caching)
 
 # ── HTTP ──────────────────────────────────────────────────────────────────────
 requests==2.32.3

@@ -75,3 +75,21 @@ def test_compare_performance_flags_overfitting():
 def test_compare_performance_passes():
     result = compare_performance(wf_sharpe=0.8, holdout_sharpe=0.7)
     assert result["overfitting_detected"] is False
+
+
+def test_evaluate_holdout_custom_periods():
+    df = _make_pit_df(start="2018-01-01", periods=8, n_symbols=5)
+    # Mock model to make predictions different from zero
+    class MockPredictor:
+        def predict(self, X):
+            return np.arange(len(X)) * 0.01
+
+    model = MockPredictor()
+    metrics_4 = evaluate_holdout(model, df, periods_per_year=4)
+    metrics_12 = evaluate_holdout(model, df, periods_per_year=12)
+    assert metrics_4["status"] == "OK"
+    assert metrics_12["status"] == "OK"
+    assert metrics_4["holdout_sharpe"] != metrics_12["holdout_sharpe"]
+    # Ratio should scale by sqrt(12) / sqrt(4) = sqrt(3)
+    ratio = metrics_12["holdout_sharpe"] / metrics_4["holdout_sharpe"]
+    assert ratio == pytest.approx(np.sqrt(3), abs=0.01)

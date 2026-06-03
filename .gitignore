@@ -161,3 +161,10 @@ numba_cache/
 
 # Graphify Cache
 graphify-out/cache/
+
+# ── Outer Repo Root Hygiene ──
+*.txt
+graphify-out/
+*.html
+*.db
+*.log

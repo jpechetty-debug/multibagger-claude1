@@ -1,25 +1,30 @@
-# QARP Institutional Validation Report (v4.2 - Regime-Aware)
+# QARP Institutional Validation Report (v5.0)
 
-- Backtest Period: 2023-04-03 to 2026-04-02
+- Backtest Period: 2023-06-04 to 2026-06-03
+- Rebalance Frequency: 3MS
+- Mode: Normal (Institutional/Conservative)
 - Regime Detection: Gaussian HMM (Bullish/Volatile/Bearish)
-- Position Sizing: Dynamic Exposure (Bull=100%, Vol=50%, Bear=10%)
+- Exposure Tuning (Normal/Stress): Bear=0.1/0.4, Volatile=0.3/0.6
+- Execution Lag: None (Day-Of)
 - Slippage Modeling: Tiered (0.2% - 2.0%)
 - Transaction Costs: 0.2% per round-trip
 
 ## Performance Metrics
 | Metric | Result |
 | :--- | :--- |
-| CAGR | 3.16% |
-| Sharpe | 1.28 |
-| MaxDD | -1.01% |
-| Alpha | +5.09% |
-| IR | 0.61 |
+| CAGR | -10.00% |
+| Sharpe | -0.42 |
+| MaxDD | -25.17% |
+| Alpha | -10.19% |
+| IR | -0.62 |
 
 ## Equity Curve Breakdown
-| date       | regime   |   exposure |   period_ret |   benchmark_ret | picks                       |
-|:-----------|:---------|-----------:|-------------:|----------------:|:----------------------------|
-| 2025-02-01 | BEARISH  |        0.1 |  -0.00461984 |         3.6285  | IRFC.NS, TCS.NS, POLYCAB.NS |
-| 2025-05-01 | BULLISH  |        1   |   1.49188    |         0.89807 | IRFC.NS                     |
-| 2025-08-01 | BEARISH  |        0.1 |   2.56694    |         4.70887 | POLYCAB.NS                  |
-| 2025-11-01 | BULLISH  |        1   |   0.897751   |        -1.71833 | IRFC.NS, TCS.NS             |
-| 2026-02-01 | BEARISH  |        0.1 |  -1.01431    |        -9.3069  | IRFC.NS, TCS.NS             |
+| date       | regime   |   exposure |   portfolio_value |   period_ret |   benchmark_ret | picks      |
+|:-----------|:---------|-----------:|------------------:|-------------:|----------------:|:-----------|
+| 2025-04-01 | BEARISH  |        0.1 |          101.125  |      1.125   |        10.257   |            |
+| 2025-07-01 | BULLISH  |        1   |          109.229  |      8.01407 |        -2.76214 | POLYCAB.NS |
+| 2025-10-01 | BEARISH  |        0.1 |          111.663  |      2.22816 |         5.27554 | TCS.NS     |
+| 2026-01-01 | BULLISH  |        1   |           83.5566 |    -25.1708  |       -13.2605  | TCS.NS     |
+| 2026-04-01 | BEARISH  |        0.1 |           87.6628 |      4.91423 |         2.39094 | POLYCAB.NS |
+
+*Note: yfinance free API limits historical quarterly statement downloads to the most recent 4-5 quarters. Rebalance periods prior to this window were skipped during the backtest because fundamental metrics (like Piotroski F-Score) could not be calculated dynamically without look-ahead bias.*

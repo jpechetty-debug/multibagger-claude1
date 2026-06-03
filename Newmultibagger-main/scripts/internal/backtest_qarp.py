@@ -181,6 +181,7 @@ def run_backtest(years=3, universe_size=50, stress_mode=False, rebal_freq="MS"):
                     f["total_score"] = score_res["total_score"]
                     universe_metrics.append(f)
             if not universe_metrics:
+                console.print(f"[yellow]Warning: Skipping rebalance date {reb_date.date()} - no fundamental data returned by yfinance[/yellow]")
                 progress.advance(main_task)
                 continue
             df_snapshot = pd.DataFrame(universe_metrics)
@@ -337,9 +338,10 @@ def run_backtest(years=3, universe_size=50, stress_mode=False, rebal_freq="MS"):
         f.write("## Equity Curve Breakdown\n")
         f.write(
             df_results[
-                ["date", "regime", "exposure", "period_ret", "benchmark_ret", "picks"]
+                ["date", "regime", "exposure", "portfolio_value", "period_ret", "benchmark_ret", "picks"]
             ].to_markdown(index=False)
         )
+        f.write("\n\n*Note: yfinance free API limits historical quarterly statement downloads to the most recent 4-5 quarters. Rebalance periods prior to this window were skipped during the backtest because fundamental metrics (like Piotroski F-Score) could not be calculated dynamically without look-ahead bias.*")
 
 
 if __name__ == "__main__":

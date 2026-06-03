@@ -40,6 +40,23 @@ async def websocket_signals(websocket: WebSocket):
         api_logger.error("Signal websocket error", error=str(e))
 
 
+@router.websocket("/ws/prices")
+async def websocket_prices(websocket: WebSocket):
+    """Real-time price feed broadcast via websocket (Multi-worker safe)."""
+    from modules.dependencies import manager
+    await manager.connect(websocket)
+    try:
+        while True:
+            # Keep client connection open. Messages are broadcast asynchronously.
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        api_logger.info("Price websocket client disconnected")
+    except Exception as e:
+        api_logger.error("Price websocket error", error=str(e))
+    finally:
+        manager.disconnect(websocket)
+
+
 @router.post("/api/scan")
 @limiter.limit("2/minute")
 async def run_scan(request: Request):

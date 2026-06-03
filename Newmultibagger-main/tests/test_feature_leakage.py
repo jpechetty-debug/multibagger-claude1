@@ -78,3 +78,15 @@ def test_validate_momentum_returns_catches_mismatch():
     issues = validate_momentum_returns(df, tolerance=0.01)
     assert len(issues) > 0
     assert issues[0]["symbol"] == "AAA.NS"
+
+
+def test_momentum_low_correlation_safe():
+    df = _make_df()  # correlation is low (< 0.15) by construction
+    # Force all momentum features to 0.0 to guarantee zero correlation
+    for f in ["ret_1m", "ret_3m", "ret_6m", "vol_breakout", "dist_from_52w_high"]:
+        df[f] = 0.0
+    report = audit_features(df)
+    verdicts_by_name = {v.feature: v for v in report.verdicts}
+    assert verdicts_by_name["ret_1m"].classification == "SAFE"
+    assert verdicts_by_name["ret_3m"].classification == "SAFE"
+    assert report.review_count == 0

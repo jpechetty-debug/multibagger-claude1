@@ -16,7 +16,11 @@ def test_live_fetch():
     else:
         info = data.get("info", {})
         print(f"Success! Name: {info.get('longName')}, Price: {info.get('currentPrice')}")
-        print(f"Financials shape: {data.get('financials').shape}")
+        financials = data.get("financials")
+        if financials is not None:
+            print(f"Financials shape: {financials.shape}")
+        else:
+            print("Financials: None")
 
     print("\nFetching quarterly results...")
     timeline = data_manager.fetch_quarterly_results(symbol)

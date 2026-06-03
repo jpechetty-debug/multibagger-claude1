@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 import vectorbt as vbt
 import yfinance as yf
-import sqlite3
 import os
 
 from backtest.survivorship_adjusted_loader import SurvivorshipAdjustedLoader
@@ -512,15 +511,16 @@ class VectorBTEngine:
             feature_cols = _walk_forward_feature_columns()
             columns = ["symbol", "as_of_date", *feature_cols]
             try:
-                conn = sqlite3.connect(self.db_path)
-                conn.execute("PRAGMA journal_mode=WAL")
-                conn.execute("PRAGMA busy_timeout=5000")
+                from db.db_core import get_db_connection
+                from sqlalchemy import text
+                seq_placeholders = ", ".join([f":s{idx}" for idx in range(len(clean_symbols))])
                 query = "SELECT {cols} FROM fundamentals_pit WHERE symbol IN ({seq})".format(
                     cols=", ".join(columns),
-                    seq=",".join(["?"] * len(clean_symbols)),
+                    seq=seq_placeholders,
                 )
-                pit_df = pd.read_sql_query(query, conn, params=clean_symbols)
-                conn.close()
+                params = {f"s{idx}": s for idx, s in enumerate(clean_symbols)}
+                with get_db_connection() as conn:
+                    pit_df = pd.read_sql_query(text(query), conn, params=params)
             except Exception as e:
                 print(f"[VectorBT] Error reading PIT features: {e}")
                 return {"status": f"DB_ERROR: {str(e)}", "folds": 0}
@@ -751,13 +751,15 @@ class VectorBTEngine:
 
             # 1. Fetch historical PIT scores from DB
             try:
-                conn = sqlite3.connect(self.db_path)
-                conn.execute("PRAGMA journal_mode=WAL")
-                conn.execute("PRAGMA busy_timeout=5000")
+                from db.db_core import get_db_connection
+                from sqlalchemy import text
+                seq_placeholders = ", ".join([f":s{idx}" for idx in range(len(clean_symbols))])
                 query = "SELECT symbol, as_of_date, score FROM fundamentals_pit WHERE symbol IN ({seq})".format(
-                    seq=','.join(['?']*len(clean_symbols)))
-                scores_df = pd.read_sql_query(query, conn, params=clean_symbols)
-                conn.close()
+                    seq=seq_placeholders
+                )
+                params = {f"s{idx}": s for idx, s in enumerate(clean_symbols)}
+                with get_db_connection() as conn:
+                    scores_df = pd.read_sql_query(text(query), conn, params=params)
             except Exception as e:
                 print(f"[VectorBT] Error reading DB: {e}")
                 scores_df = pd.DataFrame(columns=["symbol", "as_of_date", "score"])

@@ -35,6 +35,7 @@ def evaluate_holdout(
     holdout_df: pd.DataFrame,
     features: list[str] | None = None,
     target_col: str = "forward_return",
+    periods_per_year: int = 4,
 ) -> dict:
     """Run prediction on holdout set and compute OOS metrics."""
     features = features or FEATURES
@@ -65,7 +66,7 @@ def evaluate_holdout(
     top_returns = pd.to_numeric(ranked.head(top_n)[target_col], errors="coerce")
     sharpe = 0.0
     if len(top_returns) > 1 and top_returns.std() > 0:
-        sharpe = float(top_returns.mean() / top_returns.std() * np.sqrt(4))
+        sharpe = float(top_returns.mean() / top_returns.std() * np.sqrt(periods_per_year))
 
     return {
         "status": "OK",
