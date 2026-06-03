@@ -6,7 +6,8 @@ from datetime import datetime
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Request
 
-import modules.dependencies as deps
+from modules.connections import _run_blocking, get_connection
+from modules.dependencies import _read_records
 from modules.drift_monitor import monitor_drift
 from modules.rate_limit import limiter
 from modules.symbol_utils import normalize_symbol
@@ -31,8 +32,8 @@ async def get_liquidity_forensics():
     try:
         if os.path.exists("liquidity.json"):
             return _read_json_file("liquidity.json")
-        return await deps._run_blocking(
-            deps._read_records, "SELECT * FROM liquidity_forensics ORDER BY score DESC"
+        return await _run_blocking(
+            _read_records, "SELECT * FROM liquidity_forensics ORDER BY score DESC"
         )
     except Exception as e:
         return {"error": str(e)}
@@ -44,8 +45,8 @@ async def get_drawdown_recovery():
     try:
         if os.path.exists("recovery.json"):
             return _read_json_file("recovery.json")
-        return await deps._run_blocking(
-            deps._read_records, "SELECT * FROM recovery_plays ORDER BY score DESC"
+        return await _run_blocking(
+            _read_records, "SELECT * FROM recovery_plays ORDER BY score DESC"
         )
     except Exception as e:
         return {"error": str(e)}
@@ -59,8 +60,8 @@ async def get_rejection_logs():
             return _read_rejections_csv("rejected_trades.csv")
         if os.path.exists(os.path.join("logs", "rejected_trades.csv")):
             return _read_rejections_csv(os.path.join("logs", "rejected_trades.csv"), limit=50)
-        return await deps._run_blocking(
-            deps._read_records, "SELECT * FROM trade_rejections ORDER BY timestamp DESC LIMIT 50"
+        return await _run_blocking(
+            _read_records, "SELECT * FROM trade_rejections ORDER BY timestamp DESC LIMIT 50"
         )
     except Exception as e:
         return {"error": str(e)}
@@ -75,8 +76,8 @@ async def get_thesis_breaks():
             if isinstance(payload, dict):
                 return {"status": "success", **payload}
             return {"status": "success", "items": payload}
-        return await deps._run_blocking(
-            deps._read_records,
+        return await _run_blocking(
+            _read_records,
             "SELECT * FROM thesis_breaks ORDER BY severity DESC, detected_at DESC",
         )
     except Exception as e:

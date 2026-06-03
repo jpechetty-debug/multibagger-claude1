@@ -17,14 +17,16 @@ from app_routes.stocks import router as stocks_router
 from app_routes.system import router as system_router
 from app_routes.trading import router as trading_router
 from app_routes.swarm import router as swarm_router
-from modules.dependencies import (
+from modules.connections import (
     _run_sqlite_write_with_retry_sync,
-    app_logger,
-    get_api_key,
     get_connection,
-    runtime_logger,
-    update_prices_background,
 )
+from modules.auth import get_api_key
+from modules.dependencies import update_prices_background
+from modules.structured_logger import SovereignLogger
+
+app_logger = SovereignLogger("sovereign.app")
+runtime_logger = SovereignLogger("sovereign.runtime")
 from modules.rate_limit import RateLimitExceeded, limiter, rate_limit_exceeded_handler
 from modules.runtime_settings import runtime_settings
 from worker.background_jobs import start_weekly_audit_thread
@@ -76,6 +78,22 @@ app.add_middleware(
     allow_headers=["Content-Type", "X-API-Key"],
 )
 
+# Metrics IP Allowlist Middleware
+@app.middleware("http")
+async def metrics_ip_allowlist_middleware(request, call_next):
+    if request.url.path == "/metrics":
+        client_host = request.client.host if request.client else None
+        allowed_ips = {"127.0.0.1", "::1", "localhost"}
+        allowed_env = os.getenv("ALLOWED_METRICS_IPS", "")
+        if allowed_env:
+            allowed_ips.update(ip.strip() for ip in allowed_env.split(",") if ip.strip())
+        
+        if client_host not in allowed_ips:
+            from fastapi.responses import PlainTextResponse
+            return PlainTextResponse("Forbidden", status_code=403)
+            
+    return await call_next(request)
+
 # Prometheus metrics
 try:
     from prometheus_fastapi_instrumentator import Instrumentator
@@ -93,7 +111,9 @@ app.include_router(system_router)
 app.include_router(freshness_router)
 app.include_router(score_report_router)
 app.include_router(swarm_router)
-app.mount("/static", StaticFiles(directory=str(WEB_UI_DIR)), name="static")
+
+static_dir = WEB_UI_DIR / "dist" if (WEB_UI_DIR / "dist").exists() else WEB_UI_DIR
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 if __name__ == "__main__":
     import uvicorn

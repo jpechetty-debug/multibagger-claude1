@@ -7,7 +7,22 @@ import yfinance as yf
 from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import text
 
-import modules.dependencies as deps
+from db.db_core import get_db_connection as get_sqla_connection
+from modules.connections import (
+    _run_blocking,
+    _run_ticker_blocking,
+    get_connection,
+)
+from modules.data_layer.data_utils import _json_safe_clean
+from modules.dependencies import (
+    _read_records,
+    portfolio_tracker,
+    risk_governor,
+)
+from modules.cache import regime_cache
+from modules.structured_logger import SovereignLogger
+
+api_logger = SovereignLogger("sovereign.api")
 from modules.allocation_hrp import HRPAllocator
 from modules.models import OrderRequest
 from modules.rate_limit import limiter
@@ -125,7 +140,7 @@ def _quality_flags(row: pd.Series, *, snapshot_age_days: int | None = None) -> l
 def _load_swing_source_rows() -> pd.DataFrame:
     """Load the screener columns needed to derive tactical swing setups."""
     try:
-        with deps.get_sqla_connection() as conn:
+        with get_sqla_connection() as conn:
             preview = pd.read_sql(text("SELECT * FROM multibaggers LIMIT 0"), conn)
             existing_columns = [
                 column for column in SWING_SOURCE_COLUMNS if column in preview.columns
@@ -136,7 +151,7 @@ def _load_swing_source_rows() -> pd.DataFrame:
             query = f"SELECT {', '.join(existing_columns)} FROM multibaggers"
             return pd.read_sql(text(query), conn)
     except Exception as exc:
-        deps.api_logger.warning("Failed to load swing source rows", error=str(exc))
+        api_logger.warning("Failed to load swing source rows", error=str(exc))
         return pd.DataFrame()
 
 
@@ -330,7 +345,7 @@ def _build_swing_trades(
     candidates.sort(key=lambda item: item.get("_rank", 0), reverse=True)
     for candidate in candidates:
         candidate.pop("_rank", None)
-    return cast(list[dict[Any, Any]], deps._json_safe_clean(candidates[:limit]))
+    return cast(list[dict[Any, Any]], _json_safe_clean(candidates[:limit]))
 
 
 @router.post("/api/order")
@@ -349,14 +364,14 @@ async def place_order(request: Request, order: OrderRequest):
         if side == "BUY":
             # Risk Gates: Kill Switch & VaR
             vix = order.current_vix if order.current_vix is not None else 0.0
-            is_safe, msg = deps.risk_governor.check_kill_switch(
+            is_safe, msg = risk_governor.check_kill_switch(
                 vix, drawdown_rate_weekly=order.drawdown_rate_weekly
             )
             if not is_safe:
-                deps.risk_governor.log_rejected_trade(symbol, msg, order.price)
+                risk_governor.log_rejected_trade(symbol, msg, order.price)
                 return {"status": "rejected", "side": side, "symbol": symbol, "reason": msg}
 
-            var_safe, var_msg = deps.risk_governor.validate_var_budget(
+            var_safe, var_msg = risk_governor.validate_var_budget(
                 order.projected_var_pct, order.max_var_pct
             )
             if not var_safe:
@@ -365,7 +380,7 @@ async def place_order(request: Request, order: OrderRequest):
             # Correlation gate
             adj_qty = order.quantity
             if order.portfolio_correlation is not None:
-                factor = deps.risk_governor.validate_correlation_risk(order.portfolio_correlation)
+                factor = risk_governor.validate_correlation_risk(order.portfolio_correlation)
                 if factor <= 0:
                     return {
                         "status": "rejected",
@@ -375,8 +390,8 @@ async def place_order(request: Request, order: OrderRequest):
                     }
                 adj_qty = max(1, int(round(order.quantity * factor)))
 
-            result = await deps._run_blocking(
-                deps.portfolio_tracker.log_entry, symbol, order.price, order.score, adj_qty
+            result = await _run_blocking(
+                portfolio_tracker.log_entry, symbol, order.price, order.score, adj_qty
             )
 
             # Thesis record
@@ -385,7 +400,7 @@ async def place_order(request: Request, order: OrderRequest):
                     from modules.thesis_monitor import record_buy_thesis
 
                     def _get_snapshot():
-                        conn = deps.get_connection()
+                        conn = get_connection()
                         try:
                             row = pd.read_sql(
                                 "SELECT * FROM multibaggers WHERE symbol = ?",
@@ -396,20 +411,20 @@ async def place_order(request: Request, order: OrderRequest):
                         finally:
                             conn.close()
 
-                    snap = await deps._run_blocking(_get_snapshot)
+                    snap = await _run_blocking(_get_snapshot)
                     if snap:
-                        await deps._run_blocking(
+                        await _run_blocking(
                             record_buy_thesis, symbol, snap, order.score, 0, "SIDEWAYS"
                         )
                 except Exception:
                     pass
         else:
-            result = await deps._run_blocking(
-                deps.portfolio_tracker.log_exit, symbol, order.price, order.reason
+            result = await _run_blocking(
+                portfolio_tracker.log_exit, symbol, order.price, order.reason
             )
 
         if result.get("status") == "rejected":
-            deps.risk_governor.log_rejected_trade(
+            risk_governor.log_rejected_trade(
                 symbol, result.get("reason", "Order rejected"), order.price
             )
 
@@ -429,7 +444,7 @@ async def place_order(request: Request, order: OrderRequest):
 @router.get("/api/trades/open")
 async def get_open_trades():
     try:
-        df = await deps._run_blocking(deps.portfolio_tracker.get_open_positions)
+        df = await _run_blocking(portfolio_tracker.get_open_positions)
         return (
             df.replace([np.inf, -np.inf], np.nan).replace({np.nan: None}).to_dict(orient="records")
             if not df.empty
@@ -442,7 +457,7 @@ async def get_open_trades():
 @router.get("/api/trades/history")
 async def get_trade_history():
     try:
-        df = await deps._run_blocking(deps.portfolio_tracker.get_trade_history)
+        df = await _run_blocking(portfolio_tracker.get_trade_history)
         return (
             df.replace([np.inf, -np.inf], np.nan).replace({np.nan: None}).to_dict(orient="records")
             if not df.empty
@@ -460,7 +475,7 @@ async def get_hrp_allocation(request: Request):
     try:
 
         def _get_symbols():
-            conn = deps.get_connection()
+            conn = get_connection()
             try:
                 return pd.read_sql(
                     "SELECT symbol FROM multibaggers ORDER BY score DESC LIMIT 15", conn
@@ -468,12 +483,12 @@ async def get_hrp_allocation(request: Request):
             finally:
                 conn.close()
 
-        symbols = await deps._run_blocking(_get_symbols)
+        symbols = await _run_blocking(_get_symbols)
         if not symbols:
             raise HTTPException(status_code=404, detail="No stocks found")
 
         data = await run_with_exponential_backoff(
-            lambda: deps._run_ticker_blocking(
+            lambda: _run_ticker_blocking(
                 yf.download, symbols, period="1y", interval="1d", progress=False, auto_adjust=True
             ),
             context="hrp price fetch",
@@ -483,14 +498,14 @@ async def get_hrp_allocation(request: Request):
         prices = data["Close"] if "Close" in data else data.xs("Close", axis=1, level=0)
         returns = prices.pct_change().dropna(how="all").fillna(0)
         # Black Zone Gate: Halt allocation if market is in total kill-switch mode
-        zone, cap = deps.risk_governor.get_regime_zone(
+        zone, cap = risk_governor.get_regime_zone(
             data["Close"].iloc[-1] if "Close" in data else 0.0
         )  # Placeholder, need real VIX
         # Actually, let's fetch real VIX from the regime cache
-        regime_data = await deps._run_blocking(deps.regime_cache.get, "payload")
+        regime_data = await _run_blocking(regime_cache.get, "payload")
         if regime_data:
             current_vix = regime_data.get("vix", 0.0)
-            zone, cap = deps.risk_governor.get_regime_zone(current_vix)
+            zone, cap = risk_governor.get_regime_zone(current_vix)
             if zone == "BLACK":
                 return {
                     "error": "HRP ALLOCATION HALTED: Market is in BLACK zone (VIX > 35). High probability of capital destruction.",
@@ -513,10 +528,10 @@ async def get_hrp_allocation(request: Request):
 async def get_slippage_stats():
     """Execution Quality Metrics (Slippage Calibration)"""
     try:
-        data = await deps._run_blocking(
-            deps._read_records, "SELECT * FROM slippage_metrics ORDER BY tier"
+        data = await _run_blocking(
+            _read_records, "SELECT * FROM slippage_metrics ORDER BY tier"
         )
-        return deps._json_safe_clean(data)
+        return _json_safe_clean(data)
     except Exception as e:
         return {"error": str(e)}
 
@@ -537,7 +552,7 @@ async def get_swing_trades(
 ):
     """Derive tactical swing setups from the latest screener universe."""
     try:
-        source = await deps._run_blocking(_load_swing_source_rows)
+        source = await _run_blocking(_load_swing_source_rows)
         return _build_swing_trades(
             source,
             limit=limit,
@@ -551,7 +566,7 @@ async def get_swing_trades(
             exclude_avoid_ratings=exclude_avoid_ratings,
         )
     except Exception as e:
-        deps.api_logger.warning("Failed to build swing trades", error=str(e))
+        api_logger.warning("Failed to build swing trades", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to build swing trades") from e
 
 
@@ -560,14 +575,14 @@ async def get_portfolio_state():
     """Return summary metrics for the paper trading portfolio."""
     try:
         def _get_counts():
-            conn = deps.get_connection()
+            conn = get_connection()
             try:
                 open_pos = pd.read_sql("SELECT count(*) as cnt FROM open_positions", conn).iloc[0]["cnt"]
                 return int(open_pos)
             finally:
                 conn.close()
 
-        active_count = await deps._run_blocking(_get_counts)
+        active_count = await _run_blocking(_get_counts)
 
         return {
             "available_capital": 1000000.0,  # Hardcoded for paper demo v1

@@ -27,11 +27,30 @@ import report_generator
 
 
 def patch_sqlalchemy_db(monkeypatch, db_path: Path):
+    from contextlib import contextmanager
     import modules.dependencies as deps
+    import db.db_core
+    import app_routes.stocks
+    import app_routes.trading
 
     engine = create_engine(f"sqlite:///{db_path.as_posix()}")
     monkeypatch.setattr(deps, "db_engine", engine, raising=False)
     monkeypatch.setattr(deps, "get_sqla_connection", engine.connect, raising=False)
+
+    @contextmanager
+    def fake_get_db_connection():
+        conn = engine.connect()
+        try:
+            yield conn
+        finally:
+            conn.close()
+
+    monkeypatch.setattr(db.db_core, "db_engine", engine, raising=False)
+    monkeypatch.setattr(db.db_core, "get_db_connection", fake_get_db_connection, raising=False)
+    monkeypatch.setattr(app_routes.stocks, "db_engine", engine, raising=False)
+    monkeypatch.setattr(app_routes.stocks, "get_sqla_connection", fake_get_db_connection, raising=False)
+    monkeypatch.setattr(app_routes.trading, "get_sqla_connection", fake_get_db_connection, raising=False)
+
     return engine
 
 
@@ -407,10 +426,11 @@ def test_valuation_endpoint_cached_payload_shape(tmp_path, monkeypatch):
 def test_order_lifecycle_endpoints(tmp_path, monkeypatch):
     tracker_db = tmp_path / "portfolio_history_test.db"
     import modules.dependencies as deps
+    import app_routes.trading as trading_routes
 
-    monkeypatch.setattr(
-        deps, "portfolio_tracker", tracker_module.PortfolioTracker(str(tracker_db)), raising=False
-    )
+    tracker = tracker_module.PortfolioTracker(str(tracker_db))
+    monkeypatch.setattr(deps, "portfolio_tracker", tracker, raising=False)
+    monkeypatch.setattr(trading_routes, "portfolio_tracker", tracker, raising=False)
 
     class FakeRiskGovernor:
         def check_kill_switch(self, current_vix, dynamic_threshold=None, drawdown_rate_weekly=None):
@@ -425,7 +445,9 @@ def test_order_lifecycle_endpoints(tmp_path, monkeypatch):
         def log_rejected_trade(self, *_args, **_kwargs):
             return None
 
-    monkeypatch.setattr(deps, "risk_governor", FakeRiskGovernor(), raising=False)
+    fake_gov = FakeRiskGovernor()
+    monkeypatch.setattr(deps, "risk_governor", fake_gov, raising=False)
+    monkeypatch.setattr(trading_routes, "risk_governor", fake_gov, raising=False)
 
     with TestClient(main.app) as client:
         buy_response = client.post(

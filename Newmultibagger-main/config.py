@@ -28,7 +28,7 @@ FORCED_REGIME = os.getenv("FORCED_REGIME") or None
 
 # ── System Settings ───────────────────────────────────────────────────────────
 VERSION = "v4.2.0"
-CAPITAL_LIMIT = 50_000_000  # 5 Cr pilot limit
+CAPITAL_LIMIT = int(os.getenv("CAPITAL_LIMIT", "50000000"))  # 5 Cr pilot limit
 
 # ── Model Integrity ───────────────────────────────────────────────────────────
 MODEL_VERSION = VERSION

@@ -5,14 +5,31 @@ import pandas as pd
 import yfinance as yf
 from fastapi import APIRouter, HTTPException, Request
 
-import modules.dependencies as deps
+from db.db_core import db_engine, get_db_connection as get_sqla_connection
+from modules.connections import (
+    _run_blocking,
+    _run_sqlite_write_with_retry,
+)
+from modules.data_layer.data_utils import _json_safe_clean
+from modules.dependencies import _read_records
+from modules.cache import (
+    _cache_is_fresh,
+    _cache_set,
+    CACHE_QUARTERLY,
+    CACHE_FUNDAMENTALS,
+    CACHE_AUDIT_TTL,
+)
+from modules.structured_logger import SovereignLogger
+from app_routes.contracts import MultibaggerOut
 from modules.rate_limit import limiter
 from modules.retry_utils import run_with_exponential_backoff
+
+api_logger = SovereignLogger("sovereign.api")
 
 router = APIRouter()
 
 
-@router.get("/api/stocks")
+@router.get("/api/stocks", response_model=list[MultibaggerOut])
 async def get_multibaggers(as_of_date: str | None = None):
     """Fetch Top Multibagger Picks using DuckDB for rapid sorting and filtering"""
     try:
@@ -32,7 +49,7 @@ async def get_multibaggers(as_of_date: str | None = None):
                         record["as_of_date"] = snapshot_date
                 return records
 
-            return await deps._run_blocking(_read_as_of_records)
+            return await _run_blocking(_read_as_of_records)
 
         # Vectorized DuckDB Sorting
         def _run_duckdb_sort():
@@ -46,17 +63,17 @@ async def get_multibaggers(as_of_date: str | None = None):
             df = df.replace([np.inf, -np.inf], np.nan).replace({np.nan: None})
             return json.loads(df.to_json(orient="records", double_precision=2))
 
-        records = await deps._run_blocking(_run_duckdb_sort)
+        records = await _run_blocking(_run_duckdb_sort)
 
         if not records:
             return []
 
-        return deps._json_safe_clean(records)
+        return _json_safe_clean(records)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch stocks: {e}")
 
 
-@router.get("/api/multibagger-hunt")
+@router.get("/api/multibagger-hunt", response_model=list[MultibaggerOut])
 async def get_multibagger_hunt():
     """Fetch stocks meeting the strict Multibagger Hunt criteria using DuckDB for speed"""
     try:
@@ -87,12 +104,12 @@ async def get_multibagger_hunt():
             df = df.replace([np.inf, -np.inf], np.nan).replace({np.nan: None})
             return json.loads(df.to_json(orient="records", double_precision=2))
 
-        records = await deps._run_blocking(_run_duckdb_query)
+        records = await _run_blocking(_run_duckdb_query)
 
         if not records:
             return []
 
-        return deps._json_safe_clean(records)
+        return _json_safe_clean(records)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch multibagger hunt: {e}")
 
@@ -106,7 +123,7 @@ async def get_llm_thesis(request: Request, symbol: str):
 
         from modules.llm_engine import generate_thesis
 
-        with deps.get_sqla_connection() as conn:
+        with get_sqla_connection() as conn:
             target = pd.read_sql(
                 text("SELECT * FROM multibaggers WHERE symbol = :symbol"),
                 conn,
@@ -116,7 +133,7 @@ async def get_llm_thesis(request: Request, symbol: str):
                 return {"thesis": "Stock not found in database to generate thesis."}
             stock_data = target.iloc[0].to_dict()
 
-        thesis = await deps._run_blocking(generate_thesis, stock_data)
+        thesis = await _run_blocking(generate_thesis, stock_data)
         return {"thesis": thesis}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Thesis generation failed: {e}")
@@ -143,7 +160,7 @@ async def get_stock_history(symbol: str):
                 (symbol,),
             ).df()
 
-        df = await deps._run_blocking(_fetch_history)
+        df = await _run_blocking(_fetch_history)
         if df.empty:
             return []
 
@@ -153,7 +170,7 @@ async def get_stock_history(symbol: str):
         return json.loads(df.to_json(orient="records", double_precision=2))
 
     except Exception as e:
-        deps.api_logger.warning("Failed to load stock history", symbol=symbol, error=str(e))
+        api_logger.warning("Failed to load stock history", symbol=symbol, error=str(e))
         return []
 
 
@@ -161,8 +178,8 @@ async def get_stock_history(symbol: str):
 async def get_microcaps():
     """Fetch Hidden Microcap Gems"""
     try:
-        return await deps._run_blocking(
-            deps._read_records, "SELECT * FROM microcaps ORDER BY score DESC"
+        return await _run_blocking(
+            _read_records, "SELECT * FROM microcaps ORDER BY score DESC"
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch microcaps: {e}")
@@ -176,8 +193,8 @@ async def get_thesis_status(symbol: str):
 
         if not symbol.endswith(".NS") and not symbol.endswith(".BO"):
             symbol += ".NS"
-        status = await deps._run_blocking(check_thesis, symbol)
-        thesis = await deps._run_blocking(get_thesis_summary, symbol)
+        status = await _run_blocking(check_thesis, symbol)
+        thesis = await _run_blocking(get_thesis_summary, symbol)
         result = status.to_dict()
         if thesis:
             result["thesis_detail"] = thesis
@@ -236,7 +253,7 @@ async def get_valuation(request: Request, symbol: str, as_of_date: str | None = 
         def _ensure_valuation_table():
             from sqlalchemy import text
 
-            with deps.get_sqla_connection() as conn:
+            with get_sqla_connection() as conn:
                 conn.execute(
                     text(
                         "CREATE TABLE IF NOT EXISTS valuation_metrics (symbol TEXT PRIMARY KEY, dcf_value REAL, graham_value REAL, epv_value REAL, intrinsic_value REAL, margin_of_safety REAL, verdict TEXT, confidence_score INTEGER, as_of_date DATE, calculated_at TIMESTAMP)"
@@ -244,7 +261,7 @@ async def get_valuation(request: Request, symbol: str, as_of_date: str | None = 
                 )
 
                 # SQLAlchemy agnostic column check
-                if deps.db_engine.dialect.name == "sqlite":
+                if db_engine.dialect.name == "sqlite":
                     columns = [
                         row[1]
                         for row in conn.execute(
@@ -265,12 +282,12 @@ async def get_valuation(request: Request, symbol: str, as_of_date: str | None = 
                     conn.execute(text("ALTER TABLE valuation_metrics ADD COLUMN as_of_date DATE"))
                 conn.commit()
 
-        await deps._run_sqlite_write_with_retry(_ensure_valuation_table, "valuation table init")
+        await _run_sqlite_write_with_retry(_ensure_valuation_table, "valuation table init")
 
         def _read_cached():
             from sqlalchemy import text
 
-            with deps.get_sqla_connection() as conn:
+            with get_sqla_connection() as conn:
                 if as_of_date:
                     query = "SELECT * FROM valuation_metrics WHERE symbol = :symbol AND as_of_date <= :as_of_date ORDER BY as_of_date DESC, calculated_at DESC LIMIT 1"
                     existing_local = pd.read_sql(
@@ -281,13 +298,13 @@ async def get_valuation(request: Request, symbol: str, as_of_date: str | None = 
                     existing_local = pd.read_sql(text(query), conn, params={"symbol": symbol})
                 return existing_local.iloc[0].to_dict() if not existing_local.empty else None
 
-        cached = await deps._run_blocking(_read_cached)
+        cached = await _run_blocking(_read_cached)
         if cached:
             return _normalize_valuation_payload(cached)
 
         ticker = yf.Ticker(symbol)
         info = await run_with_exponential_backoff(
-            lambda: deps._run_blocking(lambda: ticker.info), context=f"yf valuation {symbol}"
+            lambda: _run_blocking(lambda: ticker.info), context=f"yf valuation {symbol}"
         )
         if not info:
             return {"error": f"Failed to fetch valuation for {symbol}"}
@@ -325,7 +342,7 @@ async def get_valuation(request: Request, symbol: str, as_of_date: str | None = 
             if data.get("growth_rate_5y") and data["growth_rate_5y"] > 0:
                 confidence += 15
 
-            with deps.get_sqla_connection() as conn:
+            with get_sqla_connection() as conn:
                 # Use standard insert since 'INSERT OR REPLACE' is SQLite specific
                 # For PostgreSQL compatibility we'd use ON CONFLICT but for now delete and insert works generically
                 conn.execute(
@@ -350,12 +367,12 @@ async def get_valuation(request: Request, symbol: str, as_of_date: str | None = 
                 )
                 conn.commit()
 
-        await deps._run_sqlite_write_with_retry(_write_valuation, "valuation upsert")
+        await _run_sqlite_write_with_retry(_write_valuation, "valuation upsert")
         metrics["symbol"] = symbol
         metrics["as_of_date"] = valuation_as_of
-        return deps._json_safe_clean(_normalize_valuation_payload(metrics))
+        return _json_safe_clean(_normalize_valuation_payload(metrics))
     except Exception as e:
-        deps.api_logger.error("Valuation failed", symbol=symbol, error=str(e))
+        api_logger.error("Valuation failed", symbol=symbol, error=str(e))
         raise HTTPException(status_code=500, detail=f"Valuation failed: {e}")
 
 
@@ -364,7 +381,7 @@ async def get_financials(symbol: str):
     try:
         from modules.financials import get_quarterly_results
 
-        return deps._json_safe_clean(get_quarterly_results(symbol))
+        return _json_safe_clean(get_quarterly_results(symbol))
     except Exception as e:
         return {"error": str(e)}
 
@@ -408,7 +425,7 @@ async def get_governance_data(request: Request, symbol: str):
                 "cfo_pat_ratio": round(cfo / ni, 2) if ni and ni != 0 else 0,
             }
 
-        return await deps._run_blocking(_fetch_gov_data)
+        return await _run_blocking(_fetch_gov_data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Governance data fetch failed: {e}")
 
@@ -459,7 +476,7 @@ async def get_stock_peers(symbol: str):
                 "rankings": {"score_rank_desc": "Top 10"},
             }
 
-        return await deps._run_blocking(_get_peers)
+        return await _run_blocking(_get_peers)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Peer comparison failed: {e}")
 
@@ -470,7 +487,7 @@ async def get_technicals(request: Request, symbol: str):
     try:
         from modules.technicals import get_technical_analysis
 
-        return deps._json_safe_clean(await get_technical_analysis(symbol))
+        return _json_safe_clean(await get_technical_analysis(symbol))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Technical analysis failed: {e}")
 
@@ -482,7 +499,7 @@ async def get_promoter_intel(symbol: str):
 
         if not symbol.endswith(".NS") and not symbol.endswith(".BO"):
             symbol += ".NS"
-        return await deps._run_blocking(calculate_promoter_score, symbol)
+        return await _run_blocking(calculate_promoter_score, symbol)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Promoter intel failed: {e}")
 
@@ -493,7 +510,7 @@ async def get_shareholding(request: Request, symbol: str):
     try:
         from modules.shareholding import get_shareholding_pattern
 
-        return deps._json_safe_clean(await get_shareholding_pattern(symbol))
+        return _json_safe_clean(await get_shareholding_pattern(symbol))
     except Exception as e:
         return {"error": str(e)}
 
@@ -504,15 +521,15 @@ async def quarterly_results_endpoint(request: Request, symbol: str, quarters: in
     try:
         from modules.quarterly_results import get_quarterly_timeline
 
-        cache_key = f"{deps.CACHE_QUARTERLY}:{symbol}"
-        if deps._cache_is_fresh(cache_key, deps.CACHE_AUDIT_TTL):
+        cache_key = f"{CACHE_QUARTERLY}:{symbol}"
+        if _cache_is_fresh(cache_key, CACHE_AUDIT_TTL):
             from worker.redis_cache import cache as redis_cache
             cached_data = redis_cache.get(cache_key)
             if cached_data:
                 return cached_data["payload"]
         result = await get_quarterly_timeline(symbol, quarters)
-        cleaned = deps._json_safe_clean(result)
-        deps._cache_set(cache_key, cleaned)
+        cleaned = _json_safe_clean(result)
+        _cache_set(cache_key, cleaned)
         return cleaned
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch quarterly results: {e}")
@@ -524,8 +541,8 @@ async def price_fundamentals_endpoint(request: Request, symbol: str, years: int 
     try:
         years = min(max(years, 3), 10)
         cache_key = f"{symbol}:{years}"
-        full_cache_key = f"{deps.CACHE_FUNDAMENTALS}:{cache_key}"
-        if deps._cache_is_fresh(full_cache_key, deps.CACHE_AUDIT_TTL):
+        full_cache_key = f"{CACHE_FUNDAMENTALS}:{cache_key}"
+        if _cache_is_fresh(full_cache_key, CACHE_AUDIT_TTL):
             from worker.redis_cache import cache as redis_cache
             cached_data = redis_cache.get(full_cache_key)
             if cached_data:
@@ -533,8 +550,8 @@ async def price_fundamentals_endpoint(request: Request, symbol: str, years: int 
         from modules.price_fundamentals import get_price_vs_fundamentals
 
         result = await get_price_vs_fundamentals(symbol, years)
-        cleaned = deps._json_safe_clean(result)
-        deps._cache_set(full_cache_key, cleaned)
+        cleaned = _json_safe_clean(result)
+        _cache_set(full_cache_key, cleaned)
         return cleaned
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch price vs fundamentals: {e}")
@@ -548,7 +565,7 @@ async def get_estimates(request: Request, symbol: str):
 
         if not symbol.endswith(".NS") and not symbol.endswith(".BO"):
             symbol += ".NS"
-        return await deps._run_blocking(get_estimate_data, symbol)
+        return await _run_blocking(get_estimate_data, symbol)
     except Exception as e:
         return {"error": str(e)}
 
@@ -565,7 +582,7 @@ async def get_swarm_report_simulation(request: Request, symbol: str):
         def _fetch_context():
             from sqlalchemy import text
 
-            with deps.get_sqla_connection() as conn:
+            with get_sqla_connection() as conn:
                 row = pd.read_sql(
                     text(
                         "SELECT symbol, sector, score, pe_ratio as pe, roe, sales_cagr_5y FROM multibaggers WHERE symbol = :symbol"
@@ -578,10 +595,10 @@ async def get_swarm_report_simulation(request: Request, symbol: str):
                 d = row.iloc[0].to_dict()
                 return f"Stock {symbol} in {d['sector']}. Score: {d['score']}. PE: {d['pe']}. ROE: {d['roe']}. Growth: {d['sales_cagr_5y']}."
 
-        context = await deps._run_blocking(_fetch_context)
+        context = await _run_blocking(_fetch_context)
         if not context:
             raise HTTPException(status_code=404, detail="Stock not found")
-        report = await deps._run_blocking(client.simulate_ticker, symbol, context)
+        report = await _run_blocking(client.simulate_ticker, symbol, context)
         return {"symbol": symbol, "report": report, "timestamp": datetime.now().isoformat()}
     except Exception as e:
         return {"error": str(e)}

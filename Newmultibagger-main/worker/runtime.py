@@ -3,15 +3,15 @@ from __future__ import annotations
 import argparse
 import asyncio
 
-from modules.dependencies import (
-    _json_safe_clean,
+from modules.connections import (
     _run_blocking,
     _run_sqlite_write_with_retry,
     _run_sqlite_write_with_retry_sync,
     _run_ticker_blocking,
     get_connection,
-    manager,
 )
+from modules.data_layer.data_utils import _json_safe_clean
+from modules.dependencies import manager
 from modules.structured_logger import SovereignLogger
 from worker.background_jobs import run_price_update_loop, start_weekly_audit_thread
 

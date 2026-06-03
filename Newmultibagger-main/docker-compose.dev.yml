@@ -1,0 +1,27 @@
+# Sovereign AI Trading Engine v4.0 — Developer Override
+# Extends production compose to restore volume mounts and dev DB fallbacks.
+
+version: "3.9"
+
+services:
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sovereign_secret}
+
+  app:
+    environment:
+      DATABASE_URL: postgresql+psycopg://sovereign:${POSTGRES_PASSWORD:-sovereign_secret}@postgres:5432/sovereign_db
+    volumes:
+      - .:/app
+
+  celery_worker:
+    environment:
+      DATABASE_URL: postgresql+psycopg://sovereign:${POSTGRES_PASSWORD:-sovereign_secret}@postgres:5432/sovereign_db
+    volumes:
+      - .:/app
+
+  celery_beat:
+    environment:
+      DATABASE_URL: postgresql+psycopg://sovereign:${POSTGRES_PASSWORD:-sovereign_secret}@postgres:5432/sovereign_db
+    volumes:
+      - .:/app

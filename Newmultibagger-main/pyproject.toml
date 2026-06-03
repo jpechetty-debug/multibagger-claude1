@@ -10,7 +10,42 @@ description = "Institutional-grade fundamental screener for Indian equities"
 requires-python = ">=3.11"
 readme = "README.md"
 license = { text = "Proprietary" }
-dependencies = []
+dependencies = [
+    "nsepython>=2.97,<3.0",
+    "pnsea>=1.0.1,<2.0",
+    "yfinance>=0.2.54",
+    "fastapi==0.115.5",
+    "uvicorn[standard]==0.32.1",
+    "pydantic==2.9.2",
+    "pydantic-settings==2.6.1",
+    "pandas==2.2.3",
+    "numpy==1.26.4",
+    "scipy==1.14.1",
+    "PyYAML==6.0.2",
+    "openpyxl>=3.1.5,<4.0",
+    "xgboost==2.1.3",
+    "shap==0.46.0",
+    "hmmlearn==0.3.3",
+    "vectorbt==0.26.2",
+    "nltk>=3.8.0",
+    "sqlalchemy==2.0.36",
+    "psycopg[binary]==3.2.3",
+    "alembic>=1.13.0",
+    "redis==5.2.0",
+    "celery[redis]==5.4.0",
+    "requests==2.32.3",
+    "aiohttp==3.11.10",
+    "httpx==0.27.2",
+    "python-dotenv==1.0.1",
+    "tenacity==9.0.0",
+    "slowapi==0.1.9",
+    "beautifulsoup4>=4.12.0,<5.0.0",
+    "lxml>=5.1.0,<6.0.0",
+    "prometheus-fastapi-instrumentator>=7.0.0",
+    "prometheus-client>=0.20.0",
+    "mcp",
+    "fastmcp",
+]
 
 [project.scripts]
 newmultibagger = "main:app"

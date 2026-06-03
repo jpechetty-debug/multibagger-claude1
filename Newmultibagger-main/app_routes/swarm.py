@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 import subprocess
 import json
 import os
-from modules.dependencies import get_api_key
+from modules.auth import get_api_key
 
 router = APIRouter(prefix="/swarm", tags=["swarm"])
 

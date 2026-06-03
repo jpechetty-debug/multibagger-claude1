@@ -26,14 +26,19 @@ def validate_garp_criteria(stock_data):
 
     def get_val(key, default=0):
         # Try exact key, then lowercase, then specific mappings if needed
+        val = None
         if key in stock_data:
-            return stock_data[key]
-        lower_key = key.lower()
-        # Check if any key in stock_data lowercased matches
-        for k in stock_data:
-            if k.lower() == lower_key.lower():
-                return stock_data[k]
-        return default
+            val = stock_data[key]
+        else:
+            lower_key = key.lower()
+            # Check if any key in stock_data lowercased matches
+            for k in stock_data:
+                if k.lower() == lower_key:
+                    val = stock_data[k]
+                    break
+        if val is None:
+            return default
+        return val
 
     get_val("Symbol", "Unknown")
 

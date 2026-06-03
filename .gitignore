@@ -64,6 +64,9 @@ docker-compose.override.yml
 # ── Logs & reports ────────────────────────────────────────────────────────────
 logs/
 *.log
+error_log*.txt
+blackbox_log.txt
+audit_log.txt
 reports/*.html
 reports/*.json
 ops/daily_reports/

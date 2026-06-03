@@ -513,6 +513,8 @@ class VectorBTEngine:
             columns = ["symbol", "as_of_date", *feature_cols]
             try:
                 conn = sqlite3.connect(self.db_path)
+                conn.execute("PRAGMA journal_mode=WAL")
+                conn.execute("PRAGMA busy_timeout=5000")
                 query = "SELECT {cols} FROM fundamentals_pit WHERE symbol IN ({seq})".format(
                     cols=", ".join(columns),
                     seq=",".join(["?"] * len(clean_symbols)),
@@ -750,6 +752,8 @@ class VectorBTEngine:
             # 1. Fetch historical PIT scores from DB
             try:
                 conn = sqlite3.connect(self.db_path)
+                conn.execute("PRAGMA journal_mode=WAL")
+                conn.execute("PRAGMA busy_timeout=5000")
                 query = "SELECT symbol, as_of_date, score FROM fundamentals_pit WHERE symbol IN ({seq})".format(
                     seq=','.join(['?']*len(clean_symbols)))
                 scores_df = pd.read_sql_query(query, conn, params=clean_symbols)

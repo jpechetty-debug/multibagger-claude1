@@ -44,7 +44,7 @@ async def deep_health_check():
 
     # 1. DB Connectivity
     try:
-        from modules.dependencies import get_connection
+        from modules.connections import get_connection
 
         conn = get_connection()
         try:

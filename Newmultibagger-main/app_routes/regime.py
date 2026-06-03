@@ -8,7 +8,18 @@ from fastapi import APIRouter, HTTPException
 
 import config
 import modules.data_service as market_data_module
-import modules.dependencies as deps
+from modules.cache import (
+    _cache_invalidate,
+    _cache_is_fresh,
+    _cache_set,
+    REGIME_CACHE_TTL_SECONDS,
+    regime_cache,
+    regime_cache_lock,
+)
+from modules.connections import _run_blocking
+from modules.structured_logger import SovereignLogger
+
+runtime_logger = SovereignLogger("sovereign.runtime")
 from app_routes.contracts import RegimeStatusResponse
 
 router = APIRouter()
@@ -106,18 +117,18 @@ def _build_payload(
 @router.get("/api/regime_status", response_model=RegimeStatusResponse)
 async def get_regime_status():
     """Return the current regime using the active MarketDataProvider contract."""
-    if deps._cache_is_fresh(deps.regime_cache, deps.REGIME_CACHE_TTL_SECONDS):
-        return deps.regime_cache["payload"]
+    if _cache_is_fresh(regime_cache, REGIME_CACHE_TTL_SECONDS):
+        return regime_cache["payload"]
 
-    async with deps.regime_cache_lock:
-        if deps._cache_is_fresh(deps.regime_cache, deps.REGIME_CACHE_TTL_SECONDS):
-            return deps.regime_cache["payload"]
+    async with regime_cache_lock:
+        if _cache_is_fresh(regime_cache, REGIME_CACHE_TTL_SECONDS):
+            return regime_cache["payload"]
 
         forced_regime = _parse_forced_regime(config.FORCED_REGIME)
         try:
             provider = market_data_module.MarketDataProvider()
             regime_data = await asyncio.wait_for(
-                deps._run_blocking(provider.get_market_regime),
+                _run_blocking(provider.get_market_regime),
                 timeout=_REGIME_IO_TIMEOUT_SECONDS,
             )
             payload = _build_payload(
@@ -125,12 +136,12 @@ async def get_regime_status():
                 forced_regime=forced_regime,
                 stale=False,
             )
-            deps._cache_set(deps.regime_cache, payload.model_dump())
+            _cache_set(regime_cache, payload.model_dump())
             return payload
         except Exception as exc:
-            deps.runtime_logger.warning("Regime status fallback engaged", error=str(exc))
+            runtime_logger.warning("Regime status fallback engaged", error=str(exc))
 
-            cached_payload = deps.regime_cache.get("payload")
+            cached_payload = regime_cache.get("payload")
             if isinstance(cached_payload, dict):
                 return _build_payload(
                     dict(cached_payload),
@@ -154,12 +165,12 @@ async def force_regime(regime: str | None = None):
 
     if normalized is None:
         config.FORCED_REGIME = None
-        deps.runtime_logger.info("Regime override cleared; resuming auto mode")
+        runtime_logger.info("Regime override cleared; resuming auto mode")
         reported_regime = "AUTO"
     else:
         config.FORCED_REGIME = normalized
-        deps.runtime_logger.info("Regime forced by administrator", regime=normalized)
+        runtime_logger.info("Regime forced by administrator", regime=normalized)
         reported_regime = normalized
 
-    deps._cache_invalidate(deps.regime_cache)
+    _cache_invalidate(regime_cache)
     return {"status": "success", "regime": reported_regime}

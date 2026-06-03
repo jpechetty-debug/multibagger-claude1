@@ -8,6 +8,10 @@ try:
     limiter = Limiter(key_func=get_remote_address)
     rate_limit_exceeded_handler = _rate_limit_exceeded_handler
 except ImportError:  # pragma: no cover - slowapi is pinned, this keeps local tools importable.
+    import logging
+    logging.getLogger("sovereign.rate_limit").warning(
+        "slowapi package is not installed; rate limiting is disabled."
+    )
     RateLimitExceeded = None
     rate_limit_exceeded_handler = None
 

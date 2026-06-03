@@ -6,8 +6,17 @@ import sys
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 
-import modules.dependencies as deps
+from modules.cache import (
+    _cache_is_fresh,
+    _cache_set,
+    movers_cache,
+    movers_cache_lock,
+)
+from modules.dependencies import refresh_prices_once
+from modules.structured_logger import SovereignLogger
 from modules.rate_limit import limiter
+
+api_logger = SovereignLogger("sovereign.api")
 
 router = APIRouter()
 _price_refresh_task: asyncio.Task | None = None
@@ -26,9 +35,9 @@ async def websocket_signals(websocket: WebSocket):
                 await websocket.send_json(signals)
             await asyncio.sleep(5)
     except WebSocketDisconnect:
-        deps.api_logger.info("Signal websocket client disconnected")
+        api_logger.info("Signal websocket client disconnected")
     except Exception as e:
-        deps.api_logger.error("Signal websocket error", error=str(e))
+        api_logger.error("Signal websocket error", error=str(e))
 
 
 @router.post("/api/scan")
@@ -86,11 +95,11 @@ def read_root():
 async def get_market_movers():
     """Placeholder for Top Gainers/Losers"""
     try:
-        if deps._cache_is_fresh(deps.movers_cache, 3600):
-            return deps.movers_cache["payload"]
-        async with deps.movers_cache_lock:
+        if _cache_is_fresh(movers_cache, 3600):
+            return movers_cache["payload"]
+        async with movers_cache_lock:
             payload = {"gainers": [], "losers": [], "active": [], "_status": "not_implemented"}
-            deps._cache_set(deps.movers_cache, payload)
+            _cache_set(movers_cache, payload)
             return payload
     except Exception as e:
         return {"error": str(e)}

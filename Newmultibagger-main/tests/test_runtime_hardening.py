@@ -64,7 +64,7 @@ def test_lifespan_skips_embedded_price_updater_when_disabled(monkeypatch):
 
 def test_main_loads_from_parent_cwd_and_stocks_endpoint_still_works(monkeypatch):
     monkeypatch.chdir(ROOT.parent)
-    monkeypatch.setattr(stocks_route_module.deps, "_read_records", lambda _query: [])
+    monkeypatch.setattr(stocks_route_module, "_read_records", lambda _query: [])
 
     module_name = "main_outside_project_cwd"
     spec = importlib.util.spec_from_file_location(module_name, ROOT / "main.py")
