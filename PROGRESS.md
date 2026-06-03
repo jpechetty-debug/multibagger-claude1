@@ -11,6 +11,16 @@
 - Restored `StockDataPayload` schema policy to ignore extra fields, fixing validation test regressions.
 - Successfully executed simulated universe recan and institutional analysis pipeline (Backtest Picks, Alpha Attribution, Liquidity Stress Test, Walk-Forward Validation).
 - Passed the Antigravity Master Checklist (`checklist.py`) with 100% green status.
+- Implemented multi-worker WebSocket safety using a Redis Pub/Sub backend on the `live:prices` channel (fanning out price ticks to local workers).
+- Added query parameter-based authentication (`?token=...` or `?api_key=...`) to WebSocket endpoints.
+- Replaced direct `sqlite3.connect` calls in the backtest engine with the pooled `get_db_connection` context manager from `db.db_core` supporting named parameters.
+- Fixed metrics allowlist IP-spoofing vulnerability by dropping client-controlled `X-Forwarded-For` header trust and relying only on direct TCP peers or configured proxy IPs.
+- Modified holdout evaluations to support custom annualisation periods via `periods_per_year` parameter.
+- Replaced non-functional reproducibility check with a rigorous test ensuring statelessness and input immutability in feature sanitisation.
+- Adjusted momentum feature leakage checks to flag `NEEDS_REVIEW` only when Spearman correlation `|r| > 0.15`, reducing noise.
+- Documented `upstash-redis` as an optional dependency in `requirements.txt`.
+- Added warning logs for skipped backtest periods and expanded columns to include `portfolio_value` in the QARP backtest report.
+- Removed tracked `graphify-out/` files from Git index.
 
 ## In progress
 

@@ -62,19 +62,19 @@ def test_sanitize_is_stateless():
     # Create two identical DataFrames
     df_a = pd.DataFrame({"score": [1.0, 2.0, np.nan], "pe_ratio": [15.0, np.nan, 20.0]})
     df_b = df_a.copy()
-    
+
     # Call _sanitize_features twice on identical inputs
     res_a1 = _sanitize_features(df_a)
     res_a2 = _sanitize_features(df_a)
-    
+
     # Assert result is identical
     pd.testing.assert_frame_equal(res_a1, res_a2)
     pd.testing.assert_frame_equal(df_a, df_b)  # verify input is not mutated in-place
-    
+
     # Create a different DataFrame
     df_c = pd.DataFrame({"score": [10.0, 20.0, np.nan], "pe_ratio": [150.0, np.nan, 200.0]})
     res_c = _sanitize_features(df_c)
-    
+
     # Calling it on df_c should not change the result of calling it on df_a again
     res_a3 = _sanitize_features(df_a)
     pd.testing.assert_frame_equal(res_a1, res_a3)

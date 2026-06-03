@@ -95,7 +95,7 @@ async def get_revisions(request: Request, symbol: str):
 
         symbol = normalize_symbol(symbol)
         ticker = yf.Ticker(symbol)
-        score_impact, sentiment = await deps._run_blocking(analyze_revisions, ticker)
+        score_impact, sentiment = await _run_blocking(analyze_revisions, ticker)
         return {
             "symbol": symbol,
             "score_impact": score_impact,
@@ -113,7 +113,7 @@ async def get_drift(symbol: str):
         symbol = normalize_symbol(symbol)
 
         def _fetch_drift_data():
-            conn = deps.get_connection()
+            conn = get_connection()
             try:
                 row = pd.read_sql(
                     "SELECT * FROM multibaggers WHERE symbol = ?", conn, params=(symbol,)
@@ -122,7 +122,7 @@ async def get_drift(symbol: str):
             finally:
                 conn.close()
 
-        stock_data = await deps._run_blocking(_fetch_drift_data)
+        stock_data = await _run_blocking(_fetch_drift_data)
         if not stock_data:
             raise HTTPException(status_code=404, detail="Stock not found")
         status, reason = monitor_drift(stock_data)

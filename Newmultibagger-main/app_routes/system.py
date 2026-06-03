@@ -82,7 +82,7 @@ async def refresh_prices(request: Request):
     if _price_refresh_task is not None and not _price_refresh_task.done():
         return {"status": "running"}
 
-    _price_refresh_task = asyncio.create_task(deps.refresh_prices_once())
+    _price_refresh_task = asyncio.create_task(refresh_prices_once())
     return {"status": "started"}
 
 

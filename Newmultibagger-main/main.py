@@ -92,24 +92,16 @@ app.add_middleware(
 @app.middleware("http")
 async def metrics_ip_allowlist_middleware(request, call_next):
     if request.url.path == "/metrics":
-        client_ips = set()
-        if request.client and request.client.host:
-            client_ips.add(request.client.host)
-        
-        forwarded_for = request.headers.get("x-forwarded-for")
-        if forwarded_for:
-            for ip in forwarded_for.split(","):
-                client_ips.add(ip.strip())
-        
+        client_host = request.client.host if request.client else None
         allowed_ips = {"127.0.0.1", "::1", "localhost"}
         allowed_env = os.getenv("ALLOWED_METRICS_IPS", "")
         if allowed_env:
             allowed_ips.update(ip.strip() for ip in allowed_env.split(",") if ip.strip())
-        
-        if not (client_ips & allowed_ips):
+
+        if client_host not in allowed_ips:
             from fastapi.responses import PlainTextResponse
             return PlainTextResponse("Forbidden", status_code=403)
-            
+
     return await call_next(request)
 
 # Prometheus metrics

@@ -124,11 +124,11 @@ class ConnectionManager:
             try:
                 if not self.redis:
                     self.redis = aioredis.from_url(REDIS_URL, decode_responses=True)
-                
+
                 async with self.redis.pubsub() as pubsub:
                     await pubsub.subscribe(self.channel)
                     logger.info("WebSocket manager subscribed to Redis Pub/Sub", channel=self.channel)
-                    
+
                     while True:
                         try:
                             msg = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
@@ -146,6 +146,7 @@ class ConnectionManager:
                 break
             except Exception as e:
                 logger.error("Redis Pub/Sub connection failed, retrying in 5 seconds", error=str(e))
+                self.redis = None
                 await asyncio.sleep(5)
 
 

@@ -312,9 +312,15 @@ def run_backtest(years=3, universe_size=50, stress_mode=False, rebal_freq="MS"):
     table.add_row("Information Ratio", f"{m['IR']:.2f}")
     table.add_row("Annual Alpha", f"{m['Alpha']:+.2f}%")
     console.print(table)
-    with open("qarp_backtest_report.md", "w") as f:
+    with open("qarp_backtest_report.md", "w", encoding="utf-8") as f:
         f.write(
-            f"# QARP {'STRESS TEST ' if stress_mode else 'Institutional Validation'} Report (v5.0)\n\n"
+            f"# QARP {'STRESS TEST ' if stress_mode else 'Institutional Validation'} Report (v5.0) [DATA LIMITED — NOT REPRESENTATIVE]\n\n"
+        )
+        f.write(
+            "> [!WARNING]\n"
+            "> **BACKTEST DATA LIMITATION**: yfinance free API limits historical quarterly statement downloads to the most recent 4-5 quarters.\n"
+            "> Rebalance periods prior to this window were skipped during simulation because dynamic fundamental metrics (like Piotroski F-Score) could not be calculated without look-ahead bias.\n"
+            "> Therefore, the backtest results below only reflect the most recent ~1 year of history, NOT the full stated period, and should not be used as representative of long-term performance.\n\n"
         )
         f.write(f"- Backtest Period: {start_date.date()} to {end_date.date()}\n")
         f.write(f"- Rebalance Frequency: {rebal_freq}\n")

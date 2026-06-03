@@ -754,9 +754,7 @@ class VectorBTEngine:
                 from db.db_core import get_db_connection
                 from sqlalchemy import text
                 seq_placeholders = ", ".join([f":s{idx}" for idx in range(len(clean_symbols))])
-                query = "SELECT symbol, as_of_date, score FROM fundamentals_pit WHERE symbol IN ({seq})".format(
-                    seq=seq_placeholders
-                )
+                query = f"SELECT symbol, as_of_date, score FROM fundamentals_pit WHERE symbol IN ({seq_placeholders})"
                 params = {f"s{idx}": s for idx, s in enumerate(clean_symbols)}
                 with get_db_connection() as conn:
                     scores_df = pd.read_sql_query(text(query), conn, params=params)
