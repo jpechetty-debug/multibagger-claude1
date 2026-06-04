@@ -115,7 +115,7 @@ def run_stress_test(portfolio_stocks, weights=None):
 
     _log.info(format_log_message(f"Portfolio Beta (Estimated): {portfolio_beta:.2f}"))
     if portfolio_beta > 1.3:
-        _log.info(format_log_message("⚠️  Risk Profile: AGGRESSIVE (High Volatility)"))
+        _log.warning(format_log_message("⚠️  Risk Profile: AGGRESSIVE (High Volatility)"))
     elif portfolio_beta < 0.8:
         _log.info(format_log_message("🛡️  Risk Profile: DEFENSIVE (Low Volatility)"))
     else:

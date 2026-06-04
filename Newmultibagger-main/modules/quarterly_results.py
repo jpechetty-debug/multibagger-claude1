@@ -42,7 +42,7 @@ async def get_quarterly_timeline(symbol: str, quarters: int = 12) -> dict:
                 try:
                     return await asyncio.to_thread(fn)
                 except Exception as e:
-                    _log.info(format_log_message(f"Task failed for {symbol}: {e}"))
+                    _log.error(format_log_message(f"Task failed for {symbol}: {e}"))
                     return {} if "info" in str(fn) else pd.DataFrame()
 
             info_task = _safe_task(lambda: ticker.info)
@@ -107,7 +107,7 @@ async def get_quarterly_timeline(symbol: str, quarters: int = 12) -> dict:
             "timestamp": datetime.now().isoformat(),
         }
     except Exception as e:
-        _log.info(format_log_message(f"Error fetching quarterly timeline for {symbol}: {str(e)}"))
+        _log.error(format_log_message(f"Error fetching quarterly timeline for {symbol}: {str(e)}"))
         return {
             "symbol": symbol,
             "quarters": [],
@@ -236,7 +236,7 @@ async def process_quarter_data(
         }
 
     except Exception as e:
-        _log.info(format_log_message(f"Error processing quarter {quarter_date}: {str(e)}"))
+        _log.error(format_log_message(f"Error processing quarter {quarter_date}: {str(e)}"))
         return None
 
 

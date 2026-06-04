@@ -55,7 +55,7 @@ class PortfolioAllocator:
         slots_available = self.max_positions - current_positions
 
         if slots_available <= 0:
-            _log.info(format_log_message("❌ Portfolio Full. No new allocations."))
+            _log.warning(format_log_message("❌ Portfolio Full. No new allocations."))
             return []
 
         # 2. Select Top Candidates (Applying Gate 0: News Check)
@@ -70,7 +70,7 @@ class PortfolioAllocator:
             if is_clean:
                 clean_candidates.append(cand)
             else:
-                _log.info(format_log_message(f"🛑 GATE 0 BLOCK: {symbol} -> {reason}"))
+                _log.warning(format_log_message(f"🛑 GATE 0 BLOCK: {symbol} -> {reason}"))
 
         # Assuming proposals are already ranked
         candidates = clean_candidates[:slots_available]
@@ -121,7 +121,7 @@ class PortfolioAllocator:
             if adv > 0:
                 liquidity_cap_qty = int(adv * self.MAX_PCT_ADV)
                 if final_qty > liquidity_cap_qty:
-                    _log.info(format_log_message(f"⚠️ Liquidity Crunch for {symbol}: Cap {liquidity_cap_qty} vs Req {final_qty}"))
+                    _log.warning(format_log_message(f"⚠️ Liquidity Crunch for {symbol}: Cap {liquidity_cap_qty} vs Req {final_qty}"))
                     final_qty = liquidity_cap_qty
                     final_amt = final_qty * price
 
@@ -135,7 +135,7 @@ class PortfolioAllocator:
 
             projected_sector_exposure = (current_sector_val + final_amt) / self.capital
             if projected_sector_exposure > self.MAX_SECTOR_ALLOCATION:
-                _log.info(format_log_message(f"⚠️ Sector Limit Hit for {sector}: {projected_sector_exposure:.1%}"))
+                _log.warning(format_log_message(f"⚠️ Sector Limit Hit for {sector}: {projected_sector_exposure:.1%}"))
                 # Reduce quantity to fit sector limit? Or skip?
                 # Let's Skip for safety to avoid over-concentration
                 # OR limit the amt

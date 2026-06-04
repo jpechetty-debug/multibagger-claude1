@@ -24,7 +24,7 @@ def fetch_forward_prices(df_input, months=3):
                     if "Close" in h:
                         hist_dfs.append(pd.DataFrame({chunk[0]: h["Close"]}))
         except Exception as e:
-            _log.info(format_log_message(f"Error fetching chunk: {e}"))
+            _log.error(format_log_message(f"Error fetching chunk: {e}"))
 
     if not hist_dfs:
         return pd.Series(dtype=float)

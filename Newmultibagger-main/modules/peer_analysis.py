@@ -374,7 +374,7 @@ async def fetch_stock_metrics(symbol: str) -> dict:
             "current_price": current_price,
         }
     except Exception as e:
-        _log.info(format_log_message(f"Peer fetch failed for {symbol}: {e}"))
+        _log.error(format_log_message(f"Peer fetch failed for {symbol}: {e}"))
         return {"symbol": symbol, "error": str(e)}
 
 

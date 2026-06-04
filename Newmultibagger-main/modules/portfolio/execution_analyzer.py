@@ -83,7 +83,7 @@ class ExecutionAnalyzer:
                     else:
                         tier = "MICRO_CAP"
             except Exception as e:
-                _log.info(format_log_message(f"Tier lookup failed: {e}"))
+                _log.error(format_log_message(f"Tier lookup failed: {e}"))
 
             regime = "UNKNOWN"  # Placeholder
             vix = 15.0  # Placeholder
@@ -105,7 +105,7 @@ class ExecutionAnalyzer:
             )
 
         if not records:
-            _log.info(format_log_message("⚠️ No valid records to insert."))
+            _log.warning(format_log_message("⚠️ No valid records to insert."))
             return
 
         cursor.executemany(
@@ -132,7 +132,7 @@ class ExecutionAnalyzer:
         try:
             df = pd.read_sql("SELECT liquidity_tier, slippage_bps FROM executions", conn)
         except Exception as e:
-            _log.info(format_log_message(f"Error reading executions: {e}"))
+            _log.error(format_log_message(f"Error reading executions: {e}"))
             return
 
         if df.empty:

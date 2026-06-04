@@ -524,7 +524,7 @@ class VectorBTEngine:
                 with get_db_connection() as conn:
                     pit_df = pd.read_sql_query(text(query), conn, params=params)
             except Exception as e:
-                _log.info(format_log_message(f"[VectorBT] Error reading PIT features: {e}"))
+                _log.error(format_log_message(f"[VectorBT] Error reading PIT features: {e}"))
                 return {"status": f"DB_ERROR: {str(e)}", "folds": 0}
 
             if pit_df.empty:
@@ -733,7 +733,7 @@ class VectorBTEngine:
             return _clean_metrics(result)
 
         except Exception as e:
-            _log.info(format_log_message(f"[VectorBT] Walk-forward Backtest failed: {e}"))
+            _log.error(format_log_message(f"[VectorBT] Walk-forward Backtest failed: {e}"))
             return {"status": f"WALK_FORWARD_ERROR: {str(e)}", "folds": 0}
 
     def run_batch_momentum_backtest(self, symbols: list) -> dict:
@@ -759,7 +759,7 @@ class VectorBTEngine:
                 with get_db_connection() as conn:
                     scores_df = pd.read_sql_query(text(query), conn, params=params)
             except Exception as e:
-                _log.info(format_log_message(f"[VectorBT] Error reading DB: {e}"))
+                _log.error(format_log_message(f"[VectorBT] Error reading DB: {e}"))
                 scores_df = pd.DataFrame(columns=["symbol", "as_of_date", "score"])
 
             # 2. Fetch historical prices
@@ -986,7 +986,7 @@ class VectorBTEngine:
             return results
 
         except Exception as e:
-            _log.info(format_log_message(f"[VectorBT] Batch Backtest failed: {e}"))
+            _log.error(format_log_message(f"[VectorBT] Batch Backtest failed: {e}"))
             return {s: {"symbol": s, "status": f"BATCH_ERROR: {str(e)}"} for s in symbols}
 
 if __name__ == "__main__":

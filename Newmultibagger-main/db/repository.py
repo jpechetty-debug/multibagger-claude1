@@ -59,7 +59,7 @@ def _run_sqlite_write_with_retry(write_fn, operation_name):
         except Exception as exc:
             if _is_sqlite_lock_error(exc) and attempt < SQLITE_WRITE_RETRIES - 1:
                 wait = SQLITE_RETRY_BASE_SECONDS * (2**attempt)
-                _log.info(format_log_message(f"SQLite lock during {operation_name}; retrying in {wait:.2f}s."))
+                _log.warning(format_log_message(f"SQLite lock during {operation_name}; retrying in {wait:.2f}s."))
                 time.sleep(wait)
                 continue
             raise
@@ -85,7 +85,7 @@ def _run_sqlite_write_with_retry(write_fn, operation_name):
         except Exception as exc:
             if _is_sqlite_lock_error(exc) and attempt < SQLITE_WRITE_RETRIES - 1:
                 wait = SQLITE_RETRY_BASE_SECONDS * (2**attempt)
-                _log.info(format_log_message(f"SQLite lock during {operation_name}; retrying in {wait:.2f}s."))
+                _log.warning(format_log_message(f"SQLite lock during {operation_name}; retrying in {wait:.2f}s."))
                 time.sleep(wait)
                 continue
             raise
@@ -387,7 +387,7 @@ def _write_fundamentals_snapshot(df_db):
                     )
         pit_store.close()
     except Exception as e:
-        _log.info(format_log_message(f"Warning: PITDataStore sync failed: {e}"))
+        _log.warning(format_log_message(f"Warning: PITDataStore sync failed: {e}"))
 
 
 def _backfill_fundamentals_pit_from_multibaggers():
@@ -643,7 +643,7 @@ def _detect_score_drift(df_new: "pd.DataFrame"):
         finally:
             conn.close()
     except Exception as exc:
-        _log.info(format_log_message(f"Warning: Score drift detection failed: {exc}"))
+        _log.warning(format_log_message(f"Warning: Score drift detection failed: {exc}"))
 
 # ── Database Initialization ──────────────────────────────────────────────────
 
@@ -976,7 +976,7 @@ def save_multibaggers(df, *, replace_existing: bool = False):
                 df_db = df_db.drop(columns=["last_audited"])
                 df_db = df_db.merge(existing_audit, on="symbol", how="left")
     except Exception as e:
-        _log.info(format_log_message(f"Warning preserving audit logs: {e}"))
+        _log.warning(format_log_message(f"Warning preserving audit logs: {e}"))
 
     # Outlier Protection — centralized DQ gates (replaces inline .clip())
     from modules.dq_gates import validate_dataframe as _validate_df
@@ -1055,7 +1055,7 @@ def save_multibaggers(df, *, replace_existing: bool = False):
     try:
         prune_fundamentals_pit_retention()
     except Exception as exc:
-        _log.info(format_log_message(f"Warning: PIT retention prune skipped: {exc}"))
+        _log.warning(format_log_message(f"Warning: PIT retention prune skipped: {exc}"))
     _log.info(format_log_message("Saved Multibaggers to DB (Schema Preserved)."))
 
 

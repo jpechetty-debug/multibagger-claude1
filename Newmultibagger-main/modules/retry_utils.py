@@ -46,7 +46,7 @@ async def run_with_exponential_backoff(
 
             wait = float(retry_delays[attempt])
             if context:
-                _log.info(format_log_message(f"{context} rate-limited. Retrying in {wait:.0f}s."))
+                _log.warning(format_log_message(f"{context} rate-limited. Retrying in {wait:.0f}s."))
             await asyncio.sleep(wait)
 
     raise RuntimeError("Retry loop exited unexpectedly")

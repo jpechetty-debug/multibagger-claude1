@@ -57,7 +57,7 @@ def analyze_factor_redundancy(stock_list):
 
         # 4. Report
         if redundant_pairs:
-            _log.info(format_log_message("⚠️  WARNING: REDUNDANT FACTORS DETECTED (> 0.75):"))
+            _log.warning(format_log_message("⚠️  WARNING: REDUNDANT FACTORS DETECTED (> 0.75):"))
             for pair in redundant_pairs:
                 _log.info(format_log_message(f"  - {pair}"))
             _log.info(format_log_message("  -> Implication: You are overweighting this signal."))
@@ -66,5 +66,5 @@ def analyze_factor_redundancy(stock_list):
             _log.info(format_log_message("✅  Factor Independence: Healthy (No overlaps > 0.75)"))
 
     except Exception as e:
-        _log.info(format_log_message(f"Factor Audit Error: {e}"))
+        _log.error(format_log_message(f"Factor Audit Error: {e}"))
     _log.info(format_log_message("=" * 50 + "\n"))

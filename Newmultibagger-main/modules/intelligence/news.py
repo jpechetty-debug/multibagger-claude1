@@ -72,5 +72,5 @@ async def get_stock_news(symbol):
 
         return processed_news
     except Exception as exc:
-        _log.info(format_log_message(f"Error fetching news for {symbol}: {exc}"))
+        _log.error(format_log_message(f"Error fetching news for {symbol}: {exc}"))
         return []

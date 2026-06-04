@@ -49,7 +49,7 @@ class RiskGovernor:
             # We strictly take the MAX for safety.
             effective = max(theoretical_bps, observed_p95)
             if effective > theoretical_bps:
-                _log.info(format_log_message(f"⚠️ RISK GOVERNOR: Slippage Inflation Active for {tier}. Model: {theoretical_bps}bps -> Real: {effective:.0f}bps"))
+                _log.warning(format_log_message(f"⚠️ RISK GOVERNOR: Slippage Inflation Active for {tier}. Model: {theoretical_bps}bps -> Real: {effective:.0f}bps"))
             return effective
 
         return theoretical_bps
@@ -155,7 +155,7 @@ class RiskGovernor:
         # The Orchestrator should interpret this as "Hold Existing, No New"
         # For simplicity in this function, we cap at current levels or reduced.
         if current_drawdown_pct > 10:
-            _log.info(format_log_message("RISK: Drawdown warning -> Capping new exposure"))
+            _log.warning(format_log_message("RISK: Drawdown warning -> Capping new exposure"))
             return total_capital * 0.75  # Reduce exposure slightly
 
         return total_capital

@@ -81,7 +81,7 @@ class GarpStrategy:
             """
             self.universe = pd.read_sql(query, conn)
         except Exception as e:
-            _log.info(format_log_message(f"Error loading universe: {e}"))
+            _log.error(format_log_message(f"Error loading universe: {e}"))
             self.universe = pd.DataFrame()
         finally:
             conn.close()
@@ -132,7 +132,7 @@ class GarpStrategy:
                 enriched = asyncio.run(self._fetch_news_batch(final_proposals))
                 return enriched
             except Exception as e:
-                _log.info(format_log_message(f"News fetch failed: {e}"))
+                _log.error(format_log_message(f"News fetch failed: {e}"))
                 return final_proposals
 
         return []

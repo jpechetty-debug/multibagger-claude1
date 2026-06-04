@@ -44,7 +44,7 @@ def track_alpha(strategy_cagr, benchmark_cagr, alpha):
 
         # Check if strictly decreasing
         if alphas[0] > alphas[1] > alphas[2]:
-            _log.info(format_log_message("⚠️  WARNING: ALPHA DECAY DETECTED!"))
+            _log.warning(format_log_message("⚠️  WARNING: ALPHA DECAY DETECTED!"))
             _log.info(format_log_message(f"    Trend: {alphas[0]}% -> {alphas[1]}% -> {alphas[2]}%"))
             _log.info(format_log_message("    Suggestion: Trigger Factor Review (Phase 24)"))
         else:

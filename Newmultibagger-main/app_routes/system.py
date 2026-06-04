@@ -27,6 +27,18 @@ _SIGNALS_FILE = Path(__file__).resolve().parent.parent / "paper_trade_signals.js
 @router.websocket("/ws/signals")
 async def websocket_signals(websocket: WebSocket):
     """Real-time signal broadcast via websocket."""
+    expected_key = os.getenv("SOVEREIGN_API_KEY")
+    if not expected_key:
+        api_logger.error("SOVEREIGN_API_KEY not set in environment. Access denied for security.")
+        await websocket.close(code=1008)  # Policy Violation
+        return
+
+    query_token = websocket.query_params.get("token") or websocket.query_params.get("api_key")
+    if query_token != expected_key:
+        api_logger.warning("Unauthenticated signals WebSocket attempt.")
+        await websocket.close(code=1008)  # Policy Violation
+        return
+
     await websocket.accept()
     try:
         while True:

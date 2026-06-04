@@ -163,7 +163,7 @@ class PortfolioOptimizer:
                         0.0,
                     )
                 except Exception as e:
-                    _log.info(format_log_message(f"[ERROR] Logging Failed: {e}"))
+                    _log.error(format_log_message(f"[ERROR] Logging Failed: {e}"))
 
                 # Apply to all stocks in this sector
                 for idx, s in enumerate(sectors):

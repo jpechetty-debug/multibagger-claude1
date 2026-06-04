@@ -39,19 +39,19 @@ def _read_sqlite_table(sqlite_conn, table_name: str) -> pd.DataFrame:
     try:
         return pd.read_sql(f"SELECT * FROM {table_name}", sqlite_conn)
     except Exception:
-        _log.info(format_log_message(f"  ⚠ Table '{table_name}' not found in SQLite source. Skipping."))
+        _log.warning(format_log_message(f"  ⚠ Table '{table_name}' not found in SQLite source. Skipping."))
         return pd.DataFrame()
 
 
 def run_migration():
     """Execute the full SQLite → PostgreSQL migration."""
     if IS_SQLITE:
-        _log.info(format_log_message("⚠ DATABASE_URL points to SQLite. Migration requires a PostgreSQL target."))
+        _log.warning(format_log_message("⚠ DATABASE_URL points to SQLite. Migration requires a PostgreSQL target."))
         _log.info(format_log_message("  Set DATABASE_URL=postgresql+psycopg://user:pass@host:5432/sovereign_db"))
         return
 
     if not os.path.exists(SQLITE_SOURCE):
-        _log.info(format_log_message(f"⚠ SQLite source '{SQLITE_SOURCE}' not found. Nothing to migrate."))
+        _log.warning(format_log_message(f"⚠ SQLite source '{SQLITE_SOURCE}' not found. Nothing to migrate."))
         return
 
     _log.info(format_log_message(f"🔄 Starting migration: {SQLITE_SOURCE} → PostgreSQL"))
@@ -86,7 +86,7 @@ def run_migration():
             total_rows += row_count
             _log.info(format_log_message(f"  ✅ {row_count:,} rows migrated successfully."))
         except Exception as e:
-            _log.info(format_log_message(f"  ❌ Migration failed for {table_name}: {e}"))
+            _log.error(format_log_message(f"  ❌ Migration failed for {table_name}: {e}"))
 
     sqlite_conn.close()
 

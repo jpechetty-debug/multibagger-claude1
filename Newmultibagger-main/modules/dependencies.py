@@ -62,7 +62,7 @@ def _read_records(query: str, params: dict[Any, Any] | None = None):
         return json.loads(df.to_json(orient="records", double_precision=2))
 
 
-from modules.data_utils import _json_safe_clean
+from modules.data_layer.data_utils import _json_safe_clean
 
 
 from fastapi import WebSocket

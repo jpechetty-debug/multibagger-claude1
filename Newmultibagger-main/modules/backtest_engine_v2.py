@@ -46,7 +46,7 @@ def run_performance_analysis(
             data = yf.download(all_symbols, period=period, progress=False)["Close"]
 
         if data.empty:
-            _log.info(format_log_message("Failed to download backtest data."))
+            _log.error(format_log_message("Failed to download backtest data."))
             return
 
         # Calculate Daily Returns
@@ -158,7 +158,7 @@ def run_performance_analysis(
         if alpha > 0:
             _log.info(format_log_message(f"✅ GROSS ALPHA: +{alpha:.1f}%"))
         else:
-            _log.info(format_log_message(f"❌ GROSS ALPHA: {alpha:.1f}%"))
+            _log.warning(format_log_message(f"❌ GROSS ALPHA: {alpha:.1f}%"))
 
         if post_tax_cagr > cagr_benchmark:
             _log.info(format_log_message(f"🏆 REAL ALPHA : +{post_tax_cagr - cagr_benchmark:.1f}% (Post-Tax)"))
@@ -177,4 +177,4 @@ def run_performance_analysis(
         }
 
     except Exception as e:
-        _log.info(format_log_message(f"Backtest Error: {e}"))
+        _log.error(format_log_message(f"Backtest Error: {e}"))

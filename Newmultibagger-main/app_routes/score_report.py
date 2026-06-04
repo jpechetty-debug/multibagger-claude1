@@ -25,7 +25,7 @@ router = APIRouter()
 @router.get("/api/score-distribution")
 async def score_distribution():
     """Return decile breakdown, sector distribution, and cap reason counts."""
-    from modules.data_utils import _json_safe_clean
+    from modules.data_layer.data_utils import _json_safe_clean
 
     dist = get_score_distribution()
     sectors = get_sector_distribution()
@@ -35,7 +35,7 @@ async def score_distribution():
 @router.get("/api/score-explain/{symbol}")
 async def score_explain(symbol: str):
     """Return full score explanation for one stock."""
-    from modules.data_utils import _json_safe_clean
+    from modules.data_layer.data_utils import _json_safe_clean
 
     if not symbol.endswith(".NS") and not symbol.endswith(".BO"):
         symbol += ".NS"
@@ -45,6 +45,6 @@ async def score_explain(symbol: str):
 @router.get("/api/calibration-report")
 async def calibration_report():
     """Return overall calibration health report."""
-    from modules.data_utils import _json_safe_clean
+    from modules.data_layer.data_utils import _json_safe_clean
 
     return _json_safe_clean(get_calibration_report())

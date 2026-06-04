@@ -263,10 +263,10 @@ def train_hybrid_model():
             # Eliminate look-ahead bias and structural hallucinations via PIT Auditor.
             df = sanitize(raw_df)
             if df.empty and not raw_df.empty:
-                _log.info(format_log_message("PIT Auditor quarantine triggered: all rows failed temporal strictness."))
+                _log.warning(format_log_message("PIT Auditor quarantine triggered: all rows failed temporal strictness."))
                 df = raw_df  # fallback for local testing
     except Exception as exc:
-        _log.info(format_log_message(f"Could not load or sanitize PIT data: {exc}"))
+        _log.warning(format_log_message(f"Could not load or sanitize PIT data: {exc}"))
         return False
 
     if len(df) < 20:
@@ -414,7 +414,7 @@ def predict_and_explain(factors_dict):
         )
         return {"ml_prediction": float(prediction * 100.0), "shap_values": sorted_breakdown}
     except Exception as exc:
-        _log.info(format_log_message(f"ML Prediction Error: {exc}"))
+        _log.error(format_log_message(f"ML Prediction Error: {exc}"))
         return {"ml_prediction": None, "shap_values": {}}
 
 

@@ -51,7 +51,7 @@ def validate_robustness(tickers):
 
         except Exception as e:
             logger.exception(f"Error in {cycle['name']} robustness check", exc_info=e)
-            _log.info(format_log_message(f"Error in {cycle['name']}: {e}"))
+            _log.error(format_log_message(f"Error in {cycle['name']}: {e}"))
 
     _log.info(format_log_message("\n" + "-" * 50))
     _log.info(format_log_message("ROBUSTNESS SCORECARD"))
@@ -67,5 +67,5 @@ def validate_robustness(tickers):
     elif pass_count == 2:
         _log.info(format_log_message("🥈 VERDICT: ROBUST (Survives most regimes)"))
     else:
-        _log.info(format_log_message("⚠️ VERDICT: FRAGILE (Regime Dependent)"))
+        _log.warning(format_log_message("⚠️ VERDICT: FRAGILE (Regime Dependent)"))
     _log.info(format_log_message("=" * 50 + "\n"))

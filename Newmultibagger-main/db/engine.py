@@ -89,7 +89,7 @@ def init_tables():
                 conn.commit()
                 _log.info(format_log_message("TimescaleDB hypertable enabled on fundamentals_pit."))
             except Exception as e:
-                _log.info(format_log_message(f"TimescaleDB hypertable setup skipped: {e}"))
+                _log.warning(format_log_message(f"TimescaleDB hypertable setup skipped: {e}"))
     _log.info(format_log_message(f"Database engine ready. Backend: {'PostgreSQL' if not IS_SQLITE else 'SQLite'}"))
 
 

@@ -364,7 +364,7 @@ def get_estimate_data(
                     }
                     return result
     except Exception as e:
-        _log.info(format_log_message(f"   Consensus seed load error: {e}"))
+        _log.error(format_log_message(f"   Consensus seed load error: {e}"))
 
     # Fallback: Compute own estimate when no manual seed matched
     if result["source"] == "none":

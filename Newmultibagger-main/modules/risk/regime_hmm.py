@@ -27,7 +27,7 @@ class RegimeHMM:
             try:
                 self.model = joblib.load(self.model_path)
             except Exception as e:
-                _log.info(format_log_message(f"Error loading HMM model: {e}"))
+                _log.error(format_log_message(f"Error loading HMM model: {e}"))
 
     def fetch_index_data(self, ticker="^NSEI", years=5):
         """Fetches historical returns for an index."""

@@ -68,7 +68,7 @@ def fetch_nse_bulk_deals(symbol: str) -> list[dict]:
                 for d in deals
             ]
     except Exception as e:
-        _log.info(format_log_message(f"  ⚠️ NSE bulk deal fetch failed for {clean_symbol}: {e}"))
+        _log.warning(format_log_message(f"  ⚠️ NSE bulk deal fetch failed for {clean_symbol}: {e}"))
 
     return []
 
@@ -178,7 +178,7 @@ def get_promoter_trend(symbol: str) -> dict:
         result["data_sources"].append("yfinance")
 
     except Exception as e:
-        _log.info(format_log_message(f"  ⚠️ yfinance pledge fetch failed for {symbol}: {e}"))
+        _log.warning(format_log_message(f"  ⚠️ yfinance pledge fetch failed for {symbol}: {e}"))
 
     # 3. Get historical holding snapshots from PIT table for QoQ trend
     hist = _get_historical_holdings(symbol, periods=4)
