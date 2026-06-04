@@ -2,6 +2,8 @@ import sqlite3
 from datetime import datetime
 import pandas as pd
 from modules.db_utils import get_db_connection
+from modules.structured_logger import SovereignLogger, format_log_message
+_log = SovereignLogger("modules.portfolio.execution_analyzer").logger
 
 try:
     import config
@@ -31,7 +33,7 @@ class ExecutionAnalyzer:
         Ingest a DataFrame of trade fills.
         Expected Columns: symbol, side, fill_price, expected_price (optional), timestamp
         """
-        print(f"📥 Ingesting {len(df)} fills...")
+        _log.info(format_log_message(f"📥 Ingesting {len(df)} fills..."))
 
         # Normalize Columns
         df.columns = [
@@ -81,7 +83,7 @@ class ExecutionAnalyzer:
                     else:
                         tier = "MICRO_CAP"
             except Exception as e:
-                print(f"Tier lookup failed: {e}")
+                _log.info(format_log_message(f"Tier lookup failed: {e}"))
 
             regime = "UNKNOWN"  # Placeholder
             vix = 15.0  # Placeholder
@@ -103,7 +105,7 @@ class ExecutionAnalyzer:
             )
 
         if not records:
-            print("⚠️ No valid records to insert.")
+            _log.info(format_log_message("⚠️ No valid records to insert."))
             return
 
         cursor.executemany(
@@ -114,7 +116,7 @@ class ExecutionAnalyzer:
             records,
         )
         conn.commit()
-        print(f"✅ Ingested {len(records)} fill records.")
+        _log.info(format_log_message(f"✅ Ingested {len(records)} fill records."))
 
         # Trigger Recalibration
         self.update_metrics()
@@ -123,18 +125,18 @@ class ExecutionAnalyzer:
         """
         Recalculate rolling 30-day slippage statistics.
         """
-        print("🔄 Recalibrating Slippage Models...")
+        _log.info(format_log_message("🔄 Recalibrating Slippage Models..."))
 
         conn = self._get_conn()
 
         try:
             df = pd.read_sql("SELECT liquidity_tier, slippage_bps FROM executions", conn)
         except Exception as e:
-            print(f"Error reading executions: {e}")
+            _log.info(format_log_message(f"Error reading executions: {e}"))
             return
 
         if df.empty:
-            print("No execution data found.")
+            _log.info(format_log_message("No execution data found."))
             return
 
         cursor = conn.cursor()
@@ -175,7 +177,7 @@ class ExecutionAnalyzer:
             )
 
         conn.commit()
-        print("✅ Slippage metrics updated.")
+        _log.info(format_log_message("✅ Slippage metrics updated."))
 
     def get_calibrated_slippage(self, tier):
         """

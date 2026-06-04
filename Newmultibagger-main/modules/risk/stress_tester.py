@@ -2,6 +2,8 @@
 import math
 from dataclasses import dataclass
 from enum import Enum
+from modules.structured_logger import SovereignLogger, format_log_message
+_log = SovereignLogger("modules.risk.stress_tester").logger
 
 
 class CrisisType(Enum):
@@ -208,15 +210,15 @@ if __name__ == "__main__":
         "BAJFINANCE.NS": {"weight": 0.10, "sector": "NBFC", "beta": 1.5, "current_value": 100000},
     }
 
-    print("🚀 Initializing Sovereign Stress Tester...\n")
+    _log.info(format_log_message("🚀 Initializing Sovereign Stress Tester...\n"))
     ranked_reports = run_all_scenarios(sample_portfolio)
 
     for idx, report in enumerate(ranked_reports, 1):
-        print(f"--- RANK {idx} SEVERITY ---")
-        print(report.to_markdown())
-        print("\n" + "=" * 50 + "\n")
+        _log.info(format_log_message(f"--- RANK {idx} SEVERITY ---"))
+        _log.info(format_log_message(report.to_markdown()))
+        _log.info(format_log_message("\n" + "=" * 50 + "\n"))
 
-    print("\n--- TEST: CUSTOM SCENARIO ---")
+    _log.info(format_log_message("\n--- TEST: CUSTOM SCENARIO ---"))
     custom_scn = ScenarioLibrary.create_custom(
         name="Global Tech Meltdown 2026",
         market_shock_pct=-10.0,
@@ -225,4 +227,4 @@ if __name__ == "__main__":
     )
     tester = StressTester()
     custom_report = tester.run(sample_portfolio, custom_scn)
-    print(custom_report.to_markdown())
+    _log.info(format_log_message(custom_report.to_markdown()))

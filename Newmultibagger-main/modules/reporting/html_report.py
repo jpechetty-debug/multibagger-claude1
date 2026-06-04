@@ -11,6 +11,8 @@ from modules.quarterly_results import get_quarterly_timeline
 from modules.shareholding import get_shareholding_pattern
 from modules.symbol_utils import normalize_symbol
 from modules.technicals import get_technical_analysis
+from modules.structured_logger import SovereignLogger, format_log_message
+_log = SovereignLogger("modules.reporting.html_report").logger
 
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "..", "templates")
 REPORTS_DIR = os.path.join(os.path.dirname(__file__), "..", "web-ui", "reports")
@@ -44,10 +46,10 @@ async def generate_premium_html_report(symbol: str):
     if os.path.exists(output_path):
         mtime = os.path.getmtime(output_path)
         if (datetime.now().timestamp() - mtime) < 300:  # Reduced to 5 minutes
-            print(f"Returning cached Premium Report for {symbol}...")
+            _log.info(format_log_message(f"Returning cached Premium Report for {symbol}..."))
             return output_path
 
-    print(f"Generating Premium Audit Report for {symbol}...")
+    _log.info(format_log_message(f"Generating Premium Audit Report for {symbol}..."))
     ticker = yf.Ticker(symbol)
 
     # Gather data in parallel
@@ -330,7 +332,7 @@ async def generate_premium_html_report(symbol: str):
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(html_output)
 
-    print(f"Report generated: {output_path}")
+    _log.info(format_log_message(f"Report generated: {output_path}"))
     return output_path
 
 

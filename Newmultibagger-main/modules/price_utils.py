@@ -1,12 +1,14 @@
 import pandas as pd
 import numpy as np
 import yfinance as yf
+from modules.structured_logger import SovereignLogger, format_log_message
+_log = SovereignLogger("modules.price_utils").logger
 
 def fetch_forward_prices(df_input, months=3):
     """Fetch forward prices using yfinance monthly data."""
     df = df_input.copy()
     symbols = df["symbol"].unique().tolist()
-    print(f"Fetching monthly history for {len(symbols)} symbols...")
+    _log.info(format_log_message(f"Fetching monthly history for {len(symbols)} symbols..."))
 
     hist_dfs = []
     chunk_size = 200
@@ -22,7 +24,7 @@ def fetch_forward_prices(df_input, months=3):
                     if "Close" in h:
                         hist_dfs.append(pd.DataFrame({chunk[0]: h["Close"]}))
         except Exception as e:
-            print(f"Error fetching chunk: {e}")
+            _log.info(format_log_message(f"Error fetching chunk: {e}"))
 
     if not hist_dfs:
         return pd.Series(dtype=float)

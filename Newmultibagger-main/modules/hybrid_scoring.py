@@ -13,6 +13,8 @@ import shap
 import xgboost as xgb
 from modules.price_utils import fetch_forward_prices
 from modules.structured_logger import get_logger
+from modules.structured_logger import SovereignLogger, format_log_message
+_log = SovereignLogger("modules.hybrid_scoring").logger
 
 warnings.filterwarnings("ignore")
 
@@ -242,7 +244,7 @@ def _get_historical_targets(symbols: list):
 
 
 def train_hybrid_model():
-    print("Initiating Hybrid Scoring Meta-Model Training (XGBoost)...")
+    _log.info(format_log_message("Initiating Hybrid Scoring Meta-Model Training (XGBoost)..."))
 
     # 1. Extract PIT Data
     try:
@@ -261,30 +263,28 @@ def train_hybrid_model():
             # Eliminate look-ahead bias and structural hallucinations via PIT Auditor.
             df = sanitize(raw_df)
             if df.empty and not raw_df.empty:
-                print("PIT Auditor quarantine triggered: all rows failed temporal strictness.")
+                _log.info(format_log_message("PIT Auditor quarantine triggered: all rows failed temporal strictness."))
                 df = raw_df  # fallback for local testing
     except Exception as exc:
-        print(f"Could not load or sanitize PIT data: {exc}")
+        _log.info(format_log_message(f"Could not load or sanitize PIT data: {exc}"))
         return False
 
     if len(df) < 20:
-        print(
-            "Not enough historical data in fundamentals_pit to train a reliable XGBoost model (need > 20)."
-        )
+        _log.info(format_log_message("Not enough historical data in fundamentals_pit to train a reliable XGBoost model (need > 20)."))
         return False
 
     # 2. Get current prices to calculate forward returns.
     symbols = df["symbol"].unique().tolist()
-    print(f"Fetching current prices for {len(symbols)} symbols to construct target (Y)...")
+    _log.info(format_log_message(f"Fetching current prices for {len(symbols)} symbols to construct target (Y)..."))
     current_prices = _get_historical_targets(symbols)
 
     train_df = _build_training_frame(df, current_prices)
     if train_df.empty:
-        print("No valid forward returns calculable.")
+        _log.info(format_log_message("No valid forward returns calculable."))
         return False
 
     if len(train_df) < 10:
-        print("Too many invalid rows; not enough training data after cleanup.")
+        _log.info(format_log_message("Too many invalid rows; not enough training data after cleanup."))
         return False
 
     # ── Feature leakage audit ──
@@ -318,15 +318,13 @@ def train_hybrid_model():
     validation = walk_forward_validate(train_only)
     _save_walk_forward_report(validation)
     if validation.get("status") == "OK":
-        print(
-            "Walk-forward validation: "
+        _log.info(format_log_message("Walk-forward validation: "
             f"{validation['folds']} folds, "
             f"OOS R2={validation.get('oos_r2')}, "
             f"IC={validation.get('spearman_ic')}, "
-            f"hit_rate={validation.get('hit_rate')}"
-        )
+            f"hit_rate={validation.get('hit_rate')}"))
     else:
-        print(f"Walk-forward validation skipped: {validation.get('reason')}")
+        _log.info(format_log_message(f"Walk-forward validation skipped: {validation.get('reason')}"))
 
     # Train on non-holdout data only
     X = _sanitize_features(train_only[FEATURES])
@@ -335,7 +333,7 @@ def train_hybrid_model():
     # 3. Train XGBoost Regressor.
     model = _make_xgb_regressor()
 
-    print("Training XGBoost regressor on historical factor signatures...")
+    _log.info(format_log_message("Training XGBoost regressor on historical factor signatures..."))
     model.fit(X, y)
 
     # ── Holdout evaluation ──
@@ -354,12 +352,12 @@ def train_hybrid_model():
             logger.warning("Holdout evaluation failed", error=str(exc))
 
     r2 = model.score(X, y)
-    print(f"Training complete. Final in-sample fit R2: {r2:.2f}")
+    _log.info(format_log_message(f"Training complete. Final in-sample fit R2: {r2:.2f}"))
 
     # 4. Save model.
     os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
     joblib.dump(model, MODEL_PATH)
-    print("Model saved to disk.")
+    _log.info(format_log_message("Model saved to disk."))
     return True
 
 
@@ -416,7 +414,7 @@ def predict_and_explain(factors_dict):
         )
         return {"ml_prediction": float(prediction * 100.0), "shap_values": sorted_breakdown}
     except Exception as exc:
-        print(f"ML Prediction Error: {exc}")
+        _log.info(format_log_message(f"ML Prediction Error: {exc}"))
         return {"ml_prediction": None, "shap_values": {}}
 
 

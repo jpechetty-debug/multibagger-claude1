@@ -1,6 +1,8 @@
 import math
 
 import pandas as pd
+from modules.structured_logger import SovereignLogger, format_log_message
+_log = SovereignLogger("modules.portfolio.execution").logger
 
 
 def generate_broker_orders(portfolio, total_capital=1000000, broker="ZERODHA"):
@@ -16,9 +18,9 @@ def generate_broker_orders(portfolio, total_capital=1000000, broker="ZERODHA"):
     Returns:
         filename (str): Path to the generated CSV.
     """
-    print("\n" + "=" * 50)
-    print(f"📠 PHASE 41: GENERATING {broker} ORDER BASKET (Cap: ₹{total_capital / 100000}L)")
-    print("=" * 50)
+    _log.info(format_log_message("\n" + "=" * 50))
+    _log.info(format_log_message(f"📠 PHASE 41: GENERATING {broker} ORDER BASKET (Cap: ₹{total_capital / 100000}L)"))
+    _log.info(format_log_message("=" * 50))
 
     orders = []
 
@@ -54,7 +56,7 @@ def generate_broker_orders(portfolio, total_capital=1000000, broker="ZERODHA"):
             )
 
     if not orders:
-        print("No orders generated (Check Capital scaling).")
+        _log.info(format_log_message("No orders generated (Check Capital scaling)."))
         return None
 
     df = pd.DataFrame(orders)
@@ -65,9 +67,9 @@ def generate_broker_orders(portfolio, total_capital=1000000, broker="ZERODHA"):
         filename, index=False, header=False
     )  # Kite basket often needs no header or specific header
 
-    print(f"ORDERS GENERATED: {len(orders)} Trades")
-    print(f"Saved to: {filename}")
-    print(f"Action: Upload this file to {broker} Basket Order tool.")
-    print("=" * 50 + "\n")
+    _log.info(format_log_message(f"ORDERS GENERATED: {len(orders)} Trades"))
+    _log.info(format_log_message(f"Saved to: {filename}"))
+    _log.info(format_log_message(f"Action: Upload this file to {broker} Basket Order tool."))
+    _log.info(format_log_message("=" * 50 + "\n"))
 
     return filename

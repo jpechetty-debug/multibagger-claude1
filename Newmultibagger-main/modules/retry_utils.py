@@ -2,6 +2,8 @@ import asyncio
 import inspect
 from collections.abc import Callable, Sequence
 from typing import Any
+from modules.structured_logger import SovereignLogger, format_log_message
+_log = SovereignLogger("modules.retry_utils").logger
 
 DEFAULT_BACKOFF_SECONDS: Sequence[float] = (2.0, 4.0, 8.0)
 
@@ -44,7 +46,7 @@ async def run_with_exponential_backoff(
 
             wait = float(retry_delays[attempt])
             if context:
-                print(f"{context} rate-limited. Retrying in {wait:.0f}s.")
+                _log.info(format_log_message(f"{context} rate-limited. Retrying in {wait:.0f}s."))
             await asyncio.sleep(wait)
 
     raise RuntimeError("Retry loop exited unexpectedly")

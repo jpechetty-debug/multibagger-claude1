@@ -6,6 +6,8 @@ import yfinance as yf
 
 from modules.recovery import calculate_recovery_metrics
 from modules.tax_efficiency import calculate_tax_efficiency
+from modules.structured_logger import SovereignLogger, format_log_message
+_log = SovereignLogger("modules.backtest_engine_v2").logger
 
 RF_ANNUAL = float(os.getenv("RISK_FREE_RATE_ANNUAL", "0.065"))
 
@@ -24,12 +26,12 @@ def run_performance_analysis(
         end_date: "YYYY-MM-DD" (Optional - overrides period)
     """
     if weights:
-        print("\nrunning Phase 17/31: Weighted Portfolio Backtest...")
+        _log.info(format_log_message("\nrunning Phase 17/31: Weighted Portfolio Backtest..."))
     else:
-        print("\nrunning Phase 16/31: Equal-Weight Backtest...")
+        _log.info(format_log_message("\nrunning Phase 16/31: Equal-Weight Backtest..."))
 
     if not tickers:
-        print("No tickers to backtest.")
+        _log.info(format_log_message("No tickers to backtest."))
         return
 
     try:
@@ -37,14 +39,14 @@ def run_performance_analysis(
         all_symbols = tickers + [benchmark_symbol]
 
         if start_date and end_date:
-            print(f"  📅 Range: {start_date} to {end_date}")
+            _log.info(format_log_message(f"  📅 Range: {start_date} to {end_date}"))
             data = yf.download(all_symbols, start=start_date, end=end_date, progress=False)["Close"]
         else:
-            print(f"  📅 Period: {period}")
+            _log.info(format_log_message(f"  📅 Period: {period}"))
             data = yf.download(all_symbols, period=period, progress=False)["Close"]
 
         if data.empty:
-            print("Failed to download backtest data.")
+            _log.info(format_log_message("Failed to download backtest data."))
             return
 
         # Calculate Daily Returns
@@ -54,14 +56,14 @@ def run_performance_analysis(
         # Filter only valid columns that are in our ticker list
         valid_tickers = [t for t in tickers if t in data.columns]
         if not valid_tickers:
-            print("No valid data for selected tickers.")
+            _log.info(format_log_message("No valid data for selected tickers."))
             return
 
         if weights:
             # Normalize weights to sum to 1 just in case
             w_sum = sum(weights.get(t, 0) for t in valid_tickers)
             if w_sum == 0:
-                print("Invalid weights.")
+                _log.info(format_log_message("Invalid weights."))
                 strategy_returns = returns[valid_tickers].mean(axis=1)  # Fallback
             else:
                 # Calculate weighted returns
@@ -72,7 +74,7 @@ def run_performance_analysis(
                     weighted_rets[t] = returns[t] * w
                 strategy_returns = weighted_rets.sum(axis=1)
 
-                print("Applied Smart Sizing (Score-Based Weights).")
+                _log.info(format_log_message("Applied Smart Sizing (Score-Based Weights)."))
         else:
             strategy_returns = returns[valid_tickers].mean(axis=1)
 
@@ -137,33 +139,33 @@ def run_performance_analysis(
         )
 
         # Output Report
-        print("\n" + "=" * 40)
-        print("📊 PHASE 16/33/37/38: BACKTEST REPORT")
-        print("=" * 40)
-        print(f"Strategy: {len(valid_tickers)} Stocks")
-        print(f"Benchmark: {benchmark_symbol}")
-        print("-" * 55)
-        print(f"{'Metric':<15} | {'Gross':<8} | {'Net':<8} | {'Post-Tax':<8}")
-        print("-" * 55)
-        print(f"{'CAGR':<15} | {cagr_strategy:>7.1f}% | {net_cagr:>7.1f}% | {post_tax_cagr:>7.1f}%")
-        print(f"{'Drawdown':<15} | {max_dd:>7.1f}% | {max_dd:>7.1f}% | {max_dd:>7.1f}%")
-        print(f"{'Sharpe':<15} | {sharpe:>7.2f}  | {sharpe:>7.2f}  | {'--':>7}")
-        print("-" * 55)
-        print(f"Turnover Est : {turnover:>4.1f}x/yr  | Tax Rate: {eff_tax:.1f}%")
-        print(f"Recovery Days: {rec_days:>4}d      | Ulcer Idx: {ulcer:.2f}")
-        print("-" * 55)
+        _log.info(format_log_message("\n" + "=" * 40))
+        _log.info(format_log_message("📊 PHASE 16/33/37/38: BACKTEST REPORT"))
+        _log.info(format_log_message("=" * 40))
+        _log.info(format_log_message(f"Strategy: {len(valid_tickers)} Stocks"))
+        _log.info(format_log_message(f"Benchmark: {benchmark_symbol}"))
+        _log.info(format_log_message("-" * 55))
+        _log.info(format_log_message(f"{'Metric':<15} | {'Gross':<8} | {'Net':<8} | {'Post-Tax':<8}"))
+        _log.info(format_log_message("-" * 55))
+        _log.info(format_log_message(f"{'CAGR':<15} | {cagr_strategy:>7.1f}% | {net_cagr:>7.1f}% | {post_tax_cagr:>7.1f}%"))
+        _log.info(format_log_message(f"{'Drawdown':<15} | {max_dd:>7.1f}% | {max_dd:>7.1f}% | {max_dd:>7.1f}%"))
+        _log.info(format_log_message(f"{'Sharpe':<15} | {sharpe:>7.2f}  | {sharpe:>7.2f}  | {'--':>7}"))
+        _log.info(format_log_message("-" * 55))
+        _log.info(format_log_message(f"Turnover Est : {turnover:>4.1f}x/yr  | Tax Rate: {eff_tax:.1f}%"))
+        _log.info(format_log_message(f"Recovery Days: {rec_days:>4}d      | Ulcer Idx: {ulcer:.2f}"))
+        _log.info(format_log_message("-" * 55))
 
         if alpha > 0:
-            print(f"✅ GROSS ALPHA: +{alpha:.1f}%")
+            _log.info(format_log_message(f"✅ GROSS ALPHA: +{alpha:.1f}%"))
         else:
-            print(f"❌ GROSS ALPHA: {alpha:.1f}%")
+            _log.info(format_log_message(f"❌ GROSS ALPHA: {alpha:.1f}%"))
 
         if post_tax_cagr > cagr_benchmark:
-            print(f"🏆 REAL ALPHA : +{post_tax_cagr - cagr_benchmark:.1f}% (Post-Tax)")
+            _log.info(format_log_message(f"🏆 REAL ALPHA : +{post_tax_cagr - cagr_benchmark:.1f}% (Post-Tax)"))
         else:
-            print("💸 TAX TRAP   :Strategy loses edge after Tax/Slippage")
+            _log.info(format_log_message("💸 TAX TRAP   :Strategy loses edge after Tax/Slippage"))
 
-        print("=" * 40 + "\n")
+        _log.info(format_log_message("=" * 40 + "\n"))
 
         return {
             "CAGR": cagr_strategy,
@@ -175,4 +177,4 @@ def run_performance_analysis(
         }
 
     except Exception as e:
-        print(f"Backtest Error: {e}")
+        _log.info(format_log_message(f"Backtest Error: {e}"))

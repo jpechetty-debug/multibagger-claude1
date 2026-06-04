@@ -1,3 +1,5 @@
+from modules.structured_logger import SovereignLogger, format_log_message
+_log = SovereignLogger("modules.portfolio.portfolio_optimizer").logger
 def optimize_portfolio_allocation(candidates, capital=1000000):
     """
     Phase 35: Portfolio Construction Engine.
@@ -16,9 +18,9 @@ def optimize_portfolio_allocation(candidates, capital=1000000):
     Returns:
         final_portfolio (list): List of selected stocks with 'Weight' and 'Qty'.
     """
-    print("\n" + "=" * 50)
-    print("🏗️  PHASE 35: PORTFOLIO OPTIMIZATION")
-    print("=" * 50)
+    _log.info(format_log_message("\n" + "=" * 50))
+    _log.info(format_log_message("🏗️  PHASE 35: PORTFOLIO OPTIMIZATION"))
+    _log.info(format_log_message("=" * 50))
 
     MAX_STOCKS = 12
     MAX_SECTOR_WEIGHT = 0.30  # 30% Cap
@@ -70,7 +72,7 @@ def optimize_portfolio_allocation(candidates, capital=1000000):
     # 2. Normalization (Fill the rest)
     if current_total_weight > 0 and current_total_weight < 0.95:
         correction_factor = 1.0 / current_total_weight
-        print(f"  Note: Scaling up weights by {correction_factor:.2f}x to fully invest.")
+        _log.info(format_log_message(f"  Note: Scaling up weights by {correction_factor:.2f}x to fully invest."))
         for s in selected_portfolio:
             new_w = (s["Target_Weight%"] / 100) * correction_factor
             s["Target_Weight%"] = round(new_w * 100, 1)
@@ -78,9 +80,9 @@ def optimize_portfolio_allocation(candidates, capital=1000000):
             if s.get("Price", 0) > 0:
                 s["Qty"] = int(s["Allocated_Capital"] / s["Price"])
 
-    print(f"Selected {len(selected_portfolio)} stocks from candidate list.")
-    print("Sector Breakdown:")
+    _log.info(format_log_message(f"Selected {len(selected_portfolio)} stocks from candidate list."))
+    _log.info(format_log_message("Sector Breakdown:"))
     for sec, w in sector_exposure.items():
-        print(f"  - {sec}: {w * 100:.1f}%")
+        _log.info(format_log_message(f"  - {sec}: {w * 100:.1f}%"))
 
     return selected_portfolio

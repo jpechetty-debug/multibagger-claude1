@@ -1,4 +1,6 @@
 import pandas as pd
+from modules.structured_logger import SovereignLogger, format_log_message
+_log = SovereignLogger("modules.redundancy").logger
 
 
 def analyze_factor_redundancy(stock_list):
@@ -7,12 +9,12 @@ def analyze_factor_redundancy(stock_list):
     Detects if multiple factors are telling the same story.
     If Correlation > 0.8, we have 'Multicollinearity' (Overfitting Risk).
     """
-    print("\n" + "=" * 50)
-    print("🧬 PHASE 32: FACTOR REDUNDANCY AUDIT")
-    print("=" * 50)
+    _log.info(format_log_message("\n" + "=" * 50))
+    _log.info(format_log_message("🧬 PHASE 32: FACTOR REDUNDANCY AUDIT"))
+    _log.info(format_log_message("=" * 50))
 
     if len(stock_list) < 10:
-        print("Not enough data points for Factor Analysis.")
+        _log.info(format_log_message("Not enough data points for Factor Analysis."))
         return
 
     try:
@@ -42,7 +44,7 @@ def analyze_factor_redundancy(stock_list):
         redundant_pairs = []
         c = corr_matrix
 
-        print("Factor Correlation Matrix (Key Relationships):")
+        _log.info(format_log_message("Factor Correlation Matrix (Key Relationships):"))
         for i in range(len(c.columns)):
             for j in range(i + 1, len(c.columns)):
                 val = c.iloc[i, j]
@@ -55,14 +57,14 @@ def analyze_factor_redundancy(stock_list):
 
         # 4. Report
         if redundant_pairs:
-            print("⚠️  WARNING: REDUNDANT FACTORS DETECTED (> 0.75):")
+            _log.info(format_log_message("⚠️  WARNING: REDUNDANT FACTORS DETECTED (> 0.75):"))
             for pair in redundant_pairs:
-                print(f"  - {pair}")
-            print("  -> Implication: You are overweighting this signal.")
-            print("  -> Suggestion: Prune one factor or reduce weights.")
+                _log.info(format_log_message(f"  - {pair}"))
+            _log.info(format_log_message("  -> Implication: You are overweighting this signal."))
+            _log.info(format_log_message("  -> Suggestion: Prune one factor or reduce weights."))
         else:
-            print("✅  Factor Independence: Healthy (No overlaps > 0.75)")
+            _log.info(format_log_message("✅  Factor Independence: Healthy (No overlaps > 0.75)"))
 
     except Exception as e:
-        print(f"Factor Audit Error: {e}")
-    print("=" * 50 + "\n")
+        _log.info(format_log_message(f"Factor Audit Error: {e}"))
+    _log.info(format_log_message("=" * 50 + "\n"))

@@ -162,6 +162,7 @@ numba_cache/
 
 # Graphify Cache
 graphify-out/cache/
+*.bm25.pkl
 
 # ── Outer Repo Root Hygiene ──
 audit_results.txt

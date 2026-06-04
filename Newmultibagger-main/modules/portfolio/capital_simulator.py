@@ -1,3 +1,5 @@
+from modules.structured_logger import SovereignLogger, format_log_message
+_log = SovereignLogger("modules.portfolio.capital_simulator").logger
 def simulate_capital_deployment(portfolio):
     """
     Phase 39: Capital Deployment Simulator.
@@ -12,12 +14,12 @@ def simulate_capital_deployment(portfolio):
     - Participation Rate: 10% of Average Daily Volume (aggressive but standard).
     - If liquidating takes > 5 days, it's a "Liquidity Trap".
     """
-    print("\n" + "=" * 50)
-    print("🏦 PHASE 39: CAPITAL SCALABILITY STRESS TEST")
-    print("=" * 50)
+    _log.info(format_log_message("\n" + "=" * 50))
+    _log.info(format_log_message("🏦 PHASE 39: CAPITAL SCALABILITY STRESS TEST"))
+    _log.info(format_log_message("=" * 50))
 
     if not portfolio:
-        print("No portfolio to test.")
+        _log.info(format_log_message("No portfolio to test."))
         return
 
     scenarios = [
@@ -26,8 +28,8 @@ def simulate_capital_deployment(portfolio):
         {"name": "Micro Fund", "aum": 10_00_00_000},  # 10 Crore
     ]
 
-    print(f"{'Scenario':<15} | {'AUM':<12} | {'Max Days to Exit':<18} | {'Status':<15}")
-    print("-" * 65)
+    _log.info(format_log_message(f"{'Scenario':<15} | {'AUM':<12} | {'Max Days to Exit':<18} | {'Status':<15}"))
+    _log.info(format_log_message("-" * 65))
 
     for scen in scenarios:
         name = scen["name"]
@@ -68,10 +70,8 @@ def simulate_capital_deployment(portfolio):
             status = "⚠️ Illiquid"
 
         aum_val = float(scen.get("aum", 0))
-        print(
-            f"{name:<15} | ₹{aum_val / 100000:>4.0f}L       | {max_days:>5.1f} Days ({bottleneck_stock}) | {status:<15}"
-        )
+        _log.info(format_log_message(f"{name:<15} | ₹{aum_val / 100000:>4.0f}L       | {max_days:>5.1f} Days ({bottleneck_stock}) | {status:<15}"))
 
-    print("-" * 65)
-    print("Note: 'Days to Exit' assumes max 10% participation of Daily Volume.")
-    print("=" * 50 + "\n")
+    _log.info(format_log_message("-" * 65))
+    _log.info(format_log_message("Note: 'Days to Exit' assumes max 10% participation of Daily Volume."))
+    _log.info(format_log_message("=" * 50 + "\n"))

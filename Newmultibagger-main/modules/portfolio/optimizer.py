@@ -3,6 +3,8 @@ import pandas as pd
 
 import config
 from modules.allocation_hrp import HRPAllocator
+from modules.structured_logger import SovereignLogger, format_log_message
+_log = SovereignLogger("modules.portfolio.optimizer").logger
 
 
 class PortfolioOptimizer:
@@ -56,7 +58,7 @@ class PortfolioOptimizer:
         df = pd.DataFrame(stocks)
 
         if method == "hrp" and history_df is not None and not history_df.empty:
-            print("[INFO] Applying HRP Allocation...")
+            _log.info(format_log_message("[INFO] Applying HRP Allocation..."))
             allocator = HRPAllocator(
                 max_single_weight=self.max_single_weight, min_single_weight=self.min_single_weight
             )
@@ -81,7 +83,7 @@ class PortfolioOptimizer:
 
             # --- CORRELATION PENALTY (v2.4) ---
             if history_df is not None and not history_df.empty:
-                print("[INFO] Applying Correlation Penalty...")
+                _log.info(format_log_message("[INFO] Applying Correlation Penalty..."))
                 corr_matrix = history_df.corr()
 
                 # Map Symbol to Score (if available) for tie-breaking
@@ -113,9 +115,7 @@ class PortfolioOptimizer:
                             # New Weight = Old Weight * (1 - Penalty Factor)
                             penalty_map[victim] *= 1.0 - penalty_factor
 
-                            print(
-                                f"  > High Corr ({correlation:.2f}) {s1} vs {s2}. Penalty Factor: {penalty_factor:.2f} on {victim}."
-                            )
+                            _log.info(format_log_message(f"  > High Corr ({correlation:.2f}) {s1} vs {s2}. Penalty Factor: {penalty_factor:.2f} on {victim}."))
 
             # Apply Penalty to Inv_Vol
             df["Penalty"] = df["Symbol"].map(penalty_map).fillna(1.0)
@@ -163,7 +163,7 @@ class PortfolioOptimizer:
                         0.0,
                     )
                 except Exception as e:
-                    print(f"[ERROR] Logging Failed: {e}")
+                    _log.info(format_log_message(f"[ERROR] Logging Failed: {e}"))
 
                 # Apply to all stocks in this sector
                 for idx, s in enumerate(sectors):
@@ -179,7 +179,7 @@ class PortfolioOptimizer:
         total_allocated_weight = np.sum(weights)
         cash_weight = 1.0 - total_allocated_weight
 
-        print(f"Optimization Result: Invested {total_allocated_weight:.1%}, Cash {cash_weight:.1%}")
+        _log.info(format_log_message(f"Optimization Result: Invested {total_allocated_weight:.1%}, Cash {cash_weight:.1%}"))
 
         return df[
             [

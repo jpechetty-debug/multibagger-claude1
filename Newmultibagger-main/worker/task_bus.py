@@ -18,8 +18,9 @@ Environment:
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 import os
-from typing import Any, Callable
+from typing import Any
 
 from modules.structured_logger import SovereignLogger
 
@@ -72,9 +73,9 @@ async def run_dev_worker(*, max_tasks: int = 0) -> None:
             logger.error("task.failed", task=fn.__name__, error=str(exc))
         finally:
             q.task_done()
-            processed += 1
-            if max_tasks and processed >= max_tasks:
-                break
+        processed += 1
+        if max_tasks and processed >= max_tasks:
+            break
 
 
 # ---------------------------------------------------------------------------

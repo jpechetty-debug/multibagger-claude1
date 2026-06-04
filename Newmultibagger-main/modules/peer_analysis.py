@@ -14,6 +14,8 @@ import yfinance as yf
 
 from modules.db_utils import get_db_connection
 from modules.retry_utils import run_with_exponential_backoff
+from modules.structured_logger import SovereignLogger, format_log_message
+_log = SovereignLogger("modules.peer_analysis").logger
 
 # NSE Sector Mapping (Initial set provided by user)
 SECTOR_MAP = {
@@ -372,7 +374,7 @@ async def fetch_stock_metrics(symbol: str) -> dict:
             "current_price": current_price,
         }
     except Exception as e:
-        print(f"Peer fetch failed for {symbol}: {e}")
+        _log.info(format_log_message(f"Peer fetch failed for {symbol}: {e}"))
         return {"symbol": symbol, "error": str(e)}
 
 

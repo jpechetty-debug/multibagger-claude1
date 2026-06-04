@@ -4,6 +4,8 @@ from datetime import datetime
 import yfinance as yf
 
 from modules.retry_utils import run_with_exponential_backoff
+from modules.structured_logger import SovereignLogger, format_log_message
+_log = SovereignLogger("modules.intelligence.news").logger
 
 
 async def get_stock_news(symbol):
@@ -70,5 +72,5 @@ async def get_stock_news(symbol):
 
         return processed_news
     except Exception as exc:
-        print(f"Error fetching news for {symbol}: {exc}")
+        _log.info(format_log_message(f"Error fetching news for {symbol}: {exc}"))
         return []

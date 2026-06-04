@@ -78,6 +78,14 @@ def get_structured_logger(name="sovereign", log_file="logs/sovereign.json"):
     return logger
 
 
+def format_log_message(*args, sep=" ", end="\n"):
+    """Render print-style arguments as a single log message."""
+    message = sep.join(str(arg) for arg in args)
+    if end and end != "\n":
+        message += end
+    return message
+
+
 class SovereignLogger:
     """Wrapper class to simplify extra context logging."""
 

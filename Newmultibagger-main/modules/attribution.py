@@ -1,3 +1,5 @@
+from modules.structured_logger import SovereignLogger, format_log_message
+_log = SovereignLogger("modules.attribution").logger
 def analyze_alpha_attribution(portfolio, universe):
     """
     Phase 36: Alpha Attribution / Factor Exposure Analysis.
@@ -7,12 +9,12 @@ def analyze_alpha_attribution(portfolio, universe):
         portfolio: List of stock dicts (The selected ones).
         universe: List of stock dicts (All scanned stocks).
     """
-    print("\n" + "=" * 50)
-    print("🧠 PHASE 36: ALPHA SOURCE ATTRIBUTION")
-    print("=" * 50)
+    _log.info(format_log_message("\n" + "=" * 50))
+    _log.info(format_log_message("🧠 PHASE 36: ALPHA SOURCE ATTRIBUTION"))
+    _log.info(format_log_message("=" * 50))
 
     if not portfolio or not universe:
-        print("Insufficient data for attribution.")
+        _log.info(format_log_message("Insufficient data for attribution."))
         return
 
     # Factors to analyze
@@ -58,8 +60,8 @@ def analyze_alpha_attribution(portfolio, universe):
             portfolio_factors[k] /= port_count
 
     # 3. Compare and Attribute
-    print(f"{'Factor':<15} | {'Universe':<8} | {'Portfolio':<8} | {'Active Exposure':<15}")
-    print("-" * 55)
+    _log.info(format_log_message(f"{'Factor':<15} | {'Universe':<8} | {'Portfolio':<8} | {'Active Exposure':<15}"))
+    _log.info(format_log_message("-" * 55))
 
     dominant_factor = "None"
     max_diff = 0
@@ -70,12 +72,12 @@ def analyze_alpha_attribution(portfolio, universe):
         diff = p - u
         diff_pct = (diff / u) * 100 if u > 0 else 0
 
-        print(f"{k:<15} | {u:>8.1f} | {p:>8.1f} | {diff_pct:>+8.1f}%")
+        _log.info(format_log_message(f"{k:<15} | {u:>8.1f} | {p:>8.1f} | {diff_pct:>+8.1f}%"))
 
         if diff_pct > max_diff:
             max_diff = diff_pct
             dominant_factor = k
 
-    print("-" * 55)
-    print(f"🏆 PRIMARY ALPHA DRIVER: {dominant_factor.upper()}")
-    print("=" * 50 + "\n")
+    _log.info(format_log_message("-" * 55))
+    _log.info(format_log_message(f"🏆 PRIMARY ALPHA DRIVER: {dominant_factor.upper()}"))
+    _log.info(format_log_message("=" * 50 + "\n"))

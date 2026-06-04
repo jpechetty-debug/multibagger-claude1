@@ -40,6 +40,8 @@ from pathlib import Path
 from typing import cast
 
 import pandas as pd
+from modules.structured_logger import SovereignLogger, format_log_message
+_log = SovereignLogger("backtest.survivorship_adjusted_loader").logger
 
 logger = logging.getLogger(__name__)
 
@@ -271,22 +273,22 @@ class SurvivorshipAdjustedLoader:
             writer = csv.writer(f)
             writer.writerow(["Symbol", "Listing_Date", "Delisting_Date"])
             writer.writerows(sample)
-        print(f"Sample metadata written to {output}")
+        _log.info(format_log_message(f"Sample metadata written to {output}"))
 
 
 # ── CLI: quick validation ────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    _log.setLevel(logging.INFO)
 
     loader = SurvivorshipAdjustedLoader(data_dir="data")
 
     test_date = "2020-03-01"
     candidates = ["RELIANCE", "TCS", "RCOM", "INFY", "HDFCBANK"]
 
-    print(f"\nUniverse at {test_date} (from {len(candidates)} candidates):")
+    _log.info(format_log_message(f"\nUniverse at {test_date} (from {len(candidates)} candidates):"))
     universe = loader.get_universe(test_date, candidates)
-    print(f"  Valid: {universe}")
+    _log.info(format_log_message(f"  Valid: {universe}"))
 
     delisted = loader.get_delisted_symbols(test_date)
-    print(f"  Delisted by {test_date}: {delisted}")
+    _log.info(format_log_message(f"  Delisted by {test_date}: {delisted}"))

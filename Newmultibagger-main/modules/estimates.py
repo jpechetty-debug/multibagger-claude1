@@ -8,6 +8,8 @@ import json
 import os
 
 from modules.cache import cached
+from modules.structured_logger import SovereignLogger, format_log_message
+_log = SovereignLogger("modules.estimates").logger
 
 
 def _safe_float(val, default=0.0):
@@ -362,7 +364,7 @@ def get_estimate_data(
                     }
                     return result
     except Exception as e:
-        print(f"   Consensus seed load error: {e}")
+        _log.info(format_log_message(f"   Consensus seed load error: {e}"))
 
     # Fallback: Compute own estimate when no manual seed matched
     if result["source"] == "none":

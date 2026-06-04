@@ -6,6 +6,8 @@ from datetime import datetime
 import pandas as pd
 
 import config
+from modules.structured_logger import SovereignLogger, format_log_message
+_log = SovereignLogger("modules.risk.risk").logger
 
 REJECTED_TRADES_LOG = os.path.join("logs", "rejected_trades.csv")
 LEGACY_REJECTED_TRADES_LOG = "rejected_trades.csv"
@@ -47,9 +49,7 @@ class RiskGovernor:
             # We strictly take the MAX for safety.
             effective = max(theoretical_bps, observed_p95)
             if effective > theoretical_bps:
-                print(
-                    f"⚠️ RISK GOVERNOR: Slippage Inflation Active for {tier}. Model: {theoretical_bps}bps -> Real: {effective:.0f}bps"
-                )
+                _log.info(format_log_message(f"⚠️ RISK GOVERNOR: Slippage Inflation Active for {tier}. Model: {theoretical_bps}bps -> Real: {effective:.0f}bps"))
             return effective
 
         return theoretical_bps
@@ -138,7 +138,7 @@ class RiskGovernor:
         # 1. CRITICAL CRISIS (Hard Kill)
         # If DD > 15% AND Market is Panicking (VIX > 30, BEAR)
         if current_drawdown_pct > 15 and vix > 30 and regime == "BEAR":
-            print("RISK: Critical drawdown in crash mode -> HARD KILL")
+            _log.info(format_log_message("RISK: Critical drawdown in crash mode -> HARD KILL"))
             self.log_rejected_trade(
                 "PORTFOLIO", f"Hard Kill: DD {current_drawdown_pct}% + VIX {vix} (Bear)", 0.0
             )
@@ -147,7 +147,7 @@ class RiskGovernor:
         # 2. SOFT KILL (Graduated Response)
         # If DD > 15% but Market is not broken (Normal Pullback/V-Shape)
         if current_drawdown_pct > 15:
-            print("RISK: Deep drawdown -> Soft cap (50%)")
+            _log.info(format_log_message("RISK: Deep drawdown -> Soft cap (50%)"))
             return total_capital * 0.50
 
         # 3. WARNING ZONE
@@ -155,7 +155,7 @@ class RiskGovernor:
         # The Orchestrator should interpret this as "Hold Existing, No New"
         # For simplicity in this function, we cap at current levels or reduced.
         if current_drawdown_pct > 10:
-            print("RISK: Drawdown warning -> Capping new exposure")
+            _log.info(format_log_message("RISK: Drawdown warning -> Capping new exposure"))
             return total_capital * 0.75  # Reduce exposure slightly
 
         return total_capital
@@ -177,7 +177,7 @@ class RiskGovernor:
                 f"Emergency Correlation {portfolio_avg_corr:.2f} > {self.corr_liquidate_threshold:.2f}",
                 0.0,
             )
-            print(f"RISK: Correlation emergency ({portfolio_avg_corr:.2f}) -> Full de-risk")
+            _log.info(format_log_message(f"RISK: Correlation emergency ({portfolio_avg_corr:.2f}) -> Full de-risk"))
             return 0.0
         elif portfolio_avg_corr > self.corr_reduce_threshold:
             self.log_rejected_trade(
@@ -185,11 +185,11 @@ class RiskGovernor:
                 f"Crisis Correlation {portfolio_avg_corr:.2f} > {self.corr_reduce_threshold:.2f}",
                 0.0,
             )
-            print(f"RISK: Correlation spike ({portfolio_avg_corr:.2f}) -> Reducing exposure 20%")
+            _log.info(format_log_message(f"RISK: Correlation spike ({portfolio_avg_corr:.2f}) -> Reducing exposure 20%"))
             return 0.80
         elif portfolio_avg_corr > 0.70:
             # Warning
-            print(f"RISK: High correlation ({portfolio_avg_corr:.2f}) -> Monitor closely")
+            _log.info(format_log_message(f"RISK: High correlation ({portfolio_avg_corr:.2f}) -> Monitor closely"))
             return 1.0  # No portfolio-level cut, but individual penalty applies
 
         return 1.0
@@ -290,4 +290,4 @@ class RiskGovernor:
 
         # Also print to console for immediate visibility
         with contextlib.suppress(BaseException):
-            print(f"[BLACK BOX] Rejected {symbol} -> {reason}")
+            _log.info(format_log_message(f"[BLACK BOX] Rejected {symbol} -> {reason}"))

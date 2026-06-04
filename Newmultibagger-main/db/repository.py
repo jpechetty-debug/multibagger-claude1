@@ -22,6 +22,8 @@ from db.engine import IS_SQLITE, engine
 from modules.runtime_settings import runtime_settings
 
 from modules.db_utils import resolve_db_path, get_db_connection
+from modules.structured_logger import SovereignLogger, format_log_message
+_log = SovereignLogger("db.repository").logger
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 _db_raw = str(getattr(engine.url, "database", "stocks.db") or "stocks.db")
@@ -57,7 +59,7 @@ def _run_sqlite_write_with_retry(write_fn, operation_name):
         except Exception as exc:
             if _is_sqlite_lock_error(exc) and attempt < SQLITE_WRITE_RETRIES - 1:
                 wait = SQLITE_RETRY_BASE_SECONDS * (2**attempt)
-                print(f"SQLite lock during {operation_name}; retrying in {wait:.2f}s.")
+                _log.info(format_log_message(f"SQLite lock during {operation_name}; retrying in {wait:.2f}s."))
                 time.sleep(wait)
                 continue
             raise
@@ -83,7 +85,7 @@ def _run_sqlite_write_with_retry(write_fn, operation_name):
         except Exception as exc:
             if _is_sqlite_lock_error(exc) and attempt < SQLITE_WRITE_RETRIES - 1:
                 wait = SQLITE_RETRY_BASE_SECONDS * (2**attempt)
-                print(f"SQLite lock during {operation_name}; retrying in {wait:.2f}s.")
+                _log.info(format_log_message(f"SQLite lock during {operation_name}; retrying in {wait:.2f}s."))
                 time.sleep(wait)
                 continue
             raise
@@ -357,7 +359,7 @@ def _write_fundamentals_snapshot(df_db):
         df_db = pit_sanitize(df_db)
         post_count = len(df_db)
         if pre_count > post_count:
-            print(f"PIT sanitize: dropped {pre_count - post_count} look-ahead violating rows.")
+            _log.info(format_log_message(f"PIT sanitize: dropped {pre_count - post_count} look-ahead violating rows."))
 
         pit_store = PITDataStore()
         for _, row in df_db.iterrows():
@@ -385,7 +387,7 @@ def _write_fundamentals_snapshot(df_db):
                     )
         pit_store.close()
     except Exception as e:
-        print(f"Warning: PITDataStore sync failed: {e}")
+        _log.info(format_log_message(f"Warning: PITDataStore sync failed: {e}"))
 
 
 def _backfill_fundamentals_pit_from_multibaggers():
@@ -636,14 +638,12 @@ def _detect_score_drift(df_new: "pd.DataFrame"):
                 )
                 conn.commit()
                 unexplained = sum(1 for r in drift_records if r[4] == 0)
-                print(
-                    f"Score drift: {len(drift_records)} alerts "
-                    f"({unexplained} unexplained by fundamentals)"
-                )
+                _log.info(format_log_message(f"Score drift: {len(drift_records)} alerts "
+                    f"({unexplained} unexplained by fundamentals)"))
         finally:
             conn.close()
     except Exception as exc:
-        print(f"Warning: Score drift detection failed: {exc}")
+        _log.info(format_log_message(f"Warning: Score drift detection failed: {exc}"))
 
 # ── Database Initialization ──────────────────────────────────────────────────
 
@@ -850,7 +850,7 @@ def init_db():
     _ensure_runtime_schema()
     _backfill_fundamentals_pit_from_multibaggers()
     prune_fundamentals_pit_retention()
-    print("Database initialized via db/repository.py.")
+    _log.info(format_log_message("Database initialized via db/repository.py."))
 
 
 # ── Bulk Save Functions ──────────────────────────────────────────────────────
@@ -953,7 +953,7 @@ def save_multibaggers(df, *, replace_existing: bool = False):
     ]
 
     available_cols = [c for c in cols if c in df.columns]
-    print(f"DEBUG DB: Saving {len(df)} stocks. Available cols: {available_cols}")
+    _log.info(format_log_message(f"DEBUG DB: Saving {len(df)} stocks. Available cols: {available_cols}"))
     df_db = df[available_cols].copy()
 
     # Mapping to DB names
@@ -976,7 +976,7 @@ def save_multibaggers(df, *, replace_existing: bool = False):
                 df_db = df_db.drop(columns=["last_audited"])
                 df_db = df_db.merge(existing_audit, on="symbol", how="left")
     except Exception as e:
-        print(f"Warning preserving audit logs: {e}")
+        _log.info(format_log_message(f"Warning preserving audit logs: {e}"))
 
     # Outlier Protection — centralized DQ gates (replaces inline .clip())
     from modules.dq_gates import validate_dataframe as _validate_df
@@ -1055,8 +1055,8 @@ def save_multibaggers(df, *, replace_existing: bool = False):
     try:
         prune_fundamentals_pit_retention()
     except Exception as exc:
-        print(f"Warning: PIT retention prune skipped: {exc}")
-    print("Saved Multibaggers to DB (Schema Preserved).")
+        _log.info(format_log_message(f"Warning: PIT retention prune skipped: {exc}"))
+    _log.info(format_log_message("Saved Multibaggers to DB (Schema Preserved)."))
 
 
 def save_microcaps(df):
@@ -1098,7 +1098,7 @@ def save_microcaps(df):
 
     df_db.to_sql("microcaps", conn, if_exists="replace", index=False)
     conn.close()
-    print("Saved Microcaps to DB.")
+    _log.info(format_log_message("Saved Microcaps to DB."))
 
 
 if __name__ == "__main__":
