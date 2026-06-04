@@ -20,9 +20,9 @@ from modules.dependencies import (
     risk_governor,
 )
 from modules.cache import regime_cache
-from modules.structured_logger import SovereignLogger
+from core.observability.logger import get_logger
 
-api_logger = SovereignLogger("sovereign.api")
+api_logger = get_logger("sovereign.api")
 from modules.allocation_hrp import HRPAllocator
 from modules.models import OrderRequest
 from modules.rate_limit import limiter

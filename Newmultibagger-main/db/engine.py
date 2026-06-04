@@ -15,8 +15,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from db.models import Base
-from modules.structured_logger import SovereignLogger, format_log_message
-_log = SovereignLogger("db.engine").logger
+from core.observability.logger import get_logger
+_log = get_logger("db.engine")
 
 # --- Configuration ---
 # Production: DATABASE_URL=postgresql+psycopg://user:pass@host:5432/sovereign_db
@@ -87,10 +87,10 @@ def init_tables():
                     "if_not_exists => TRUE, migrate_data => TRUE)"
                 )
                 conn.commit()
-                _log.info(format_log_message("TimescaleDB hypertable enabled on fundamentals_pit."))
+                _log.info("TimescaleDB hypertable enabled on fundamentals_pit.")
             except Exception as e:
-                _log.warning(format_log_message(f"TimescaleDB hypertable setup skipped: {e}"))
-    _log.info(format_log_message(f"Database engine ready. Backend: {'PostgreSQL' if not IS_SQLITE else 'SQLite'}"))
+                _log.warning(f"TimescaleDB hypertable setup skipped: {e}")
+    _log.info(f"Database engine ready. Backend: {'PostgreSQL' if not IS_SQLITE else 'SQLite'}")
 
 
 def get_engine_info() -> dict:

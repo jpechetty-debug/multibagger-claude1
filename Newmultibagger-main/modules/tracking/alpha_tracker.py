@@ -2,8 +2,8 @@ import os
 from datetime import datetime
 
 import pandas as pd
-from modules.structured_logger import SovereignLogger, format_log_message
-_log = SovereignLogger("modules.tracking.alpha_tracker").logger
+from core.observability.logger import get_logger
+_log = get_logger("modules.tracking.alpha_tracker")
 
 LOG_FILE = "alpha_log.csv"
 
@@ -32,10 +32,10 @@ def track_alpha(strategy_cagr, benchmark_cagr, alpha):
     # Save
     df.to_csv(LOG_FILE, index=False)
 
-    _log.info(format_log_message("\n" + "=" * 40))
-    _log.info(format_log_message("📉 PHASE 24: ALPHA DECAY TRACKER"))
-    _log.info(format_log_message("=" * 40))
-    _log.info(format_log_message(f"Logged Performance: Alpha {new_row['Alpha']}%"))
+    _log.info("\n" + "=" * 40)
+    _log.info("📉 PHASE 24: ALPHA DECAY TRACKER")
+    _log.info("=" * 40)
+    _log.info(f"Logged Performance: Alpha {new_row['Alpha']}%")
 
     # 2. Analyze Decay (Last 5 runs)
     if len(df) >= 3:
@@ -44,10 +44,10 @@ def track_alpha(strategy_cagr, benchmark_cagr, alpha):
 
         # Check if strictly decreasing
         if alphas[0] > alphas[1] > alphas[2]:
-            _log.warning(format_log_message("⚠️  WARNING: ALPHA DECAY DETECTED!"))
-            _log.info(format_log_message(f"    Trend: {alphas[0]}% -> {alphas[1]}% -> {alphas[2]}%"))
-            _log.info(format_log_message("    Suggestion: Trigger Factor Review (Phase 24)"))
+            _log.warning("⚠️  WARNING: ALPHA DECAY DETECTED!")
+            _log.info(f"    Trend: {alphas[0]}% -> {alphas[1]}% -> {alphas[2]}%")
+            _log.info("    Suggestion: Trigger Factor Review (Phase 24)")
         else:
-            _log.info(format_log_message("✅  Alpha Stability: Healthy"))
+            _log.info("✅  Alpha Stability: Healthy")
 
-    _log.info(format_log_message("=" * 40 + "\n"))
+    _log.info("=" * 40 + "\n")

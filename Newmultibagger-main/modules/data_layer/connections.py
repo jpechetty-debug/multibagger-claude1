@@ -8,9 +8,9 @@ from typing import Any
 
 from db.db_core import db_engine
 from modules.runtime_settings import runtime_settings
-from modules.structured_logger import SovereignLogger
+from core.observability.logger import get_logger
 
-runtime_logger = SovereignLogger("sovereign.runtime")
+runtime_logger = get_logger("sovereign.runtime")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RUNTIME_DIR = PROJECT_ROOT / "runtime"

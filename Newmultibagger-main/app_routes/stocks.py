@@ -19,12 +19,12 @@ from modules.cache import (
     CACHE_FUNDAMENTALS,
     CACHE_AUDIT_TTL,
 )
-from modules.structured_logger import SovereignLogger
+from core.observability.logger import get_logger
 from app_routes.contracts import MultibaggerOut
 from modules.rate_limit import limiter
 from modules.retry_utils import run_with_exponential_backoff
 
-api_logger = SovereignLogger("sovereign.api")
+api_logger = get_logger("sovereign.api")
 
 router = APIRouter()
 

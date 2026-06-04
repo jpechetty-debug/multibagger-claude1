@@ -15,8 +15,8 @@ import sqlite3
 import pandas as pd
 
 from db.engine import IS_SQLITE, engine, init_tables
-from modules.structured_logger import SovereignLogger, format_log_message
-_log = SovereignLogger("db.migrate").logger
+from core.observability.logger import get_logger
+_log = get_logger("db.migrate")
 
 SQLITE_SOURCE = os.getenv("SQLITE_SOURCE", "stocks.db")
 
@@ -39,26 +39,26 @@ def _read_sqlite_table(sqlite_conn, table_name: str) -> pd.DataFrame:
     try:
         return pd.read_sql(f"SELECT * FROM {table_name}", sqlite_conn)
     except Exception:
-        _log.warning(format_log_message(f"  ⚠ Table '{table_name}' not found in SQLite source. Skipping."))
+        _log.warning(f"  ⚠ Table '{table_name}' not found in SQLite source. Skipping.")
         return pd.DataFrame()
 
 
 def run_migration():
     """Execute the full SQLite → PostgreSQL migration."""
     if IS_SQLITE:
-        _log.warning(format_log_message("⚠ DATABASE_URL points to SQLite. Migration requires a PostgreSQL target."))
-        _log.info(format_log_message("  Set DATABASE_URL=postgresql+psycopg://user:pass@host:5432/sovereign_db"))
+        _log.warning("⚠ DATABASE_URL points to SQLite. Migration requires a PostgreSQL target.")
+        _log.info("  Set DATABASE_URL=postgresql+psycopg://user:pass@host:5432/sovereign_db")
         return
 
     if not os.path.exists(SQLITE_SOURCE):
-        _log.warning(format_log_message(f"⚠ SQLite source '{SQLITE_SOURCE}' not found. Nothing to migrate."))
+        _log.warning(f"⚠ SQLite source '{SQLITE_SOURCE}' not found. Nothing to migrate.")
         return
 
-    _log.info(format_log_message(f"🔄 Starting migration: {SQLITE_SOURCE} → PostgreSQL"))
-    _log.info(format_log_message(f"   Target: {engine.url}"))
+    _log.info(f"🔄 Starting migration: {SQLITE_SOURCE} → PostgreSQL")
+    _log.info(f"   Target: {engine.url}")
 
     # Step 1: Create all tables in PostgreSQL
-    _log.info(format_log_message("\n📐 Creating PostgreSQL schema..."))
+    _log.info("\n📐 Creating PostgreSQL schema...")
     init_tables()
 
     # Step 2: Connect to SQLite source
@@ -67,7 +67,7 @@ def run_migration():
     # Step 3: Migrate each table
     total_rows = 0
     for table_name in MIGRATION_ORDER:
-        _log.info(format_log_message(f"\n📦 Migrating: {table_name}"))
+        _log.info(f"\n📦 Migrating: {table_name}")
         df = _read_sqlite_table(sqlite_conn, table_name)
 
         if df.empty:
@@ -84,17 +84,17 @@ def run_migration():
                 chunksize=500,
             )
             total_rows += row_count
-            _log.info(format_log_message(f"  ✅ {row_count:,} rows migrated successfully."))
+            _log.info(f"  ✅ {row_count:,} rows migrated successfully.")
         except Exception as e:
-            _log.error(format_log_message(f"  ❌ Migration failed for {table_name}: {e}"))
+            _log.error(f"  ❌ Migration failed for {table_name}: {e}")
 
     sqlite_conn.close()
 
-    _log.info(format_log_message(f"\n{'=' * 50}"))
-    _log.info(format_log_message(f"✅ Migration Complete: {total_rows:,} total rows transferred."))
-    _log.info(format_log_message(f"   Source: {SQLITE_SOURCE}"))
-    _log.info(format_log_message("   Target: PostgreSQL/TimescaleDB"))
-    _log.info(format_log_message(f"{'=' * 50}"))
+    _log.info(f"\n{'=' * 50}")
+    _log.info(f"✅ Migration Complete: {total_rows:,} total rows transferred.")
+    _log.info(f"   Source: {SQLITE_SOURCE}")
+    _log.info("   Target: PostgreSQL/TimescaleDB")
+    _log.info(f"{'=' * 50}")
 
 
 if __name__ == "__main__":

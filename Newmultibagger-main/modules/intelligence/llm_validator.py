@@ -13,8 +13,8 @@ import math
 import re
 from dataclasses import dataclass, field
 from typing import Any
-from modules.structured_logger import SovereignLogger, format_log_message
-_log = SovereignLogger("modules.intelligence.llm_validator").logger
+from core.observability.logger import get_logger
+_log = get_logger("modules.intelligence.llm_validator")
 
 
 @dataclass
@@ -244,13 +244,13 @@ if __name__ == "__main__":
     validator = FactValidator(tolerance_pct=15.0)
     report = validator.validate(hallucinated_thesis, test_vector)
 
-    _log.info(format_log_message("--- Original LLM Output ---"))
-    _log.info(format_log_message(hallucinated_thesis))
+    _log.info("--- Original LLM Output ---")
+    _log.info(hallucinated_thesis)
 
-    _log.info(format_log_message("\n--- Validation Audit Trail ---"))
+    _log.info("\n--- Validation Audit Trail ---")
     for log in report.audit_trail:
-        _log.info(format_log_message(f">> {log}"))
+        _log.info(f">> {log}")
 
-    _log.info(format_log_message("\n--- Sanitized Output ---"))
+    _log.info("\n--- Sanitized Output ---")
     patched = patch_thesis(hallucinated_thesis, report)
-    _log.info(format_log_message(patched))
+    _log.info(patched)

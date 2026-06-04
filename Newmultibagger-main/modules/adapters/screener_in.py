@@ -39,10 +39,10 @@ import time
 from datetime import date, datetime
 from typing import Any
 
-from modules.structured_logger import SovereignLogger
+from core.observability.logger import get_logger
 from .base import DataProvider
 
-_sov = SovereignLogger("adapters.screener_in")
+_sov = get_logger("adapters.screener_in")
 logger = _sov.logger
 
 # ── Cloudflare-aware HTTP session ─────────────────────────────────────────────

@@ -1,6 +1,6 @@
 # modules/adapters/nse.py
 import asyncio
-from modules.structured_logger import SovereignLogger
+from core.observability.logger import get_logger
 from typing import Any
 
 try:
@@ -18,7 +18,7 @@ from modules.normalization.cleaner import normalize_info
 
 from .base import DataProvider
 
-_sov = SovereignLogger("adapters.nse")
+_sov = get_logger("adapters.nse")
 logger = _sov.logger
 
 

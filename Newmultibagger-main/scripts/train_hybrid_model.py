@@ -14,9 +14,9 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from modules.hybrid_scoring import train_hybrid_model
-from modules.structured_logger import SovereignLogger
+from core.observability.logger import get_logger
 
-logger = SovereignLogger("sovereign.scripts.train_ml")
+logger = get_logger("sovereign.scripts.train_ml")
 
 
 def main():

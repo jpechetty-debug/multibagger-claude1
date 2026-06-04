@@ -1,10 +1,10 @@
 import datetime
 
 from modules.backtest import run_performance_analysis
-from modules.structured_logger import SovereignLogger, format_log_message
-_log = SovereignLogger("modules.validation").logger
+from core.observability.logger import get_logger
+_log = get_logger("modules.validation")
 
-logger = SovereignLogger("sovereign.validation")
+logger = get_logger("sovereign.validation")
 
 
 def validate_robustness(tickers):
@@ -15,10 +15,10 @@ def validate_robustness(tickers):
     Since we cannot 're-screen' historical universes without a PIT database,
     we validate the *durability* of the current selection.
     """
-    _log.info(format_log_message("\n" + "=" * 50))
-    _log.info(format_log_message("🔬 PHASE 31: WALK-FORWARD ROBUSTNESS CHECK"))
-    _log.info(format_log_message("   (Testing Portfolio Durability Across Market Cycles)"))
-    _log.info(format_log_message("=" * 50))
+    _log.info("\n" + "=" * 50)
+    _log.info("🔬 PHASE 31: WALK-FORWARD ROBUSTNESS CHECK")
+    _log.info("   (Testing Portfolio Durability Across Market Cycles)")
+    _log.info("=" * 50)
 
     # Define Cycles
     cycles = [
@@ -34,7 +34,7 @@ def validate_robustness(tickers):
     scorecard = []
 
     for cycle in cycles:
-        _log.info(format_log_message(f"\n--- Testing Regime: {cycle['name']} ---"))
+        _log.info(f"\n--- Testing Regime: {cycle['name']} ---")
         try:
             # We use Equal Weight for robustness check to see if the 'Picks' are good
             # (ignoring dynamic weights for history)
@@ -51,21 +51,21 @@ def validate_robustness(tickers):
 
         except Exception as e:
             logger.exception(f"Error in {cycle['name']} robustness check", exc_info=e)
-            _log.error(format_log_message(f"Error in {cycle['name']}: {e}"))
+            _log.error(f"Error in {cycle['name']}: {e}")
 
-    _log.info(format_log_message("\n" + "-" * 50))
-    _log.info(format_log_message("ROBUSTNESS SCORECARD"))
-    _log.info(format_log_message("-" * 50))
+    _log.info("\n" + "-" * 50)
+    _log.info("ROBUSTNESS SCORECARD")
+    _log.info("-" * 50)
     for line in scorecard:
-        _log.info(format_log_message(line))
+        _log.info(line)
 
-    _log.info(format_log_message("-" * 50))
+    _log.info("-" * 50)
     # Final Verdict
     pass_count = sum(1 for line in scorecard if "PASS" in line)
     if pass_count == 3:
-        _log.info(format_log_message("🏆 VERDICT: INSTITUTIONAL GRADE (All-Weather Alpha)"))
+        _log.info("🏆 VERDICT: INSTITUTIONAL GRADE (All-Weather Alpha)")
     elif pass_count == 2:
-        _log.info(format_log_message("🥈 VERDICT: ROBUST (Survives most regimes)"))
+        _log.info("🥈 VERDICT: ROBUST (Survives most regimes)")
     else:
-        _log.warning(format_log_message("⚠️ VERDICT: FRAGILE (Regime Dependent)"))
-    _log.info(format_log_message("=" * 50 + "\n"))
+        _log.warning("⚠️ VERDICT: FRAGILE (Regime Dependent)")
+    _log.info("=" * 50 + "\n")

@@ -13,8 +13,8 @@ import shap
 import xgboost as xgb
 from modules.price_utils import fetch_forward_prices
 from modules.structured_logger import get_logger
-from modules.structured_logger import SovereignLogger, format_log_message
-_log = SovereignLogger("modules.hybrid_scoring").logger
+from core.observability.logger import get_logger
+_log = get_logger("modules.hybrid_scoring")
 
 warnings.filterwarnings("ignore")
 
@@ -244,7 +244,7 @@ def _get_historical_targets(symbols: list):
 
 
 def train_hybrid_model():
-    _log.info(format_log_message("Initiating Hybrid Scoring Meta-Model Training (XGBoost)..."))
+    _log.info("Initiating Hybrid Scoring Meta-Model Training (XGBoost)...")
 
     # 1. Extract PIT Data
     try:
@@ -263,28 +263,28 @@ def train_hybrid_model():
             # Eliminate look-ahead bias and structural hallucinations via PIT Auditor.
             df = sanitize(raw_df)
             if df.empty and not raw_df.empty:
-                _log.warning(format_log_message("PIT Auditor quarantine triggered: all rows failed temporal strictness."))
+                _log.warning("PIT Auditor quarantine triggered: all rows failed temporal strictness.")
                 df = raw_df  # fallback for local testing
     except Exception as exc:
-        _log.warning(format_log_message(f"Could not load or sanitize PIT data: {exc}"))
+        _log.warning(f"Could not load or sanitize PIT data: {exc}")
         return False
 
     if len(df) < 20:
-        _log.info(format_log_message("Not enough historical data in fundamentals_pit to train a reliable XGBoost model (need > 20)."))
+        _log.info("Not enough historical data in fundamentals_pit to train a reliable XGBoost model (need > 20).")
         return False
 
     # 2. Get current prices to calculate forward returns.
     symbols = df["symbol"].unique().tolist()
-    _log.info(format_log_message(f"Fetching current prices for {len(symbols)} symbols to construct target (Y)..."))
+    _log.info(f"Fetching current prices for {len(symbols)} symbols to construct target (Y)...")
     current_prices = _get_historical_targets(symbols)
 
     train_df = _build_training_frame(df, current_prices)
     if train_df.empty:
-        _log.info(format_log_message("No valid forward returns calculable."))
+        _log.info("No valid forward returns calculable.")
         return False
 
     if len(train_df) < 10:
-        _log.info(format_log_message("Too many invalid rows; not enough training data after cleanup."))
+        _log.info("Too many invalid rows; not enough training data after cleanup.")
         return False
 
     # ── Feature leakage audit ──
@@ -318,13 +318,13 @@ def train_hybrid_model():
     validation = walk_forward_validate(train_only)
     _save_walk_forward_report(validation)
     if validation.get("status") == "OK":
-        _log.info(format_log_message("Walk-forward validation: "
+        _log.info("Walk-forward validation: "
             f"{validation['folds']} folds, "
             f"OOS R2={validation.get('oos_r2')}, "
             f"IC={validation.get('spearman_ic')}, "
-            f"hit_rate={validation.get('hit_rate')}"))
+            f"hit_rate={validation.get('hit_rate')}")
     else:
-        _log.info(format_log_message(f"Walk-forward validation skipped: {validation.get('reason')}"))
+        _log.info(f"Walk-forward validation skipped: {validation.get('reason')}")
 
     # Train on non-holdout data only
     X = _sanitize_features(train_only[FEATURES])
@@ -333,7 +333,7 @@ def train_hybrid_model():
     # 3. Train XGBoost Regressor.
     model = _make_xgb_regressor()
 
-    _log.info(format_log_message("Training XGBoost regressor on historical factor signatures..."))
+    _log.info("Training XGBoost regressor on historical factor signatures...")
     model.fit(X, y)
 
     # ── Holdout evaluation ──
@@ -352,12 +352,12 @@ def train_hybrid_model():
             logger.warning("Holdout evaluation failed", error=str(exc))
 
     r2 = model.score(X, y)
-    _log.info(format_log_message(f"Training complete. Final in-sample fit R2: {r2:.2f}"))
+    _log.info(f"Training complete. Final in-sample fit R2: {r2:.2f}")
 
     # 4. Save model.
     os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
     joblib.dump(model, MODEL_PATH)
-    _log.info(format_log_message("Model saved to disk."))
+    _log.info("Model saved to disk.")
     return True
 
 
@@ -414,7 +414,7 @@ def predict_and_explain(factors_dict):
         )
         return {"ml_prediction": float(prediction * 100.0), "shap_values": sorted_breakdown}
     except Exception as exc:
-        _log.error(format_log_message(f"ML Prediction Error: {exc}"))
+        _log.error(f"ML Prediction Error: {exc}")
         return {"ml_prediction": None, "shap_values": {}}
 
 

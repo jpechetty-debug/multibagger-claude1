@@ -1,8 +1,8 @@
-from modules.structured_logger import SovereignLogger
+from core.observability.logger import get_logger
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
-_sov = SovereignLogger("adapters.base")
+_sov = get_logger("adapters.base")
 logger = _sov.logger
 
 

@@ -3,8 +3,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import scipy.cluster.hierarchy as sch
-from modules.structured_logger import SovereignLogger, format_log_message
-_log = SovereignLogger("modules.portfolio.allocation_hrp").logger
+from core.observability.logger import get_logger
+_log = get_logger("modules.portfolio.allocation_hrp")
 
 
 class HRPAllocator:
@@ -129,4 +129,4 @@ class HRPAllocator:
 
 if __name__ == "__main__":
     # Test stub
-    _log.info(format_log_message("HRP Allocator module ready."))
+    _log.info("HRP Allocator module ready.")

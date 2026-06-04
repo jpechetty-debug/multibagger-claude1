@@ -1,4 +1,4 @@
-from modules.structured_logger import SovereignLogger
+from core.observability.logger import get_logger
 from datetime import datetime
 from typing import Any
 
@@ -12,7 +12,7 @@ try:
 except LookupError:
     nltk.download("vader_lexicon", quiet=True)
 
-_sov = SovereignLogger("news_sentiment")
+_sov = get_logger("news_sentiment")
 logger = _sov.logger
 
 

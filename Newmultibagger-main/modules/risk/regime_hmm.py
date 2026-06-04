@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 from hmmlearn.hmm import GaussianHMM
-from modules.structured_logger import SovereignLogger, format_log_message
-_log = SovereignLogger("modules.risk.regime_hmm").logger
+from core.observability.logger import get_logger
+_log = get_logger("modules.risk.regime_hmm")
 
 MODEL_PATH = os.path.join("runtime", "models", "market_regime_hmm.pkl")
 
@@ -27,7 +27,7 @@ class RegimeHMM:
             try:
                 self.model = joblib.load(self.model_path)
             except Exception as e:
-                _log.error(format_log_message(f"Error loading HMM model: {e}"))
+                _log.error(f"Error loading HMM model: {e}")
 
     def fetch_index_data(self, ticker="^NSEI", years=5):
         """Fetches historical returns for an index."""
@@ -46,13 +46,13 @@ class RegimeHMM:
         """Trains the Gaussian HMM on index returns."""
         returns = self.fetch_index_data(ticker)
         if len(returns) < 500:
-            _log.info(format_log_message("Insufficient data for HMM training."))
+            _log.info("Insufficient data for HMM training.")
             return False
 
         # Reshape for hmmlearn
         X = returns.values.reshape(-1, 1)
 
-        _log.info(format_log_message(f"Training HMM with {n_components} states on {ticker}..."))
+        _log.info(f"Training HMM with {n_components} states on {ticker}...")
         self.model = GaussianHMM(
             n_components=n_components, covariance_type="full", n_iter=1000, random_state=42
         )
@@ -60,7 +60,7 @@ class RegimeHMM:
 
         # Save model
         joblib.dump(self.model, self.model_path)
-        _log.info(format_log_message(f"HMM Model saved to {self.model_path}"))
+        _log.info(f"HMM Model saved to {self.model_path}")
         return True
 
     def predict_regime(self, ticker="^NSEI", target_date=None):
@@ -132,4 +132,4 @@ class RegimeHMM:
 if __name__ == "__main__":
     hmm = RegimeHMM()
     regime = hmm.predict_regime()
-    _log.info(format_log_message(f"Current Market Regime (HMM): {regime}"))
+    _log.info(f"Current Market Regime (HMM): {regime}")

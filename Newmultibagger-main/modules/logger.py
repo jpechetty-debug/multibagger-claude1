@@ -2,8 +2,8 @@ import datetime
 import hashlib
 import json
 import os
-from modules.structured_logger import SovereignLogger, format_log_message
-_log = SovereignLogger("modules.logger").logger
+from core.observability.logger import get_logger
+_log = get_logger("modules.logger")
 
 
 class ScanLogger:
@@ -62,5 +62,5 @@ class ScanLogger:
         with open(filepath, "w") as f:
             json.dump(log_entry, f, indent=4)
 
-        _log.info(format_log_message(f"Audit log saved: {filepath}"))
+        _log.info(f"Audit log saved: {filepath}")
         return filepath

@@ -15,8 +15,8 @@ import sys
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from modules.structured_logger import SovereignLogger, format_log_message
-_log = SovereignLogger("portfolio.allocator").logger
+from core.observability.logger import get_logger
+_log = get_logger("portfolio.allocator")
 from modules.news_gate import NewsGate
 
 # We need to fetch news for the gate. Assuming we have a way or will mock it for now.
@@ -55,7 +55,7 @@ class PortfolioAllocator:
         slots_available = self.max_positions - current_positions
 
         if slots_available <= 0:
-            _log.warning(format_log_message("❌ Portfolio Full. No new allocations."))
+            _log.warning("❌ Portfolio Full. No new allocations.")
             return []
 
         # 2. Select Top Candidates (Applying Gate 0: News Check)
@@ -70,7 +70,7 @@ class PortfolioAllocator:
             if is_clean:
                 clean_candidates.append(cand)
             else:
-                _log.warning(format_log_message(f"🛑 GATE 0 BLOCK: {symbol} -> {reason}"))
+                _log.warning(f"🛑 GATE 0 BLOCK: {symbol} -> {reason}")
 
         # Assuming proposals are already ranked
         candidates = clean_candidates[:slots_available]
@@ -121,7 +121,7 @@ class PortfolioAllocator:
             if adv > 0:
                 liquidity_cap_qty = int(adv * self.MAX_PCT_ADV)
                 if final_qty > liquidity_cap_qty:
-                    _log.warning(format_log_message(f"⚠️ Liquidity Crunch for {symbol}: Cap {liquidity_cap_qty} vs Req {final_qty}"))
+                    _log.warning(f"⚠️ Liquidity Crunch for {symbol}: Cap {liquidity_cap_qty} vs Req {final_qty}")
                     final_qty = liquidity_cap_qty
                     final_amt = final_qty * price
 
@@ -135,7 +135,7 @@ class PortfolioAllocator:
 
             projected_sector_exposure = (current_sector_val + final_amt) / self.capital
             if projected_sector_exposure > self.MAX_SECTOR_ALLOCATION:
-                _log.warning(format_log_message(f"⚠️ Sector Limit Hit for {sector}: {projected_sector_exposure:.1%}"))
+                _log.warning(f"⚠️ Sector Limit Hit for {sector}: {projected_sector_exposure:.1%}")
                 # Reduce quantity to fit sector limit? Or skip?
                 # Let's Skip for safety to avoid over-concentration
                 # OR limit the amt

@@ -1,10 +1,10 @@
 import os
 from typing import Any, cast
 import pandas as pd
-from modules.structured_logger import SovereignLogger
+from core.observability.logger import get_logger
 from modules.hybrid_scoring import predict_and_explain, train_hybrid_model, FEATURES
 
-logger = SovereignLogger("sovereign.ranker")
+logger = get_logger("sovereign.ranker")
 
 class LightGBMRanker:
     """

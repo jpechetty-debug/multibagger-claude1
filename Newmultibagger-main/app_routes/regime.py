@@ -17,9 +17,9 @@ from modules.cache import (
     regime_cache_lock,
 )
 from modules.connections import _run_blocking
-from modules.structured_logger import SovereignLogger
+from core.observability.logger import get_logger
 
-runtime_logger = SovereignLogger("sovereign.runtime")
+runtime_logger = get_logger("sovereign.runtime")
 from app_routes.contracts import RegimeStatusResponse
 
 router = APIRouter()

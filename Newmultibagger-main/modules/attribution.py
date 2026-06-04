@@ -1,5 +1,5 @@
-from modules.structured_logger import SovereignLogger, format_log_message
-_log = SovereignLogger("modules.attribution").logger
+from core.observability.logger import get_logger
+_log = get_logger("modules.attribution")
 def analyze_alpha_attribution(portfolio, universe):
     """
     Phase 36: Alpha Attribution / Factor Exposure Analysis.
@@ -9,12 +9,12 @@ def analyze_alpha_attribution(portfolio, universe):
         portfolio: List of stock dicts (The selected ones).
         universe: List of stock dicts (All scanned stocks).
     """
-    _log.info(format_log_message("\n" + "=" * 50))
-    _log.info(format_log_message("🧠 PHASE 36: ALPHA SOURCE ATTRIBUTION"))
-    _log.info(format_log_message("=" * 50))
+    _log.info("\n" + "=" * 50)
+    _log.info("🧠 PHASE 36: ALPHA SOURCE ATTRIBUTION")
+    _log.info("=" * 50)
 
     if not portfolio or not universe:
-        _log.info(format_log_message("Insufficient data for attribution."))
+        _log.info("Insufficient data for attribution.")
         return
 
     # Factors to analyze
@@ -60,8 +60,8 @@ def analyze_alpha_attribution(portfolio, universe):
             portfolio_factors[k] /= port_count
 
     # 3. Compare and Attribute
-    _log.info(format_log_message(f"{'Factor':<15} | {'Universe':<8} | {'Portfolio':<8} | {'Active Exposure':<15}"))
-    _log.info(format_log_message("-" * 55))
+    _log.info(f"{'Factor':<15} | {'Universe':<8} | {'Portfolio':<8} | {'Active Exposure':<15}")
+    _log.info("-" * 55)
 
     dominant_factor = "None"
     max_diff = 0
@@ -72,12 +72,12 @@ def analyze_alpha_attribution(portfolio, universe):
         diff = p - u
         diff_pct = (diff / u) * 100 if u > 0 else 0
 
-        _log.info(format_log_message(f"{k:<15} | {u:>8.1f} | {p:>8.1f} | {diff_pct:>+8.1f}%"))
+        _log.info(f"{k:<15} | {u:>8.1f} | {p:>8.1f} | {diff_pct:>+8.1f}%")
 
         if diff_pct > max_diff:
             max_diff = diff_pct
             dominant_factor = k
 
-    _log.info(format_log_message("-" * 55))
-    _log.info(format_log_message(f"🏆 PRIMARY ALPHA DRIVER: {dominant_factor.upper()}"))
-    _log.info(format_log_message("=" * 50 + "\n"))
+    _log.info("-" * 55)
+    _log.info(f"🏆 PRIMARY ALPHA DRIVER: {dominant_factor.upper()}")
+    _log.info("=" * 50 + "\n")

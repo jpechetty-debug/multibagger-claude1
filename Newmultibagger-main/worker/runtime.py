@@ -12,10 +12,10 @@ from modules.connections import (
 )
 from modules.data_layer.data_utils import _json_safe_clean
 from modules.dependencies import manager
-from modules.structured_logger import SovereignLogger
+from core.observability.logger import get_logger
 from worker.background_jobs import run_price_update_loop, start_weekly_audit_thread
 
-logger = SovereignLogger("sovereign.runtime.worker")
+logger = get_logger("sovereign.runtime.worker")
 
 
 async def run_runtime_worker(*, skip_audit: bool = False) -> None:

@@ -7,7 +7,7 @@ This means the Docker container correctly picks up:
 instead of hitting localhost (which is the container itself).
 """
 
-from modules.structured_logger import SovereignLogger
+from core.observability.logger import get_logger
 
 import requests
 
@@ -15,7 +15,7 @@ import config
 
 from .llm_validator import FactValidator, patch_thesis
 
-_sov = SovereignLogger("llm_engine")
+_sov = get_logger("llm_engine")
 log = _sov.logger
 
 # ── Source from config, not hardcoded ──────────────────────────────────────

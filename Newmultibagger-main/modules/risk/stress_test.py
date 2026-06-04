@@ -1,5 +1,5 @@
-from modules.structured_logger import SovereignLogger, format_log_message
-_log = SovereignLogger("modules.risk.stress_test").logger
+from core.observability.logger import get_logger
+_log = get_logger("modules.risk.stress_test")
 def _build_weights(portfolio_stocks, weights=None):
     if weights:
         return weights
@@ -98,12 +98,12 @@ def run_stress_test(portfolio_stocks, weights=None):
         "Standard Correction": -0.10
     }
     """
-    _log.info(format_log_message("\n" + "=" * 50))
-    _log.info(format_log_message("🌪️  PHASE 20: PORTFOLIO STRESS TEST (CRASH SIMULATION)"))
-    _log.info(format_log_message("=" * 50))
+    _log.info("\n" + "=" * 50)
+    _log.info("🌪️  PHASE 20: PORTFOLIO STRESS TEST (CRASH SIMULATION)")
+    _log.info("=" * 50)
 
     if not portfolio_stocks:
-        _log.info(format_log_message("Empty portfolio."))
+        _log.info("Empty portfolio.")
         return
 
     # 1. Calculate Portfolio Beta
@@ -113,17 +113,17 @@ def run_stress_test(portfolio_stocks, weights=None):
 
     portfolio_beta = _estimate_portfolio_beta(portfolio_stocks, weights)
 
-    _log.info(format_log_message(f"Portfolio Beta (Estimated): {portfolio_beta:.2f}"))
+    _log.info(f"Portfolio Beta (Estimated): {portfolio_beta:.2f}")
     if portfolio_beta > 1.3:
-        _log.warning(format_log_message("⚠️  Risk Profile: AGGRESSIVE (High Volatility)"))
+        _log.warning("⚠️  Risk Profile: AGGRESSIVE (High Volatility)")
     elif portfolio_beta < 0.8:
-        _log.info(format_log_message("🛡️  Risk Profile: DEFENSIVE (Low Volatility)"))
+        _log.info("🛡️  Risk Profile: DEFENSIVE (Low Volatility)")
     else:
-        _log.info(format_log_message("⚖️  Risk Profile: BALANCED"))
+        _log.info("⚖️  Risk Profile: BALANCED")
 
-    _log.info(format_log_message("-" * 50))
-    _log.info(format_log_message(f"{'Scenario':<30} | {'Market Drop':<12} | {'Est. Portfolio Impact':<20}"))
-    _log.info(format_log_message("-" * 50))
+    _log.info("-" * 50)
+    _log.info(f"{'Scenario':<30} | {'Market Drop':<12} | {'Est. Portfolio Impact':<20}")
+    _log.info("-" * 50)
 
     scenarios = [
         ("Correction (Standard)", -0.10),
@@ -146,9 +146,9 @@ def run_stress_test(portfolio_stocks, weights=None):
         # Color code (text based)
         emoji = "🩸" if impact < -0.3 else ("🔻" if impact < -0.15 else "📉")
 
-        _log.info(format_log_message(f"{name:<30} | {mkt_lbl:<12} | {port_lbl:<20} {emoji}"))
+        _log.info(f"{name:<30} | {mkt_lbl:<12} | {port_lbl:<20} {emoji}")
 
-    _log.info(format_log_message("=" * 50 + "\n"))
+    _log.info("=" * 50 + "\n")
 
 
 def run_adversarial_scenario_replay(portfolio_stocks, weights=None, base_vix=20.0):

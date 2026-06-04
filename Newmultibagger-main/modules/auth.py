@@ -4,9 +4,9 @@ import os
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import APIKeyHeader
 
-from modules.structured_logger import SovereignLogger
+from core.observability.logger import get_logger
 
-api_logger = SovereignLogger("sovereign.api")
+api_logger = get_logger("sovereign.api")
 
 API_KEY_NAME = "X-API-Key"
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)

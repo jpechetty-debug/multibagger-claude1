@@ -13,7 +13,7 @@ import yfinance as yf
 
 from modules.retry_utils import run_with_exponential_backoff
 from modules.runtime_settings import runtime_settings
-from modules.structured_logger import SovereignLogger
+from core.observability.logger import get_logger
 
 AsyncCallable = Callable[..., Awaitable[Any]]
 OHLCV_COLUMNS = ("Open", "High", "Low", "Close", "Volume")
@@ -209,7 +209,7 @@ async def run_price_update_loop(
     history_downloader: Callable[..., Any] | None = None,
     run_once: bool = False,
 ) -> None:
-    job_logger = logger or SovereignLogger("sovereign.runtime.worker")
+    job_logger = logger or get_logger("sovereign.runtime.worker")
     startup_delay = (
         runtime_settings.price_update_startup_delay_seconds
         if startup_delay_seconds is None
@@ -511,7 +511,7 @@ def run_weekly_audit_loop(
     stop_event: threading.Event | None = None,
     run_once: bool = False,
 ) -> None:
-    job_logger = logger or SovereignLogger("sovereign.runtime.audit")
+    job_logger = logger or get_logger("sovereign.runtime.audit")
     stale_days = (
         runtime_settings.weekly_audit_stale_after_days
         if stale_after_days is None

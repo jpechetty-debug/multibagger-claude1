@@ -13,10 +13,10 @@ Usage:
 
 from __future__ import annotations
 
-from modules.structured_logger import SovereignLogger
+from core.observability.logger import get_logger
 
 # Project-wide singleton — all modules share one logger tree.
-log = SovereignLogger("sovereign")
+log = get_logger("sovereign")
 
 
 def get_logger(name: str) -> SovereignLogger:

@@ -23,10 +23,10 @@ from modules.connections import (
 )
 from modules.auth import get_api_key
 from modules.dependencies import update_prices_background
-from modules.structured_logger import SovereignLogger
+from core.observability.logger import get_logger
 
-app_logger = SovereignLogger("sovereign.app")
-runtime_logger = SovereignLogger("sovereign.runtime")
+app_logger = get_logger("sovereign.app")
+runtime_logger = get_logger("sovereign.runtime")
 from modules.rate_limit import RateLimitExceeded, limiter, rate_limit_exceeded_handler
 from modules.runtime_settings import runtime_settings
 from worker.background_jobs import start_weekly_audit_thread

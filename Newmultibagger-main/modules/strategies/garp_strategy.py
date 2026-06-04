@@ -12,8 +12,8 @@ import os
 import sys
 
 import pandas as pd
-from modules.structured_logger import SovereignLogger, format_log_message
-_log = SovereignLogger("modules.strategies.garp_strategy").logger
+from core.observability.logger import get_logger
+_log = get_logger("modules.strategies.garp_strategy")
 
 # Add project root
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -81,7 +81,7 @@ class GarpStrategy:
             """
             self.universe = pd.read_sql(query, conn)
         except Exception as e:
-            _log.error(format_log_message(f"Error loading universe: {e}"))
+            _log.error(f"Error loading universe: {e}")
             self.universe = pd.DataFrame()
         finally:
             conn.close()
@@ -92,12 +92,12 @@ class GarpStrategy:
         """
         self.load_universe()
         if self.universe.empty:
-            _log.info(format_log_message("Universe empty. Run screener first."))
+            _log.info("Universe empty. Run screener first.")
             return []
 
         qualified = []
 
-        _log.info(format_log_message(f"Scanning {len(self.universe)} stocks for GARP criteria..."))
+        _log.info(f"Scanning {len(self.universe)} stocks for GARP criteria...")
 
         for _, row in self.universe.iterrows():
             stock = row.to_dict()
@@ -126,13 +126,13 @@ class GarpStrategy:
             final_proposals = qualified_df.to_dict(orient="records")
 
             # Enrich with News (Gate 0 Requirement)
-            _log.info(format_log_message(f"Fetching news for {len(final_proposals)} candidates..."))
+            _log.info(f"Fetching news for {len(final_proposals)} candidates...")
             try:
                 # Run async news fetch in sync context
                 enriched = asyncio.run(self._fetch_news_batch(final_proposals))
                 return enriched
             except Exception as e:
-                _log.error(format_log_message(f"News fetch failed: {e}"))
+                _log.error(f"News fetch failed: {e}")
                 return final_proposals
 
         return []
@@ -161,9 +161,9 @@ if __name__ == "__main__":
     strategy = GarpStrategy()
     proposals = strategy.generate_proposals()
 
-    _log.info(format_log_message("\n--- GARP Allocation Proposals ---"))
+    _log.info("\n--- GARP Allocation Proposals ---")
     if proposals:
         for i, p in enumerate(proposals):
-            _log.info(format_log_message(f"{i + 1}. {p['Symbol']} (Rank: {p['Rank_Score']}, Conviction: {p['Conviction']})"))
+            _log.info(f"{i + 1}. {p['Symbol']} (Rank: {p['Rank_Score']}, Conviction: {p['Conviction']})")
     else:
-        _log.info(format_log_message("No candidates found."))
+        _log.info("No candidates found.")

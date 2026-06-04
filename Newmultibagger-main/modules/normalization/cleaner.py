@@ -1,10 +1,10 @@
 # modules/normalization/cleaner.py
-from modules.structured_logger import SovereignLogger
+from core.observability.logger import get_logger
 from typing import Any
 
 import numpy as np
 
-_sov = SovereignLogger("normalization.cleaner")
+_sov = get_logger("normalization.cleaner")
 logger = _sov.logger
 
 _FUNDAMENTAL_KEYS = (

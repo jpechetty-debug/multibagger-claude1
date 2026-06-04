@@ -14,10 +14,10 @@ from modules.cache import (
     movers_cache_lock,
 )
 from modules.dependencies import refresh_prices_once
-from modules.structured_logger import SovereignLogger
+from core.observability.logger import get_logger
 from modules.rate_limit import limiter
 
-api_logger = SovereignLogger("sovereign.api")
+api_logger = get_logger("sovereign.api")
 
 router = APIRouter()
 _price_refresh_task: asyncio.Task | None = None

@@ -4,8 +4,8 @@ import sqlite3
 
 import pandas as pd
 import yfinance as yf
-from modules.structured_logger import SovereignLogger, format_log_message
-_log = SovereignLogger("modules.risk.correlation").logger
+from core.observability.logger import get_logger
+_log = get_logger("modules.risk.correlation")
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "runtime", "stocks.db")
 
@@ -88,4 +88,4 @@ def calculate_portfolio_correlation(limit=20, threshold=0.75):
 
 if __name__ == "__main__":
     result = calculate_portfolio_correlation()
-    _log.info(format_log_message(json.dumps(result, indent=2)))
+    _log.info(json.dumps(result, indent=2))

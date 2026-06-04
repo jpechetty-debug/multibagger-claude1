@@ -9,8 +9,8 @@ Criteria:
 2. Avg Daily Volume (ADV) * Price > Min Turnover (e.g. 50 Lakhs)
 3. Trading Days > 90% of business days (Avoid suspended stocks)
 """
-from modules.structured_logger import SovereignLogger, format_log_message
-_log = SovereignLogger("backtest.liquidity_filter").logger
+from core.observability.logger import get_logger
+_log = get_logger("backtest.liquidity_filter")
 
 
 class LiquidityFilter:
@@ -48,5 +48,5 @@ class LiquidityFilter:
 
             liquid_universe.append(stock)
 
-        _log.info(format_log_message(f"Liquidity Filter: Passed {len(liquid_universe)} / {len(universe_data)} (Rejected {rejected})"))
+        _log.info(f"Liquidity Filter: Passed {len(liquid_universe)} / {len(universe_data)} (Rejected {rejected})")
         return liquid_universe

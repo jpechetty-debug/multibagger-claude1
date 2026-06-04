@@ -13,8 +13,8 @@ from typing import Any, cast
 
 from modules.connections import DB_PATH, DB_BUSY_TIMEOUT_MS
 from modules.data_utils import safe_float
-from modules.structured_logger import SovereignLogger, format_log_message
-_log = SovereignLogger("modules.tracking.thesis_monitor").logger
+from core.observability.logger import get_logger
+_log = get_logger("modules.tracking.thesis_monitor")
 
 
 def _get_conn():
@@ -173,7 +173,7 @@ def record_buy_thesis(
             ),
         )
         conn.commit()
-        _log.info(format_log_message(f"  📋 Thesis recorded for {symbol}: {primary_driver}"))
+        _log.info(f"  📋 Thesis recorded for {symbol}: {primary_driver}")
     finally:
         conn.close()
 

@@ -30,9 +30,9 @@ from modules.db_utils import get_db_connection
 from modules.field_names import FIELD_MAPPING
 from modules.financial_adapter import create_fundamentals_provider
 from modules.normalization.cleaner import is_payload_skeletal
-from modules.structured_logger import SovereignLogger
+from core.observability.logger import get_logger
 
-_sov = SovereignLogger("data_service")
+_sov = get_logger("data_service")
 logger = _sov.logger
 
 _TRANSIENT_ERROR_HINTS = (

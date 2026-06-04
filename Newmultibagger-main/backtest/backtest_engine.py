@@ -22,8 +22,8 @@ from config import (
     TC_ADV_FRAC_MID,
     TC_ADV_FRAC_SMALL,
 )
-from modules.structured_logger import SovereignLogger, format_log_message
-_log = SovereignLogger("backtest.backtest_engine").logger
+from core.observability.logger import get_logger
+_log = get_logger("backtest.backtest_engine")
 RF_ANNUAL = float(os.getenv("RISK_FREE_RATE_ANNUAL", "0.065"))
 DEFAULT_BENCHMARK_SYMBOL = "^CNX500"
 DEFAULT_WALK_FORWARD_FEATURES = [
@@ -524,7 +524,7 @@ class VectorBTEngine:
                 with get_db_connection() as conn:
                     pit_df = pd.read_sql_query(text(query), conn, params=params)
             except Exception as e:
-                _log.error(format_log_message(f"[VectorBT] Error reading PIT features: {e}"))
+                _log.error(f"[VectorBT] Error reading PIT features: {e}")
                 return {"status": f"DB_ERROR: {str(e)}", "folds": 0}
 
             if pit_df.empty:
@@ -534,8 +534,8 @@ class VectorBTEngine:
             if self.benchmark_symbol and self.benchmark_symbol not in download_symbols:
                 download_symbols.append(self.benchmark_symbol)
 
-            _log.info(format_log_message("[VectorBT] Downloading prices for walk-forward portfolio "
-                f"({len(download_symbols)} symbols)..."))
+            _log.info("[VectorBT] Downloading prices for walk-forward portfolio "
+                f"({len(download_symbols)} symbols)...")
             raw_prices = yf.download(
                 download_symbols,
                 period=self.period,
@@ -733,7 +733,7 @@ class VectorBTEngine:
             return _clean_metrics(result)
 
         except Exception as e:
-            _log.error(format_log_message(f"[VectorBT] Walk-forward Backtest failed: {e}"))
+            _log.error(f"[VectorBT] Walk-forward Backtest failed: {e}")
             return {"status": f"WALK_FORWARD_ERROR: {str(e)}", "folds": 0}
 
     def run_batch_momentum_backtest(self, symbols: list) -> dict:
@@ -747,7 +747,7 @@ class VectorBTEngine:
             if not clean_symbols:
                 return {}
 
-            _log.info(format_log_message(f"[VectorBT] Fetching fundamental scores for {len(clean_symbols)} tickers..."))
+            _log.info(f"[VectorBT] Fetching fundamental scores for {len(clean_symbols)} tickers...")
 
             # 1. Fetch historical PIT scores from DB
             try:
@@ -759,11 +759,11 @@ class VectorBTEngine:
                 with get_db_connection() as conn:
                     scores_df = pd.read_sql_query(text(query), conn, params=params)
             except Exception as e:
-                _log.error(format_log_message(f"[VectorBT] Error reading DB: {e}"))
+                _log.error(f"[VectorBT] Error reading DB: {e}")
                 scores_df = pd.DataFrame(columns=["symbol", "as_of_date", "score"])
 
             # 2. Fetch historical prices
-            _log.info(format_log_message("[VectorBT] Downloading price data..."))
+            _log.info("[VectorBT] Downloading price data...")
             download_symbols = clean_symbols.copy()
             if self.benchmark_symbol and self.benchmark_symbol not in download_symbols:
                 download_symbols.append(self.benchmark_symbol)
@@ -842,7 +842,7 @@ class VectorBTEngine:
             returns = price_matrix.pct_change().shift(-1)
 
             if scores_df.empty:
-                _log.info(format_log_message("[VectorBT] No historical scores found. Approximating with buy & hold."))
+                _log.info("[VectorBT] No historical scores found. Approximating with buy & hold.")
                 for sym in price_matrix.columns:
                     monthly_returns = returns[sym].dropna()
                     entry_turnover = pd.Series(0.0, index=monthly_returns.index)
@@ -986,12 +986,12 @@ class VectorBTEngine:
             return results
 
         except Exception as e:
-            _log.error(format_log_message(f"[VectorBT] Batch Backtest failed: {e}"))
+            _log.error(f"[VectorBT] Batch Backtest failed: {e}")
             return {s: {"symbol": s, "status": f"BATCH_ERROR: {str(e)}"} for s in symbols}
 
 if __name__ == "__main__":
     engine = VectorBTEngine(period="5y")
     res = engine.run_batch_momentum_backtest(["SAKSOFT.NS", "TCS.NS"])
-    _log.info(format_log_message("\n--- VectorBT Optimization Results ---"))
+    _log.info("\n--- VectorBT Optimization Results ---")
     for sym, r in res.items():
-        _log.info(format_log_message(f"{sym}: {r.get('cagr')}% CAGR | {r.get('win_rate')}% Win | Status: {r.get('status')}"))
+        _log.info(f"{sym}: {r.get('cagr')}% CAGR | {r.get('win_rate')}% Win | Status: {r.get('status')}")

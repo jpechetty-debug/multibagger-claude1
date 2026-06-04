@@ -1,8 +1,8 @@
 import datetime
 import pandas as pd
 from modules.db_utils import get_db_connection
-from modules.structured_logger import SovereignLogger, format_log_message
-_log = SovereignLogger("modules.tracking.tracker").logger
+from core.observability.logger import get_logger
+_log = get_logger("modules.tracking.tracker")
 
 DB_NAME = "portfolio_history.db"
 
@@ -63,7 +63,7 @@ class PortfolioTracker:
         cursor.execute("SELECT id FROM trades WHERE symbol = ? AND status = 'OPEN'", (symbol,))
         if cursor.fetchone():
             message = f"Position already open for {symbol}. Skipping."
-            _log.info(format_log_message(message))
+            _log.info(message)
             conn.close()
             return {"status": "rejected", "reason": message}
 
@@ -77,7 +77,7 @@ class PortfolioTracker:
         )
 
         conn.commit()
-        _log.info(format_log_message(f"Trade Logged: BUY {symbol} @ {price}"))
+        _log.info(f"Trade Logged: BUY {symbol} @ {price}")
         conn.close()
         return {
             "status": "accepted",
@@ -99,7 +99,7 @@ class PortfolioTracker:
 
         if not row:
             message = f"No open position found for {symbol} to close."
-            _log.info(format_log_message(message))
+            _log.info(message)
             conn.close()
             return {"status": "rejected", "reason": message}
 
@@ -135,7 +135,7 @@ class PortfolioTracker:
         )
 
         conn.commit()
-        _log.info(format_log_message(f"Trade Closed: SELL {symbol} @ {exit_price} ({pnl_pct:.2f}%) [{exit_reason}]"))
+        _log.info(f"Trade Closed: SELL {symbol} @ {exit_price} ({pnl_pct:.2f}%) [{exit_reason}]")
         conn.close()
         return {
             "status": "accepted",

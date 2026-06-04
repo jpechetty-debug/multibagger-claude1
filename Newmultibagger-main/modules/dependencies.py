@@ -35,15 +35,15 @@ from modules.connections import (
     get_connection,
 )
 from modules.runtime_settings import runtime_settings
-from modules.structured_logger import SovereignLogger
+from core.observability.logger import get_logger
 from worker.background_jobs import run_price_update_loop
 from modules.models import OrderRequest
 
 from modules.auth import get_api_key
 # Legacy Loggers (Prefer direct import from structured_logger in new code)
-runtime_logger = SovereignLogger("sovereign.runtime")
-api_logger = SovereignLogger("sovereign.api")
-app_logger = SovereignLogger("sovereign.app")
+runtime_logger = get_logger("sovereign.runtime")
+api_logger = get_logger("sovereign.api")
+app_logger = get_logger("sovereign.app")
 
 # Remaining Domain Instances
 from modules.risk import RiskGovernor
@@ -69,9 +69,9 @@ from fastapi import WebSocket
 import os
 import asyncio
 import redis.asyncio as aioredis
-from modules.structured_logger import SovereignLogger
+from core.observability.logger import get_logger
 
-logger = SovereignLogger("sovereign.websocket")
+logger = get_logger("sovereign.websocket")
 REDIS_URL = os.getenv("UPSTASH_REDIS_TCP_URL") or os.getenv("REDIS_URL") or "redis://localhost:6379/0"
 
 

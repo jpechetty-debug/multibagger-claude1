@@ -12,12 +12,12 @@ with lazy caching. Falls back to flat METRIC_LIMITS for unknown sectors.
 
 from __future__ import annotations
 
-from modules.structured_logger import SovereignLogger
+from core.observability.logger import get_logger
 
 import math
 from dataclasses import dataclass, field
 
-_sov = SovereignLogger("dq_gates")
+_sov = get_logger("dq_gates")
 logger = _sov.logger
 
 # ── Physical Limit Definitions ────────────────────────────────────────────────

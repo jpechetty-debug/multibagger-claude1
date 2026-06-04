@@ -22,9 +22,9 @@ from collections.abc import Callable
 import os
 from typing import Any
 
-from modules.structured_logger import SovereignLogger
+from core.observability.logger import get_logger
 
-logger = SovereignLogger("sovereign.task_bus")
+logger = get_logger("sovereign.task_bus")
 
 _MODE: str = "celery" if os.getenv("CELERY_BROKER_URL") else "asyncio"
 
@@ -96,16 +96,15 @@ def _dispatch_celery(fn: Callable, *args: Any, **kwargs: Any) -> str:
 # Public API
 # ---------------------------------------------------------------------------
 
-def dispatch(fn: Callable, *args: Any, **kwargs: Any) -> Any:
+async def dispatch(fn: Callable, *args: Any, **kwargs: Any) -> str:
     """
     Dispatch a task using the active mode.
 
-    - **Dev** (no CELERY_BROKER_URL): returns a coroutine; ``await`` it.
-    - **Prod** (CELERY_BROKER_URL set): returns Celery task ID synchronously.
+    Returns the task ID. Must be awaited in both dev and prod modes.
     """
     if _MODE == "celery":
         return _dispatch_celery(fn, *args, **kwargs)
-    return _dispatch_async(fn, *args, **kwargs)
+    return await _dispatch_async(fn, *args, **kwargs)
 
 
 def get_mode() -> str:
