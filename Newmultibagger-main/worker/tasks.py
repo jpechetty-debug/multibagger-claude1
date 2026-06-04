@@ -2,6 +2,7 @@
 """
 Sovereign AI Trading Engine v4.0 — Celery Task Definitions
 Patched: all tasks decorated with celery_task_timer for Prometheus metrics.
+All logging via SovereignLogger (structured JSON + console).
 """
 
 import os
@@ -9,6 +10,10 @@ import sys
 import traceback
 from datetime import datetime
 from typing import Any
+
+from core.observability.logger import get_logger
+
+logger = get_logger("sovereign.worker.tasks")
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
@@ -120,7 +125,7 @@ def scan_single_stock(self, symbol: str, regime: str = "SIDEWAYS"):
 
     except Exception as exc:
         record_scan_result("error")
-        print(f"Task scan_single_stock failed for {symbol}: {exc}")
+        logger.error("scan_single_stock.failed", symbol=symbol, error=str(exc))
         raise self.retry(exc=exc, countdown=30 * (self.request.retries + 1)) from exc
 
 
@@ -144,7 +149,7 @@ def run_full_scan(self):
             regime = cached_regime.get("regime", "SIDEWAYS")
 
         set_regime(regime)
-        print(f"Full scan: {len(symbols)} symbols | Regime: {regime}")
+        logger.info("full_scan.started", symbol_count=len(symbols), regime=regime)
 
         with timed_scan():
             job = group(scan_single_stock.s(symbol, regime) for symbol in symbols)
@@ -153,7 +158,7 @@ def run_full_scan(self):
 
         successful = [r for r in results if isinstance(r, dict) and "error" not in r]
         failed = len(results) - len(successful)
-        print(f"Scan complete: {len(successful)} success / {failed} failed")
+        logger.info("full_scan.completed", success=len(successful), failed=failed)
 
         if successful:
             import pandas as pd
@@ -172,8 +177,7 @@ def run_full_scan(self):
         }
 
     except Exception as exc:
-        print(f"Full scan failed: {exc}")
-        traceback.print_exc()
+        logger.error("full_scan.failed", error=str(exc))
         return {"error": str(exc)}
 
 

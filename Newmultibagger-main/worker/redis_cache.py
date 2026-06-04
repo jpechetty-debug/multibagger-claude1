@@ -11,6 +11,7 @@ High-performance in-memory cache for frequently accessed data:
 import contextlib
 import hashlib
 import json
+import logging
 import os
 from datetime import datetime, timezone, UTC
 from typing import Any
@@ -21,7 +22,9 @@ try:
     _REDIS_AVAILABLE = True
 except ImportError:
     _REDIS_AVAILABLE = False
-    print("Warning: redis package not installed. Caching disabled. Install: pip install redis")
+    logging.getLogger("sovereign.worker.redis_cache").warning(
+        "redis package not installed — caching disabled. Install: pip install redis"
+    )
 
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
@@ -53,7 +56,9 @@ class SovereignCache:
                 )
                 self._redis.ping()
             except Exception as e:
-                print(f"Redis connection failed ({e}). Using in-memory fallback.")
+                logging.getLogger("sovereign.worker.redis_cache").warning(
+                    "Redis connection failed (%s). Using in-memory fallback.", e
+                )
                 self._redis = None
 
     def _key(self, key: str) -> str:
