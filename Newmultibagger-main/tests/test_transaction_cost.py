@@ -65,9 +65,9 @@ def _load_engine(monkeypatch):
         "sklearn.preprocessing": types.ModuleType("sklearn.preprocessing"),
         "sklearn.model_selection": types.ModuleType("sklearn.model_selection"),
     }
-    stubs["sklearn.preprocessing"].StandardScaler = object
-    stubs["sklearn.model_selection"].TimeSeriesSplit = object
-    stubs["xgboost"].XGBRegressor = object
+    stubs["sklearn.preprocessing"].StandardScaler = object  # type: ignore
+    stubs["sklearn.model_selection"].TimeSeriesSplit = object  # type: ignore
+    stubs["xgboost"].XGBRegressor = object  # type: ignore
     for name, mod in stubs.items():
         monkeypatch.setitem(sys.modules, name, mod)
     sys.modules.pop("backtest.backtest_engine", None)

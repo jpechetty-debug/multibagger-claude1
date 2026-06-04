@@ -18,6 +18,9 @@ from enum import StrEnum
 from typing import Any
 
 from modules.db_utils import get_db_connection
+from core.observability.logger import get_logger
+_log = get_logger(__name__)
+
 
 # ── Freshness Thresholds (configurable via env in future) ────────────────────
 FRESH_MAX_DAYS = 3
@@ -85,11 +88,11 @@ class ProviderCallTracker:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._initialized = False
+            cls._instance._initialized = False  # type: ignore
         return cls._instance
 
     def __init__(self):
-        if self._initialized:
+        if self._initialized:  # type: ignore
             return
         self._initialized = True
         self._init_db()
@@ -111,8 +114,11 @@ class ProviderCallTracker:
                     ON provider_call_log (provider, recorded_at)
                 """)
                 conn.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            try:
+                _log.error(f"Caught unhandled exception: {e}")
+            except NameError:
+                pass  # _log might not be defined in scope
 
     def record(self, provider: str, success: bool, error: str | None = None):
         """Record a single provider call outcome."""
@@ -123,8 +129,11 @@ class ProviderCallTracker:
                     (provider, 1 if success else 0, error),
                 )
                 conn.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            try:
+                _log.error(f"Caught unhandled exception: {e}")
+            except NameError:
+                pass  # _log might not be defined in scope
 
     def get_stats(self, provider: str, window_hours: int = 24) -> dict:
         """Get success/failure stats for a provider within a time window."""
@@ -152,7 +161,11 @@ class ProviderCallTracker:
                     "last_success": row["last_success"],
                     "last_failure": row["last_failure"],
                 }
-        except Exception:
+        except Exception as e:
+            try:
+                _log.error(f"Caught unhandled exception: {e}")
+            except NameError:
+                pass  # _log might not be defined in scope
             return {"total": 0, "successes": 0, "success_rate": 0.0, "last_success": None, "last_failure": None}
 
     def prune(self, keep_hours: int = 168):
@@ -165,8 +178,11 @@ class ProviderCallTracker:
                     (cutoff,),
                 )
                 conn.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            try:
+                _log.error(f"Caught unhandled exception: {e}")
+            except NameError:
+                pass  # _log might not be defined in scope
 
 
 # Module-level singleton for easy import
@@ -293,7 +309,11 @@ def _get_scheduled_refresh_status(conn) -> dict[str, Any]:
                 pass
 
         return {"status": "unknown", "last_scan": None}
-    except Exception:
+    except Exception as e:
+        try:
+            _log.error(f"Caught unhandled exception: {e}")
+        except NameError:
+            pass  # _log might not be defined in scope
         return {"status": "unavailable"}
 
 
@@ -357,7 +377,11 @@ def get_provider_health() -> list[ProviderHealth]:
                             status=f"{status} (inferred)",
                         )
                     )
-            except Exception:
+            except Exception as e:
+                try:
+                    _log.error(f"Caught unhandled exception: {e}")
+                except NameError:
+                    pass  # _log might not be defined in scope
                 providers_result.append(
                     ProviderHealth(pname, 0.0, 0, None, None, "unknown")
                 )
@@ -440,5 +464,9 @@ def get_universe_quality() -> UniverseQuality:
                 alert_active=alert_active,
                 alert_message=alert_msg,
             )
-    except Exception:
+    except Exception as e:
+        try:
+            _log.error(f"Caught unhandled exception: {e}")
+        except NameError:
+            pass  # _log might not be defined in scope
         return UniverseQuality(0, 0, 0, 0, 0, 0.0, False, None)

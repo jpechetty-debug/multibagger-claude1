@@ -13,7 +13,7 @@ import yfinance as yf
 
 from modules.retry_utils import run_with_exponential_backoff
 from modules.runtime_settings import runtime_settings
-from core.observability.logger import get_logger
+from core.observability.logger import get_logger, SovereignLogger
 
 AsyncCallable = Callable[..., Awaitable[Any]]
 OHLCV_COLUMNS = ("Open", "High", "Low", "Close", "Volume")
@@ -89,7 +89,7 @@ def _as_trade_date(value: Any) -> date | None:
     parsed = pd.to_datetime(value, errors="coerce")
     if pd.isna(parsed):
         return None
-    return pd.Timestamp(parsed).date()
+    return pd.Timestamp(parsed).date()  # type: ignore
 
 
 def _needs_tactical_refresh(row: dict[str, Any], *, today: date | None = None) -> bool:
@@ -274,7 +274,7 @@ async def run_price_update_loop(
                     price_snapshots: dict[str, tuple[float, str | None]] = {}
                     try:
                         data = await run_with_exponential_backoff(
-                            lambda b=batch: run_ticker_blocking(
+                            lambda b=batch: run_ticker_blocking(  # type: ignore
                                 price_downloader,
                                 b,
                                 period="1d",
@@ -344,7 +344,7 @@ async def run_price_update_loop(
                         history_data = pd.DataFrame()
                         try:
                             history_data = await run_with_exponential_backoff(
-                                lambda b=stale_batch: run_ticker_blocking(
+                                lambda b=stale_batch: run_ticker_blocking(  # type: ignore
                                     tactical_downloader,
                                     b,
                                     period="1y",

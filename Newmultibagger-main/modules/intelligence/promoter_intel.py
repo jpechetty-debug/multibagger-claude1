@@ -171,8 +171,11 @@ def get_promoter_trend(symbol: str) -> dict:
                         elif val < 1.1:
                             val = val * 100
                         pledge_pct = float(val)
-        except Exception:
-            pass
+        except Exception as e:
+            try:
+                _log.error(f"Caught unhandled exception: {e}")
+            except NameError:
+                pass  # _log might not be defined in scope
 
         result["pledge_current"] = pledge_pct
         result["data_sources"].append("yfinance")

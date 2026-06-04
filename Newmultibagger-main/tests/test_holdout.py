@@ -23,7 +23,7 @@ def _make_pit_df(start="2016-01-01", periods=24, freq="QS", n_symbols=3, seed=42
     for d in dates:
         for i in range(n_symbols):
             row = {f: rng.randn() for f in FEATURES}
-            row["symbol"] = f"SYM{i}.NS"
+            row["symbol"] = f"SYM{i}.NS"  # type: ignore
             row["as_of_date"] = d
             row["forward_return"] = rng.randn() * 0.05
             rows.append(row)

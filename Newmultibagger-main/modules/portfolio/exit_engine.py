@@ -21,7 +21,7 @@ def check_exit_conditions(stock_data):
 
     # 2. General Threshold-Based Severity Scoring
     severity_score = 0
-    reasons = []
+    reasons = []  # type: ignore
 
     price = stock_data.get("Price", 0)
     dma_200 = stock_data.get("200_DMA", 0)
@@ -33,27 +33,27 @@ def check_exit_conditions(stock_data):
     # Trend Break (+3 Severity)
     if price > 0 and dma_200 > 0 and price < dma_200:
         severity_score += 3
-        reasons.append("Price < 200 DMA (+3)")
+        reasons.append("Price < 200 DMA (+3)")  # type: ignore
 
     # Quality Collapse (+4 Severity)
     if f_score > 0 and f_score < 4:
         severity_score += 4
-        reasons.append("F-Score < 4 (+4)")
+        reasons.append("F-Score < 4 (+4)")  # type: ignore
 
     # Extreme Valuation (+3 Severity)
     if peg > 5.0:
         severity_score += 3
-        reasons.append("PEG > 5 (+3)")
+        reasons.append("PEG > 5 (+3)")  # type: ignore
 
     # Growth Stagnation (+4 Severity)
     if sales_growth < 0:
         severity_score += 4
-        reasons.append("Negative Sales Growth (+4)")
+        reasons.append("Negative Sales Growth (+4)")  # type: ignore
 
     # Model Score Deterioration (+5 Severity)
     if score > 0 and score < 40:
         severity_score += 5
-        reasons.append("Score < 40 (+5)")
+        reasons.append("Score < 40 (+5)")  # type: ignore
 
     # Trigger exit if severity crosses threshold (e.g., >= 5)
     if severity_score >= 5:

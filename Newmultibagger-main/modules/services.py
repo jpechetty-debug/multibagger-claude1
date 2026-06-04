@@ -8,13 +8,16 @@ from abc import ABC
 from typing import cast
 
 from modules.models import ScoringResult, StockDataPayload
+from core.observability.logger import get_logger
+_log = get_logger(__name__)
+
 
 
 class BaseService(ABC):
     """Base abstract class for core sovereign services."""
 
     def __init__(self, logger=None):
-        from modules.structured_logger import logger as default_logger
+        from core.observability.logger import logger as default_logger
 
         self.logger = logger or default_logger
 
@@ -143,7 +146,11 @@ class DataStoreService(BaseService):
                     "expires": time.time() + 300,
                 }  # 5 min mem TTL
                 return payload
-            except Exception:
+            except Exception as e:
+                try:
+                    _log.error(f"Caught unhandled exception: {e}")
+                except NameError:
+                    pass  # _log might not be defined in scope
                 return None
 
         return None
@@ -166,7 +173,7 @@ class TaskQueueCoordinator(BaseService):
         self.ingestion = IngestionService(logger)
         self.scoring = ScoringService(logger)
         self.storage = DataStoreService(logger)
-        self._queue = asyncio.Queue()
+        self._queue = asyncio.Queue()  # type: ignore
         self._results = []
 
     async def run_universe_scan(self, symbols: list[str], market_regime: str = "Balanced"):

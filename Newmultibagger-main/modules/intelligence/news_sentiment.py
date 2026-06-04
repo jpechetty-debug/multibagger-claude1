@@ -24,7 +24,7 @@ class NewsSentimentEngine:
 
     def __init__(self):
         self._analyzer = SentimentIntensityAnalyzer()
-        self._cache: dict[str, Any] = {}  # Simple in-memory cache for the session
+        self._cache: dict[str, tuple[dict[str, Any], float]] = {}  # In-memory TTL cache (result, timestamp)
 
     def fetch_headlines(self, symbol: str) -> list[str]:
         """Fetches recent headlines for a symbol using yfinance."""
@@ -35,7 +35,6 @@ class NewsSentimentEngine:
                 return []
 
             # Extract only recent headlines (last 7 days)
-            datetime.now()
             recent_headlines = []
             for item in news:
                 # yfinance news items usually have 'title' and 'publisher'
@@ -73,9 +72,14 @@ class NewsSentimentEngine:
 
     def get_alpha_signal(self, symbol: str) -> dict[str, Any]:
         """Provides the full news-driven alpha signal for a ticker."""
-        # Check cache (15-min TTL simplified for session)
+        now = datetime.now().timestamp()
+        # Check cache (15-min TTL)
         if symbol in self._cache:
-            return self._cache[symbol]  # type: ignore[no-any-return]
+            cached_result, timestamp = self._cache[symbol]
+            if now - timestamp < 900:  # 15 minutes = 900 seconds
+                return cached_result
+            else:
+                del self._cache[symbol]
 
         headlines = self.fetch_headlines(symbol)
         score = self.score_sentiment(headlines)
@@ -100,7 +104,7 @@ class NewsSentimentEngine:
             "headlines": headlines[:5],  # Keep top 5 for UI
         }
 
-        self._cache[symbol] = result
+        self._cache[symbol] = (result, now)
         return result
 
 

@@ -2,6 +2,9 @@ import pandas as pd
 import requests
 
 from .base import DataSource
+from core.observability.logger import get_logger
+_log = get_logger(__name__)
+
 
 
 class NSESource(DataSource):
@@ -27,8 +30,12 @@ class NSESource(DataSource):
         # Initial request to set cookies
         try:
             session.get(self.BASE_URL, timeout=10)
-        except Exception:
-            pass  # Continue to try specific URL even if homepage fails/updates cookies
+        except Exception as e:
+            try:
+                _log.error(f"Caught unhandled exception: {e}")
+            except NameError:
+                pass  # _log might not be defined in scope
+            # Continue to try specific URL even if homepage fails/updates cookies
 
         response = session.get(url, timeout=10)
         if response.status_code == 200:

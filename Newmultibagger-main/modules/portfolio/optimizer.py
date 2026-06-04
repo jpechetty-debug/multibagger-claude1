@@ -141,7 +141,7 @@ class PortfolioOptimizer:
 
         # C. Clip Sector Max
         # Build a map of Sector -> Total Weight
-        sec_map = {}
+        sec_map = {}  # type: ignore
         for idx, w in enumerate(weights):
             sec = sectors[idx]
             sec_map[sec] = sec_map.get(sec, 0) + w

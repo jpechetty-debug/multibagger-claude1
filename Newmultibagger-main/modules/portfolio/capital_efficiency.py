@@ -1,3 +1,6 @@
+from core.observability.logger import get_logger
+_log = get_logger(__name__)
+
 def analyze_capital_efficiency(stock_data):
     """
     Phase 28: Capital Efficiency Ranking.
@@ -50,5 +53,9 @@ def analyze_capital_efficiency(stock_data):
 
         return roe, status, score
 
-    except Exception:
+    except Exception as e:
+        try:
+            _log.error(f"Caught unhandled exception: {e}")
+        except NameError:
+            pass  # _log might not be defined in scope
         return 0, "Error", 0

@@ -26,7 +26,7 @@ def _deterministic_dataset(n_symbols=10, n_periods=6, seed=42):
     for d in dates:
         for s in symbols:
             row = {f: rng.randn() for f in FEATURES}
-            row["symbol"] = s
+            row["symbol"] = s  # type: ignore
             row["as_of_date"] = d
             row["forward_return"] = rng.randn() * 0.05
             rows.append(row)

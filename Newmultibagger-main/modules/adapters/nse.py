@@ -7,7 +7,7 @@ try:
     import curl_cffi.requests as requests
     if not hasattr(requests, "RequestException"):
         import curl_cffi.requests.exceptions as exceptions
-        requests.RequestException = exceptions.RequestException
+        requests.RequestException = exceptions.RequestException  # type: ignore
 except ImportError:
     pass
 

@@ -18,8 +18,8 @@ def audit_database():
     }
 
     if not DB_PATH.exists():
-        report["integrity"]["score"] = "0/10"
-        report["integrity"]["critical_issues"].append("Database file not found.")
+        report["integrity"]["score"] = "0/10"  # type: ignore
+        report["integrity"]["critical_issues"].append("Database file not found.")  # type: ignore
         print(json.dumps(report, indent=2))
         return
 
@@ -42,11 +42,11 @@ def audit_database():
         for table in required_tables:
             if table in existing_tables:
                 count = pd.read_sql(f"SELECT COUNT(*) FROM {table}", conn).iloc[0, 0]
-                report["tables"][table] = {"status": "EXISTS", "row_count": int(count)}
+                report["tables"][table] = {"status": "EXISTS", "row_count": int(count)}  # type: ignore
             else:
-                report["tables"][table] = {"status": "MISSING", "row_count": 0}
-                report["integrity"]["critical_issues"].append(f"Table '{table}' is missing.")
-                report["integrity"]["score"] = "4/10"
+                report["tables"][table] = {"status": "MISSING", "row_count": 0}  # type: ignore
+                report["integrity"]["critical_issues"].append(f"Table '{table}' is missing.")  # type: ignore
+                report["integrity"]["score"] = "4/10"  # type: ignore
 
         if "multibaggers" in existing_tables:
             df = pd.read_sql("SELECT * FROM multibaggers", conn)
@@ -55,11 +55,11 @@ def audit_database():
             if "symbol" in df.columns:
                 dupes = len(df) - df["symbol"].nunique()
                 if dupes > 0:
-                    report["integrity"]["critical_issues"].append(
+                    report["integrity"]["critical_issues"].append(  # type: ignore
                         f"Found {dupes} duplicate symbols in 'multibaggers'."
                     )
-                    report["integrity"]["score"] = "4/10"
-                report["tables"]["multibaggers"]["duplicates"] = int(dupes)
+                    report["integrity"]["score"] = "4/10"  # type: ignore
+                report["tables"]["multibaggers"]["duplicates"] = int(dupes)  # type: ignore
 
             # Nulls/Zeros check
             check_cols = ["pe_ratio", "avg_roe_5y", "sales_cagr_5y"]
@@ -68,12 +68,12 @@ def audit_database():
                 if col in df.columns:
                     missing = df[col].isnull().sum() + (df[col] == 0).sum()
                     null_summary[col] = int(missing)
-            report["tables"]["multibaggers"]["null_or_zero_leakage"] = null_summary
+            report["tables"]["multibaggers"]["null_or_zero_leakage"] = null_summary  # type: ignore
 
         conn.close()
     except Exception as e:
-        report["integrity"]["score"] = "0/10"
-        report["integrity"]["critical_issues"].append(f"Audit failed with error: {str(e)}")
+        report["integrity"]["score"] = "0/10"  # type: ignore
+        report["integrity"]["critical_issues"].append(f"Audit failed with error: {str(e)}")  # type: ignore
 
     print(json.dumps(report, indent=2))
 

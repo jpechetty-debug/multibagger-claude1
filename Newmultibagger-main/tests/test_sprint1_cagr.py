@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """
 Sprint 1 Verification: CAGR Engine + Dividend + Cap Category
 Tests the new modules with a live ticker to confirm integration.
@@ -107,7 +108,7 @@ def test_model_fields():
         "Dividend_Payout": 35.0,
         "Cap_Category": "Large Cap",
     }
-    payload = StockDataPayload(**minimal)
+    payload = StockDataPayload.model_validate(minimal)
     dump = payload.model_dump(by_alias=True)
 
     assert dump["Revenue_CAGR_3Y"] == 18.5

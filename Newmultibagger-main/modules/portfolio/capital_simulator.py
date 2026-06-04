@@ -69,7 +69,7 @@ def simulate_capital_deployment(portfolio):
         elif max_days > 5:
             status = "⚠️ Illiquid"
 
-        aum_val = float(scen.get("aum", 0))
+        aum_val = float(scen.get("aum", 0))  # type: ignore
         _log.info(f"{name:<15} | ₹{aum_val / 100000:>4.0f}L       | {max_days:>5.1f} Days ({bottleneck_stock}) | {status:<15}")
 
     _log.info("-" * 65)

@@ -24,11 +24,11 @@ import db.repository as database
 from modules.fundamental_filters import validate_garp_criteria
 from modules.news import get_stock_news
 
+from modules.strategies.base import BaseStrategy
 
-class GarpStrategy:
+class GarpStrategy(BaseStrategy):
     def __init__(self, db_path="stocks.db"):
-        self.db_path = db_path
-        self.candidates = []
+        super().__init__(db_path)
 
     @staticmethod
     def _safe_float(value, default=0.0):

@@ -98,7 +98,7 @@ class RegimeHMM:
         X = returns.values.reshape(-1, 1)
 
         # Predict hidden states for the sequence
-        hidden_states = self.model.predict(X)
+        hidden_states = self.model.predict(X)  # type: ignore
         current_state = hidden_states[-1]
 
         # Map hidden states to human labels
@@ -112,8 +112,8 @@ class RegimeHMM:
         - Bearish: Low (negative) mean, High variance
         - Volatile/Sideways: Near-zero mean, High variance
         """
-        means = self.model.means_.flatten()
-        covars = self.model.covars_.flatten()
+        means = self.model.means_.flatten()  # type: ignore
+        covars = self.model.covars_.flatten()  # type: ignore
 
         means[state_idx]
         covars[state_idx]

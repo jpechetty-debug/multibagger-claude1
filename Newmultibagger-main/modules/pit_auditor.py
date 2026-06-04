@@ -18,7 +18,9 @@ from typing import Any
 import pandas as pd
 from db.date_utils import normalize_date
 from modules.db_utils import get_db_connection
-from modules.structured_logger import get_logger
+from core.observability.logger import get_logger
+_log = get_logger(__name__)
+
 
 # Configure logging to securely track all PIT violations
 PIT_LOG_PATH = os.getenv("PIT_LOG_PATH", "pit_violations.log")
@@ -243,7 +245,11 @@ def sanitize(df: pd.DataFrame) -> pd.DataFrame:
     try:
         report_dates = pd.to_datetime(df_clean["report_date"])
         as_of_dates = pd.to_datetime(df_clean["as_of_date"])
-    except Exception:
+    except Exception as e:
+        try:
+            _log.error(f"Caught unhandled exception: {e}")
+        except NameError:
+            pass  # _log might not be defined in scope
         return pd.DataFrame()
 
     if "metric_name" in df_clean.columns:

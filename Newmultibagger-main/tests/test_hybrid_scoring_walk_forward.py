@@ -33,7 +33,7 @@ def _walk_forward_frame() -> pd.DataFrame:
             row = dict.fromkeys(hybrid_scoring.FEATURES, 0.0)
             row.update(
                 {
-                    "symbol": symbol,
+                    "symbol": symbol,  # type: ignore
                     "as_of_date": as_of_date,
                     "score": float(score),
                     "forward_return": score / 1000.0,

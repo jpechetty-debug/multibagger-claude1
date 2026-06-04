@@ -11,7 +11,10 @@ from __future__ import annotations
 
 import math
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from core.observability.logger import get_logger
+
+_log = get_logger("modules.models")
 
 
 def _normalize_fraction_to_pct(value: float | None, field_name: str) -> float | None:
@@ -54,7 +57,7 @@ class StockDataPayload(BaseModel):
     malformed data from leaking into the scoring engine.
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="allow")
 
     Symbol: str
     Price: float | None = None
@@ -87,6 +90,25 @@ class StockDataPayload(BaseModel):
     Cap_Category: str | None = None
 
     # ── Scale normalization validators ──────────────────────────────────
+
+    @model_validator(mode="before")
+    @classmethod
+    def _warn_on_extra(cls, data: dict) -> dict:
+        if not isinstance(data, dict):
+            return data
+
+        allowed_keys = set()
+        for field_name, field_def in cls.model_fields.items():
+            allowed_keys.add(field_name)
+            if field_def.alias:
+                allowed_keys.add(field_def.alias)
+
+        extra_keys = set(data.keys()) - allowed_keys
+        if extra_keys:
+            symbol = data.get("Symbol", "Unknown")
+            _log.warning(f"StockDataPayload for {symbol} received unknown fields: {extra_keys}")
+
+        return data
 
     @field_validator("ROE_pct", mode="before")
     @classmethod

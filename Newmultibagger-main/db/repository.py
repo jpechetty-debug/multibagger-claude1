@@ -68,32 +68,6 @@ def _run_sqlite_write_with_retry(write_fn, operation_name):
 # ── Connection Factory ────────────────────────────────────────────────────────
 
 
-def _is_sqlite_lock_error(exc: Exception) -> bool:
-    msg = str(exc).lower()
-    return "database is locked" in msg or "database table is locked" in msg
-
-
-def _run_sqlite_write_with_retry(write_fn, operation_name):
-    """Retry wrapper for SQLite write operations with exponential backoff."""
-    if not IS_SQLITE:
-        # PostgreSQL handles concurrency natively; skip retry logic
-        return write_fn()
-
-    for attempt in range(SQLITE_WRITE_RETRIES):
-        try:
-            return write_fn()
-        except Exception as exc:
-            if _is_sqlite_lock_error(exc) and attempt < SQLITE_WRITE_RETRIES - 1:
-                wait = SQLITE_RETRY_BASE_SECONDS * (2**attempt)
-                _log.warning(f"SQLite lock during {operation_name}; retrying in {wait:.2f}s.")
-                time.sleep(wait)
-                continue
-            raise
-
-
-# ── Connection Factory ────────────────────────────────────────────────────────
-
-
 def get_connection():
     """
     Return a raw DBAPI connection from the SQLAlchemy engine pool.

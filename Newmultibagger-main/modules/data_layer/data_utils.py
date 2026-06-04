@@ -8,6 +8,9 @@ import pandas as pd
 import pandas_market_calendars as mcal
 
 from modules.symbol_utils import canonical_symbol
+from core.observability.logger import get_logger
+_log = get_logger(__name__)
+
 
 
 def safe_float(value, default: float = 0.0) -> float:
@@ -84,7 +87,11 @@ def load_tickers_from_csv(file_paths):
                 symbols = df[symbol_col].dropna().unique()
                 for sym in symbols:
                     all_symbols.add(canonical_symbol(str(sym)))
-        except Exception:
+        except Exception as e:
+            try:
+                _log.error(f"Caught unhandled exception: {e}")
+            except NameError:
+                pass  # _log might not be defined in scope
             continue
     return list(all_symbols)
 

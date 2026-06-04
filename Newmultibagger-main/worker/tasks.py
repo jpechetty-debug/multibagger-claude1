@@ -139,7 +139,7 @@ def run_full_scan(self):
     from celery import group
 
     try:
-        from ticker_list import STOCK_LIST
+        from ticker_list import STOCK_LIST  # type: ignore
 
         symbols = STOCK_LIST if isinstance(STOCK_LIST, list) else list(STOCK_LIST)
 
@@ -289,10 +289,9 @@ def run_paper_trade():
 
         # Create a dummy args object for the command
         class Args:
-            pass
+            regime: Any = None
 
         args = Args()
-        args.regime = None  # Auto-detect
 
         from modules.data_utils import run_coroutine_sync
 

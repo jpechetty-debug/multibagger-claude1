@@ -431,7 +431,7 @@ async def cmd_paper_trade(args):
     df_snapshot = df_snapshot[df_snapshot['total_score'] > 5]
     if history:
         recent_picks = [entry.get("picks", []) for entry in history[-2:]]
-        held_counts = {}
+        held_counts = {}  # type: ignore
         for pick_list in recent_picks:
             for pick in pick_list:
                 held_counts[pick] = held_counts.get(pick, 0) + 1

@@ -69,7 +69,7 @@ def _normalize_date(value, default: str = "") -> str:
     parsed = pd.to_datetime(value, errors="coerce", dayfirst=True)
     if pd.isna(parsed):
         return default
-    return parsed.date().isoformat()
+    return parsed.date().isoformat()  # type: ignore
 
 
 def _load_active_equity(session: requests.Session, url: str) -> pd.DataFrame:

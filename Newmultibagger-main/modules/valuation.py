@@ -1,6 +1,9 @@
 import os
 
 import numpy as np
+from core.observability.logger import get_logger
+_log = get_logger(__name__)
+
 
 RF_ANNUAL = float(os.getenv("RISK_FREE_RATE_ANNUAL", "0.065"))
 
@@ -64,7 +67,11 @@ class ValuationEngine:
             dcf_value += terminal_value / ((1 + discount_rate) ** projection_years)
             return round(dcf_value, 2)
 
-        except Exception:
+        except Exception as e:
+            try:
+                _log.error(f"Caught unhandled exception: {e}")
+            except NameError:
+                pass  # _log might not be defined in scope
             return 0.0
 
     def calculate_graham_number(self):
@@ -80,7 +87,11 @@ class ValuationEngine:
 
             graham_num = np.sqrt(22.5 * eps * bvps)
             return round(graham_num, 2)
-        except Exception:
+        except Exception as e:
+            try:
+                _log.error(f"Caught unhandled exception: {e}")
+            except NameError:
+                pass  # _log might not be defined in scope
             return 0.0
 
     def calculate_epv_proxy(self):
@@ -97,7 +108,11 @@ class ValuationEngine:
 
             epv = eps / cost_of_capital
             return round(epv, 2)
-        except Exception:
+        except Exception as e:
+            try:
+                _log.error(f"Caught unhandled exception: {e}")
+            except NameError:
+                pass  # _log might not be defined in scope
             return 0.0
 
     def get_intrinsic_value(self):

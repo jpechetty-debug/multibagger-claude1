@@ -16,6 +16,9 @@ from typing import Any
 
 import numpy as np
 from modules.db_utils import get_db_connection
+from core.observability.logger import get_logger
+_log = get_logger(__name__)
+
 
 
 def _get_connection():
@@ -276,7 +279,11 @@ def _get_score_delta(conn, symbol: str, current_score: float) -> dict[str, Any] 
             "direction": "UP" if delta > 0 else "DOWN" if delta < 0 else "FLAT",
             "reason": _infer_delta_reason(delta, current_score, prev_score),
         }
-    except Exception:
+    except Exception as e:
+        try:
+            _log.error(f"Caught unhandled exception: {e}")
+        except NameError:
+            pass  # _log might not be defined in scope
         return None
 
 

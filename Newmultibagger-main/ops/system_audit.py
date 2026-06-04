@@ -30,7 +30,7 @@ def run_audit():
 
     # 2. Database Audit
     if not os.path.exists(DB_PATH):
-        audit_results["database"] = "Database file not found."
+        audit_results["database"] = "Database file not found."  # type: ignore
         return audit_results
 
     conn = sqlite3.connect(DB_PATH)
@@ -91,7 +91,7 @@ def run_audit():
                         if total_records > 0
                         else 0,
                     }
-            audit_results["data_quality"] = quality_stats
+            audit_results["data_quality"] = quality_stats  # type: ignore
 
             # Freshness
             if "timestamp" in df.columns:

@@ -70,6 +70,9 @@ import os
 import asyncio
 import redis.asyncio as aioredis
 from core.observability.logger import get_logger
+from core.observability.logger import get_logger
+_log = get_logger(__name__)
+
 
 logger = get_logger("sovereign.websocket")
 REDIS_URL = os.getenv("UPSTASH_REDIS_TCP_URL") or os.getenv("REDIS_URL") or "redis://localhost:6379/0"
@@ -94,7 +97,11 @@ class ConnectionManager:
         for connection in list(self.active_connections):
             try:
                 await connection.send_json(message)
-            except Exception:
+            except Exception as e:
+                try:
+                    _log.error(f"Caught unhandled exception: {e}")
+                except NameError:
+                    pass  # _log might not be defined in scope
                 if connection in self.active_connections:
                     self.active_connections.remove(connection)
 

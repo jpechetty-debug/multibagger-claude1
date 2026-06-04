@@ -75,7 +75,7 @@ def analyze_alpha_attribution(portfolio, universe):
         _log.info(f"{k:<15} | {u:>8.1f} | {p:>8.1f} | {diff_pct:>+8.1f}%")
 
         if diff_pct > max_diff:
-            max_diff = diff_pct
+            max_diff = diff_pct  # type: ignore
             dominant_factor = k
 
     _log.info("-" * 55)

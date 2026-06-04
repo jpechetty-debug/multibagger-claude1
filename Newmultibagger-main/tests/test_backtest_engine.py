@@ -245,7 +245,7 @@ def test_walk_forward_strategy_backtest_trains_past_only_and_reports_portfolio_m
     for date in pit_dates:
         for symbol, score in score_map.items():
             row = dict.fromkeys(feature_cols, 0.0)
-            row.update({"symbol": symbol, "as_of_date": date.strftime("%Y-%m-%d"), "score": score})
+            row.update({"symbol": symbol, "as_of_date": date.strftime("%Y-%m-%d"), "score": score})  # type: ignore
             rows.append(row)
     pit_df = pd.DataFrame(rows)
     monkeypatch.setattr(pd, "read_sql_query", lambda *args, **kwargs: pit_df)

@@ -3,6 +3,8 @@ from core.observability.logger import get_logger
 from typing import Any
 
 import numpy as np
+_log = get_logger(__name__)
+
 
 _sov = get_logger("normalization.cleaner")
 logger = _sov.logger
@@ -38,7 +40,11 @@ def _is_missing_or_zero(value: Any) -> bool:
     try:
         num = float(value)
         return num == 0.0
-    except Exception:
+    except Exception as e:
+        try:
+            _log.error(f"Caught unhandled exception: {e}")
+        except NameError:
+            pass  # _log might not be defined in scope
         return False
 
 

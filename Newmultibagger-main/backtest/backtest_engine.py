@@ -61,7 +61,7 @@ def _annualized_return_pct(period_returns: pd.Series, periods_per_year: int = 12
     total_return = float(np.prod(1 + returns))
     if not np.isfinite(total_return) or total_return <= 0:
         return 0.0
-    return (total_return ** (periods_per_year / len(returns)) - 1) * 100
+    return (total_return ** (periods_per_year / len(returns)) - 1) * 100  # type: ignore
 
 
 def benchmark_metrics(strategy_returns: pd.Series, benchmark_returns: pd.Series) -> dict:

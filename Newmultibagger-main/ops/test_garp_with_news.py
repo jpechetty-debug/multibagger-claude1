@@ -42,7 +42,7 @@ def test_garp_news_integration():
     strategy.universe = mock_universe
     # We skip load_universe call by setting it directly and not calling it in generate_proposals?
     # No, generate_proposals calls load_universe. We can monkeypatch load_universe.
-    strategy.load_universe = lambda: setattr(strategy, "universe", mock_universe)
+    strategy.load_universe = lambda: setattr(strategy, "universe", mock_universe)  # type: ignore
 
     print("1. Generating Proposals (Fetching News)...")
     proposals = strategy.generate_proposals(top_n=5)

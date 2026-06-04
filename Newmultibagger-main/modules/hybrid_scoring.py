@@ -12,7 +12,6 @@ import pandas as pd
 import shap
 import xgboost as xgb
 from modules.price_utils import fetch_forward_prices
-from modules.structured_logger import get_logger
 from core.observability.logger import get_logger
 _log = get_logger("modules.hybrid_scoring")
 

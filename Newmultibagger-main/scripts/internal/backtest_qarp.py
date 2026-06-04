@@ -151,8 +151,8 @@ def run_backtest(years=3, universe_size=50, stress_mode=False, rebal_freq="MS"):
     start_date = end_date - timedelta(days=365 * years)
     reb_dates = pd.date_range(start=start_date, end=end_date, freq=rebal_freq)
     portfolio_value = 100.0
-    history = []
-    ticker_cache = {}
+    history = []  # type: ignore
+    ticker_cache = {}  # type: ignore
     hmm = RegimeHMM()
     survivorship_loader = SurvivorshipAdjustedLoader(data_dir="data")
     test_universe = list(TICKERS[:universe_size])
@@ -176,9 +176,9 @@ def run_backtest(years=3, universe_size=50, stress_mode=False, rebal_freq="MS"):
             for symbol in active_universe:
                 f = get_pit_factors(symbol, reb_date, cache=ticker_cache)
                 if f:
-                    f["backtest"] = True
-                    score_res = calculate_institutional_score(f)
-                    f["total_score"] = score_res["total_score"]
+                    f["backtest"] = True  # type: ignore
+                    score_res = calculate_institutional_score(f)  # type: ignore
+                    f["total_score"] = score_res["total_score"]  # type: ignore
                     universe_metrics.append(f)
             if not universe_metrics:
                 console.print(f"[yellow]Warning: Skipping rebalance date {reb_date.date()} - no fundamental data returned by yfinance[/yellow]")

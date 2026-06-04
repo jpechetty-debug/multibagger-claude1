@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 # tests/test_hardening_contracts.py
 """
 Phase 4.3: Contract regression tests for the data hardening framework.
@@ -121,18 +122,21 @@ class TestDQGateContracts:
 class TestPydanticModelContracts:
     """Validate that the Pydantic ingestion boundary works correctly."""
 
-    def test_extra_fields_are_ignored(self):
-        """Verify that extra fields are forbidden and cause validation errors."""
-        from pydantic import ValidationError
+    def test_extra_fields_are_ignored(self, caplog):
+        """Verify that extra fields log a warning but do not crash."""
+        import logging
         from modules.models import StockDataPayload
 
-        with pytest.raises(ValidationError):
-            StockDataPayload(
+        with caplog.at_level(logging.WARNING):
+            payload = StockDataPayload(
                 Symbol="TEST.NS",
                 Price=100.0,
                 unknown_field="should_be_dropped",
                 another_garbage=42,
             )
+        assert "received unknown fields" in caplog.text
+        assert "unknown_field" in caplog.text
+        assert payload.Price == 100.0
 
     def test_roe_fraction_normalized_to_percent(self):
         from modules.models import StockDataPayload

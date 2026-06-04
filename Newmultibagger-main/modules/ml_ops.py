@@ -2,7 +2,7 @@ import sqlite3
 from typing import Any
 import pandas as pd
 from modules.hybrid_scoring import train_hybrid_model
-from modules.structured_logger import logger
+from core.observability.logger import logger
 from modules.db_utils import get_db_connection
 
 ML_METADATA_TABLE = "ml_metadata"

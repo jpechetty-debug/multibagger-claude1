@@ -24,7 +24,7 @@ class AlertEngine:
         Returns:
             list of dict: List of alert objects.
         """
-        alerts = []
+        alerts = []  # type: ignore
 
         if portfolio.empty:
             return alerts

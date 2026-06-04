@@ -52,9 +52,9 @@ def _load_module(monkeypatch):
         "sklearn.model_selection": types.ModuleType("sklearn.model_selection"),
     }
     # Minimal stubs so imports succeed
-    stubs["sklearn.preprocessing"].StandardScaler = object
-    stubs["sklearn.model_selection"].TimeSeriesSplit = object
-    stubs["xgboost"].XGBRegressor = object
+    stubs["sklearn.preprocessing"].StandardScaler = object  # type: ignore
+    stubs["sklearn.model_selection"].TimeSeriesSplit = object  # type: ignore
+    stubs["xgboost"].XGBRegressor = object  # type: ignore
 
     for name, mod in stubs.items():
         monkeypatch.setitem(sys.modules, name, mod)

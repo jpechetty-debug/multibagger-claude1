@@ -115,17 +115,17 @@ def analyze_vif():
         print("✅ All factors provide unique information (VIF < 5). System is efficient.")
 
     # Save Report
-    with open("vif_report.md", "w", encoding="utf-8") as f:
-        f.write("# 🔬 Phase 48: Factor Redundancy (VIF) Report\n\n")
-        f.write("## Variance Inflation Factor (VIF) Scores\n")
-        f.write("*VIF > 5 indicates potential redundancy.*\n\n")
-        f.write(vif_data.to_markdown(index=False))
-        f.write("\n\n## High Correlation Pairs (> 0.7)\n")
+    with open("vif_report.md", "w", encoding="utf-8") as f:  # type: ignore
+        f.write("# 🔬 Phase 48: Factor Redundancy (VIF) Report\n\n")  # type: ignore
+        f.write("## Variance Inflation Factor (VIF) Scores\n")  # type: ignore
+        f.write("*VIF > 5 indicates potential redundancy.*\n\n")  # type: ignore
+        f.write(vif_data.to_markdown(index=False))  # type: ignore
+        f.write("\n\n## High Correlation Pairs (> 0.7)\n")  # type: ignore
         if high_corr_pairs:
             for p, v in high_corr_pairs:
-                f.write(f"- **{p}**: {v:.2f}\n")
+                f.write(f"- **{p}**: {v:.2f}\n")  # type: ignore
         else:
-            f.write("None found.\n")
+            f.write("None found.\n")  # type: ignore
 
     print("\n📄 Report saved to vif_report.md")
 

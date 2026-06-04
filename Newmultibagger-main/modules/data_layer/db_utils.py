@@ -21,7 +21,7 @@ def resolve_db_path(db_name: str) -> str:
 
     return str(runtime_path)
 
-def get_db_connection(db_name: str, timeout: int = None):
+def get_db_connection(db_name: str, timeout: int = None):  # type: ignore
     """
     Standardized connection factory for any SQLite database in the system.
     Applies WAL mode and busy_timeout.

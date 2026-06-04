@@ -12,6 +12,9 @@ import pandas as pd
 
 from modules.data_service import data_manager
 from modules.retry_utils import run_with_exponential_backoff
+from core.observability.logger import get_logger
+_log = get_logger(__name__)
+
 
 
 def _safe_float(value) -> float | None:
@@ -25,7 +28,11 @@ def _safe_float(value) -> float | None:
         if not np.isfinite(parsed):
             return None
         return parsed
-    except Exception:
+    except Exception as e:
+        try:
+            _log.error(f"Caught unhandled exception: {e}")
+        except NameError:
+            pass  # _log might not be defined in scope
         return None
 
 
@@ -149,7 +156,11 @@ async def process_fiscal_year_data(
             "ps": round(ps, 2) if ps is not None and ps > 0 else None,
             "pb": round(pb, 2) if pb is not None and pb > 0 else None,
         }
-    except Exception:
+    except Exception as e:
+        try:
+            _log.error(f"Caught unhandled exception: {e}")
+        except NameError:
+            pass  # _log might not be defined in scope
         return None
 
 

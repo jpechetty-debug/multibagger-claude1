@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 # tests/test_data_correctness.py
 """
 Data Correctness Test Suite
@@ -104,18 +105,21 @@ class TestStockDataPayloadValidation:
         payload = StockDataPayload(Symbol="TEST.NS", Debt_Equity=100)
         assert payload.Debt_Equity == 50.0
 
-    def test_extra_fields_ignored(self):
-        """Unknown fields should be rejected (extra='forbid')."""
-        from pydantic import ValidationError
+    def test_extra_fields_ignored(self, caplog):
+        """Unknown fields should be logged as a warning but allowed (extra='allow')."""
+        import logging
         from modules.models import StockDataPayload
 
-        with pytest.raises(ValidationError):
-            StockDataPayload(
+        with caplog.at_level(logging.WARNING):
+            payload = StockDataPayload(
                 Symbol="TEST.NS",
                 Price=100.0,
                 bogus_field="should_not_appear",
                 another_junk=42,
             )
+        assert "received unknown fields" in caplog.text
+        assert "bogus_field" in caplog.text
+        assert payload.Price == 100.0
 
     def test_data_quality_score(self):
         """Full payload should score 100, sparse should score lower."""

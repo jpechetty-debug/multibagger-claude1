@@ -20,7 +20,7 @@ def normalize_date(value=None, *, default: str | None = None) -> str | None:
     if isinstance(value, pd.Timestamp):
         if pd.isna(value):
             return default
-        return value.date().isoformat()
+        return value.date().isoformat()  # type: ignore
 
     text = str(value).strip()
     if not text:
@@ -40,7 +40,7 @@ def normalize_date(value=None, *, default: str | None = None) -> str | None:
 
     parsed = pd.to_datetime(text, errors="coerce")
     if not pd.isna(parsed):
-        return parsed.date().isoformat()
+        return parsed.date().isoformat()  # type: ignore
 
     return default
 

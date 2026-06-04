@@ -202,10 +202,10 @@ def run_adversarial_scenario_replay(portfolio_stocks, weights=None, base_vix=20.
 
     replay = []
     for scenario in scenarios:
-        gap_component = abs(float(scenario["gap_down_pct"]))
-        slippage_component = float(scenario["slippage_bps"]) / 10000.0
-        correlation_component = max(0.0, float(scenario["correlation_spike"]) - 0.60)
-        vix_component = max(0.0, (float(scenario["vix"]) - float(base_vix)) / 100.0)
+        gap_component = abs(float(scenario["gap_down_pct"]))  # type: ignore
+        slippage_component = float(scenario["slippage_bps"]) / 10000.0  # type: ignore
+        correlation_component = max(0.0, float(scenario["correlation_spike"]) - 0.60)  # type: ignore
+        vix_component = max(0.0, (float(scenario["vix"]) - float(base_vix)) / 100.0)  # type: ignore
 
         total_shock = gap_component + slippage_component + correlation_component + vix_component
         estimated_drawdown = min(0.95, total_shock * max(0.6, portfolio_beta))

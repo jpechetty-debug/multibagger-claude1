@@ -5,6 +5,9 @@ import pandas as pd
 import yfinance as yf
 
 from modules.retry_utils import run_with_exponential_backoff
+from core.observability.logger import get_logger
+_log = get_logger(__name__)
+
 
 
 def calculate_rsi(data, window=14):
@@ -96,7 +99,11 @@ async def get_technical_analysis(symbol):
                 if not np.isfinite(parsed):
                     return 0.0
                 return parsed
-            except Exception:
+            except Exception as e:
+                try:
+                    _log.error(f"Caught unhandled exception: {e}")
+                except NameError:
+                    pass  # _log might not be defined in scope
                 return 0.0
 
         return {
@@ -115,7 +122,11 @@ async def get_technical_analysis(symbol):
 def get_sma_200(close):
     try:
         return float(close.rolling(window=200).mean().iloc[-1])
-    except Exception:
+    except Exception as e:
+        try:
+            _log.error(f"Caught unhandled exception: {e}")
+        except NameError:
+            pass  # _log might not be defined in scope
         return None
 
 
@@ -148,5 +159,9 @@ def calculate_momentum_features(df):
             "vol_breakout": round(vol_ratio, 2),
             "dist_from_52w_high": round(dist_from_high, 4),
         }
-    except Exception:
+    except Exception as e:
+        try:
+            _log.error(f"Caught unhandled exception: {e}")
+        except NameError:
+            pass  # _log might not be defined in scope
         return {}

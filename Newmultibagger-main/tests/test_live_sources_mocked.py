@@ -16,7 +16,7 @@ import concurrent.futures
 class DummyExecutor:
     """Synchronous executor for testing async methods."""
     def submit(self, fn, *args, **kwargs):
-        f = concurrent.futures.Future()
+        f = concurrent.futures.Future()  # type: ignore
         try:
             result = fn(*args, **kwargs)
             f.set_result(result)

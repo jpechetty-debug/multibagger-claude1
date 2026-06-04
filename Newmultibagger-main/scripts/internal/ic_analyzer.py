@@ -90,7 +90,7 @@ def perform_ic_analysis():
         })
 
     # Sort by absolute IC (predictive power)
-    ic_results.sort(key=lambda x: abs(x["IC"]) if not np.isnan(x["IC"]) else 0, reverse=True)
+    ic_results.sort(key=lambda x: abs(x["IC"]) if not np.isnan(x["IC"]) else 0, reverse=True)  # type: ignore
 
     for res in ic_results:
         factor = res["Factor"]

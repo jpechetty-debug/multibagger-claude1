@@ -5,6 +5,9 @@ import sys
 import importlib
 import importlib.abc
 import importlib.util
+from core.observability.logger import get_logger
+_log = get_logger(__name__)
+
 
 MODULE_MAPPING = {
     # Data Layer
@@ -82,11 +85,14 @@ class BackwardCompatFinder(importlib.abc.MetaPathFinder):
                             # Create a custom spec that uses our loader to load the new module
                             return importlib.machinery.ModuleSpec(
                                 name=fullname,
-                                loader=BackwardCompatLoader(new_fullname),
+                                loader=BackwardCompatLoader(new_fullname),  # type: ignore
                                 is_package=False
                             )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        try:
+                            _log.error(f"Caught unhandled exception: {e}")
+                        except NameError:
+                            pass  # _log might not be defined in scope
         return None
 
 # Register the finder

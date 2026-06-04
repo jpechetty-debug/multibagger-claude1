@@ -4,6 +4,9 @@ import numpy as np
 import yfinance as yf
 
 from modules.retry_utils import run_with_exponential_backoff
+from core.observability.logger import get_logger
+_log = get_logger(__name__)
+
 
 
 async def get_shareholding_pattern(symbol):
@@ -44,8 +47,11 @@ async def get_shareholding_pattern(symbol):
                 )
                 if inst is not None and not inst.empty and "Pct" in inst.columns:
                     holding_data["institutions"] = float(inst["Pct"].sum() * 100)
-            except Exception:
-                pass
+            except Exception as e:
+                try:
+                    _log.error(f"Caught unhandled exception: {e}")
+                except NameError:
+                    pass  # _log might not be defined in scope
 
         total_known = holding_data["promoters"] + holding_data["institutions"]
         if total_known > 100:
@@ -62,7 +68,11 @@ async def get_shareholding_pattern(symbol):
                 if not np.isfinite(parsed):
                     return 0.0
                 return parsed
-            except Exception:
+            except Exception as e:
+                try:
+                    _log.error(f"Caught unhandled exception: {e}")
+                except NameError:
+                    pass  # _log might not be defined in scope
                 return 0.0
 
         return {

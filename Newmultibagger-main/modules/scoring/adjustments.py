@@ -12,7 +12,7 @@ from typing import Any
 from modules.data_utils import optional_float, safe_float
 from modules.estimates import get_estimate_data
 from modules.promoter_intel import calculate_promoter_score
-from modules.structured_logger import logger
+from core.observability.logger import logger
 
 from .normalization import FactorState, _Number, _SectorMedians, _StockData
 

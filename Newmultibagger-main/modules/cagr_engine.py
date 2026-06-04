@@ -13,6 +13,9 @@ from __future__ import annotations
 from typing import cast
 
 import pandas as pd
+from core.observability.logger import get_logger
+_log = get_logger(__name__)
+
 
 
 def _safe_cagr(start_val: float, end_val: float, years: int) -> float | None:
@@ -211,7 +214,11 @@ def calculate_all_cagrs(ticker) -> dict[str, float | str | None]:
         fin = ticker.financials
         if fin is None or (isinstance(fin, pd.DataFrame) and fin.empty):
             return default
-    except Exception:
+    except Exception as e:
+        try:
+            _log.error(f"Caught unhandled exception: {e}")
+        except NameError:
+            pass  # _log might not be defined in scope
         return default
 
     periods = {"3Y": 3, "5Y": min(4, len(fin.columns) - 1)}
@@ -275,8 +282,11 @@ def calculate_all_cagrs(ticker) -> dict[str, float | str | None]:
                             eps_computed,
                             {k: v for k, v in periods.items() if v < len(eps_computed)},
                         )
-    except Exception:
-        pass
+    except Exception as e:
+        try:
+            _log.error(f"Caught unhandled exception: {e}")
+        except NameError:
+            pass  # _log might not be defined in scope
 
     # --- CAGR Consistency Score ---
     all_cagrs = []

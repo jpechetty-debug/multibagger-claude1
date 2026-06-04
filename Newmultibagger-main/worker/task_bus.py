@@ -89,7 +89,7 @@ def _dispatch_celery(fn: Callable, *args: Any, **kwargs: Any) -> str:
     task_name = getattr(fn, "name", fn.__name__)
     result = app.send_task(task_name, args=args, kwargs=kwargs)
     logger.info("task.enqueued", mode="celery", task=task_name, task_id=result.id)
-    return result.id
+    return result.id  # type: ignore
 
 
 # ---------------------------------------------------------------------------

@@ -31,6 +31,8 @@ from modules.field_names import FIELD_MAPPING
 from modules.financial_adapter import create_fundamentals_provider
 from modules.normalization.cleaner import is_payload_skeletal
 from core.observability.logger import get_logger
+_log = get_logger(__name__)
+
 
 _sov = get_logger("data_service")
 logger = _sov.logger
@@ -543,7 +545,7 @@ class ScreenerRepository:
 
         connection = await asyncpg.connect(dsn=_postgres_dsn_for_asyncpg(self.database_url))
         try:
-            table = _quote_pg_identifier_path(self.table_name)
+            table = _quote_pg_identifier_path(self.table_name)  # type: ignore
             if hasattr(connection, "prepare"):
                 prepared = await connection.prepare(f"SELECT * FROM {table} LIMIT 0")
                 columns = tuple(attribute.name for attribute in prepared.get_attributes())
@@ -705,7 +707,11 @@ class DataManager:
             ticker = yf.Ticker(symbol)
             try:
                 fast = dict(ticker.fast_info) if ticker.fast_info is not None else {}
-            except Exception:
+            except Exception as e:
+                try:
+                    _log.error(f"Caught unhandled exception: {e}")
+                except NameError:
+                    pass  # _log might not be defined in scope
                 fast = {}
             price = (
                 fast.get("lastPrice")
@@ -716,10 +722,14 @@ class DataManager:
                 try:
                     info = ticker.info if isinstance(ticker.info, dict) else {}
                     price = info.get("currentPrice") or info.get("regularMarketPrice")
-                except Exception:
+                except Exception as e:
+                    try:
+                        _log.error(f"Caught unhandled exception: {e}")
+                    except NameError:
+                        pass  # _log might not be defined in scope
                     price = None
             try:
-                price_val = float(price)
+                price_val = float(price)  # type: ignore
             except (TypeError, ValueError):
                 return None
             return price_val if price_val > 0 else None
@@ -787,7 +797,7 @@ class DataManager:
                         await self._enrich_price_if_missing(symbol, data)
                         data["data_freshness"] = "live"
                         self.cache.set(cache_key, data)
-                        return data
+                        return data  # type: ignore
                     else:
                         # Standardized pause on failure
                         await self._adaptive_pause(provider)
@@ -799,7 +809,7 @@ class DataManager:
             if incomplete_payload:
                 await self._enrich_price_if_missing(symbol, incomplete_payload)
                 incomplete_payload["data_freshness"] = "stale (incomplete fallback)"
-                return incomplete_payload
+                return incomplete_payload  # type: ignore
 
             stale_cached = self.cache.get_expired(cache_key)
             if stale_cached:
@@ -843,8 +853,11 @@ class DataManager:
                     if row and row[0]:
                         current_price = float(row[0])
                     conn.close()
-                except Exception:
-                    pass
+                except Exception as e:
+                    try:
+                        _log.error(f"Caught unhandled exception: {e}")
+                    except NameError:
+                        pass  # _log might not be defined in scope
 
             # Generate 252 business days ending today
             dates = pd.date_range(end=datetime.now(), periods=252, freq="B")
@@ -977,7 +990,11 @@ def analyze_market_regime(symbol="^NSEI"):
         elif current_price > sma_50 and current_price < sma_200:
             return "Recovery"
         return "Sideways"
-    except Exception:
+    except Exception as e:
+        try:
+            _log.error(f"Caught unhandled exception: {e}")
+        except NameError:
+            pass  # _log might not be defined in scope
         return "Unknown"
 
 

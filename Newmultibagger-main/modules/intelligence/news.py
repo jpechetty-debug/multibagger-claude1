@@ -52,7 +52,11 @@ async def get_stock_news(symbol):
                         published_at = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M")
                     else:
                         published_at = "Recent"
-            except Exception:
+            except Exception as e:
+                try:
+                    _log.error(f"Caught unhandled exception: {e}")
+                except NameError:
+                    pass  # _log might not be defined in scope
                 published_at = "Recent"
 
             related_tickers = content.get("relatedTickers") or item.get("relatedTickers") or []

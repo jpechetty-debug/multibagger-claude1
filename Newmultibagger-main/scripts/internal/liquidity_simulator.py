@@ -172,9 +172,9 @@ def run_liquidity_check():
         print("No scenarios were evaluated.")
         return
 
-    max_flags = max(s["risk_flags"] for s in scenario_results)
+    max_flags = max(s["risk_flags"] for s in scenario_results)  # type: ignore
     overall_verdict = (
-        "SCALABLE" if max_flags == 0 else "CAUTION" if max_flags <= 5 else "NON_SCALABLE"
+        "SCALABLE" if max_flags == 0 else "CAUTION" if max_flags <= 5 else "NON_SCALABLE"  # type: ignore
     )
 
     json_output = {

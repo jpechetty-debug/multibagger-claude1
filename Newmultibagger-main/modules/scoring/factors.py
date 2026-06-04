@@ -12,7 +12,7 @@ from typing import Any
 import config
 from modules.data_utils import optional_float, safe_float
 from modules.news_sentiment import engine as news_engine
-from modules.structured_logger import logger
+from core.observability.logger import logger
 
 from .normalization import FactorState, _Number, _StockData, normalize_metric
 

@@ -17,6 +17,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import pandas as pd
+from core.observability.logger import get_logger
+_log = get_logger(__name__)
+
 
 logger = logging.getLogger(__name__)
 
@@ -81,10 +84,10 @@ class _AdapterFundamentalsProvider(FundamentalsProvider):
         return float(getattr(self.provider, "cooldown_until", 0.0))
 
     async def fetch_fundamentals(self, symbol: str) -> dict[str, Any]:
-        return await self.provider.fetch_fundamentals(symbol)
+        return await self.provider.fetch_fundamentals(symbol)  # type: ignore
 
     async def safe_fetch(self, symbol: str) -> dict[str, Any] | None:
-        return await self.provider.safe_fetch(symbol)
+        return await self.provider.safe_fetch(symbol)  # type: ignore
 
 
 def create_fundamentals_provider(
@@ -98,7 +101,7 @@ def create_fundamentals_provider(
     ``FUNDAMENTALS_PROVIDER=screener_in|pnsea|nsepython``.
     yFinance is intentionally absent here; it remains a price/history fallback.
     """
-    provider_name = (name or os.getenv("FUNDAMENTALS_PROVIDER", "screener_in")).lower()
+    provider_name = (name or os.getenv("FUNDAMENTALS_PROVIDER", "screener_in")).lower()  # type: ignore
 
     if provider_name == "screener":
         provider_name = "screener_in"
@@ -260,14 +263,22 @@ def extract_normalized_financials(ticker, *, source: str = "yfinance") -> Normal
         fin = ticker.financials
         if fin is None or (isinstance(fin, pd.DataFrame) and fin.empty):
             return NormalizedFinancials()
-    except Exception:
+    except Exception as e:
+        try:
+            _log.error(f"Caught unhandled exception: {e}")
+        except NameError:
+            pass  # _log might not be defined in scope
         return NormalizedFinancials()
 
     try:
         bs = ticker.balance_sheet
         if bs is None or (isinstance(bs, pd.DataFrame) and bs.empty):
             bs = pd.DataFrame()
-    except Exception:
+    except Exception as e:
+        try:
+            _log.error(f"Caught unhandled exception: {e}")
+        except NameError:
+            pass  # _log might not be defined in scope
         bs = pd.DataFrame()
 
     revenue = _series_to_dict(

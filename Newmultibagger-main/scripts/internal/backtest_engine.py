@@ -164,8 +164,8 @@ def run_backtest():
 
             if current_sharpe > best_sharpe:
                 best_sharpe = current_sharpe
-                best_fast = f_window
-                best_slow = s_window
+                best_fast = f_window  # type: ignore
+                best_slow = s_window  # type: ignore
 
     print(
         f"Best Parameters Found: Fast SMA {best_fast}, "

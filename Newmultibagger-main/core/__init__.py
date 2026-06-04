@@ -19,10 +19,3 @@ from core.observability.logger import get_logger
 log = get_logger("sovereign")
 
 
-def get_logger(name: str) -> SovereignLogger:
-    """Return a namespaced logger.
-
-    Example:
-        logger = get_logger("sovereign.worker.tasks")
-    """
-    return SovereignLogger(name)

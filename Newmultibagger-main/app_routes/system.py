@@ -4,7 +4,8 @@ import os
 import sys
 from pathlib import Path
 
-from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
+from modules.auth import get_api_key
+from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect, Depends
 from fastapi.responses import FileResponse
 
 from modules.cache import (
@@ -25,20 +26,8 @@ _SIGNALS_FILE = Path(__file__).resolve().parent.parent / "paper_trade_signals.js
 
 
 @router.websocket("/ws/signals")
-async def websocket_signals(websocket: WebSocket):
+async def websocket_signals(websocket: WebSocket, api_key: str = Depends(get_api_key)):
     """Real-time signal broadcast via websocket."""
-    expected_key = os.getenv("SOVEREIGN_API_KEY")
-    if not expected_key:
-        api_logger.error("SOVEREIGN_API_KEY not set in environment. Access denied for security.")
-        await websocket.close(code=1008)  # Policy Violation
-        return
-
-    query_token = websocket.query_params.get("token") or websocket.query_params.get("api_key")
-    if query_token != expected_key:
-        api_logger.warning("Unauthenticated signals WebSocket attempt.")
-        await websocket.close(code=1008)  # Policy Violation
-        return
-
     await websocket.accept()
     try:
         while True:
@@ -55,7 +44,7 @@ async def websocket_signals(websocket: WebSocket):
 
 
 @router.websocket("/ws/prices")
-async def websocket_prices(websocket: WebSocket):
+async def websocket_prices(websocket: WebSocket, api_key: str = Depends(get_api_key)):
     """Real-time price feed broadcast via websocket (Multi-worker safe)."""
     from modules.dependencies import manager
     await manager.connect(websocket)

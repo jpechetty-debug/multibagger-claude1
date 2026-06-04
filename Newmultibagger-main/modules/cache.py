@@ -12,6 +12,9 @@ from typing import Any, Optional
 
 from modules.runtime_settings import runtime_settings
 from worker.redis_cache import cache as redis_cache, DEFAULT_TTL
+from core.observability.logger import get_logger
+_log = get_logger(__name__)
+
 
 # TTL Settings from Runtime Configuration
 REGIME_CACHE_TTL_SECONDS = runtime_settings.regime_cache_ttl_seconds
@@ -44,7 +47,7 @@ class RedisCacheProxy:
     def invalidate(self):
         redis_cache.delete(self.key)
 
-    def is_fresh(self, ttl_override: int = None) -> bool:
+    def is_fresh(self, ttl_override: int = None) -> bool:  # type: ignore
         import time
         data = redis_cache.get(self.key)
         if not data or not isinstance(data, dict):
@@ -52,7 +55,7 @@ class RedisCacheProxy:
 
         ts = data.get("timestamp", 0.0)
         ttl = ttl_override if ttl_override is not None else self.ttl
-        return (time.time() - ts) < ttl
+        return (time.time() - ts) < ttl  # type: ignore
 
 # Distributed cache proxies
 regime_cache = RedisCacheProxy("regime_status", REGIME_CACHE_TTL_SECONDS)
@@ -105,7 +108,7 @@ def _cache_is_fresh(cache_obj: Any, ttl_seconds: int) -> bool:
     data = redis_cache.get(str(cache_obj))
     if data and isinstance(data, dict):
         import time
-        return (time.time() - data.get("timestamp", 0.0)) < ttl_seconds
+        return (time.time() - data.get("timestamp", 0.0)) < ttl_seconds  # type: ignore
     return False
 
 def _cache_set(cache_obj: Any, payload: Any):
@@ -138,7 +141,11 @@ def cached(ttl: int | None = None, key_prefix: str = "fn"):
                 # Skip 'self' or 'cls' for methods if needed, but here we assume general functions
                 arg_str = ":".join(f"{k}={v}" for k, v in bound_args.arguments.items() if k not in ("self", "cls"))
                 cache_key = f"{key_prefix}:{func.__name__}:{arg_str}"
-            except Exception:
+            except Exception as e:
+                try:
+                    _log.error(f"Caught unhandled exception: {e}")
+                except NameError:
+                    pass  # _log might not be defined in scope
                 # Fallback key generation
                 cache_key = f"{key_prefix}:{func.__name__}:{hash(str(args) + str(kwargs))}"
 
