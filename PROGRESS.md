@@ -31,3 +31,11 @@
   - Frontend: `http://localhost:3000`
   - Backend API: `http://localhost:9005`
 - Authentication Header: `X-API-Key: DEV_KEY_123`
+
+- Corrected 46 previous INFO-level logging errors back to WARNING/ERROR levels across modules to fix swallowed exceptions.
+- Refactored SovereignLogger initialization across the codebase (38 files) to correctly use the wrapper and preserve structured JSON fields.
+- Secured /ws/signals WebSocket endpoint with API Key validation.
+- Fixed _json_safe_clean import paths in score_report.py and dependencies.py.
+- Made worker/task_bus.py dispatch() uniformly async to prevent silent caller traps in development mode.
+- Added test coverage for worker/task_bus.py in 	ests/test_task_bus.py.
+
