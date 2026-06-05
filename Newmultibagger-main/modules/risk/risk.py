@@ -138,7 +138,7 @@ class RiskGovernor:
         # 1. CRITICAL CRISIS (Hard Kill)
         # If DD > 15% AND Market is Panicking (VIX > 30, BEAR)
         if current_drawdown_pct > 15 and vix > 30 and regime == "BEAR":
-            _log.info("RISK: Critical drawdown in crash mode -> HARD KILL")
+            _log.critical("RISK: Critical drawdown in crash mode -> HARD KILL")
             self.log_rejected_trade(
                 "PORTFOLIO", f"Hard Kill: DD {current_drawdown_pct}% + VIX {vix} (Bear)", 0.0
             )

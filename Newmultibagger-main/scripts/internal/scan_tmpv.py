@@ -21,8 +21,14 @@ def scan_and_update():
         try:
             stock_data = get_stock_data(symbol)
             if stock_data:
-                # Calculate Score
                 score_blob = calculate_institutional_score(stock_data)
+
+                if isinstance(score_blob, dict) and score_blob.get("scoring_strategy") == "STALE_DATA":
+                    from fastapi import HTTPException
+                    raise HTTPException(
+                        status_code=422,
+                        detail="Stock data is stale. Triggering live refresh via fallback."
+                    )
 
                 score = 0
                 if isinstance(score_blob, dict):

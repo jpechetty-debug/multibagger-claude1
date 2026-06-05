@@ -543,8 +543,10 @@ class ScreenerRepository:
         except ImportError as exc:
             raise RuntimeError("asyncpg is required for Neon screener reads") from exc
 
-        connection = await asyncpg.connect(dsn=_postgres_dsn_for_asyncpg(self.database_url))
-        try:
+        if getattr(self.__class__, "_neon_pool", None) is None:
+            self.__class__._neon_pool = await asyncpg.create_pool(dsn=_postgres_dsn_for_asyncpg(self.database_url))
+
+        async with self.__class__._neon_pool.acquire() as connection:
             table = _quote_pg_identifier_path(self.table_name)  # type: ignore
             if hasattr(connection, "prepare"):
                 prepared = await connection.prepare(f"SELECT * FROM {table} LIMIT 0")
@@ -565,10 +567,6 @@ class ScreenerRepository:
             else:
                 records = await connection.fetch(f"{query} LIMIT $1", int(limit))
             return [ScreenerRow.model_validate(dict(record)) for record in records]
-        finally:
-            close_result = connection.close()
-            if inspect.isawaitable(close_result):
-                await close_result
 
 
 def get_screener_repository() -> ScreenerRepository:
