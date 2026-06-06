@@ -8,7 +8,6 @@ import asyncio
 import inspect
 import math
 import os
-import pickle
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -520,7 +519,13 @@ class ScreenerRepository:
             raise RuntimeError("asyncpg is required for Neon screener reads") from exc
 
         if getattr(self.__class__, "_neon_pool", None) is None:
-            self.__class__._neon_pool = await asyncpg.create_pool(dsn=_postgres_dsn_for_asyncpg(self.database_url))
+            self.__class__._neon_pool = await asyncpg.create_pool(
+                dsn=_postgres_dsn_for_asyncpg(self.database_url),
+                min_size=1,
+                max_size=5,
+                command_timeout=10,
+                max_inactive_connection_lifetime=300,
+            )
 
         # Neon path: push the filter to Postgres
         table = _quote_pg_identifier_path(self.table_name)
@@ -552,7 +557,13 @@ class ScreenerRepository:
             raise RuntimeError("asyncpg is required for Neon screener reads") from exc
 
         if getattr(self.__class__, "_neon_pool", None) is None:
-            self.__class__._neon_pool = await asyncpg.create_pool(dsn=_postgres_dsn_for_asyncpg(self.database_url))
+            self.__class__._neon_pool = await asyncpg.create_pool(
+                dsn=_postgres_dsn_for_asyncpg(self.database_url),
+                min_size=1,
+                max_size=5,
+                command_timeout=10,
+                max_inactive_connection_lifetime=300,
+            )
 
         async with self.__class__._neon_pool.acquire() as connection:
             table = _quote_pg_identifier_path(self.table_name)  # type: ignore
