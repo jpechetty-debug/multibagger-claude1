@@ -79,8 +79,8 @@ async def get_multibagger_hunt():
     try:
         query = """
             SELECT * FROM sqlite_db.multibaggers
-            WHERE CAST(sales_cagr_5y AS DOUBLE) >= 0.15
-              AND CAST(avg_roe_5y AS DOUBLE) >= 0.15
+            WHERE CAST(sales_cagr_5y AS DOUBLE) >= 15
+              AND CAST(avg_roe_5y AS DOUBLE) >= 15
               AND CAST(debt_equity AS DOUBLE) <= 0.5
               AND CAST(cfo_pat_ratio AS DOUBLE) >= 0.80
               AND CAST(promoter_holding AS DOUBLE) >= 50.0
