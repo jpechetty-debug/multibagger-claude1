@@ -2,8 +2,7 @@ from core.observability.logger import get_logger
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
-_sov = get_logger("adapters.base")
-logger = _sov.logger
+logger = get_logger("adapters.base")
 
 
 def resolve_key(
@@ -50,12 +49,7 @@ def resolve_key(
 
     if len(hits) > 1:
         logger.warning(
-            "key_conflict | field=%s source=%s found=%s using=%s candidates=%s",
-            field,
-            source,
-            [k for k, _ in hits],
-            hits[0][0],
-            list(candidates),
+            f"key_conflict | field={field} source={source} found={[k for k, _ in hits]} using={hits[0][0]} candidates={list(candidates)}"
         )
 
     return hits[0][1]

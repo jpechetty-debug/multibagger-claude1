@@ -12,8 +12,7 @@ try:
 except LookupError:
     nltk.download("vader_lexicon", quiet=True)
 
-_sov = get_logger("news_sentiment")
-logger = _sov.logger
+logger = get_logger("news_sentiment")
 
 
 class NewsSentimentEngine:

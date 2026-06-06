@@ -42,8 +42,7 @@ from typing import Any
 from core.observability.logger import get_logger
 from .base import DataProvider
 
-_sov = get_logger("adapters.screener_in")
-logger = _sov.logger
+logger = get_logger("adapters.screener_in")
 
 # ── Cloudflare-aware HTTP session ─────────────────────────────────────────────
 try:
@@ -638,16 +637,12 @@ class ScreenerInProvider(DataProvider):
             if resp.status_code == 200:
                 return resp.text
             if resp.status_code == 404:
-                logger.info("screener_not_found", url=url)
+                logger.info(f"screener_not_found: {url}")
                 return None
-            logger.warning(
-                "screener_http_error",
-                status=resp.status_code,
-                url=url,
-            )
+            logger.warning(f"screener_http_error: {resp.status_code} for {url}")
             return None
         except Exception as exc:
-            logger.warning("screener_request_failed", url=url, error=str(exc))
+            logger.warning(f"screener_request_failed: {url} - {exc}")
             return None
 
     def _try_standalone_fallback(self, symbol: str) -> str | None:

@@ -18,8 +18,7 @@ from modules.normalization.cleaner import normalize_info
 
 from .base import DataProvider
 
-_sov = get_logger("adapters.nse")
-logger = _sov.logger
+logger = get_logger("adapters.nse")
 
 
 async def _run_executor_safe(loop, executor, fn, default):
@@ -87,7 +86,7 @@ class PNSEAProvider(DataProvider):
         except ImportError:
             self.available = False
         except Exception as exc:
-            logger.warning("PNSEA bootstrap failed during import; provider disabled: %s", exc)
+            logger.warning(f"PNSEA bootstrap failed during import; provider disabled: {exc}")
             self.available = False
 
     def _get_nse_client(self):
@@ -135,7 +134,7 @@ class PNSEAProvider(DataProvider):
                 raw.get("info", {}).get("netProfit", 1), 1
             )
         except (ZeroDivisionError, TypeError, ValueError) as _cfo_err:
-            logger.warning("[%s] CFO/PAT ratio calculation failed: %s", symbol, _cfo_err)
+            logger.warning(f"[{symbol}] CFO/PAT ratio calculation failed: {_cfo_err}")
 
         return {
             "symbol": symbol,

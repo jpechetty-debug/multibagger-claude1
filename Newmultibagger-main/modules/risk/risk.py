@@ -10,7 +10,7 @@ from core.observability.logger import get_logger
 _log = get_logger("modules.risk.risk")
 
 REJECTED_TRADES_LOG = os.path.join("logs", "rejected_trades.csv")
-LEGACY_REJECTED_TRADES_LOG = "rejected_trades.csv"
+
 
 
 class RiskGovernor:

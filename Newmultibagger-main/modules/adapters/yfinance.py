@@ -10,8 +10,7 @@ from modules.normalization.cleaner import _has_value, is_payload_skeletal
 
 from .base import DataProvider
 
-_sov = get_logger("adapters.yfinance")
-logger = _sov.logger
+logger = get_logger("adapters.yfinance")
 
 
 async def _run_executor_safe(loop, executor, fn, default):
