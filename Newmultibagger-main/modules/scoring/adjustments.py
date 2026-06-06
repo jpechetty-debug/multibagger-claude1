@@ -105,7 +105,7 @@ def _calculate_bonus_total(data: _StockData, state: FactorState, sector_boost: _
         if (de_check is not None and de_check > 1.0) and (fs_check is not None and fs_check >= 6):
             total_bonus += 5
 
-    return min(total_bonus, 15)
+    return total_bonus
 
 
 def _apply_penalty_rules(
