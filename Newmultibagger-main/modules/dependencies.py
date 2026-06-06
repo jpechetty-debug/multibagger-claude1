@@ -98,10 +98,7 @@ class ConnectionManager:
             try:
                 await connection.send_json(message)
             except Exception as e:
-                try:
-                    _log.error(f"Caught unhandled exception: {e}")
-                except NameError:
-                    pass  # _log might not be defined in scope
+                _log.error(f"Caught unhandled exception: {e}", exc_info=True)
                 if connection in self.active_connections:
                     self.active_connections.remove(connection)
 

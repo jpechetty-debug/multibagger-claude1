@@ -89,10 +89,7 @@ class BackwardCompatFinder(importlib.abc.MetaPathFinder):
                                 is_package=False
                             )
                     except Exception as e:
-                        try:
-                            _log.error(f"Caught unhandled exception: {e}")
-                        except NameError:
-                            pass  # _log might not be defined in scope
+                        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
         return None
 
 # Register the finder

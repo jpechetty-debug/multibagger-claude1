@@ -8,7 +8,7 @@ import pandas as pd
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_DIR)
 
-from modules.data_service import data_manager
+from modules.data_service import get_data_manager
 from modules.fundamentals import (
     calculate_current_roe,
     calculate_recent_sales_growth,
@@ -20,7 +20,7 @@ async def debug_reliance():
     symbol = "RELIANCE.NS"
     print(f"--- Debugging Raw Data for {symbol} ---")
 
-    raw = await data_manager.async_fetch_fundamentals(symbol)
+    raw = await get_data_manager().async_fetch_fundamentals(symbol)
     print(f"Source: {raw.get('source')}")
     print(f"Price (Raw): {raw.get('price')}")
 

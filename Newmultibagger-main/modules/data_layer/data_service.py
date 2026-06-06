@@ -31,11 +31,7 @@ from modules.field_names import FIELD_MAPPING
 from modules.financial_adapter import create_fundamentals_provider
 from modules.normalization.cleaner import is_payload_skeletal
 from core.observability.logger import get_logger
-_log = get_logger(__name__)
-
-
-_sov = get_logger("data_service")
-logger = _sov.logger
+logger = get_logger(__name__)
 
 _TRANSIENT_ERROR_HINTS = (
     "timeout",
@@ -507,19 +503,31 @@ class ScreenerRepository:
             return self._fetch_csv_rows(limit=limit)
         return await self._fetch_neon_rows(limit=limit)
 
-    async def fetch_all(self, limit: int | None = None) -> list[ScreenerRow]:
-        return await self.fetch_rows(limit=limit)
 
-    async def get_rows(self, limit: int | None = None) -> list[ScreenerRow]:
-        return await self.fetch_rows(limit=limit)
 
     async def fetch_symbol(self, symbol: str) -> ScreenerRow | None:
-        rows = await self.fetch_rows()
-        normalized = symbol.strip().upper()
-        for row in rows:
-            if row.symbol.strip().upper() == normalized:
-                return row
-        return None
+        if self.use_csv_fallback:
+            rows = await self.fetch_rows()
+            normalized = symbol.strip().upper()
+            for row in rows:
+                if row.symbol.strip().upper() == normalized:
+                    return row
+            return None
+
+        try:
+            import asyncpg
+        except ImportError as exc:
+            raise RuntimeError("asyncpg is required for Neon screener reads") from exc
+
+        if getattr(self.__class__, "_neon_pool", None) is None:
+            self.__class__._neon_pool = await asyncpg.create_pool(dsn=_postgres_dsn_for_asyncpg(self.database_url))
+
+        # Neon path: push the filter to Postgres
+        table = _quote_pg_identifier_path(self.table_name)
+        async with self.__class__._neon_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                f"SELECT * FROM {table} WHERE symbol = $1", symbol.upper())
+        return ScreenerRow.model_validate(dict(row)) if row else None
 
     def fetch_rows_sync(self, limit: int | None = None) -> list[ScreenerRow]:
         return cast(list[ScreenerRow], run_coroutine_sync(self.fetch_rows(limit=limit)))
@@ -577,6 +585,8 @@ async def fetch_screener_rows(limit: int | None = None) -> list[ScreenerRow]:
     return await get_screener_repository().fetch_rows(limit=limit)
 
 
+import json
+
 class PersistentCache:
     def __init__(self, db_name="data_cache.db", ttl_seconds=86400):
         self.db_name = db_name
@@ -586,7 +596,7 @@ class PersistentCache:
     def _init_db(self):
         with get_db_connection(self.db_name) as conn:
             conn.execute("""CREATE TABLE IF NOT EXISTS cache
-                            (key TEXT PRIMARY KEY, value BLOB, timestamp REAL)""")
+                            (key TEXT PRIMARY KEY, value TEXT, timestamp REAL)""")
             conn.commit()
 
     def _validate_cached(self, data: Any) -> Any | None:
@@ -605,7 +615,7 @@ class PersistentCache:
                 cursor.execute("SELECT value FROM cache WHERE key = ?", (key,))
                 row = cursor.fetchone()
                 if row:
-                    data = pickle.loads(row[0])
+                    data = json.loads(row[0])
                     return self._validate_cached(data)
         except Exception as e:
             logger.warning(f"Expired Cache read error for {key}: {e}")
@@ -620,7 +630,7 @@ class PersistentCache:
                 if row:
                     val, ts = row
                     if time.time() - ts < self.ttl:
-                        data = pickle.loads(val)
+                        data = json.loads(val)
                         return self._validate_cached(data)
                     else:
                         cursor.execute("DELETE FROM cache WHERE key = ?", (key,))
@@ -636,7 +646,7 @@ class PersistentCache:
             with get_db_connection(self.db_name) as conn:
                 conn.execute(
                     "INSERT OR REPLACE INTO cache (key, value, timestamp) VALUES (?, ?, ?)",
-                    (key, pickle.dumps(value), time.time()),
+                    (key, json.dumps(value).encode(), time.time()),
                 )
                 conn.commit()
         except Exception as e:
@@ -706,10 +716,7 @@ class DataManager:
             try:
                 fast = dict(ticker.fast_info) if ticker.fast_info is not None else {}
             except Exception as e:
-                try:
-                    _log.error(f"Caught unhandled exception: {e}")
-                except NameError:
-                    pass  # _log might not be defined in scope
+                logger.error(f"Caught unhandled exception: {e}", exc_info=True)
                 fast = {}
             price = (
                 fast.get("lastPrice")
@@ -721,10 +728,7 @@ class DataManager:
                     info = ticker.info if isinstance(ticker.info, dict) else {}
                     price = info.get("currentPrice") or info.get("regularMarketPrice")
                 except Exception as e:
-                    try:
-                        _log.error(f"Caught unhandled exception: {e}")
-                    except NameError:
-                        pass  # _log might not be defined in scope
+                    logger.error(f"Caught unhandled exception: {e}", exc_info=True)
                     price = None
             try:
                 price_val = float(price)  # type: ignore
@@ -759,15 +763,15 @@ class DataManager:
         Orchestrates multiple data providers with fallback logic.
         Refactored to use standardized BaseProvider safety wrappers.
         """
-        import random
-        await asyncio.sleep(1.0 + random.random())
-
         async with self.semaphore:
             cache_key = f"fund_{symbol}"
             cached = self.cache.get(cache_key)
             if cached:
                 cached["data_freshness"] = "live (cached within TTL)"
                 return cast(dict[str, Any], cached)
+
+            import random
+            await asyncio.sleep(1.0 + random.random())
 
             incomplete_payload = None
             for provider in self.providers:
@@ -846,16 +850,12 @@ class DataManager:
             else:
                 # Fallback to stocks.db if available
                 try:
-                    conn = get_db_connection("stocks.db")
-                    row = conn.execute("SELECT price FROM multibaggers WHERE symbol = ?", (symbol,)).fetchone()
-                    if row and row[0]:
-                        current_price = float(row[0])
-                    conn.close()
+                    with get_db_connection("stocks.db") as conn:
+                        row = conn.execute("SELECT price FROM multibaggers WHERE symbol = ?", (symbol,)).fetchone()
+                        if row and row[0]:
+                            current_price = float(row[0])
                 except Exception as e:
-                    try:
-                        _log.error(f"Caught unhandled exception: {e}")
-                    except NameError:
-                        pass  # _log might not be defined in scope
+                    logger.error(f"Caught unhandled exception: {e}", exc_info=True)
 
             # Generate 252 business days ending today
             dates = pd.date_range(end=datetime.now(), periods=252, freq="B")
@@ -966,7 +966,14 @@ class DataManager:
         self.executor.shutdown(wait=True)
 
 
-data_manager = DataManager()
+_data_manager: DataManager | None = None
+
+def get_data_manager() -> DataManager:
+    global _data_manager
+    if _data_manager is None:
+        _data_manager = DataManager()
+    return _data_manager
+
 
 
 def analyze_market_regime(symbol="^NSEI"):
@@ -989,10 +996,7 @@ def analyze_market_regime(symbol="^NSEI"):
             return "Recovery"
         return "Sideways"
     except Exception as e:
-        try:
-            _log.error(f"Caught unhandled exception: {e}")
-        except NameError:
-            pass  # _log might not be defined in scope
+        logger.error(f"Caught unhandled exception: {e}", exc_info=True)
         return "Unknown"
 
 

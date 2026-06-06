@@ -10,10 +10,7 @@ def _safe_div(numerator, denominator, default=0.0):
             return default
         return numerator / denominator
     except Exception as e:
-        try:
-            _log.error(f"Caught unhandled exception: {e}")
-        except NameError:
-            pass  # _log might not be defined in scope
+        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
         return default
 
 
@@ -126,10 +123,7 @@ def calculate_piotroski_f_score(ticker):
 
         return f_score
     except Exception as e:
-        try:
-            _log.error(f"Caught unhandled exception: {e}")
-        except NameError:
-            pass  # _log might not be defined in scope
+        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
         return 0
 
 
@@ -179,10 +173,7 @@ def calculate_current_roe(ticker):
         roe = _safe_div(net_income, equity)
         return round(roe * 100, 2)
     except Exception as e:
-        try:
-            _log.error(f"Caught unhandled exception: {e}")
-        except NameError:
-            pass  # _log might not be defined in scope
+        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
         return 0
 
 
@@ -211,10 +202,7 @@ def calculate_roce(ticker):
         roce = _safe_div(ebit, capital_employed)
         return round(roce * 100, 2)
     except Exception as e:
-        try:
-            _log.error(f"Caught unhandled exception: {e}")
-        except NameError:
-            pass  # _log might not be defined in scope
+        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
         return 0
 
 
@@ -266,10 +254,7 @@ def calculate_median_pat_growth(ticker, years=5):
         median_growth = np.median(growths)
         return round(float(median_growth) * 100, 2)
     except Exception as e:
-        try:
-            _log.error(f"Caught unhandled exception: {e}")
-        except NameError:
-            pass  # _log might not be defined in scope
+        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
         return 0
 
 
@@ -325,10 +310,7 @@ def calculate_recent_sales_growth(ticker):
         growth = _safe_div(curr_rev - prev_rev, prev_rev)
         return round(growth * 100, 2)
     except Exception as e:
-        try:
-            _log.error(f"Caught unhandled exception: {e}")
-        except NameError:
-            pass  # _log might not be defined in scope
+        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
         return 0
 
 
@@ -385,10 +367,7 @@ def check_earnings_inflection(ticker):
 
         return {"score": score, "status": score >= 3}  # True if 3+ points
     except Exception as e:
-        try:
-            _log.error(f"Caught unhandled exception: {e}")
-        except NameError:
-            pass  # _log might not be defined in scope
+        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
         return {"score": 0, "status": False}
 
 
@@ -428,8 +407,5 @@ def analyze_margins_and_leverage(ticker):
 
         return {"Margin_Trend": margin_expansion, "Operating_Leverage": op_leverage}
     except Exception as e:
-        try:
-            _log.error(f"Caught unhandled exception: {e}")
-        except NameError:
-            pass  # _log might not be defined in scope
+        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
         return {"Margin_Trend": False, "Operating_Leverage": False}

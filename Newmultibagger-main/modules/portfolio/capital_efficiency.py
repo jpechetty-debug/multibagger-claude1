@@ -54,8 +54,5 @@ def analyze_capital_efficiency(stock_data):
         return roe, status, score
 
     except Exception as e:
-        try:
-            _log.error(f"Caught unhandled exception: {e}")
-        except NameError:
-            pass  # _log might not be defined in scope
+        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
         return 0, "Error", 0

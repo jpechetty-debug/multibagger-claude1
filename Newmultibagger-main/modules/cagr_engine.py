@@ -215,10 +215,7 @@ def calculate_all_cagrs(ticker) -> dict[str, float | str | None]:
         if fin is None or (isinstance(fin, pd.DataFrame) and fin.empty):
             return default
     except Exception as e:
-        try:
-            _log.error(f"Caught unhandled exception: {e}")
-        except NameError:
-            pass  # _log might not be defined in scope
+        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
         return default
 
     periods = {"3Y": 3, "5Y": min(4, len(fin.columns) - 1)}
@@ -283,10 +280,7 @@ def calculate_all_cagrs(ticker) -> dict[str, float | str | None]:
                             {k: v for k, v in periods.items() if v < len(eps_computed)},
                         )
     except Exception as e:
-        try:
-            _log.error(f"Caught unhandled exception: {e}")
-        except NameError:
-            pass  # _log might not be defined in scope
+        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
 
     # --- CAGR Consistency Score ---
     all_cagrs = []

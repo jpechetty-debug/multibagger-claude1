@@ -246,10 +246,7 @@ def sanitize(df: pd.DataFrame) -> pd.DataFrame:
         report_dates = pd.to_datetime(df_clean["report_date"])
         as_of_dates = pd.to_datetime(df_clean["as_of_date"])
     except Exception as e:
-        try:
-            _log.error(f"Caught unhandled exception: {e}")
-        except NameError:
-            pass  # _log might not be defined in scope
+        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
         return pd.DataFrame()
 
     if "metric_name" in df_clean.columns:

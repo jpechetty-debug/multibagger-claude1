@@ -48,10 +48,7 @@ async def get_shareholding_pattern(symbol):
                 if inst is not None and not inst.empty and "Pct" in inst.columns:
                     holding_data["institutions"] = float(inst["Pct"].sum() * 100)
             except Exception as e:
-                try:
-                    _log.error(f"Caught unhandled exception: {e}")
-                except NameError:
-                    pass  # _log might not be defined in scope
+                _log.error(f"Caught unhandled exception: {e}", exc_info=True)
 
         total_known = holding_data["promoters"] + holding_data["institutions"]
         if total_known > 100:
@@ -69,10 +66,7 @@ async def get_shareholding_pattern(symbol):
                     return 0.0
                 return parsed
             except Exception as e:
-                try:
-                    _log.error(f"Caught unhandled exception: {e}")
-                except NameError:
-                    pass  # _log might not be defined in scope
+                _log.error(f"Caught unhandled exception: {e}", exc_info=True)
                 return 0.0
 
         return {

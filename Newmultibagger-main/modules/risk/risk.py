@@ -98,7 +98,7 @@ class RiskGovernor:
             sector_weights = df.groupby("Sector")["Target_Weight%"].sum() / 100
         else:
             # Assume equal weight if not specified
-            1.0 / len(df)
+            equal_weight = 1.0 / len(df)  # use if needed, or remove entirely
             sector_weights = df["Sector"].value_counts(normalize=True)
 
         # Check Limits
@@ -177,7 +177,7 @@ class RiskGovernor:
                 f"Emergency Correlation {portfolio_avg_corr:.2f} > {self.corr_liquidate_threshold:.2f}",
                 0.0,
             )
-            _log.info(f"RISK: Correlation emergency ({portfolio_avg_corr:.2f}) -> Full de-risk")
+            _log.critical(f"RISK: Correlation emergency ({portfolio_avg_corr:.2f}) -> Full de-risk")
             return 0.0
         elif portfolio_avg_corr > self.corr_reduce_threshold:
             self.log_rejected_trade(
@@ -246,8 +246,7 @@ class RiskGovernor:
             return False, msg
 
         # 2. Pledge Check
-        pledge = stock_data.get("Pledge", 0)  # Assuming 'Pledge' key exists or 0
-        # Sometimes key might be 'Promoter_Pledge'
+        pledge = stock_data.get("Pledge_Pct") or stock_data.get("pledge_pct") or 0
 
         if pledge > 25:
             msg = f"GOVERNANCE RED FLAG: Critical Pledge Levels ({pledge}%)"
@@ -272,21 +271,18 @@ class RiskGovernor:
         """
 
         row = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), symbol, reason, price]
-        targets = [REJECTED_TRADES_LOG]
-        if os.path.abspath(LEGACY_REJECTED_TRADES_LOG) != os.path.abspath(REJECTED_TRADES_LOG):
-            targets.append(LEGACY_REJECTED_TRADES_LOG)
+        log_path = REJECTED_TRADES_LOG
+        
+        log_dir = os.path.dirname(log_path)
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
 
-        for log_path in targets:
-            log_dir = os.path.dirname(log_path)
-            if log_dir:
-                os.makedirs(log_dir, exist_ok=True)
-
-            file_exists = os.path.isfile(log_path)
-            with open(log_path, "a", newline="", encoding="utf-8") as f:
-                writer = csv.writer(f)
-                if not file_exists:
-                    writer.writerow(["Timestamp", "Symbol", "Reason", "Price_Context"])
-                writer.writerow(row)
+        file_exists = os.path.isfile(log_path)
+        with open(log_path, "a", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(["Timestamp", "Symbol", "Reason", "Price_Context"])
+            writer.writerow(row)
 
         # Also print to console for immediate visibility
         with contextlib.suppress(BaseException):

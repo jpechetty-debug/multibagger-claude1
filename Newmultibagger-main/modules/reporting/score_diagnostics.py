@@ -280,10 +280,7 @@ def _get_score_delta(conn, symbol: str, current_score: float) -> dict[str, Any] 
             "reason": _infer_delta_reason(delta, current_score, prev_score),
         }
     except Exception as e:
-        try:
-            _log.error(f"Caught unhandled exception: {e}")
-        except NameError:
-            pass  # _log might not be defined in scope
+        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
         return None
 
 

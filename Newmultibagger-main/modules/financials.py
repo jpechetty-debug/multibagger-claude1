@@ -1,4 +1,4 @@
-from modules.data_service import data_manager
+from modules.data_service import get_data_manager
 
 
 def get_quarterly_results(symbol):
@@ -11,7 +11,7 @@ def get_quarterly_results(symbol):
         if not symbol.endswith(".NS") and not symbol.endswith(".BO"):
             symbol += ".NS"
 
-        timeline = data_manager.fetch_quarterly_results(symbol)
+        timeline = get_data_manager().fetch_quarterly_results(symbol)
 
         if not timeline:
             return {"error": "No quarterly data found"}

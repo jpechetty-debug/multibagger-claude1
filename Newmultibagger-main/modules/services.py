@@ -27,9 +27,9 @@ class IngestionService(BaseService):
 
     def __init__(self, logger=None):
         super().__init__(logger)
-        from modules.data_service import data_manager
+        from modules.data_service import get_data_manager
 
-        self.data_manager = data_manager
+        self.data_manager = get_data_manager()
 
     async def fetch_single_stock(self, symbol: str) -> StockDataPayload | None:
         """Fetch and validate data for a single symbol using the fallback chain."""
@@ -147,10 +147,7 @@ class DataStoreService(BaseService):
                 }  # 5 min mem TTL
                 return payload
             except Exception as e:
-                try:
-                    _log.error(f"Caught unhandled exception: {e}")
-                except NameError:
-                    pass  # _log might not be defined in scope
+                _log.error(f"Caught unhandled exception: {e}", exc_info=True)
                 return None
 
         return None

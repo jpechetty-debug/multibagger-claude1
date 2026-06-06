@@ -41,10 +41,7 @@ def _is_missing_or_zero(value: Any) -> bool:
         num = float(value)
         return num == 0.0
     except Exception as e:
-        try:
-            _log.error(f"Caught unhandled exception: {e}")
-        except NameError:
-            pass  # _log might not be defined in scope
+        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
         return False
 
 

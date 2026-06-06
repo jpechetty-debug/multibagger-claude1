@@ -13,12 +13,12 @@ import numpy as np
 
 def _calculate_1yr_beta(symbol: str) -> float | None:
     try:
-        from modules.data_service import data_manager
+        from modules.data_service import get_data_manager
         from modules.data_utils import run_coroutine_sync
 
         async def fetch_data():
-            stock_df = await data_manager.async_fetch_history(symbol)
-            bench_df = await data_manager.async_fetch_history("^NSEI")
+            stock_df = await get_data_manager().async_fetch_history(symbol)
+            bench_df = await get_data_manager().async_fetch_history("^NSEI")
             return stock_df, bench_df
 
         stock_df, bench_df = run_coroutine_sync(fetch_data())

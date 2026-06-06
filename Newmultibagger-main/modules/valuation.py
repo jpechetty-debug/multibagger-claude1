@@ -68,10 +68,7 @@ class ValuationEngine:
             return round(dcf_value, 2)
 
         except Exception as e:
-            try:
-                _log.error(f"Caught unhandled exception: {e}")
-            except NameError:
-                pass  # _log might not be defined in scope
+            _log.error(f"Caught unhandled exception: {e}", exc_info=True)
             return 0.0
 
     def calculate_graham_number(self):
@@ -88,10 +85,7 @@ class ValuationEngine:
             graham_num = np.sqrt(22.5 * eps * bvps)
             return round(graham_num, 2)
         except Exception as e:
-            try:
-                _log.error(f"Caught unhandled exception: {e}")
-            except NameError:
-                pass  # _log might not be defined in scope
+            _log.error(f"Caught unhandled exception: {e}", exc_info=True)
             return 0.0
 
     def calculate_epv_proxy(self):
@@ -109,10 +103,7 @@ class ValuationEngine:
             epv = eps / cost_of_capital
             return round(epv, 2)
         except Exception as e:
-            try:
-                _log.error(f"Caught unhandled exception: {e}")
-            except NameError:
-                pass  # _log might not be defined in scope
+            _log.error(f"Caught unhandled exception: {e}", exc_info=True)
             return 0.0
 
     def get_intrinsic_value(self):

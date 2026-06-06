@@ -100,10 +100,7 @@ async def get_technical_analysis(symbol):
                     return 0.0
                 return parsed
             except Exception as e:
-                try:
-                    _log.error(f"Caught unhandled exception: {e}")
-                except NameError:
-                    pass  # _log might not be defined in scope
+                _log.error(f"Caught unhandled exception: {e}", exc_info=True)
                 return 0.0
 
         return {
@@ -123,10 +120,7 @@ def get_sma_200(close):
     try:
         return float(close.rolling(window=200).mean().iloc[-1])
     except Exception as e:
-        try:
-            _log.error(f"Caught unhandled exception: {e}")
-        except NameError:
-            pass  # _log might not be defined in scope
+        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
         return None
 
 
@@ -160,8 +154,5 @@ def calculate_momentum_features(df):
             "dist_from_52w_high": round(dist_from_high, 4),
         }
     except Exception as e:
-        try:
-            _log.error(f"Caught unhandled exception: {e}")
-        except NameError:
-            pass  # _log might not be defined in scope
+        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
         return {}

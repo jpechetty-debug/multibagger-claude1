@@ -302,10 +302,7 @@ async def fetch_stock_metrics(symbol: str) -> dict:
                         if total_equity and total_equity > 0:
                             debt_equity = round(total_debt / total_equity, 2)
             except Exception as e:
-                try:
-                    _log.error(f"Caught unhandled exception: {e}")
-                except NameError:
-                    pass  # _log might not be defined in scope
+                _log.error(f"Caught unhandled exception: {e}", exc_info=True)
 
         market_cap = info.get("marketCap", 0)
         market_cap_cr = round((market_cap * 75) / 10000000, 0) if market_cap else None
@@ -358,10 +355,7 @@ async def fetch_stock_metrics(symbol: str) -> dict:
                                     1,
                                 )
             except Exception as e:
-                try:
-                    _log.error(f"Caught unhandled exception: {e}")
-                except NameError:
-                    pass  # _log might not be defined in scope
+                _log.error(f"Caught unhandled exception: {e}", exc_info=True)
 
         terminal_score = await get_terminal_score_from_db(symbol)
 

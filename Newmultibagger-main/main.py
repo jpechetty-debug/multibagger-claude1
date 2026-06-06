@@ -73,6 +73,11 @@ async def lifespan(app: FastAPI):
             except asyncio.CancelledError:
                 runtime_logger.info("Embedded background price updater stopped")
 
+        from modules.data_layer.data_service import ScreenerRepository
+        if getattr(ScreenerRepository, "_neon_pool", None):
+            await ScreenerRepository._neon_pool.close()
+            ScreenerRepository._neon_pool = None
+
 
 app = FastAPI(lifespan=lifespan, dependencies=[Depends(get_api_key)])
 app.state.limiter = limiter

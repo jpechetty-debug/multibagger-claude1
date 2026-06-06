@@ -264,10 +264,7 @@ def extract_normalized_financials(ticker, *, source: str = "yfinance") -> Normal
         if fin is None or (isinstance(fin, pd.DataFrame) and fin.empty):
             return NormalizedFinancials()
     except Exception as e:
-        try:
-            _log.error(f"Caught unhandled exception: {e}")
-        except NameError:
-            pass  # _log might not be defined in scope
+        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
         return NormalizedFinancials()
 
     try:
@@ -275,10 +272,7 @@ def extract_normalized_financials(ticker, *, source: str = "yfinance") -> Normal
         if bs is None or (isinstance(bs, pd.DataFrame) and bs.empty):
             bs = pd.DataFrame()
     except Exception as e:
-        try:
-            _log.error(f"Caught unhandled exception: {e}")
-        except NameError:
-            pass  # _log might not be defined in scope
+        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
         bs = pd.DataFrame()
 
     revenue = _series_to_dict(

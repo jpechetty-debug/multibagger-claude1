@@ -142,10 +142,7 @@ def cached(ttl: int | None = None, key_prefix: str = "fn"):
                 arg_str = ":".join(f"{k}={v}" for k, v in bound_args.arguments.items() if k not in ("self", "cls"))
                 cache_key = f"{key_prefix}:{func.__name__}:{arg_str}"
             except Exception as e:
-                try:
-                    _log.error(f"Caught unhandled exception: {e}")
-                except NameError:
-                    pass  # _log might not be defined in scope
+                _log.error(f"Caught unhandled exception: {e}", exc_info=True)
                 # Fallback key generation
                 cache_key = f"{key_prefix}:{func.__name__}:{hash(str(args) + str(kwargs))}"
 

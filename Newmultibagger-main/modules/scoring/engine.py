@@ -163,6 +163,12 @@ def calculate_institutional_score(
             _staleness_penalty = min(20.0 + extra_days, 50.0)
             data_quality_flags.append("stale_data")
             _scoring_strategy_override = "STALE_DATA_DEGRADED"
+            
+            try:
+                from worker.tasks import refresh_stale_data
+                refresh_stale_data.delay(data.get("Symbol", "UNKNOWN"))
+            except Exception:
+                pass  # Do not block scoring if task dispatch fails
         elif age_days > STALE_DATA_WARNING_DAYS:
             data_quality_flags.append("stale_data")
 

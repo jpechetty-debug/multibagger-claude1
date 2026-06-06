@@ -172,10 +172,7 @@ def get_promoter_trend(symbol: str) -> dict:
                             val = val * 100
                         pledge_pct = float(val)
         except Exception as e:
-            try:
-                _log.error(f"Caught unhandled exception: {e}")
-            except NameError:
-                pass  # _log might not be defined in scope
+            _log.error(f"Caught unhandled exception: {e}", exc_info=True)
 
         result["pledge_current"] = pledge_pct
         result["data_sources"].append("yfinance")

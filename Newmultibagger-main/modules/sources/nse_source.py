@@ -31,10 +31,7 @@ class NSESource(DataSource):
         try:
             session.get(self.BASE_URL, timeout=10)
         except Exception as e:
-            try:
-                _log.error(f"Caught unhandled exception: {e}")
-            except NameError:
-                pass  # _log might not be defined in scope
+            _log.error(f"Caught unhandled exception: {e}", exc_info=True)
             # Continue to try specific URL even if homepage fails/updates cookies
 
         response = session.get(url, timeout=10)

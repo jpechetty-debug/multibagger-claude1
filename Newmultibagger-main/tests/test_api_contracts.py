@@ -83,7 +83,7 @@ def test_news_endpoint_contract(monkeypatch):
 
 def test_market_calendar_serializes_dates(monkeypatch):
     monkeypatch.setattr(
-        data_manager_module.data_manager,
+        data_manager_module.get_data_manager(),
         "valid_trading_days",
         [date(2026, 4, 3), date(2026, 4, 6)],
     )

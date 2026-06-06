@@ -138,10 +138,7 @@ class CircuitBreaker:
             self._on_success()
             return result
         except Exception as e:
-            try:
-                _log.error(f"Caught unhandled exception: {e}")
-            except NameError:
-                pass  # _log might not be defined in scope
+            _log.error(f"Caught unhandled exception: {e}", exc_info=True)
             self._on_failure()
             raise
 

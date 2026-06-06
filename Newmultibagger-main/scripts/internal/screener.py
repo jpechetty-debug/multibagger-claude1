@@ -15,7 +15,7 @@ import pandas as pd
 import yfinance as yf  # Kept for Nifty benchmark index only (^NSEI)
 
 from modules.cagr_engine import calculate_all_cagrs, classify_market_cap, extract_dividend_metrics
-from modules.data_service import DataManager, data_manager
+from modules.data_service import DataManager, get_data_manager
 from modules.estimates import get_estimate_data
 from modules.fundamentals import (
     calculate_current_roe,
@@ -544,9 +544,9 @@ def get_benchmark_return():
 
         # --- MARKET CLOSED FIX (Dynamic) ---
         today = datetime.now().date()
-        from modules.data_service import data_manager
+        from modules.data_service import get_data_manager
 
-        is_valid_trading_day = today in data_manager.valid_trading_days
+        is_valid_trading_day = today in get_data_manager().valid_trading_days
         is_holiday_or_weekend = not is_valid_trading_day
 
         if not hist.empty and "Close" in hist.columns:
@@ -587,7 +587,7 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         eps_growth = 0
 
         # --- Fetch data via DataManager (PNSEA -> nsepython -> yf fallback) ---
-        _dm = dm if dm else data_manager
+        _dm = dm if dm else get_data_manager()
         raw = await _dm.async_fetch_fundamentals(ticker_symbol)
 
         # Critical Hardening: Check for error payloads or skeletal data immediately.

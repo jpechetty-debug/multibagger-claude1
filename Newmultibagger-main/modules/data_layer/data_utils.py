@@ -88,10 +88,7 @@ def load_tickers_from_csv(file_paths):
                 for sym in symbols:
                     all_symbols.add(canonical_symbol(str(sym)))
         except Exception as e:
-            try:
-                _log.error(f"Caught unhandled exception: {e}")
-            except NameError:
-                pass  # _log might not be defined in scope
+            _log.error(f"Caught unhandled exception: {e}", exc_info=True)
             continue
     return list(all_symbols)
 

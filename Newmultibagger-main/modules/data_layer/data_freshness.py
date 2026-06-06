@@ -115,10 +115,7 @@ class ProviderCallTracker:
                 """)
                 conn.commit()
         except Exception as e:
-            try:
-                _log.error(f"Caught unhandled exception: {e}")
-            except NameError:
-                pass  # _log might not be defined in scope
+            _log.error(f"Caught unhandled exception: {e}", exc_info=True)
 
     def record(self, provider: str, success: bool, error: str | None = None):
         """Record a single provider call outcome."""
@@ -130,10 +127,7 @@ class ProviderCallTracker:
                 )
                 conn.commit()
         except Exception as e:
-            try:
-                _log.error(f"Caught unhandled exception: {e}")
-            except NameError:
-                pass  # _log might not be defined in scope
+            _log.error(f"Caught unhandled exception: {e}", exc_info=True)
 
     def get_stats(self, provider: str, window_hours: int = 24) -> dict:
         """Get success/failure stats for a provider within a time window."""
@@ -162,10 +156,7 @@ class ProviderCallTracker:
                     "last_failure": row["last_failure"],
                 }
         except Exception as e:
-            try:
-                _log.error(f"Caught unhandled exception: {e}")
-            except NameError:
-                pass  # _log might not be defined in scope
+            _log.error(f"Caught unhandled exception: {e}", exc_info=True)
             return {"total": 0, "successes": 0, "success_rate": 0.0, "last_success": None, "last_failure": None}
 
     def prune(self, keep_hours: int = 168):
@@ -179,10 +170,7 @@ class ProviderCallTracker:
                 )
                 conn.commit()
         except Exception as e:
-            try:
-                _log.error(f"Caught unhandled exception: {e}")
-            except NameError:
-                pass  # _log might not be defined in scope
+            _log.error(f"Caught unhandled exception: {e}", exc_info=True)
 
 
 # Module-level singleton for easy import
@@ -310,10 +298,7 @@ def _get_scheduled_refresh_status(conn) -> dict[str, Any]:
 
         return {"status": "unknown", "last_scan": None}
     except Exception as e:
-        try:
-            _log.error(f"Caught unhandled exception: {e}")
-        except NameError:
-            pass  # _log might not be defined in scope
+        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
         return {"status": "unavailable"}
 
 
@@ -378,10 +363,7 @@ def get_provider_health() -> list[ProviderHealth]:
                         )
                     )
             except Exception as e:
-                try:
-                    _log.error(f"Caught unhandled exception: {e}")
-                except NameError:
-                    pass  # _log might not be defined in scope
+                _log.error(f"Caught unhandled exception: {e}", exc_info=True)
                 providers_result.append(
                     ProviderHealth(pname, 0.0, 0, None, None, "unknown")
                 )
@@ -465,8 +447,5 @@ def get_universe_quality() -> UniverseQuality:
                 alert_message=alert_msg,
             )
     except Exception as e:
-        try:
-            _log.error(f"Caught unhandled exception: {e}")
-        except NameError:
-            pass  # _log might not be defined in scope
+        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
         return UniverseQuality(0, 0, 0, 0, 0, 0.0, False, None)

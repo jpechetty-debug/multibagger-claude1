@@ -10,7 +10,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from modules.data_service import data_manager
+from modules.data_service import get_data_manager
 from modules.retry_utils import run_with_exponential_backoff
 from core.observability.logger import get_logger
 _log = get_logger(__name__)
@@ -29,10 +29,7 @@ def _safe_float(value) -> float | None:
             return None
         return parsed
     except Exception as e:
-        try:
-            _log.error(f"Caught unhandled exception: {e}")
-        except NameError:
-            pass  # _log might not be defined in scope
+        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
         return None
 
 
@@ -157,10 +154,7 @@ async def process_fiscal_year_data(
             "pb": round(pb, 2) if pb is not None and pb > 0 else None,
         }
     except Exception as e:
-        try:
-            _log.error(f"Caught unhandled exception: {e}")
-        except NameError:
-            pass  # _log might not be defined in scope
+        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
         return None
 
 
@@ -308,9 +302,9 @@ async def get_price_vs_fundamentals(symbol: str, years: int = 5) -> dict:
             # Run in thread pool to avoid blocking async loop since data_manager might be sync
             loop = asyncio.get_running_loop()
 
-            fundamentals_task = loop.run_in_executor(None, data_manager.fetch_fundamentals, symbol)
+            fundamentals_task = loop.run_in_executor(None, get_data_manager().fetch_fundamentals, symbol)
             history_task = loop.run_in_executor(
-                None, lambda: data_manager.fetch_history(symbol, period=f"{max(years + 1, 3)}y")
+                None, lambda: get_data_manager().fetch_history(symbol, period=f"{max(years + 1, 3)}y")
             )
 
             fundamentals, history = await asyncio.gather(fundamentals_task, history_task)

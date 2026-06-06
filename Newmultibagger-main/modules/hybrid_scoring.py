@@ -226,10 +226,10 @@ def _save_walk_forward_report(metrics: dict) -> None:
 def _get_historical_targets(symbols: list):
     """Refactored forward-return target construction using modular data manager."""
 
-    from modules.data_service import data_manager
+    from modules.data_service import get_data_manager
 
     async def _fetch():
-        return await data_manager.fetch_batch(symbols)
+        return await get_data_manager().fetch_batch(symbols)
 
     # Use sync wrapper for ML training context
     from modules.data_utils import run_coroutine_sync
