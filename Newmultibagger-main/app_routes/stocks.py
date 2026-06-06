@@ -30,7 +30,8 @@ router = APIRouter()
 
 
 @router.get("/api/stocks", response_model=list[MultibaggerOut])
-async def get_multibaggers(as_of_date: str | None = None):
+@limiter.limit("30/minute")
+async def get_multibaggers(request: Request, as_of_date: str | None = None):
     """Fetch Top Multibagger Picks using DuckDB for rapid sorting and filtering"""
     try:
         from db.db_core import duck_conn
@@ -74,7 +75,8 @@ async def get_multibaggers(as_of_date: str | None = None):
 
 
 @router.get("/api/multibagger-hunt", response_model=list[MultibaggerOut])
-async def get_multibagger_hunt():
+@limiter.limit("20/minute")
+async def get_multibagger_hunt(request: Request):
     """Fetch stocks meeting the strict Multibagger Hunt criteria using DuckDB for speed"""
     try:
         query = """
@@ -140,7 +142,8 @@ async def get_llm_thesis(request: Request, symbol: str):
 
 
 @router.get("/api/history/{symbol}")
-async def get_stock_history(symbol: str):
+@limiter.limit("20/minute")
+async def get_stock_history(request: Request, symbol: str):
     """Fetch historical score data for a stock using DuckDB."""
     try:
         from db.db_core import duck_conn
@@ -175,7 +178,8 @@ async def get_stock_history(symbol: str):
 
 
 @router.get("/api/microcaps")
-async def get_microcaps():
+@limiter.limit("20/minute")
+async def get_microcaps(request: Request):
     """Fetch Hidden Microcap Gems"""
     try:
         return await _run_blocking(
@@ -186,7 +190,8 @@ async def get_microcaps():
 
 
 @router.get("/api/thesis_status/{symbol}")
-async def get_thesis_status(symbol: str):
+@limiter.limit("20/minute")
+async def get_thesis_status(request: Request, symbol: str):
     """Fetch thesis status for a single stock."""
     try:
         from modules.thesis_monitor import check_thesis, get_thesis_summary
@@ -377,7 +382,8 @@ async def get_valuation(request: Request, symbol: str, as_of_date: str | None = 
 
 
 @router.get("/api/financials/{symbol}")
-async def get_financials(symbol: str):
+@limiter.limit("20/minute")
+async def get_financials(request: Request, symbol: str):
     try:
         from modules.financials import get_quarterly_results
 
@@ -431,7 +437,8 @@ async def get_governance_data(request: Request, symbol: str):
 
 
 @router.get("/api/peers/{symbol}")
-async def get_stock_peers(symbol: str):
+@limiter.limit("20/minute")
+async def get_stock_peers(request: Request, symbol: str):
     """Sector Peers Comparison via DuckDB Aggregations"""
     try:
         if not symbol.endswith(".NS") and not symbol.endswith(".BO"):
@@ -493,7 +500,8 @@ async def get_technicals(request: Request, symbol: str):
 
 
 @router.get("/api/promoter/{symbol}")
-async def get_promoter_intel(symbol: str):
+@limiter.limit("20/minute")
+async def get_promoter_intel(request: Request, symbol: str):
     try:
         from modules.promoter_intel import calculate_promoter_score
 
