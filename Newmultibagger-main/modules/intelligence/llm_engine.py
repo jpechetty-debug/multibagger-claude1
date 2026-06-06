@@ -15,8 +15,7 @@ import config
 
 from .llm_validator import FactValidator, patch_thesis
 
-_sov = get_logger("llm_engine")
-log = _sov.logger
+logger = get_logger("llm_engine")
 
 # ── Source from config, not hardcoded ──────────────────────────────────────
 OLLAMA_URL: str = config.OLLAMA_URL
@@ -123,7 +122,7 @@ BE DETAILED. Provide reasoned arguments for each section."""
         return patch_thesis(raw_memo, report)
 
     except Exception as exc:
-        log.error("IC Memo generation failed for %s: %s", symbol, exc)
+        logger.error(f"IC Memo generation failed for {symbol}: {exc}")
         return generate_thesis(stock_data)  # Fallback to standard thesis
 
 
@@ -173,8 +172,8 @@ Be specific. Avoid generic statements."""
         return patch_thesis(raw_thesis, report)
 
     except requests.exceptions.ConnectionError:
-        log.warning("Ollama unreachable at %s — using rule-based fallback", OLLAMA_URL)
+        logger.warning(f"Ollama unreachable at {OLLAMA_URL} — using rule-based fallback")
         return generate_rule_based_thesis(stock_data)
     except Exception as exc:
-        log.error("LLM thesis generation failed for %s: %s", symbol, exc)
+        logger.error(f"LLM thesis generation failed for {symbol}: {exc}")
         return generate_rule_based_thesis(stock_data)

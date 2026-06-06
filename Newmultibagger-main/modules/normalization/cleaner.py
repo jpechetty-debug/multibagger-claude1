@@ -6,9 +6,6 @@ import numpy as np
 _log = get_logger(__name__)
 
 
-_sov = get_logger("normalization.cleaner")
-logger = _sov.logger
-
 _FUNDAMENTAL_KEYS = (
     "marketCap",
     "trailingPE",
