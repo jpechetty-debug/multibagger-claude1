@@ -145,14 +145,12 @@ def load_sector_limits() -> None:
 
             if _sector_limits_cache:
                 logger.debug(
-                    "Loaded sector DQ limits for %d sectors: %s",
-                    len(_sector_limits_cache),
-                    ", ".join(sorted(_sector_limits_cache.keys())),
+                    f"Loaded sector DQ limits for {len(_sector_limits_cache)} sectors: {', '.join(sorted(_sector_limits_cache.keys()))}"
                 )
         finally:
             conn.close()
     except Exception as exc:
-        logger.warning("Could not load sector DQ limits from DB: %s", exc)
+        logger.warning(f"Could not load sector DQ limits from DB: {exc}")
 
     _cache_loaded = True
 
@@ -235,7 +233,7 @@ def validate_record(row: dict, sector: str | None = None) -> tuple[dict, list[st
     # Phase 4.4: Per-record DQ gate logging with symbol context
     if flags:
         symbol = row.get("symbol") or row.get("Symbol") or "UNKNOWN"
-        logger.debug("DQ gate activated for %s: %s", symbol, ", ".join(flags))
+        logger.debug(f"DQ gate activated for {symbol}: {', '.join(flags)}")
 
     return sanitized, flags
 
@@ -359,7 +357,7 @@ def validate_dataframe(df):
             _apply_flat_limits(df, col, default_limit, mask_nan, penalties)
 
     if penalties.sum() > 0:
-        logger.debug("DQ gates applied. Total flags: %d", int(penalties.sum()))
+        logger.debug(f"DQ gates applied. Total flags: {int(penalties.sum())}")
 
     penalty_per_flag = 100.0 / max(total_fields, 1)
     df["data_quality"] = (100.0 - penalties * penalty_per_flag).clip(lower=0.0).round(1)
