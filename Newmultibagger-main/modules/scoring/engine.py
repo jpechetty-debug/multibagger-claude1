@@ -42,7 +42,7 @@ def _build_conviction_input(data: _StockData) -> _StockData:
         "roce": safe_float(data.get("Avg_ROE_5Y%")),
         "debt_to_equity": safe_float(data.get("Debt_Equity")),
         "promoter_holding": safe_float(data.get("Promoter_Holding%")),
-        "pledge": 0,
+        "pledge": safe_float(data.get("Pledge_Pct") or data.get("pledge_pct")),
     }
 
 
