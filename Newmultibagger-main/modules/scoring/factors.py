@@ -17,8 +17,17 @@ from core.observability.logger import logger
 from .normalization import FactorState, _Number, _StockData, normalize_metric
 
 
+_REGIME_ALIASES = {
+    "bull market": "momentum",
+    "bear market": "quality",
+    "correction":  "value",
+    "recovery":    "momentum",
+    "sideways":    "balanced",
+}
+
 def _resolve_mode_and_weights(market_regime: str | None, sector: str = "") -> tuple[str, dict[str, float], str]:
     mode = market_regime.lower() if market_regime else "balanced"
+    mode = _REGIME_ALIASES.get(mode, mode)
     if mode not in config.SCORING_WEIGHTS:
         mode = "balanced"
 
