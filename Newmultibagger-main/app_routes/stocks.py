@@ -26,6 +26,17 @@ from modules.retry_utils import run_with_exponential_backoff
 
 api_logger = get_logger("sovereign.api")
 
+
+import re
+
+_SYMBOL_RE = re.compile(r"^[A-Z0-9&]{1,20}(\.(NS|BO|BSE))?$", re.IGNORECASE)
+
+def _validate_symbol(symbol: str) -> str:
+    s = symbol.strip().upper()
+    if not _SYMBOL_RE.match(s):
+        raise HTTPException(status_code=422, detail=f"Invalid symbol: {symbol!r}")
+    return s
+
 router = APIRouter()
 
 
@@ -121,6 +132,7 @@ async def get_multibagger_hunt(request: Request):
 async def get_llm_thesis(request: Request, symbol: str):
     """Generate concise AI investment thesis via local Ollama."""
     try:
+        symbol = _validate_symbol(symbol)
         from sqlalchemy import text
 
         from modules.llm_engine import generate_thesis
@@ -146,6 +158,7 @@ async def get_llm_thesis(request: Request, symbol: str):
 async def get_stock_history(request: Request, symbol: str):
     """Fetch historical score data for a stock using DuckDB."""
     try:
+        symbol = _validate_symbol(symbol)
         from db.db_core import duck_conn
 
         if not symbol.endswith(".NS"):
@@ -194,6 +207,7 @@ async def get_microcaps(request: Request):
 async def get_thesis_status(request: Request, symbol: str):
     """Fetch thesis status for a single stock."""
     try:
+        symbol = _validate_symbol(symbol)
         from modules.thesis_monitor import check_thesis, get_thesis_summary
 
         if not symbol.endswith(".NS") and not symbol.endswith(".BO"):
@@ -212,6 +226,7 @@ async def get_thesis_status(request: Request, symbol: str):
 @limiter.limit("10/minute")
 async def get_valuation(request: Request, symbol: str, as_of_date: str | None = None):
     try:
+        symbol = _validate_symbol(symbol)
         valuation_as_of = (as_of_date or datetime.now().date().isoformat())[:10]
 
         def _normalize_valuation_payload(payload: dict):
@@ -385,6 +400,7 @@ async def get_valuation(request: Request, symbol: str, as_of_date: str | None = 
 @limiter.limit("20/minute")
 async def get_financials(request: Request, symbol: str):
     try:
+        symbol = _validate_symbol(symbol)
         from modules.financials import get_quarterly_results
 
         return _json_safe_clean(get_quarterly_results(symbol))
@@ -397,6 +413,7 @@ async def get_financials(request: Request, symbol: str):
 async def get_governance_data(request: Request, symbol: str):
     """8-Point Governance Checklist Data"""
     try:
+        symbol = _validate_symbol(symbol)
         if not symbol.endswith(".NS") and not symbol.endswith(".BO"):
             symbol += ".NS"
 
@@ -441,6 +458,7 @@ async def get_governance_data(request: Request, symbol: str):
 async def get_stock_peers(request: Request, symbol: str):
     """Sector Peers Comparison via DuckDB Aggregations"""
     try:
+        symbol = _validate_symbol(symbol)
         if not symbol.endswith(".NS") and not symbol.endswith(".BO"):
             symbol += ".NS"
 
@@ -492,6 +510,7 @@ async def get_stock_peers(request: Request, symbol: str):
 @limiter.limit("20/minute")
 async def get_technicals(request: Request, symbol: str):
     try:
+        symbol = _validate_symbol(symbol)
         from modules.technicals import get_technical_analysis
 
         return _json_safe_clean(await get_technical_analysis(symbol))
@@ -503,6 +522,7 @@ async def get_technicals(request: Request, symbol: str):
 @limiter.limit("20/minute")
 async def get_promoter_intel(request: Request, symbol: str):
     try:
+        symbol = _validate_symbol(symbol)
         from modules.promoter_intel import calculate_promoter_score
 
         if not symbol.endswith(".NS") and not symbol.endswith(".BO"):
@@ -516,6 +536,7 @@ async def get_promoter_intel(request: Request, symbol: str):
 @limiter.limit("20/minute")
 async def get_shareholding(request: Request, symbol: str):
     try:
+        symbol = _validate_symbol(symbol)
         from modules.shareholding import get_shareholding_pattern
 
         return _json_safe_clean(await get_shareholding_pattern(symbol))
@@ -527,6 +548,7 @@ async def get_shareholding(request: Request, symbol: str):
 @limiter.limit("20/minute")
 async def quarterly_results_endpoint(request: Request, symbol: str, quarters: int = 12):
     try:
+        symbol = _validate_symbol(symbol)
         from modules.quarterly_results import get_quarterly_timeline
 
         cache_key = f"{CACHE_QUARTERLY}:{symbol}"
@@ -547,6 +569,7 @@ async def quarterly_results_endpoint(request: Request, symbol: str, quarters: in
 @limiter.limit("10/minute")
 async def price_fundamentals_endpoint(request: Request, symbol: str, years: int = 5):
     try:
+        symbol = _validate_symbol(symbol)
         years = min(max(years, 3), 10)
         cache_key = f"{symbol}:{years}"
         full_cache_key = f"{CACHE_FUNDAMENTALS}:{cache_key}"
@@ -569,6 +592,7 @@ async def price_fundamentals_endpoint(request: Request, symbol: str, years: int 
 @limiter.limit("20/minute")
 async def get_estimates(request: Request, symbol: str):
     try:
+        symbol = _validate_symbol(symbol)
         from modules.estimates import get_estimate_data
 
         if not symbol.endswith(".NS") and not symbol.endswith(".BO"):
@@ -583,6 +607,7 @@ async def get_estimates(request: Request, symbol: str):
 async def get_swarm_report_simulation(request: Request, symbol: str):
     """Trigger Swarm Intelligence simulation via MiroFish."""
     try:
+        symbol = _validate_symbol(symbol)
         from modules.mirofish_client import MiroFishClient
 
         client = MiroFishClient()
