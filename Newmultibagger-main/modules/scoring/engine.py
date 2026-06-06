@@ -251,7 +251,8 @@ def calculate_institutional_score(
 
     # Phase 2.2: Proportional bonus cap — max 15 points or 20% of base_score,
     # whichever is smaller. Prevents non-fundamental inflation.
-    max_bonus = min(15.0, base_score * 0.20)
+    # Floor at 5 so low-scoring stocks aren't doubly penalised
+    max_bonus = min(15.0, max(5.0, base_score * 0.20))
     final_bonus = min(bonus_accumulated, max_bonus)
     base_score += final_bonus
 
