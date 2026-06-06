@@ -125,39 +125,48 @@ def _cache_invalidate(cache_obj: Any):
     else:
         redis_cache.delete(str(cache_obj))
 
+def _generate_cache_key(func, key_prefix, args, kwargs):
+    try:
+        sig = inspect.signature(func)
+        bound_args = sig.bind(*args, **kwargs)
+        bound_args.apply_defaults()
+        arg_str = ":".join(f"{k}={v}" for k, v in bound_args.arguments.items() if k not in ("self", "cls"))
+        return f"{key_prefix}:{func.__name__}:{arg_str}"
+    except Exception as e:
+        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
+        return f"{key_prefix}:{func.__name__}:{hash(str(args) + str(kwargs))}"
+
 def cached(ttl: int | None = None, key_prefix: str = "fn"):
     """
     Decorator to cache function results in Redis.
     Generates key based on function name and arguments.
+    Supports both sync and async functions.
     """
     def decorator(func: Callable):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            # Generate stable cache key
-            try:
-                sig = inspect.signature(func)
-                bound_args = sig.bind(*args, **kwargs)
-                bound_args.apply_defaults()
-                # Skip 'self' or 'cls' for methods if needed, but here we assume general functions
-                arg_str = ":".join(f"{k}={v}" for k, v in bound_args.arguments.items() if k not in ("self", "cls"))
-                cache_key = f"{key_prefix}:{func.__name__}:{arg_str}"
-            except Exception as e:
-                _log.error(f"Caught unhandled exception: {e}", exc_info=True)
-                # Fallback key generation
-                cache_key = f"{key_prefix}:{func.__name__}:{hash(str(args) + str(kwargs))}"
+        if asyncio.iscoroutinefunction(func):
+            @functools.wraps(func)
+            async def async_wrapper(*args, **kwargs):
+                cache_key = _generate_cache_key(func, key_prefix, args, kwargs)
+                cached_val = redis_cache.get(cache_key)
+                if cached_val is not None:
+                    return cached_val
 
-            # Try to get from cache
-            cached_val = redis_cache.get(cache_key)
-            if cached_val is not None:
-                return cached_val
+                result = await func(*args, **kwargs)
+                ttl_val = ttl if ttl is not None else DEFAULT_TTL
+                redis_cache.set(cache_key, result, ttl=ttl_val)
+                return result
+            return async_wrapper
+        else:
+            @functools.wraps(func)
+            def sync_wrapper(*args, **kwargs):
+                cache_key = _generate_cache_key(func, key_prefix, args, kwargs)
+                cached_val = redis_cache.get(cache_key)
+                if cached_val is not None:
+                    return cached_val
 
-            # Execute function
-            result = func(*args, **kwargs)
-
-            # Store in cache
-            ttl_val = ttl if ttl is not None else DEFAULT_TTL
-            redis_cache.set(cache_key, result, ttl=ttl_val)
-
-            return result
-        return wrapper
+                result = func(*args, **kwargs)
+                ttl_val = ttl if ttl is not None else DEFAULT_TTL
+                redis_cache.set(cache_key, result, ttl=ttl_val)
+                return result
+            return sync_wrapper
     return decorator
