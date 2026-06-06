@@ -17,8 +17,7 @@ from core.observability.logger import get_logger
 import math
 from dataclasses import dataclass, field
 
-_sov = get_logger("dq_gates")
-logger = _sov.logger
+logger = get_logger("dq_gates")
 
 # ── Physical Limit Definitions ────────────────────────────────────────────────
 
