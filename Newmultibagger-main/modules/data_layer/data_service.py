@@ -871,7 +871,7 @@ class DataManager:
             # Generate 252 business days ending today
             dates = pd.date_range(end=datetime.now(), periods=252, freq="B")
             # Seed based on symbol hash for determinism
-            h = int(hashlib.md5(symbol.encode()).hexdigest(), 16)
+            h = int(hashlib.md5(symbol.encode(), usedforsecurity=False).hexdigest(), 16)
             np.random.seed(h % (2**32))
             returns = np.random.normal(0.0002, 0.015, 252)
             prices = current_price * np.exp(np.cumsum(returns) - np.sum(returns))
