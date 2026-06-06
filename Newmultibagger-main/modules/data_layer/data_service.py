@@ -480,6 +480,29 @@ def _quote_pg_identifier_path(identifier_path: str) -> str:
 class ScreenerRepository:
     """Thin repository for the FastAPI screener universe data source."""
 
+    _pool_init_lock: asyncio.Lock | None = None
+    _neon_pool = None
+
+    @classmethod
+    async def _get_pool(cls, dsn: str):
+        if cls._pool_init_lock is None:
+            cls._pool_init_lock = asyncio.Lock()
+        async with cls._pool_init_lock:
+            if cls._neon_pool is None:
+                try:
+                    import asyncpg
+                except ImportError as exc:
+                    raise RuntimeError("asyncpg is required for Neon screener reads") from exc
+                
+                cls._neon_pool = await asyncpg.create_pool(
+                    dsn=dsn,
+                    min_size=1,
+                    max_size=5,
+                    command_timeout=10.0,
+                    max_inactive_connection_lifetime=300.0,
+                )
+        return cls._neon_pool
+
     def __init__(
         self,
         *,
@@ -513,23 +536,11 @@ class ScreenerRepository:
                     return row
             return None
 
-        try:
-            import asyncpg
-        except ImportError as exc:
-            raise RuntimeError("asyncpg is required for Neon screener reads") from exc
-
-        if getattr(self.__class__, "_neon_pool", None) is None:
-            self.__class__._neon_pool = await asyncpg.create_pool(
-                dsn=_postgres_dsn_for_asyncpg(self.database_url),
-                min_size=1,
-                max_size=5,
-                command_timeout=10.0,
-                max_inactive_connection_lifetime=300.0,
-            )
+        pool = await self._get_pool(_postgres_dsn_for_asyncpg(self.database_url))
 
         # Neon path: push the filter to Postgres
         table = _quote_pg_identifier_path(self.table_name)
-        async with self.__class__._neon_pool.acquire() as conn:
+        async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 f"SELECT * FROM {table} WHERE symbol = $1", symbol.upper())
         return ScreenerRow.model_validate(dict(row)) if row else None
@@ -551,21 +562,9 @@ class ScreenerRepository:
         return [ScreenerRow.model_validate(record) for record in frame.to_dict(orient="records")]
 
     async def _fetch_neon_rows(self, limit: int | None = None) -> list[ScreenerRow]:
-        try:
-            import asyncpg
-        except ImportError as exc:
-            raise RuntimeError("asyncpg is required for Neon screener reads") from exc
+        pool = await self._get_pool(_postgres_dsn_for_asyncpg(self.database_url))
 
-        if getattr(self.__class__, "_neon_pool", None) is None:
-            self.__class__._neon_pool = await asyncpg.create_pool(
-                dsn=_postgres_dsn_for_asyncpg(self.database_url),
-                min_size=1,
-                max_size=5,
-                command_timeout=10.0,
-                max_inactive_connection_lifetime=300.0,
-            )
-
-        async with self.__class__._neon_pool.acquire() as connection:
+        async with pool.acquire() as connection:
             table = _quote_pg_identifier_path(self.table_name)  # type: ignore
             if hasattr(connection, "prepare"):
                 prepared = await connection.prepare(f"SELECT * FROM {table} LIMIT 0")
