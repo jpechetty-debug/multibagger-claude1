@@ -316,32 +316,18 @@ def run_stress_test(portfolio: dict):
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
- 
- @ a p p . t a s k ( b i n d = T r u e ,   n a m e = " w o r k e r . t a s k s . r e f r e s h _ s t a l e _ d a t a " ,   m a x _ r e t r i e s = 3 ,   r a t e _ l i m i t = " 1 0 / m " )  
- @ c e l e r y _ t a s k _ t i m e r ( " r e f r e s h _ s t a l e _ d a t a " )  
- d e f   r e f r e s h _ s t a l e _ d a t a ( s e l f ,   s y m b o l :   s t r ) :  
-         " " "  
-         B a c k g r o u n d   r e f r e s h   t r i g g e r e d   b y   s t a l e   d a t a   d e t e c t i o n .  
-         B y p a s s e s   c a c h e   a n d   f o r c e f u l l y   f e t c h e s   f r e s h   f u n d a m e n t a l s .  
-         " " "  
-         t r y :  
-                 f r o m   m o d u l e s . d a t a _ s e r v i c e   i m p o r t   g e t _ d a t a _ m a n a g e r  
-                 f r o m   m o d u l e s . d a t a _ u t i l s   i m p o r t   r u n _ c o r o u t i n e _ s y n c  
-                 f r o m   m o d u l e s . d b _ u t i l s   i m p o r t   g e t _ d b _ c o n n e c t i o n  
-                  
-                 d m   =   g e t _ d a t a _ m a n a g e r ( )  
-                 c a c h e _ k e y   =   f " f u n d _ { s y m b o l } "  
-                  
-                 t r y :  
-                         w i t h   g e t _ d b _ c o n n e c t i o n ( d m . c a c h e . d b _ n a m e )   a s   c o n n :  
-                                 c o n n . e x e c u t e ( " D E L E T E   F R O M   c a c h e   W H E R E   k e y   =   ? " ,   ( c a c h e _ k e y , ) )  
-                                 c o n n . c o m m i t ( )  
-                 e x c e p t   E x c e p t i o n :  
-                         p a s s  
-                          
-                 r u n _ c o r o u t i n e _ s y n c ( d m . a s y n c _ f e t c h _ f u n d a m e n t a l s ( s y m b o l ) )  
-                 r e t u r n   { " s y m b o l " :   s y m b o l ,   " s t a t u s " :   " r e f r e s h e d " }  
-         e x c e p t   E x c e p t i o n   a s   e x c :  
-                 l o g g e r . e r r o r ( " r e f r e s h _ s t a l e _ d a t a . f a i l e d " ,   s y m b o l = s y m b o l ,   e r r o r = s t r ( e x c ) )  
-                 r a i s e   s e l f . r e t r y ( e x c = e x c ,   c o u n t d o w n = 3 0   *   ( s e l f . r e q u e s t . r e t r i e s   +   1 ) )   f r o m   e x c  
- 
+
+
+@app.task(name="worker.tasks.refresh_stale_data", bind=True,
+          max_retries=2, default_retry_delay=60)
+@celery_task_timer("refresh_stale_data")
+def refresh_stale_data(self, symbol: str):
+    try:
+        from modules.data_layer.data_service import get_data_manager
+        from modules.data_utils import run_coroutine_sync
+        dm = get_data_manager()
+        run_coroutine_sync(dm.async_fetch_fundamentals(symbol))
+        logger.info("Stale data refreshed", symbol=symbol)
+    except Exception as exc:
+        logger.warning("refresh_stale_data failed", symbol=symbol, error=str(exc))
+        raise self.retry(exc=exc)
