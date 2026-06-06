@@ -158,13 +158,13 @@ SCORING_WEIGHTS = {
     },
     "momentum": {
         "w_sales": 0.10,
-        "w_roe": 0.00,
-        "w_cfo": 0.00,
-        "w_val": 0.00,
-        "w_eps": 0.35,
+        "w_roe": 0.05,
+        "w_cfo": 0.05,
+        "w_val": 0.05,
+        "w_eps": 0.25,
         "w_fscore": 0.10,
         "w_de": 0.05,
-        "w_mom": 0.25,
+        "w_mom": 0.20,
         "w_sentiment": 0.15,  # Aggressive news follow
     },
     "value": {
