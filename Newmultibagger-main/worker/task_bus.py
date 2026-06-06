@@ -86,6 +86,12 @@ def _dispatch_celery(fn: Callable, *args: Any, **kwargs: Any) -> str:
     """Send task via Celery. Expects fn to be a registered Celery task."""
     from worker.celery_app import app  # noqa: F811 — deferred import
 
+    if not hasattr(fn, "name"):
+        raise ValueError(
+            f"dispatch(): '{fn.__name__}' is not a registered Celery task. "
+            f"Decorate it with @app.task before dispatching."
+        )
+
     task_name = getattr(fn, "name", fn.__name__)
     result = app.send_task(task_name, args=args, kwargs=kwargs)
     logger.info("task.enqueued", mode="celery", task=task_name, task_id=result.id)

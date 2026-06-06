@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
 
 from app_routes.contracts import (
@@ -19,6 +19,7 @@ from modules.mirofish_client import MiroFishClient
 from modules.news_sentiment import engine as news_engine
 from modules.rate_limit import limiter
 from modules.symbol_utils import normalize_symbol
+from modules.auth import get_api_key
 
 router = APIRouter()
 
@@ -143,7 +144,11 @@ async def get_swarm_report(symbol: str):
 
 @router.get("/api/news/{symbol}", response_model=NewsSignalResponse)
 @limiter.limit("20/minute")
-async def get_news_sentiment(request: Request, symbol: str):
+async def get_news_sentiment(
+    request: Request,
+    symbol: str,
+    api_key=Depends(get_api_key),
+):
     """Fetch the full news-driven alpha signal for a ticker."""
     try:
         return news_engine.get_alpha_signal(symbol)
@@ -171,7 +176,11 @@ def get_market_calendar():
 
 @router.get("/api/reports/{symbol}", response_model=MarkdownReportResponse)
 @limiter.limit("5/minute")
-async def get_stock_report_markdown(request: Request, symbol: str):
+async def get_stock_report_markdown(
+    request: Request,
+    symbol: str,
+    api_key=Depends(get_api_key),
+):
     """Generate an analyst report in markdown."""
     try:
         from report_generator import generate_analyst_report

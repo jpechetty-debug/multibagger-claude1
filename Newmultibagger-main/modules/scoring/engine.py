@@ -286,7 +286,7 @@ def calculate_institutional_score(
     # Cap institutional conviction score so it doesn't bypass the fundamental score ceiling
     capped_conviction_score = min(conviction["conviction_score"], score_ceiling)
 
-    return {
+    result = {
         "total_score": round(max(0, min(final_score, 100.0)), 5),
         "raw_score": raw_score,
         "checklist_score": f"{checklist_pass}/{checklist_total}",
@@ -306,3 +306,15 @@ def calculate_institutional_score(
             sector_boost,
         ),
     }
+
+    from modules.ic_monitor import load_regime_ic_cache, get_current_regime
+    current_regime = get_current_regime()
+    regime_ic_data = load_regime_ic_cache().get(current_regime, {})
+    if regime_ic_data and not regime_ic_data.get("valid", True):
+        result["data_quality_flags"].append("low_regime_ic")
+        result["regime_ic_warning"] = (
+            f"IC={regime_ic_data['ic']:.3f} in {current_regime} regime "
+            f"(n={regime_ic_data['n']}) — signal confidence is low"
+        )
+
+    return result

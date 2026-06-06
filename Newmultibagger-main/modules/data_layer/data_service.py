@@ -521,10 +521,9 @@ class ScreenerRepository:
         if getattr(self.__class__, "_neon_pool", None) is None:
             self.__class__._neon_pool = await asyncpg.create_pool(
                 dsn=_postgres_dsn_for_asyncpg(self.database_url),
-                min_size=1,
-                max_size=5,
-                command_timeout=10,
-                max_inactive_connection_lifetime=300,
+                min_size=2,
+                max_size=8,
+                command_timeout=30.0,
             )
 
         # Neon path: push the filter to Postgres
@@ -559,10 +558,9 @@ class ScreenerRepository:
         if getattr(self.__class__, "_neon_pool", None) is None:
             self.__class__._neon_pool = await asyncpg.create_pool(
                 dsn=_postgres_dsn_for_asyncpg(self.database_url),
-                min_size=1,
-                max_size=5,
-                command_timeout=10,
-                max_inactive_connection_lifetime=300,
+                min_size=2,
+                max_size=8,
+                command_timeout=30.0,
             )
 
         async with self.__class__._neon_pool.acquire() as connection:
