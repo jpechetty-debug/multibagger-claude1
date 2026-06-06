@@ -22,7 +22,6 @@ _REGIME_ALIASES = {
     "bear market": "quality",
     "correction":  "value",
     "recovery":    "momentum",
-    "sideways":    "balanced",
 }
 
 def _resolve_mode_and_weights(market_regime: str | None, sector: str = "") -> tuple[str, dict[str, float], str]:
