@@ -223,7 +223,11 @@ def compute_round_trip_cost(
                        inferred from cap_category via TC_ADV_FRAC constants.
 
     Returns:
-        Round-trip cost as a fraction of trade value (e.g. 0.0022 = 0.22%).
+        Round-trip cost as a fraction of trade value.
+        Typical values (component model, 2025 rates):
+          Large cap: ~0.0024 (24 bps)
+          Mid cap:   ~0.0048 (48 bps)
+          Small cap: ~0.0090 (90 bps)
     """
     cap = str(cap_category).lower()
 
