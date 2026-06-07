@@ -3,3 +3,4 @@ error_log_utf8.txt
 runtime/models/
 xgboost_walk_forward.json
 *.bm25.pkl
+graphify-out/
