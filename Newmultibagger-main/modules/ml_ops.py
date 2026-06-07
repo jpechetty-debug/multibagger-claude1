@@ -1,143 +1,244 @@
-import sqlite3
+# modules/ml_ops.py
+# Sovereign AI — ML Operations: automated retraining, metadata, and batch inference.
+
+from __future__ import annotations
+
+import json
 from typing import Any
+
 import pandas as pd
-from modules.hybrid_scoring import train_hybrid_model
-from core.observability.logger import logger
+
+try:
+    from core.observability.logger import get_logger
+    logger = get_logger("sovereign.ml_ops")
+except Exception:
+    import logging
+    logger = logging.getLogger("sovereign.ml_ops")
+
+from modules.hybrid_scoring import (
+    MODEL_PATH,
+    batch_predict,
+    get_feature_importance,
+    predict_and_explain,
+    train_hybrid_model,
+)
 from modules.db_utils import get_db_connection
 
 ML_METADATA_TABLE = "ml_metadata"
+_RETRAIN_THRESHOLD = 50   # new PIT rows since last run triggers retraining
 
 
-def initialize_ml_metadata():
-    """Initialize the ML metadata table to track training history."""
+# ---------------------------------------------------------------------------
+# Metadata table initialisation
+# ---------------------------------------------------------------------------
+
+def initialize_ml_metadata() -> None:
+    """Create ml_metadata table if it does not exist."""
     try:
         with get_db_connection("stocks.db") as conn:
             conn.execute(f"""
                 CREATE TABLE IF NOT EXISTS {ML_METADATA_TABLE} (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    trained_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                    trained_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     record_count INTEGER,
-                    r2_score REAL,
-                    model_path TEXT
+                    r2_score     REAL,
+                    spearman_ic  REAL,
+                    hit_rate     REAL,
+                    oos_r2       REAL,
+                    wf_folds     INTEGER,
+                    model_path   TEXT
                 )
             """)
             conn.commit()
-    except Exception as e:
-        logger.error(f"Failed to initialize ML metadata table: {e}")
+    except Exception as exc:
+        logger.error(f"Failed to initialise ML metadata table: {exc}")
 
+
+# ---------------------------------------------------------------------------
+# Metadata read / write
+# ---------------------------------------------------------------------------
 
 def get_last_training_info() -> dict[str, Any]:
-    """Retrieve the metadata of the last successful model training."""
+    """Return the most recent training metadata row, or empty dict."""
     try:
         with get_db_connection("stocks.db") as conn:
-            cursor = conn.execute(
-                f"SELECT trained_at, record_count, r2_score FROM {ML_METADATA_TABLE} ORDER BY id DESC LIMIT 1"
-            )
+            cursor = conn.execute(f"""
+                SELECT trained_at, record_count, r2_score,
+                       spearman_ic, hit_rate, oos_r2, wf_folds
+                FROM {ML_METADATA_TABLE}
+                ORDER BY id DESC LIMIT 1
+            """)
             row = cursor.fetchone()
             if row:
-                return {"trained_at": row[0], "record_count": row[1], "r2_score": row[2]}
-    except Exception as e:
-        logger.error(f"Failed to get last training info: {e}")
+                keys = ["trained_at", "record_count", "r2_score",
+                        "spearman_ic", "hit_rate", "oos_r2", "wf_folds"]
+                return dict(zip(keys, row))
+    except Exception as exc:
+        logger.error(f"Failed to get last training info: {exc}")
     return {}
 
 
-def check_retraining_trigger(threshold_new_records: int = 50) -> bool:
-    """Check if retraining is warranted based on new record count in fundamentals_pit."""
+def record_training_metadata(
+    record_count: int,
+    r2_score: float,
+    model_path: str,
+    *,
+    spearman_ic: float | None = None,
+    hit_rate: float | None = None,
+    oos_r2: float | None = None,
+    wf_folds: int | None = None,
+) -> None:
+    """Persist training-run statistics to ml_metadata."""
     try:
         with get_db_connection("stocks.db") as conn:
-            cursor = conn.execute("SELECT COUNT(*) FROM fundamentals_pit")
-            current_count = int(cursor.fetchone()[0])
-
-            last_info = get_last_training_info()
-            last_count = last_info.get("record_count", 0)
-
-            diff = current_count - last_count
-            logger.info(
-                f"ML Ops: {diff} new records since last training (Current: {current_count}, Last: {last_count})"
-            )
-
-            return bool(diff >= threshold_new_records)
-    except Exception as e:
-        logger.error(f"Failed to check retraining trigger: {e}")
-    return False
-
-
-def record_training_metadata(record_count: int, r2_score: float, model_path: str):
-    """Log the results of a training run into the metadata table."""
-    try:
-        with get_db_connection("stocks.db") as conn:
-            conn.execute(
-                f"""
-                INSERT INTO {ML_METADATA_TABLE} (record_count, r2_score, model_path)
-                VALUES (?, ?, ?)
-            """,
-                (record_count, r2_score, model_path),
-            )
+            conn.execute(f"""
+                INSERT INTO {ML_METADATA_TABLE}
+                    (record_count, r2_score, spearman_ic, hit_rate, oos_r2, wf_folds, model_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (record_count, r2_score, spearman_ic, hit_rate, oos_r2, wf_folds, model_path))
             conn.commit()
-    except Exception as e:
-        logger.error(f"Failed to record training metadata: {e}")
+    except Exception as exc:
+        logger.error(f"Failed to record training metadata: {exc}")
 
 
-def run_automated_training():
-    """Execute the full ML training pipeline and record metadata."""
-    logger.info("Starting Automated ML Retraining...")
+# ---------------------------------------------------------------------------
+# Retraining trigger
+# ---------------------------------------------------------------------------
 
-    # 1. Train model using institutional hybrid_scoring logic
-    success = train_hybrid_model()
+def check_retraining_trigger(threshold_new_records: int = _RETRAIN_THRESHOLD) -> bool:
+    """Return True when enough new PIT rows have arrived since last training."""
+    try:
+        with get_db_connection("stocks.db") as conn:
+            current_count = int(conn.execute("SELECT COUNT(*) FROM fundamentals_pit").fetchone()[0])
 
-    if success:
-        # Load the model to get its performance if available
-        try:
-            with get_db_connection("stocks.db") as conn:
-                cursor = conn.execute("SELECT COUNT(*) FROM fundamentals_pit")
-                current_count = cursor.fetchone()[0]
-
-            record_training_metadata(current_count, 0.0, "xgboost_meta_model.pkl")
-            logger.info(
-                f"✅ Automated ML Retraining Successful. Model updated for {current_count} records."
-            )
-            return True
-        except Exception as e:
-            logger.error(f"Error recording success: {e}")
-    else:
-        logger.warning("❌ Automated ML Retraining FAILED.")
+        last_count = get_last_training_info().get("record_count", 0) or 0
+        diff = current_count - last_count
+        logger.info(
+            f"ML Ops retraining check: {diff} new rows "
+            f"(current={current_count}, last={last_count}, threshold={threshold_new_records})"
+        )
+        return diff >= threshold_new_records
+    except Exception as exc:
+        logger.error(f"Failed to check retraining trigger: {exc}")
     return False
 
 
-async def batch_update_multibaggers_ml():
-    """Update the multibaggers table with fresh predictions from the latest model."""
-    logger.info("Batch updating multibaggers with new ML predictions...")
-    try:
-        import json
-        from modules.hybrid_scoring import predict_and_explain
+# ---------------------------------------------------------------------------
+# Automated training orchestration
+# ---------------------------------------------------------------------------
 
+def run_automated_training() -> bool:
+    """Execute the full ML training pipeline and record metadata on success."""
+    logger.info("Starting automated ML retraining…")
+
+    success = train_hybrid_model()
+    if not success:
+        logger.warning("Automated ML retraining FAILED or was skipped.")
+        return False
+
+    # Pull walk-forward metrics to persist alongside record count.
+    from modules.hybrid_scoring import load_walk_forward_report
+
+    wf = load_walk_forward_report() or {}
+    spearman_ic = wf.get("spearman_ic")
+    hit_rate    = wf.get("hit_rate")
+    oos_r2      = wf.get("oos_r2")
+    wf_folds    = wf.get("folds")
+
+    try:
+        with get_db_connection("stocks.db") as conn:
+            current_count = int(conn.execute("SELECT COUNT(*) FROM fundamentals_pit").fetchone()[0])
+    except Exception:
+        current_count = 0
+
+    record_training_metadata(
+        current_count, 0.0, MODEL_PATH,
+        spearman_ic=spearman_ic,
+        hit_rate=hit_rate,
+        oos_r2=oos_r2,
+        wf_folds=wf_folds,
+    )
+    logger.info(
+        f"Automated ML retraining successful. "
+        f"Model updated for {current_count} records. "
+        f"IC={spearman_ic}, hit_rate={hit_rate}, folds={wf_folds}"
+    )
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Batch inference (async-safe wrapper)
+# ---------------------------------------------------------------------------
+
+async def batch_update_multibaggers_ml() -> None:
+    """Update ml_predicted_return and shap_breakdown for every row in multibaggers."""
+    logger.info("Batch updating multibaggers with ML predictions…")
+
+    try:
         with get_db_connection("stocks.db") as conn:
             df = pd.read_sql(
-                "SELECT symbol, score, sales_cagr_5y, avg_roe_5y, pe_ratio, debt_equity, cfo_pat_ratio, market_cap_cr FROM multibaggers",
+                """
+                SELECT symbol,
+                       score, sales_cagr_5y, avg_roe_5y, pe_ratio,
+                       debt_equity, cfo_pat_ratio, market_cap_cr,
+                       ret_1m, ret_3m, ret_6m,
+                       vol_breakout, dist_from_52w_high, roce
+                FROM multibaggers
+                """,
                 conn,
             )
 
-            updates = []
-            for _, row in df.iterrows():
-                factors = {
-                    "score": row["score"],
-                    "sales_cagr_5y": row["sales_cagr_5y"],
-                    "avg_roe_5y": row["avg_roe_5y"],
-                    "pe_ratio": row["pe_ratio"],
-                    "debt_equity": row["debt_equity"],
-                    "cfo_pat_ratio": row["cfo_pat_ratio"],
-                    "market_cap_cr": row["market_cap_cr"],
-                }
-                res = predict_and_explain(factors)
-                ml_pred = res["ml_prediction"]
-                shap_json = json.dumps(res["shap_values"])
-                updates.append((ml_pred, shap_json, row["symbol"]))
+        if df.empty:
+            logger.info("No rows in multibaggers — nothing to update.")
+            return
 
+        # Use vectorised batch_predict for efficiency
+        records = df.to_dict("records")
+        results = batch_predict(records)
+
+        updates = [
+            (
+                r.get("ml_prediction"),
+                json.dumps(r.get("shap_values", {})),
+                json.dumps(r.get("top_drivers", [])),
+                r["symbol"],
+            )
+            for r in results
+        ]
+
+        with get_db_connection("stocks.db") as conn:
             conn.executemany(
-                "UPDATE multibaggers SET ml_predicted_return = ?, shap_breakdown = ? WHERE symbol = ?",
+                """
+                UPDATE multibaggers
+                SET ml_predicted_return = ?,
+                    shap_breakdown      = ?,
+                    shap_top_drivers    = ?
+                WHERE symbol = ?
+                """,
                 updates,
             )
             conn.commit()
-            logger.info(f"✅ Successfully updated ML predictions for {len(updates)} stocks.")
-    except Exception as e:
-        logger.error(f"Error during batch update: {e}")
+
+        filled = sum(1 for u in updates if u[0] is not None)
+        logger.info(f"Batch ML predictions updated: {filled}/{len(updates)} stocks.")
+
+    except Exception as exc:
+        logger.error(f"Error during batch ML update: {exc}")
+
+
+# ---------------------------------------------------------------------------
+# Health / status endpoint helper
+# ---------------------------------------------------------------------------
+
+def ml_status() -> dict[str, Any]:
+    """Return a summary dict suitable for an /api/ml/status endpoint."""
+    from modules.hybrid_scoring import load_walk_forward_report, model_is_trained
+
+    return {
+        "model_trained": model_is_trained(),
+        "model_path": MODEL_PATH,
+        "last_training": get_last_training_info(),
+        "walk_forward": load_walk_forward_report(),
+        "feature_importance": get_feature_importance(),
+        "retrain_due": check_retraining_trigger(),
+    }
