@@ -2,9 +2,16 @@
 Sovereign Terminal — Field Mapping Source of Truth
 Bidirectional field mappings between Python/Scoring/Screener keys (capitalized/camelCase/with symbols)
 and database column names (snake_case).
+
+Also exposes ``normalize_data_keys(data)`` which promotes any snake_case or
+legacy alias keys in a raw dict to the canonical Title-case keys used by the
+scoring engine.  Call this once at the scoring boundary so every downstream
+module can assume canonical keys and avoid dual-key ``or`` lookups.
 """
 
-FIELD_MAPPING = {
+from __future__ import annotations
+
+FIELD_MAPPING: dict[str, str] = {
     "Symbol": "symbol",
     "Price": "price",
     "Sector": "sector",
@@ -78,7 +85,59 @@ FIELD_MAPPING = {
     "Dividend_Payout": "dividend_payout",
     "Cap_Category": "cap_category",
     "Data_Quality_Flags": "data_quality_flags",
+    # Scoring engine fields not previously in the map
+    "EPS_Growth%": "eps_growth",
+    "Down_From_52W_High%": "down_from_52w_high",  # alias kept for scorer; DB col is down_from_52w
+    "Profit_Margin%": "profit_margin",
+    "Quarter_End": "quarter_end",
+    "Earnings_Inflection_Score": "earnings_inflection_score",
+    "Estimate_Score_Adj": "estimate_score_adj",
+    "Backtest": "backtest",
 }
 
-# Reverse mapping for converting database snake_case back to display/python fields
-REVERSE_FIELD_MAPPING = {v: k for k, v in FIELD_MAPPING.items()}
+# Reverse mapping: snake_case DB column → canonical Title-case scoring key.
+# Built automatically from FIELD_MAPPING so there is one source of truth.
+REVERSE_FIELD_MAPPING: dict[str, str] = {v: k for k, v in FIELD_MAPPING.items()}
+
+# Extra snake_case aliases that appear in DB reads but whose canonical name
+# differs from what REVERSE_FIELD_MAPPING produces (e.g. the DB column is
+# ``down_from_52w`` but the scorer expects ``Down_From_52W_High%``).
+_EXTRA_ALIASES: dict[str, str] = {
+    "down_from_52w": "Down_From_52W_High%",
+    "down_from_52w_high": "Down_From_52W_High%",
+    "sales_growth": "Sales_Growth_TTM%",  # DB ``sales_growth`` maps to TTM variant
+    "eps_growth": "EPS_Growth%",
+    "roe": "ROE%",
+    "avg_roe_5y": "Avg_ROE_5Y%",
+    "sales_cagr_5y": "Sales_Growth_5Y%",
+    "pledge_pct": "Pledge_Pct",
+    "profit_margin": "Profit_Margin%",
+}
+
+# Combined lookup used by normalize_data_keys: snake_case → canonical Title-case.
+# _EXTRA_ALIASES wins over REVERSE_FIELD_MAPPING on conflicts (more specific).
+_SNAKE_TO_CANONICAL: dict[str, str] = {**REVERSE_FIELD_MAPPING, **_EXTRA_ALIASES}
+
+
+def normalize_data_keys(data: dict) -> dict:
+    """Return a copy of *data* with all snake_case / alias keys promoted to
+    their canonical Title-case equivalents used by the scoring engine.
+
+    Keys that are already canonical (or unknown) are preserved unchanged.
+    This is a pure function — it never mutates the input dict.
+
+    Example::
+
+        normalize_data_keys({"avg_roe_5y": 22.5, "Symbol": "TCS.NS"})
+        # → {"Avg_ROE_5Y%": 22.5, "Symbol": "TCS.NS"}
+    """
+    out: dict = {}
+    for key, value in data.items():
+        canonical = _SNAKE_TO_CANONICAL.get(key)
+        if canonical is not None and canonical not in data:
+            # Promote to canonical key only when the canonical key is not
+            # already present (caller's explicit value always takes priority).
+            out[canonical] = value
+        else:
+            out[key] = value
+    return out

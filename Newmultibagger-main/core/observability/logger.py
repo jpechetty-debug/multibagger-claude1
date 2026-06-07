@@ -96,23 +96,31 @@ class SovereignLogger:
     def logger(self):
         return self._logger
 
-    def _log(self, level, msg, **kwargs):
+    def _log(self, level, msg, *args, **kwargs):
+        if args:
+            try:
+                msg = msg % args
+            except TypeError:
+                msg = f"{msg} {args}"
         if kwargs:
             self._logger.log(level, msg, extra={"extra_context": kwargs})
         else:
             self._logger.log(level, msg)
 
-    def info(self, msg, **kwargs):
-        self._log(logging.INFO, msg, **kwargs)
+    def info(self, msg, *args, **kwargs):
+        self._log(logging.INFO, msg, *args, **kwargs)
 
-    def error(self, msg, **kwargs):
-        self._log(logging.ERROR, msg, **kwargs)
+    def error(self, msg, *args, **kwargs):
+        self._log(logging.ERROR, msg, *args, **kwargs)
 
-    def warning(self, msg, **kwargs):
-        self._log(logging.WARNING, msg, **kwargs)
+    def warning(self, msg, *args, **kwargs):
+        self._log(logging.WARNING, msg, *args, **kwargs)
 
-    def debug(self, msg, **kwargs):
-        self._log(logging.DEBUG, msg, **kwargs)
+    def debug(self, msg, *args, **kwargs):
+        self._log(logging.DEBUG, msg, *args, **kwargs)
+
+    def critical(self, msg, *args, **kwargs):
+        self._log(logging.CRITICAL, msg, *args, **kwargs)
 
 
 def get_logger(name="sovereign", log_file="logs/sovereign.json"):

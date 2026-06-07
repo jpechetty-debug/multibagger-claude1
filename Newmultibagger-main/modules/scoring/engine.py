@@ -15,6 +15,7 @@ from config import MAX_FUNDAMENTAL_AGE_DAYS, STALE_DATA_WARNING_DAYS
 
 from modules.data_utils import safe_float
 from modules.data_layer.dq_gates import validate_record
+from modules.field_names import normalize_data_keys
 from modules.pit_auditor import enforce_pit_gate
 from research.conviction_engine import calculate_conviction_score
 
@@ -42,7 +43,7 @@ def _build_conviction_input(data: _StockData) -> _StockData:
         "roce": safe_float(data.get("Avg_ROE_5Y%")),
         "debt_to_equity": safe_float(data.get("Debt_Equity")),
         "promoter_holding": safe_float(data.get("Promoter_Holding%")),
-        "pledge": safe_float(data.get("Pledge_Pct") or data.get("pledge_pct")),
+        "pledge": safe_float(data.get("Pledge_Pct")),
     }
 
 
@@ -52,7 +53,7 @@ def _calculate_tiebreak_epsilon(symbol: str) -> float:
 
 
 def _stale_data_result(data: _StockData, age_days: int) -> dict[str, Any]:
-    symbol = data.get("Symbol") or data.get("symbol") or "UNKNOWN"
+    symbol = data.get("Symbol") or "UNKNOWN"
     return {
         "total_score": 0.0,
         "raw_score": 0.0,
@@ -142,6 +143,13 @@ def calculate_institutional_score(
         - [x] Integrate `NewsSentimentEngine` into `modules/scoring.py`.
         - [x] Update `total_score` calculation to include the 9th factor.
     """
+    # ── Canonicalize all incoming keys to Title-case once ──────────────────
+    # Callers may pass either screener-style Title-case keys ("Sales_Growth_5Y%")
+    # or DB-read snake_case keys ("sales_cagr_5y").  Normalizing here means every
+    # downstream access — factors, adjustments, ceiling — can use a single key
+    # with no "or" fallbacks.
+    data = normalize_data_keys(data)
+
     # ── Extract shared date fields once ──
     as_of = data.get("As_Of_Date")
     quarter_end = data.get("Quarter_End")
@@ -163,7 +171,7 @@ def calculate_institutional_score(
             _staleness_penalty = min(20.0 + extra_days, 50.0)
             data_quality_flags.append("stale_data")
             _scoring_strategy_override = "STALE_DATA_DEGRADED"
-            
+
             try:
                 from worker.tasks import refresh_stale_data
                 refresh_stale_data.delay(data.get("Symbol", "UNKNOWN"))
@@ -173,50 +181,52 @@ def calculate_institutional_score(
             data_quality_flags.append("stale_data")
 
     # ── Validate and sanitize row using sector limits (DQ Gates) ──
+    # Keys are already canonical after normalize_data_keys(); build the
+    # lowercase DQ-gate dict directly from canonical keys.
     row = {
-        "pe_ratio": data.get("PE_Ratio") or data.get("pe_ratio"),
-        "roe": data.get("ROE%") or data.get("roe"),
-        "debt_equity": data.get("Debt_Equity") or data.get("debt_equity"),
-        "cfo_pat_ratio": data.get("CFO_PAT_Ratio") or data.get("cfo_pat_ratio"),
-        "avg_roe_5y": data.get("Avg_ROE_5Y%") or data.get("avg_roe_5y"),
-        "sales_cagr_5y": data.get("Sales_Growth_5Y%") or data.get("sales_cagr_5y"),
-        "eps_growth": data.get("EPS_Growth%") or data.get("eps_growth"),
-        "promoter_holding": data.get("Promoter_Holding%") or data.get("promoter_holding"),
-        "inst_holding": data.get("Inst_Holding%") or data.get("inst_holding"),
-        "f_score": data.get("F_Score") or data.get("f_score"),
-        "peg_ratio": data.get("PEG_Ratio") or data.get("peg_ratio"),
-        "value_gap": data.get("Value_Gap%") or data.get("value_gap"),
-        "atr": data.get("ATR") or data.get("atr"),
-        "down_from_52w_high": data.get("Down_From_52W_High%") or data.get("down_from_52w_high"),
-        "rs_rating": data.get("RS_Rating") or data.get("rs_rating"),
-        "symbol": data.get("Symbol") or data.get("symbol"),
+        "pe_ratio": data.get("PE_Ratio"),
+        "roe": data.get("ROE%"),
+        "debt_equity": data.get("Debt_Equity"),
+        "cfo_pat_ratio": data.get("CFO_PAT_Ratio"),
+        "avg_roe_5y": data.get("Avg_ROE_5Y%"),
+        "sales_cagr_5y": data.get("Sales_Growth_5Y%"),
+        "eps_growth": data.get("EPS_Growth%"),
+        "promoter_holding": data.get("Promoter_Holding%"),
+        "inst_holding": data.get("Inst_Holding%"),
+        "f_score": data.get("F_Score"),
+        "peg_ratio": data.get("PEG_Ratio"),
+        "value_gap": data.get("Value_Gap%"),
+        "atr": data.get("ATR"),
+        "down_from_52w_high": data.get("Down_From_52W_High%"),
+        "rs_rating": data.get("RS_Rating"),
+        "symbol": data.get("Symbol"),
     }
-    sector = data.get("Sector") or data.get("sector")
+    sector = data.get("Sector")
     sanitized, _ = validate_record(row, sector=sector)
 
-    # Write back sanitized values to a mutable copy of data
+    # Write sanitized values back using canonical keys only.
+    # One dict copy, no O(N×M) loop over a key_mapping table.
     data = dict(data)
-    key_mapping = {
-        "pe_ratio": ["PE_Ratio", "pe_ratio"],
-        "roe": ["ROE%", "roe"],
-        "debt_equity": ["Debt_Equity", "debt_equity"],
-        "cfo_pat_ratio": ["CFO_PAT_Ratio", "cfo_pat_ratio"],
-        "avg_roe_5y": ["Avg_ROE_5Y%", "avg_roe_5y"],
-        "sales_cagr_5y": ["Sales_Growth_5Y%", "sales_cagr_5y"],
-        "eps_growth": ["EPS_Growth%", "eps_growth"],
-        "promoter_holding": ["Promoter_Holding%", "promoter_holding"],
-        "inst_holding": ["Inst_Holding%", "inst_holding"],
-        "f_score": ["F_Score", "f_score"],
-        "peg_ratio": ["PEG_Ratio", "peg_ratio"],
-        "value_gap": ["Value_Gap%", "value_gap"],
-        "atr": ["ATR", "atr"],
-        "down_from_52w_high": ["Down_From_52W_High%", "down_from_52w_high"],
-        "rs_rating": ["RS_Rating", "rs_rating"],
+    _sanitized_to_canonical = {
+        "pe_ratio": "PE_Ratio",
+        "roe": "ROE%",
+        "debt_equity": "Debt_Equity",
+        "cfo_pat_ratio": "CFO_PAT_Ratio",
+        "avg_roe_5y": "Avg_ROE_5Y%",
+        "sales_cagr_5y": "Sales_Growth_5Y%",
+        "eps_growth": "EPS_Growth%",
+        "promoter_holding": "Promoter_Holding%",
+        "inst_holding": "Inst_Holding%",
+        "f_score": "F_Score",
+        "peg_ratio": "PEG_Ratio",
+        "value_gap": "Value_Gap%",
+        "atr": "ATR",
+        "down_from_52w_high": "Down_From_52W_High%",
+        "rs_rating": "RS_Rating",
     }
-    for k_low, target_keys in key_mapping.items():
-        if k_low in sanitized and sanitized[k_low] is not None:
-            for tk in target_keys:
-                data[tk] = sanitized[k_low]
+    for dq_key, canonical_key in _sanitized_to_canonical.items():
+        if dq_key in sanitized and sanitized[dq_key] is not None:
+            data[canonical_key] = sanitized[dq_key]
 
     _, weights, scoring_strategy = _resolve_mode_and_weights(market_regime, sector=data.get("Sector", ""))
     score_sentiment, w_sentiment = _calculate_sentiment_factor(data, weights)

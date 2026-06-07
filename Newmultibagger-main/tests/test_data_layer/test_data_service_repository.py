@@ -97,12 +97,30 @@ async def test_repository_reads_neon_with_asyncpg(monkeypatch):
         async def close(self):
             captured["closed"] = True
 
+    class FakeConnectionContext:
+        async def __aenter__(self):
+            return FakeConnection()
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            captured["closed"] = True
+
+    class FakePool:
+        def acquire(self):
+            return FakeConnectionContext()
+
+    async def fake_create_pool(dsn, **kwargs):
+        captured["dsn"] = dsn
+        return FakePool()
+
     async def fake_connect(*, dsn):
         captured["dsn"] = dsn
         return FakeConnection()
 
     monkeypatch.delenv("USE_CSV_FALLBACK", raising=False)
-    monkeypatch.setitem(sys.modules, "asyncpg", SimpleNamespace(connect=fake_connect))
+    monkeypatch.setitem(
+        sys.modules,
+        "asyncpg",
+        SimpleNamespace(connect=fake_connect, create_pool=fake_create_pool),
+    )
 
     rows = await ScreenerRepository(
         database_url="postgresql+psycopg://user:pass@example.test/neondb",

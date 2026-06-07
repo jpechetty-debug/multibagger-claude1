@@ -8,26 +8,27 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from modules.optimizer import PortfolioOptimizer
 from modules.risk import RiskGovernor
+from modules.risk.risk import REJECTED_TRADES_LOG
 
 
 class TestBlackBoxRecorder(unittest.TestCase):
     """
     Validates Phase 7: Black Box Recorder.
-    Ensures rejected trades lead to entries in 'rejected_trades.csv'.
+    Ensures rejected trades lead to entries in REJECTED_TRADES_LOG.
     """
 
     def setUp(self):
         # Clean up previous log
-        if os.path.exists("rejected_trades.csv"):
-            os.remove("rejected_trades.csv")
+        if os.path.exists(REJECTED_TRADES_LOG):
+            os.remove(REJECTED_TRADES_LOG)
 
         self.risk = RiskGovernor()
         self.optimizer = PortfolioOptimizer()
 
     def tearDown(self):
         # Clean up after test to avoid polluting dashboard/logs
-        if os.path.exists("rejected_trades.csv"):
-            os.remove("rejected_trades.csv")
+        if os.path.exists(REJECTED_TRADES_LOG):
+            os.remove(REJECTED_TRADES_LOG)
 
     def test_risk_rejection_logging(self):
         print("\n[TEST] Testing Risk Rejection Logging...")
@@ -45,9 +46,9 @@ class TestBlackBoxRecorder(unittest.TestCase):
         self.risk.validate_correlation_risk(0.80)
 
         # Verify Log File
-        self.assertTrue(os.path.exists("rejected_trades.csv"), "Log file not created")
+        self.assertTrue(os.path.exists(REJECTED_TRADES_LOG), "Log file not created")
 
-        with open("rejected_trades.csv", encoding="utf-8") as f:
+        with open(REJECTED_TRADES_LOG, encoding="utf-8") as f:
             reader = csv.reader(f)
             rows = list(reader)
 
@@ -77,7 +78,7 @@ class TestBlackBoxRecorder(unittest.TestCase):
         self.optimizer.optimize_allocation(stocks)
 
         # Read Log again (append mode)
-        with open("rejected_trades.csv", encoding="utf-8") as f:
+        with open(REJECTED_TRADES_LOG, encoding="utf-8") as f:
             lines = f.readlines()
 
         found = False
