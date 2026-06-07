@@ -1,4 +1,11 @@
 ## Done
+- Standardized scoring engine boundary key normalization via `normalize_data_keys`.
+- Added unit and integration tests for key normalization in [test_normalize_data_keys.py](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/tests/test_normalize_data_keys.py).
+- Fixed `SovereignLogger`'s `critical` method and formatting argument signature compatibility.
+- Fixed `asyncpg` create_pool mock in repository tests.
+- Fixed `rejected_trades.csv` path verification in blackbox tests.
+- Ignored third-party `shap` deprecation warnings in `pytest.ini`.
+- Updated Graphify knowledge graph (`graphify-out/`).
 - Started FastAPI backend server on port 9005.
 - Started React/Vite frontend development server on port 3000.
 - Resolved a compatibility issue with `vectorbt` by downgrading `plotly` to version `5.24.1` (below `6.0.0`) in the virtual environment.
