@@ -257,8 +257,9 @@ def compute_round_trip_cost(
             adv_frac = TC_ADV_FRAC_SMALL
         else:                               # mid, unknown, default
             adv_frac = TC_ADV_FRAC_MID
-        # adv_30d is estimated as trade_value / adv_frac
-        # → sqrt(trade_value / adv_30d) = sqrt(adv_frac)
+        # adv_frac = ADV / trade_value (dimensionless ratio, e.g. 40000 for large cap)
+        # → adv_30d = trade_value * adv_frac
+        # → impact = alpha / sqrt(adv_frac)    [since sqrt(trade_value/adv_30d) = sqrt(1/adv_frac)]
         impact = TC_IMPACT_ALPHA / (adv_frac ** 0.5)
     else:
         if trade_value <= 0 or not np.isfinite(trade_value):
