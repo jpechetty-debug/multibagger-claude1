@@ -17,6 +17,7 @@ from app_routes.stocks import router as stocks_router
 from app_routes.system import router as system_router
 from app_routes.trading import router as trading_router
 from app_routes.swarm import router as swarm_router
+from app_routes.webhooks import router as webhooks_router
 from modules.connections import (
     _run_sqlite_write_with_retry_sync,
     get_connection,
@@ -35,16 +36,20 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 WEB_UI_DIR = PROJECT_ROOT / "web-ui"
 
 
-# Background Task for Periodic Price Updates
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app):
     bg_task = None
+    from modules.runtime_settings import runtime_settings
+    from core.observability.logger import get_logger
+    runtime_logger = get_logger("sovereign.runtime")
+
     if runtime_settings.embed_price_updater_in_web:
         runtime_logger.info(
             "Starting embedded background price updater",
             interval_seconds=runtime_settings.price_update_interval_seconds,
             batch_size=runtime_settings.price_update_batch_size,
         )
+        from modules.dependencies import update_prices_background
         bg_task = asyncio.create_task(update_prices_background())
         app.state.background_price_updater_task = bg_task
     else:
@@ -53,16 +58,28 @@ async def lifespan(app: FastAPI):
             standalone_worker="python -m worker.runtime",
         )
 
-    # Start the multi-worker WebSocket Redis Pub/Sub listener
+    # WebSocket Redis Pub/Sub listener
     from modules.dependencies import manager
     pubsub_task = asyncio.create_task(manager.listen_pubsub())
+
+    # Webhook delivery retry worker
+    from modules.webhook_dispatcher import start_retry_worker
+    webhook_retry_task = asyncio.create_task(start_retry_worker())
 
     try:
         yield
     finally:
+        # Tear down pub/sub
         pubsub_task.cancel()
         try:
             await pubsub_task
+        except asyncio.CancelledError:
+            pass
+
+        # Tear down webhook retry worker
+        webhook_retry_task.cancel()
+        try:
+            await webhook_retry_task
         except asyncio.CancelledError:
             pass
 
@@ -126,6 +143,7 @@ app.include_router(system_router)
 app.include_router(freshness_router)
 app.include_router(score_report_router)
 app.include_router(swarm_router)
+app.include_router(webhooks_router)
 
 static_dir = WEB_UI_DIR / "dist" if (WEB_UI_DIR / "dist").exists() else WEB_UI_DIR
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")

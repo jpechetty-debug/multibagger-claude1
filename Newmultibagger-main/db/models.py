@@ -240,3 +240,48 @@ class HoldoutResult(Base):
     wf_sharpe = Column(Float)
     sharpe_gap = Column(Float)
     overfitting_flag = Column(Integer, default=0)
+
+
+class WebhookSubscription(Base):
+    """One row per registered outbound webhook endpoint."""
+
+    __tablename__ = "webhook_subscriptions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(120), nullable=False)
+    url = Column(Text, nullable=False)
+    # 64-char hex HMAC secret — generated server-side, shown to caller once.
+    secret = Column(String(64), nullable=False)
+    # Comma-separated alert types; NULL = all.
+    event_filter = Column(Text, nullable=True)
+    is_active = Column(Integer, nullable=False, default=1)
+    max_failures = Column(Integer, nullable=False, default=5)
+    consecutive_failures = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, default=_utc_now, nullable=False)
+    updated_at = Column(DateTime, default=_utc_now, onupdate=_utc_now, nullable=False)
+
+
+class AlertDispatchLog(Base):
+    """Append-only delivery log — every dispatch attempt writes a row."""
+
+    __tablename__ = "alert_dispatch_log"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    subscription_id = Column(
+        Integer,
+        ForeignKey("webhook_subscriptions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    payload = Column(Text, nullable=False)          # full JSON we sent
+    http_status = Column(Integer, nullable=True)    # NULL on network error
+    # 'delivered' | 'failed' | 'pending'
+    status = Column(String(16), nullable=False, default="pending")
+    error_detail = Column(Text, nullable=True)
+    attempt_count = Column(Integer, nullable=False, default=0)
+    next_retry_at = Column(DateTime, nullable=True)
+    dispatched_at = Column(DateTime, nullable=False, default=_utc_now)
+
+    __table_args__ = (
+        Index("idx_adl_pending_retry", "status", "next_retry_at"),
+        Index("idx_adl_subscription", "subscription_id", "dispatched_at"),
+    )
