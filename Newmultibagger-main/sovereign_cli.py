@@ -20,7 +20,7 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, PROJECT_ROOT)
 
 from db.repository import get_connection
-from modules.data_service import MarketDataProvider
+from modules.data_layer.data_service import MarketDataProvider
 
 # Use a local proxy so tests can patch ``sovereign_cli.sqlite3.connect``
 # without mutating the global stdlib sqlite module.
@@ -187,10 +187,42 @@ async def cmd_rs_cleanup(args):
 # ══════════════════════════════════════════════════════════════════════════════
 
 async def cmd_ml_train(args):
-    """Train the XGBoost Meta-Model."""
+    """Train the XGBoost Meta-Model.
+
+    Uses run_automated_training() so the bootstrap fallback fires when PIT
+    data is insufficient (the common first-run case) and metadata is recorded.
+    Pass --bootstrap to force the proxy model without waiting for PIT data.
+    """
     print_header("ML Operations: Training")
-    from modules.hybrid_scoring import train_hybrid_model
-    train_hybrid_model()
+    bootstrap = getattr(args, "bootstrap", False)
+
+    if bootstrap:
+        from modules.hybrid_scoring import bootstrap_synthetic_model
+        ok = bootstrap_synthetic_model()
+        if ok:
+            print("✓ Bootstrap model saved to runtime/models/xgboost_meta_model.pkl")
+            print("  Replace with --force once PIT data is available.")
+        else:
+            print("✗ Bootstrap failed — check that multibaggers has ≥ 20 rows.")
+        return
+
+    from modules.ml_ops import run_automated_training
+    from modules.hybrid_scoring import load_walk_forward_report
+
+    success = run_automated_training()
+    if success:
+        wf = load_walk_forward_report() or {}
+        if wf.get("status") == "BOOTSTRAP":
+            print("✓ Bootstrap model ready (proxy target).")
+        elif wf.get("status") == "OK":
+            print(
+                f"✓ Model trained.  "
+                f"IC={wf.get('spearman_ic')}  "
+                f"hit_rate={wf.get('hit_rate')}  "
+                f"folds={wf.get('folds')}"
+            )
+    else:
+        print("✗ Training failed. Check logs for details.")
 
 async def cmd_ml_explain(args):
     """Explain a specific stock's score via SHAP."""
@@ -582,7 +614,8 @@ async def main():
     # ML Group
     ml_parser = subparsers.add_parser("ml", help="Machine Learning operations")
     ml_sub = ml_parser.add_subparsers(dest="command")
-    ml_sub.add_parser("train", help="Train meta-model")
+    ml_train = ml_sub.add_parser("train", help="Train meta-model")
+    ml_train.add_argument("--bootstrap", action="store_true", help="Force proxy model without waiting for PIT data")
     ml_explain = ml_sub.add_parser("explain", help="SHAP explainability")
     ml_explain.add_argument("--symbol", required=True)
 

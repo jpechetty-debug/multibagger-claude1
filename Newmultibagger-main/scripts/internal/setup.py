@@ -100,20 +100,28 @@ def seed_sample_data():
 
 def initialize_ml():
     print_step(4, "ML Model Initialization")
-    if os.path.exists("xgboost_meta_model.pkl"):
+
+    # Correct path: model lives under runtime/models/, not the project root.
+    model_path = os.path.join(PROJECT_ROOT, "runtime", "models", "xgboost_meta_model.pkl")
+    if os.path.exists(model_path):
         print("ℹ️  XGBoost model already exists. Skipping training.")
         return
 
     try:
-        from modules.hybrid_scoring import train_hybrid_model
+        from modules.ml_ops import run_automated_training
 
-        print("Attempting cold-start training...")
-        success = train_hybrid_model()
+        print("Attempting ML initialisation (PIT training → bootstrap fallback)…")
+        success = run_automated_training()
         if success:
-            print("✅ ML Model trained successfully.")
+            from modules.hybrid_scoring import load_walk_forward_report
+            wf = load_walk_forward_report() or {}
+            if wf.get("status") == "BOOTSTRAP":
+                print("✅ Bootstrap model saved (proxy target — will improve as PIT data accumulates).")
+                print(f"   Path: {model_path}")
+            else:
+                print(f"✅ ML Model trained.  IC={wf.get('spearman_ic')}  hit_rate={wf.get('hit_rate')}")
         else:
-            print("ℹ️  Cold-start training skipped (insufficient PIT data).")
-            print("   Run a full scan first to populate the database.")
+            print("⚠️  ML initialisation failed — check logs for details.")
     except ImportError:
         print("⚠️  ML modules (xgboost/shap) not found. Skipping ML init.")
     except Exception as e:

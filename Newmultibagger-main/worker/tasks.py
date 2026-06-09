@@ -81,7 +81,7 @@ def scan_single_stock(self, symbol: str, regime: str = "SIDEWAYS"):
             return {"symbol": symbol, "cached": True, **cached}
 
         # Use sync wrapper to avoid asyncio.run() loop-per-task anti-pattern
-        from modules.data_service import get_data_manager
+        from modules.data_layer.data_service import get_data_manager
         from modules.scoring import calculate_institutional_score
         from scripts.internal.screener import get_stock_data_sync
 
@@ -189,14 +189,27 @@ def run_full_scan(self):
 @app.task(name="worker.tasks.retrain_xgboost", time_limit=1800)
 @celery_task_timer("retrain_xgboost")
 def retrain_xgboost():
-    try:
-        from modules.hybrid_scoring import train_hybrid_model
+    """Retrain the XGBoost meta-model.
 
-        result = train_hybrid_model()
+    Delegates to run_automated_training() (not train_hybrid_model() directly)
+    so that:
+      1. Bootstrap fallback fires when PIT data is insufficient.
+      2. Training metadata is recorded to ml_metadata.
+      3. Walk-forward metrics are captured in the return value.
+    """
+    try:
+        from modules.ml_ops import run_automated_training
+        from modules.hybrid_scoring import load_walk_forward_report
+
+        success = run_automated_training()
+        wf = load_walk_forward_report() or {}
         return {
-            "status": "success",
+            "status": "success" if success else "skipped",
             "retrained_at": datetime.now().isoformat(),
-            "result": str(result),
+            "wf_status": wf.get("status"),
+            "spearman_ic": wf.get("spearman_ic"),
+            "hit_rate": wf.get("hit_rate"),
+            "folds": wf.get("folds"),
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -267,7 +280,7 @@ def prune_pit_data():
 @celery_task_timer("refresh_regime_cache")
 def refresh_regime_cache():
     try:
-        from modules.data_service import MarketDataProvider
+        from modules.data_layer.data_service import MarketDataProvider
 
         regime_data = MarketDataProvider().get_market_regime()
         cache.cache_regime(regime_data)
