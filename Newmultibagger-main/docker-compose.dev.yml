@@ -1,5 +1,15 @@
 # Sovereign AI Trading Engine v4.0 — Developer Override
 # Extends production compose to restore volume mounts and dev DB fallbacks.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Dev behaviour differences from production:
+#  - Live code reload via ./:/app bind mount
+#  - Local ./runtime/models is mounted instead of the named volume so
+#    `python scripts/train_hybrid_model.py --bootstrap` on the host is
+#    immediately visible inside all containers — no rebuild needed.
+#  - POSTGRES_PASSWORD has a safe fallback (sovereign_secret)
 
 version: "3.9"
 
@@ -13,15 +23,20 @@ services:
       DATABASE_URL: postgresql+psycopg://sovereign:${POSTGRES_PASSWORD:-sovereign_secret}@postgres:5432/sovereign_db
     volumes:
       - .:/app
+      # Override the named modeldata volume with a local bind mount so
+      # bootstrap runs on the host are instantly visible in the container.
+      - ./runtime/models:/app/runtime/models
 
   celery_worker:
     environment:
       DATABASE_URL: postgresql+psycopg://sovereign:${POSTGRES_PASSWORD:-sovereign_secret}@postgres:5432/sovereign_db
     volumes:
       - .:/app
+      - ./runtime/models:/app/runtime/models
 
   celery_beat:
     environment:
       DATABASE_URL: postgresql+psycopg://sovereign:${POSTGRES_PASSWORD:-sovereign_secret}@postgres:5432/sovereign_db
     volumes:
       - .:/app
+      - ./runtime/models:/app/runtime/models

@@ -54,6 +54,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    # ── modeldata volume: persists xgboost_meta_model.pkl across restarts
+    # and shares it with the worker/beat containers so all three see
+    # the same model file after Celery retrains it on Sunday.
+    volumes:
+      - modeldata:/app/runtime/models
     command: >
       python main.py
 
@@ -72,12 +77,14 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    volumes:
+      - modeldata:/app/runtime/models
     command: >
       celery -A worker.celery_app worker
       --loglevel=info
       --pool=prefork
       --concurrency=4
-      -Q screening,compute,llm,maintenance
+      -Q screening,compute,llm,maintenance,ml
 
   # ─── Celery Beat (Task Scheduler) ───
   celery_beat:
@@ -92,9 +99,16 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    volumes:
+      - modeldata:/app/runtime/models
     command: >
       celery -A worker.celery_app beat --loglevel=info
 
 volumes:
   pgdata:
   redisdata:
+  # Shared model artifact store — survives container restarts and image rebuilds.
+  # All three services (app, worker, beat) mount this at /app/runtime/models.
+  # When Celery retrains the XGBoost model on Sunday, the new pkl is immediately
+  # visible to the app container without a restart.
+  modeldata:

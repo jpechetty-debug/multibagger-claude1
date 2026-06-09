@@ -43,8 +43,21 @@ jobs:
           python-version: "3.11"
           cache: pip
       - run: pip install -r requirements.txt -r requirements-dev.txt
+
+      # ── Ensure runtime/models exists and has a working model ──────────────
+      # Without this, any test that imports hybrid_scoring and calls
+      # model_is_trained() or predict_and_explain() will silently return None
+      # predictions, masking real failures. bootstrap exits 0 even with no
+      # DB data (multibaggers may be empty in CI), so this never breaks the
+      # build — it just ensures the directory and a minimal model exist.
+      - name: Bootstrap ML model for tests
+        run: |
+          mkdir -p runtime/models
+          python scripts/train_hybrid_model.py --bootstrap || true
+
       - name: Run unit tests (exclude live/integration)
         run: pytest -m "not live and not integration" --cov-report=xml --cov-report=term-missing -q
+
       - uses: codecov/codecov-action@v4
         with:
           files: coverage.xml
@@ -100,4 +113,3 @@ jobs:
               sys.exit(1)
           print(f"All Python files OK.")
           PYEOF
-
