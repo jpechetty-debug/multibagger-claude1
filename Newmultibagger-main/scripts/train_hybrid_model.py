@@ -203,7 +203,7 @@ Examples
             folds=wf.get("folds"),
             wf_status=wf.get("status"),
         )
-        print(f"✓ Model saved to {model_dir / 'xgboost_meta_model.pkl'}")
+        print(f"[OK] Model saved to {model_dir / 'xgboost_meta_model.pkl'}")
         if wf.get("status") == "BOOTSTRAP":
             print("  ⚠  Bootstrap model (proxy target) — will improve as PIT data accumulates.")
         elif wf.get("status") == "OK":
