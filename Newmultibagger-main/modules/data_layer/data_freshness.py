@@ -72,6 +72,15 @@ class UniverseQuality:
     alert_message: str | None
 
 
+# ── Internal DB helpers ──────────────────────────────────────────────────────
+
+def _get_stocks_connection():
+    return get_db_connection("stocks.db")
+
+def _get_cache_connection():
+    return get_db_connection("data_cache.db")
+
+
 # ── Phase 4.5: Actual Provider Call Tracking ─────────────────────────────────
 
 class ProviderCallTracker:
@@ -177,14 +186,6 @@ class ProviderCallTracker:
 provider_tracker = ProviderCallTracker()
 
 
-# ── Internal DB helpers ──────────────────────────────────────────────────────
-
-def _get_stocks_connection():
-    return get_db_connection("stocks.db")
-
-
-def _get_cache_connection():
-    return get_db_connection("data_cache.db")
 
 
 def _date_age_days(date_str: str | None) -> int:
