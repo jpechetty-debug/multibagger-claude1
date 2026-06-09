@@ -19,6 +19,7 @@ from app_routes.trading import router as trading_router
 from app_routes.swarm import router as swarm_router
 from app_routes.webhooks import router as webhooks_router
 from app_routes.ml import router as ml_router
+from app_routes.factor_exposure import router as factor_exposure_router
 from modules.connections import (
     _run_sqlite_write_with_retry_sync,
     get_connection,
@@ -181,6 +182,7 @@ app.include_router(score_report_router)
 app.include_router(swarm_router)
 app.include_router(webhooks_router)
 app.include_router(ml_router)
+app.include_router(factor_exposure_router)
 
 static_dir = WEB_UI_DIR / "dist" if (WEB_UI_DIR / "dist").exists() else WEB_UI_DIR
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
