@@ -74,6 +74,16 @@ app.conf.update(
             "args": (),
             "options": {"queue": "compute"},
         },
+        "ml-retrain-weekly": {
+            "task": "worker.tasks.retrain_xgboost",
+            "schedule": crontab(hour="2", minute="0", day_of_week="0"),
+            "options": {"queue": "ml"},
+        },
+        "ml-batch-inference-nightly": {
+            "task": "worker.tasks.batch_ml_inference",
+            "schedule": crontab(hour="6", minute="30", day_of_week="1-5"),
+            "options": {"queue": "ml"},
+        },
     },
     # Task Routing
     task_routes={
