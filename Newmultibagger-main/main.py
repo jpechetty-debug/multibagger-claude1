@@ -59,6 +59,41 @@ async def lifespan(app):
             standalone_worker="python -m worker.runtime",
         )
 
+    # ── ML model cold-start bootstrap ─────────────────────────────────────────
+    # Ensures xgboost_meta_model.pkl always exists before the first request.
+    # Runs in a background thread so it never delays server startup.
+    # run_automated_training() tries PIT data first, falls back to bootstrap.
+    def _bootstrap_ml_if_needed():
+        try:
+            from modules.hybrid_scoring import model_is_trained
+            if model_is_trained():
+                return  # nothing to do — model already on disk
+            runtime_logger.info(
+                "ML model not found at startup — running bootstrap in background",
+                hint="Replace with full model via POST /api/ml/train",
+            )
+            from modules.ml_ops import run_automated_training
+            success = run_automated_training()
+            if success:
+                from modules.hybrid_scoring import load_walk_forward_report
+                wf = load_walk_forward_report() or {}
+                runtime_logger.info(
+                    "ML startup bootstrap complete",
+                    wf_status=wf.get("status"),
+                    spearman_ic=wf.get("spearman_ic"),
+                )
+            else:
+                runtime_logger.warning(
+                    "ML startup bootstrap failed",
+                    hint="Check multibaggers has >= 20 rows, then POST /api/ml/train",
+                )
+        except Exception as exc:
+            runtime_logger.warning("ML startup bootstrap raised an exception", error=str(exc))
+
+    import concurrent.futures
+    _ml_boot_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="ml-boot")
+    _ml_boot_executor.submit(_bootstrap_ml_if_needed)
+
     # WebSocket Redis Pub/Sub listener
     from modules.dependencies import manager
     pubsub_task = asyncio.create_task(manager.listen_pubsub())
