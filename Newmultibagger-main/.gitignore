@@ -1,18 +1,7 @@
-error_log.txt
-error_log_utf8.txt
-runtime/models/
-xgboost_walk_forward.json
-*.bm25.pkl
-graphify-out/
-
-error_log.txt
+﻿error_log.txt
 error_log_utf8.txt
 
-# -- ML model artifacts --------------------------------------------------------
-# Binary model files are large and environment-specific � never commit them.
-# The directory itself IS tracked via runtime/models/.gitkeep so a fresh
-# `git clone` has the directory and model_is_trained() can write to it
-# without needing a mkdir before first use.
+# ML model artifacts — directory tracked, binaries ignored
 runtime/models/*
 !runtime/models/.gitkeep
 
