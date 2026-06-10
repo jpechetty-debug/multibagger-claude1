@@ -485,6 +485,9 @@ async def cmd_paper_trade(args):
     with open(SIGNALS_LOG, "w") as f:
         json.dump(history, f, indent=4)
 
+    from modules.dependencies import manager
+    await manager.broadcast({"type": "signals", "data": history})
+
     print(f"\n✅ REBALANCE SIGNAL GENERATED: {regime}")
     print(f"Top Picks: {', '.join(picks[:3])}...")
 

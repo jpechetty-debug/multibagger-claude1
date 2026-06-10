@@ -91,18 +91,17 @@ async def get_ws_token(api_key: str = Depends(get_api_key)):
 @router.websocket("/ws/signals")
 async def websocket_signals(websocket: WebSocket, api_key: str = Depends(get_api_key)):
     """Real-time signal broadcast via websocket."""
-    await websocket.accept()
+    from modules.dependencies import manager
+    await manager.connect(websocket)
     try:
         while True:
-            if _SIGNALS_FILE.exists():
-                with open(_SIGNALS_FILE, encoding="utf-8") as f:
-                    signals = json.load(f)
-                await websocket.send_json(signals)
-            await asyncio.sleep(5)
+            await websocket.receive_text()   # keep-alive, disconnect detection
     except WebSocketDisconnect:
         api_logger.info("Signal websocket client disconnected")
+        manager.disconnect(websocket)
     except Exception as e:
         api_logger.error("Signal websocket error", error=str(e))
+        manager.disconnect(websocket)
 
 
 @router.websocket("/ws/prices")
