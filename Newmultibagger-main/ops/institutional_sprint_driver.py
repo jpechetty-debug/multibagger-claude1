@@ -53,7 +53,7 @@ def save_json(path: Path, payload: dict) -> None:
 def read_text(path: Path) -> str:
     if not path.exists():
         return ""
-    return path.read_text(encoding="utf-8")
+    return path.read_text(encoding="utf-8", errors="ignore")
 
 
 def contains(path: Path, pattern: str) -> bool:

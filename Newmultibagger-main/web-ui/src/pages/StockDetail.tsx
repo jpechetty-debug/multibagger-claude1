@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, BrainCircuit, Activity, BarChart4, Heart, Printer, ShieldAlert, Database } from 'lucide-react'
+import { ArrowLeft, BrainCircuit, Activity, BarChart4, Heart, Printer, ShieldAlert, Database, Download } from 'lucide-react'
 import {
   LineChart,
   Line,
@@ -111,6 +111,16 @@ export function StockDetail() {
         >
           <Heart size={14} className={watched ? 'fill-brand-rose' : ''} />
           {watched ? 'Watchlisted' : 'Watch'}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            api.downloadPdfReport(stock.symbol).catch(err => alert(err.message))
+          }}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-border text-xs font-mono font-bold uppercase tracking-widest text-brand-text-dim hover:border-brand-accent/40 hover:text-brand-accent transition-colors touch-target"
+        >
+          <Download size={14} />
+          Tearsheet
         </button>
         <button
           type="button"

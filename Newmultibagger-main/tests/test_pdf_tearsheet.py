@@ -105,6 +105,7 @@ async def test_missing_html_triggers_generation(tmp_path, monkeypatch):
 
     fake_doc.write_pdf.side_effect = _fake_write_pdf
 
+    import modules.reporting.html_report
     with patch(
         "modules.reporting.html_report.generate_premium_html_report",
         side_effect=_fake_generate,
@@ -231,8 +232,13 @@ async def test_pdf_route_returns_503_when_weasyprint_missing():
         raise RuntimeError("WeasyPrint is not installed.")
 
     with patch(
-        "modules.symbol_utils.normalize_symbol", side_effect=lambda s: s + ".NS"
+        # normalize_symbol is imported at module level in public.py
+        # → patch at the call site in that module.
+        "app_routes.public.normalize_symbol", side_effect=lambda s: s + ".NS"
     ), patch(
+        # The route does: from modules.reporting.pdf_tearsheet import generate_pdf_tearsheet
+        # inside the function body → Python binds the name in that local scope each call,
+        # so we must patch the source function at its defining module.
         "modules.reporting.pdf_tearsheet.generate_pdf_tearsheet",
         side_effect=_mock_pdf_gen,
     ):
@@ -272,7 +278,7 @@ async def test_pdf_route_returns_200_with_file(tmp_path):
         return str(pdf_file)
 
     with patch(
-        "modules.symbol_utils.normalize_symbol", side_effect=lambda s: "HDFC.NS"
+        "app_routes.public.normalize_symbol", side_effect=lambda s: "HDFC.NS"
     ), patch(
         "modules.reporting.pdf_tearsheet.generate_pdf_tearsheet",
         side_effect=_mock_pdf_gen,

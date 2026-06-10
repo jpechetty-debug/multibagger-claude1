@@ -200,7 +200,7 @@ async def get_stock_report_markdown(
 async def get_stock_report_html(request: Request, symbol: str):
     """Serve the premium HTML report with cache busting."""
     try:
-        from modules.html_report import generate_premium_html_report
+        from modules.reporting.html_report import generate_premium_html_report
 
         normalized_symbol = normalize_symbol(symbol)
         path = await generate_premium_html_report(normalized_symbol)

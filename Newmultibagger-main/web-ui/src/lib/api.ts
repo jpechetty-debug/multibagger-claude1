@@ -265,6 +265,26 @@ export const api = {
   getSwarmAlerts: async (): Promise<SwarmAlert[]> => {
     return fetchJson<SwarmAlert[]>('/swarm/alerts')
   },
+
+  downloadPdfReport: async (symbol: string): Promise<void> => {
+    const apiKey = import.meta.env.VITE_SOVEREIGN_API_KEY?.trim()
+    const requestInit = apiKey ? { headers: { [API_KEY_HEADER]: apiKey } } : undefined
+    
+    const response = await fetch(`${BASE_URL}/api/reports/pdf/${symbol}`, requestInit)
+    if (!response.ok) {
+      throw new ApiError(`Failed to download PDF for ${symbol}`, response.status)
+    }
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.style.display = 'none'
+    a.href = url
+    a.download = `${symbol}_tearsheet.pdf`
+    document.body.appendChild(a)
+    a.click()
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+  },
 }
 
 export type { MarketRegimeData, SignalData }

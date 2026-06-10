@@ -20,6 +20,7 @@ from app_routes.swarm import router as swarm_router
 from app_routes.webhooks import router as webhooks_router
 from app_routes.ml import router as ml_router
 from app_routes.factor_exposure import router as factor_exposure_router
+from app_routes.liquidity_sim import router as liquidity_sim_router
 from modules.connections import (
     _run_sqlite_write_with_retry_sync,
     get_connection,
@@ -183,9 +184,50 @@ app.include_router(swarm_router)
 app.include_router(webhooks_router)
 app.include_router(ml_router)
 app.include_router(factor_exposure_router)
+app.include_router(liquidity_sim_router)
 
 static_dir = WEB_UI_DIR / "dist" if (WEB_UI_DIR / "dist").exists() else WEB_UI_DIR
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+# ── Institutional OMS Endpoints ─────────────────────────────────────────────
+@app.post("/api/order")
+async def place_order(order_req: dict):
+    from modules.risk_compat import check_kill_switch, validate_var_budget, validate_correlation_risk
+    from modules.execution import reconciler
+    
+    if check_kill_switch():
+        log_rejected_trade(order_req, "kill_switch")
+        return {"status": "rejected", "reason": "kill_switch"}
+    if not validate_var_budget():
+        log_rejected_trade(order_req, "var_budget")
+        return {"status": "rejected", "reason": "var_budget"}
+    if not validate_correlation_risk():
+        log_rejected_trade(order_req, "correlation_risk")
+        return {"status": "rejected", "reason": "correlation_risk"}
+
+    return reconciler.submit_order(order_req)
+
+def log_rejected_trade(order: dict, reason: str):
+    import csv
+    with open("rejected_trades.csv", "a") as f:
+        csv.writer(f).writerow([order.get("symbol"), reason])
+
+@app.get("/api/trades/open")
+async def get_open_trades():
+    from modules.tracking.tracker import PortfolioTracker
+    return PortfolioTracker().get_open_positions().to_dict(orient="records")
+
+@app.get("/api/trades/history")
+async def get_trade_history():
+    from modules.tracking.tracker import PortfolioTracker
+    return PortfolioTracker().get_trade_history().to_dict(orient="records")
+
+@app.get("/api/rejections")
+async def get_rejections():
+    import os
+    if os.path.exists("rejected_trades.csv"):
+        return {"status": "ok", "has_data": True}
+    return {"status": "ok"}
 
 if __name__ == "__main__":
     import uvicorn
