@@ -222,6 +222,87 @@ async def get_stock_report_html(request: Request, symbol: str):
         ) from exc
 
 
+# ---------------------------------------------------------------------------
+# Item 2 — PDF Tearsheet
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/api/reports/pdf/{symbol}",
+    summary="Download PDF Tearsheet",
+    description=(
+        "Generates (or returns cached) a print-optimised A4 landscape PDF tearsheet "
+        "for *symbol*. The PDF is derived from the premium HTML audit report. "
+        "WeasyPrint must be installed in the environment (see requirements.txt)."
+    ),
+    response_class=FileResponse,
+    responses={
+        200: {
+            "content": {"application/pdf": {}},
+            "description": "PDF tearsheet file.",
+            "headers": {
+                "Content-Disposition": {
+                    "description": "attachment; filename=<SYMBOL>_tearsheet.pdf"
+                }
+            },
+        },
+        404: {"description": "Symbol not found or HTML report could not be generated."},
+        503: {"description": "WeasyPrint is not installed on this server."},
+    },
+)
+@limiter.limit("5/minute")
+async def get_stock_report_pdf(request: Request, symbol: str):
+    """
+    Download a PDF tearsheet for *symbol*.
+
+    The endpoint:
+    1. Normalises the symbol (adds .NS suffix if missing).
+    2. Ensures the HTML audit report is up-to-date (generating it if needed).
+    3. Converts the HTML to a print-ready A4 landscape PDF via WeasyPrint.
+    4. Streams the PDF back as an attachment.
+
+    PDFs are cached next to their HTML counterparts and regenerated automatically
+    when the HTML source is newer.
+    """
+    try:
+        from modules.reporting.pdf_tearsheet import generate_pdf_tearsheet
+
+        normalized_symbol = normalize_symbol(symbol)
+        pdf_path = await generate_pdf_tearsheet(normalized_symbol)
+
+        if not os.path.exists(pdf_path):
+            raise HTTPException(status_code=500, detail="PDF generation produced no file.")
+
+        symbol_bare = normalized_symbol.split(".")[0].upper()
+        filename = f"{symbol_bare}_tearsheet.pdf"
+
+        return FileResponse(
+            pdf_path,
+            media_type="application/pdf",
+            filename=filename,
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                # Clients may cache for 5 minutes — mirrors HTML cache TTL
+                "Cache-Control": "public, max-age=300",
+            },
+        )
+
+    except RuntimeError as exc:
+        # WeasyPrint not installed
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    except HTTPException:
+        raise
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate PDF tearsheet for {symbol}: {exc}",
+        ) from exc
+
+
 @router.get("/api/performance", response_model=PerformanceResponse)
 def get_performance():
     """Fetch strategy performance vs. benchmark."""

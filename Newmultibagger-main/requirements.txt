@@ -41,6 +41,16 @@ requests==2.32.3
 aiohttp==3.11.10
 httpx==0.27.2
 
+# ── Reporting / PDF ───────────────────────────────────────────────────────────
+# Item 2: PDF Tearsheets — WeasyPrint converts the premium HTML audit report to
+# a print-optimised A4 landscape PDF served via GET /api/reports/pdf/{symbol}.
+#
+# System dependencies required (add to Dockerfile / apt layer):
+#   apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 libgdk-pixbuf2.0-0 \
+#                      libffi-dev shared-mime-info
+#
+weasyprint>=62.0
+
 # ── Utilities ─────────────────────────────────────────────────────────────────
 python-dotenv==1.0.1
 tenacity==9.0.0
