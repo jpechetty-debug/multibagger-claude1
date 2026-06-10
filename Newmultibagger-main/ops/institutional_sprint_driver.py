@@ -229,7 +229,7 @@ def evaluate_resilience(rubric_item: dict, shared: dict) -> GateResult:
 def evaluate_risk(rubric_item: dict, shared: dict) -> GateResult:
     checks: list[CheckResult] = []
     config_text = read_text(ROOT / "config.py")
-    risk_text = read_text(ROOT / "modules" / "risk.py")
+    risk_text = read_text(ROOT / "modules" / "risk_compat.py")
     main_text = read_text(ROOT / "main.py")
 
     has_thresholds = all(
@@ -263,7 +263,7 @@ def evaluate_risk(rubric_item: dict, shared: dict) -> GateResult:
             "Risk governor control surface",
             2.5 if has_core_methods else 0.0,
             2.5,
-            "modules/risk.py",
+            "modules/risk_compat.py",
         )
     )
 
@@ -304,7 +304,7 @@ def evaluate_risk(rubric_item: dict, shared: dict) -> GateResult:
             "Black-box rejection telemetry",
             1.0 if blackbox_ok else 0.0,
             1.0,
-            "modules/risk.py + main.py",
+            "modules/risk_compat.py + main.py",
         )
     )
 
@@ -686,7 +686,7 @@ def main() -> None:
                     "main.py",
                     "config.py",
                     "report_generator.py",
-                    "modules/risk.py",
+                    "modules/risk_compat.py",
                     "modules/retry_utils.py",
                     "modules/tracker.py",
                 ]
