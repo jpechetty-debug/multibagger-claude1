@@ -140,11 +140,26 @@ def factor_metadata() -> dict[str, Any]:
     """Return availability metadata — useful for health-check / debug endpoints."""
     df = _load_raw()
     if df.empty:
-        return {"available": False, "rows": 0, "factors": []}
+        return {"available": False, "rows": 0, "factors": [], "last_date": None}
     return {
         "available": True,
         "rows": len(df),
         "start": str(df.index.min().date()),
         "end": str(df.index.max().date()),
         "factors": [c for c in FACTOR_COLUMNS if c in df.columns],
+        "last_date": str(df.index.max().date()), # ensure last_date is exposed
     }
+
+
+def factor_returns_are_stale(max_age_days: int = 45) -> bool:
+    """Return True if factor returns CSV is missing or older than max_age_days."""
+    if not FACTOR_CSV_PATH.exists():
+        return True
+        
+    df = _load_raw()
+    if df.empty:
+        return True
+        
+    last_dt = df.index.max().date()
+    age_days = (date.today() - last_dt).days
+    return age_days > max_age_days

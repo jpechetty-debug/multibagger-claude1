@@ -375,3 +375,101 @@ def batch_ml_inference():
     except Exception as exc:
         logger.error("batch_ml_inference.failed", error=str(exc))
         return {"status": "error", "message": str(exc)}
+
+@app.task(name="worker.tasks.check_factor_data_freshness", time_limit=60)
+def check_factor_data_freshness():
+    """Check India factor returns CSV freshness and fire a DATA_STALE webhook
+    if the file is missing or older than FACTOR_STALENESS_DAYS (default 45).
+
+    Runs nightly. If stale, publishes a DATA_STALE event via dispatch_alerts()
+    so any webhook subscriber watching DATA_STALE receives the alert.
+    Also logs a _log.critical() so the structured log triggers PagerDuty /
+    Slack alerting via the ops log pipeline.
+    """
+    from modules.india_factor_loader import (
+        factor_returns_are_stale,
+        FACTOR_CSV_PATH,
+        FACTOR_COLUMNS,
+    )
+    import asyncio
+    import os
+    from pathlib import Path
+    from datetime import date
+
+    max_age = int(os.getenv("FACTOR_STALENESS_DAYS", "45"))
+    stale = factor_returns_are_stale(max_age_days=max_age)
+
+    if not stale:
+        logger.info(
+            "factor_data_fresh",
+            csv=str(FACTOR_CSV_PATH),
+            max_age_days=max_age,
+        )
+        return {"status": "fresh"}
+
+    # ── 1. Structured log at CRITICAL so it triggers ops alerting ────────────
+    csv_exists = FACTOR_CSV_PATH.exists()
+    if csv_exists:
+        import pandas as pd
+        df = pd.read_csv(FACTOR_CSV_PATH)
+        last_date = df["date"].max() if not df.empty else "unknown"
+        age_days = (date.today() - date.fromisoformat(str(last_date))).days
+        msg = (
+            f"India factor returns are {age_days} days old "
+            f"(last: {last_date}, threshold: {max_age}d). "
+            f"Run: python scripts/build_india_factors.py --update"
+        )
+        missing_cols = [c for c in FACTOR_COLUMNS if c not in df.columns]
+        detail = {
+            "last_date": str(last_date),
+            "age_days": age_days,
+            "threshold_days": max_age,
+            "csv_path": str(FACTOR_CSV_PATH),
+            "missing_columns": missing_cols,
+        }
+    else:
+        msg = (
+            f"India factor returns CSV not found at {FACTOR_CSV_PATH}. "
+            f"Run: python scripts/build_india_factors.py"
+        )
+        detail = {
+            "csv_path": str(FACTOR_CSV_PATH),
+            "age_days": None,
+            "threshold_days": max_age,
+            "missing_columns": FACTOR_COLUMNS,
+        }
+
+    logger.critical("factor_data_stale", message=msg, **detail)
+
+    # ── 2. Webhook dispatch (DATA_STALE event) ────────────────────────────────
+    alert_payload = [
+        {
+            "type": "DATA_STALE",
+            "severity": "high",
+            "source": "factor_data_check",
+            "message": msg,
+            **detail,
+        }
+    ]
+    try:
+        asyncio.run(_dispatch_factor_alert(alert_payload))
+    except RuntimeError:
+        # Already inside an event loop (e.g. during testing) — use nest_asyncio
+        import nest_asyncio
+        nest_asyncio.apply()
+        asyncio.get_event_loop().run_until_complete(
+            _dispatch_factor_alert(alert_payload)
+        )
+    except Exception as exc:
+        logger.error("factor_data_stale_webhook_failed", error=str(exc))
+
+    return {"status": "stale", **detail}
+
+
+async def _dispatch_factor_alert(alerts: list[dict]) -> None:
+    """Thin async wrapper so the sync Celery task can call dispatch_alerts."""
+    try:
+        from modules.webhook_dispatcher import dispatch_alerts
+        await dispatch_alerts(alerts)
+    except Exception as exc:
+        logger.error("dispatch_alerts_failed", error=str(exc))

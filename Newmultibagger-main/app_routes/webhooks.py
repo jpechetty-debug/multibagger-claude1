@@ -28,7 +28,7 @@ _log = get_logger("sovereign.webhooks_api")
 
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
 
-_VALID_EVENT_TYPES = {"STOP_LOSS", "THESIS_BREAK", "PRICE_DRIFT", "REGIME_SHIFT"}
+_VALID_EVENT_TYPES = {"STOP_LOSS", "THESIS_BREAK", "PRICE_DRIFT", "REGIME_SHIFT", "DATA_STALE"}
 
 
 # ── Pydantic schemas ──────────────────────────────────────────────────────────

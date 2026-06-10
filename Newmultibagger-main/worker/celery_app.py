@@ -84,6 +84,12 @@ app.conf.update(
             "schedule": crontab(hour="6", minute="30", day_of_week="1-5"),
             "options": {"queue": "ml"},
         },
+        "factor-freshness-check": {
+            "task": "worker.tasks.check_factor_data_freshness",
+            "schedule": crontab(hour="3", minute="30"),   # 03:30 UTC daily
+            "args": (),
+            "options": {"queue": "maintenance"},
+        },
     },
     # Task Routing
     task_routes={
