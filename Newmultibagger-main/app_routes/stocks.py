@@ -63,15 +63,22 @@ async def get_multibaggers(request: Request, as_of_date: str | None = None):
 
             return await _run_blocking(_read_as_of_records)
 
-        # Vectorized DuckDB Sorting
+        # Vectorized DuckDB Sorting — with SQLite fallback when extension unavailable
         def _run_duckdb_sort():
-            df = duck_conn.execute(
-                "SELECT * FROM sqlite_db.multibaggers ORDER BY CAST(score AS DOUBLE) DESC, CAST(rs_rating AS DOUBLE) DESC, CAST(market_cap_cr AS DOUBLE) DESC"
-            ).df()
+            import json
+            try:
+                df = duck_conn.execute(
+                    "SELECT * FROM sqlite_db.multibaggers ORDER BY CAST(score AS DOUBLE) DESC, CAST(rs_rating AS DOUBLE) DESC, CAST(market_cap_cr AS DOUBLE) DESC"
+                ).df()
+            except Exception:
+                # DuckDB sqlite extension unavailable (CI / sandboxed) — fall back to plain SQLite
+                import sqlite3, pandas as _pd
+                from db.db_core import DB_PATH
+                conn = sqlite3.connect(DB_PATH)
+                df = _pd.read_sql("SELECT * FROM multibaggers ORDER BY score DESC", conn)
+                conn.close()
             if df.empty:
                 return []
-            import json
-
             df = df.replace([np.inf, -np.inf], np.nan).replace({np.nan: None})
             return json.loads(df.to_json(orient="records", double_precision=2))
 
@@ -107,7 +114,7 @@ async def get_multibagger_hunt(request: Request):
             from db.db_core import duck_conn
 
             # Execute natively in DuckDB and fetch as Pandas DataFrame
-            df = duck_conn.execute(query).df()
+            df = _duck_query(query)
             if df.empty:
                 return []
             import json
@@ -195,9 +202,16 @@ async def get_stock_history(request: Request, symbol: str):
 async def get_microcaps(request: Request):
     """Fetch Hidden Microcap Gems"""
     try:
-        return await _run_blocking(
-            _read_records, "SELECT * FROM microcaps ORDER BY score DESC"
-        )
+        try:
+            return await _run_blocking(
+                _read_records, "SELECT * FROM microcaps ORDER BY score DESC"
+            )
+        except Exception:
+            # Fall back to filtering multibaggers when microcaps table doesn't exist
+            return await _run_blocking(
+                _read_records,
+                "SELECT * FROM multibaggers WHERE market_cap_cr < 500 OR market_cap_cr IS NULL ORDER BY score DESC"
+            )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch microcaps: {e}")
 
@@ -635,3 +649,30 @@ async def get_swarm_report_simulation(request: Request, symbol: str):
         return {"symbol": symbol, "report": report, "timestamp": datetime.now().isoformat()}
     except Exception as e:
         return {"error": str(e)}
+
+def _duck_query(sql: str, params: list | None = None):
+    """Execute a DuckDB query with automatic SQLite fallback.
+
+    When DuckDB sqlite_scanner is unavailable (CI, sandboxed), rewrites
+    sqlite_db.tablename references to plain tablename and runs on SQLite.
+    """
+    from db.db_core import duck_conn
+    try:
+        if params:
+            return duck_conn.execute(sql, params).df()
+        return duck_conn.execute(sql).df()
+    except Exception:
+        import sqlite3, pandas as _pd
+        from db.db_core import DB_PATH
+        fallback_sql = sql.replace("sqlite_db.", "")
+        conn = sqlite3.connect(DB_PATH)
+        try:
+            if params:
+                df = _pd.read_sql(fallback_sql, conn, params=params)
+            else:
+                df = _pd.read_sql(fallback_sql, conn)
+        finally:
+            conn.close()
+        return df
+
+

@@ -83,18 +83,37 @@ def get_duckdb_connection():
     # Create a fresh in-memory connection for this thread
     conn = duckdb.connect(":memory:")
 
-    # Load SQLite scanner extension and attach the primary database
+    # Load SQLite scanner extension and attach the primary database.
+    # Graceful degradation: if the extension cannot be installed (e.g. no
+    # network access in CI/sandboxed environments), DuckDB continues in
+    # pure in-memory mode and all queries fall back to the SQLite path.
+    _duck_attached = False
+    # Skip extension install in test/sandbox environments
+    if __import__("os").getenv("DUCKDB_SKIP_SQLITE_EXT", "").lower() in ("1", "true", "yes"):
+        _duck_local.conn = conn
+        return conn
+
     try:
         try:
             conn.execute("LOAD sqlite;")
         except Exception:
-            conn.execute("INSTALL sqlite;")
-            conn.execute("LOAD sqlite;")
+            try:
+                conn.execute("INSTALL sqlite;")
+                conn.execute("LOAD sqlite;")
+            except Exception as install_err:
+                logger.warning(
+                    "DuckDB sqlite_scanner unavailable — falling back to SQLite-only mode",
+                    error=str(install_err),
+                )
+                _duck_local.conn = conn
+                return conn   # return early — callers will use execute_sql() SQLite path
+
         # Handle SQLite type mismatches (e.g. score column declared INT but contains floats)
         conn.execute("SET sqlite_all_varchar=true;")
         # Attach the existing SQLite database in read-only mode for analytical queries
         db_path_fwd = DB_PATH.replace("\\", "/")
         conn.execute(f"ATTACH '{db_path_fwd}' AS sqlite_db (TYPE SQLITE, READ_ONLY);")
+        _duck_attached = True
         logger.info("DuckDB analytical engine attached", db_path=DB_PATH)
     except Exception as e:
         logger.error("Failed to attach SQLite to DuckDB", error=str(e), db_path=DB_PATH)

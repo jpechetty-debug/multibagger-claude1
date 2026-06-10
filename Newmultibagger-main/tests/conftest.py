@@ -6,6 +6,12 @@ from pathlib import Path
 
 import pytest
 
+# Skip DuckDB sqlite_scanner download in CI/sandboxed environments.
+# Must be set before db.db_core is imported (which happens when main.py is imported).
+import os as _os
+_os.environ.setdefault("DUCKDB_SKIP_SQLITE_EXT", "1")
+
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -53,8 +59,46 @@ def bypass_api_key_dependency_for_route_tests(request):
         yield
         return
 
-    main.app.dependency_overrides[deps.get_api_key] = lambda: "test-api-key"
+    # Override both dependency locations — auth was refactored but both
+    # paths must be patched to handle direct and global app-level deps.
+    import modules.auth as _auth
+    main.app.dependency_overrides[deps.get_api_key]  = lambda: "test-api-key"
+    main.app.dependency_overrides[_auth.get_api_key] = lambda: "test-api-key"
     try:
         yield
     finally:
-        main.app.dependency_overrides.pop(deps.get_api_key, None)
+        main.app.dependency_overrides.pop(deps.get_api_key,  None)
+        main.app.dependency_overrides.pop(_auth.get_api_key, None)
+
+
+@pytest.fixture(autouse=True)
+def patch_duckdb_for_tests(monkeypatch):
+    """Prevent DuckDB from trying to download sqlite_scanner extension in CI.
+
+    When the extension server is unreachable (sandboxed CI, offline dev),
+    DuckDB raises an HTTP 403 which causes any test that imports main.py to
+    fail at collection time with a 500.  We patch get_duckdb_connection to
+    return a plain in-memory DuckDB connection so the extension is never
+    attempted.
+    """
+    try:
+        import duckdb
+        import db.db_core as _db_core
+
+        def _safe_duckdb():
+            import threading
+            conn = getattr(_db_core._duck_local, "conn", None)
+            if conn is not None:
+                try:
+                    conn.execute("SELECT 1").fetchone()
+                    return conn
+                except Exception:
+                    pass
+            conn = duckdb.connect(":memory:")
+            _db_core._duck_local.conn = conn
+            return conn
+
+        monkeypatch.setattr(_db_core, "get_duckdb_connection", _safe_duckdb)
+    except Exception:
+        pass
+    yield

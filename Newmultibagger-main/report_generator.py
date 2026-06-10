@@ -30,6 +30,15 @@ def _read_verified_cache(path: Path) -> str | None:
     if not path.exists() or not sig_path.exists():
         return None
 
+def _write_signed_cache(path, content: str) -> None:
+    """Write content to cache file and write a companion .sha256 signature."""
+    import hashlib
+    Path(path).write_text(content, encoding="utf-8")
+    sig = hashlib.sha256(content.encode("utf-8")).hexdigest()
+    Path(str(path) + ".sha256").write_text(sig, encoding="utf-8")
+
+
+
     content = path.read_text(encoding="utf-8")
     expected = sig_path.read_text(encoding="utf-8").strip()
     if expected == _sha256(content):

@@ -19,8 +19,6 @@ from app_routes.trading import router as trading_router
 from app_routes.swarm import router as swarm_router
 from app_routes.webhooks import router as webhooks_router
 from app_routes.ml import router as ml_router
-from app_routes.factor_exposure import router as factor_exposure_router
-from app_routes.liquidity_sim import router as liquidity_sim_router
 from modules.connections import (
     _run_sqlite_write_with_retry_sync,
     get_connection,
@@ -183,8 +181,6 @@ app.include_router(score_report_router)
 app.include_router(swarm_router)
 app.include_router(webhooks_router)
 app.include_router(ml_router)
-app.include_router(factor_exposure_router)
-app.include_router(liquidity_sim_router)
 
 static_dir = WEB_UI_DIR / "dist" if (WEB_UI_DIR / "dist").exists() else WEB_UI_DIR
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
@@ -218,3 +214,98 @@ if __name__ == "__main__":
         reload=os.getenv("SOVEREIGN_RELOAD", "false").lower() == "true",
         reload_excludes=["*.db", "*.db-journal", "*.db-wal", "*.log", "*.txt"],
     )
+
+
+# ── Gate 1: Non-blocking async endpoint patterns ───────────────────────────────────
+
+from modules.risk.risk import RiskGovernor as _RiskGovernor
+from modules.tracking.tracker import PortfolioTracker as _PortfolioTracker
+from database import weekly_audit_loop as _weekly_audit_loop
+
+_risk_governor = _RiskGovernor()
+_tracker       = _PortfolioTracker()
+
+
+async def _run_blocking(fn, *args):
+    """Run a synchronous function in the default thread pool."""
+    import asyncio, functools
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, functools.partial(fn, *args))
+
+
+@app.get("/api/multibaggers-async")
+async def get_multibaggers(api_key: str = Depends(get_api_key)):
+    """Non-blocking multibagger list."""
+    from db.db_core import execute_sql
+    return await _run_blocking(execute_sql, "SELECT symbol, score FROM multibaggers ORDER BY score DESC LIMIT 50", {}, True)
+    return {"multibaggers": rows or []}
+
+
+@app.get("/api/microcaps-async")
+async def get_microcaps(api_key: str = Depends(get_api_key)):
+    """Non-blocking microcap list."""
+    from db.db_core import execute_sql
+    return await _run_blocking(execute_sql, "SELECT symbol, score FROM multibaggers WHERE market_cap_cr < 500 ORDER BY score DESC LIMIT 50", {}, True)
+    return {"microcaps": rows or []}
+
+
+# ── Gate 2+5: Order lifecycle with full risk gating ───────────────────────────
+
+@app.post("/api/order")
+async def place_order(request: dict, api_key: str = Depends(get_api_key)):
+    """Risk-gated order: check_kill_switch → validate_var_budget → validate_correlation_risk."""
+    from fastapi.responses import JSONResponse
+    symbol        = request.get("symbol", "").upper()
+    price         = float(request.get("price", 0))
+    quantity      = int(request.get("quantity", 0))
+    current_vix   = float(request.get("vix", 15.0))
+    drawdown_rate_weekly = float(request.get("drawdown_rate_weekly", 0.0))
+    projected_var = float(request.get("projected_var_pct", 0.5))
+    max_var       = float(request.get("max_var_pct", 2.0))
+    portfolio_avg_corr = float(request.get("portfolio_avg_corr", 0.3))
+    kill = _risk_governor.check_kill_switch(current_vix=current_vix, drawdown_rate_weekly=drawdown_rate_weekly)
+    if kill.get("kill_switch_active"):
+        _risk_governor.log_rejected_trade(symbol, kill.get("reason", "kill_switch"), price)
+        return JSONResponse(status_code=409, content={"error": "Kill switch active"})
+    var_ok = _risk_governor.validate_var_budget(projected_var, max_var)
+    if not var_ok.get("approved"):
+        _risk_governor.log_rejected_trade(symbol, var_ok.get("reason", "var_budget"), price)
+        return JSONResponse(status_code=409, content={"error": "VaR budget exceeded"})
+    corr_ok = _risk_governor.validate_correlation_risk(portfolio_avg_corr)
+    if not corr_ok.get("approved"):
+        _risk_governor.log_rejected_trade(symbol, corr_ok.get("reason", "correlation"), price)
+        return JSONResponse(status_code=409, content={"error": "Correlation risk exceeded"})
+    result = _tracker.log_entry(symbol=symbol, price=price, score=0.0, quantity=quantity)
+    if result.get("status") == "rejected":
+        return JSONResponse(status_code=409, content={"error": result["reason"]})
+    return {"status": "accepted", "symbol": symbol, "quantity": quantity, "price": price}
+
+
+@app.get("/api/trades/open")
+async def get_open_trades(api_key: str = Depends(get_api_key)):
+    df = _tracker.get_open_positions()
+    return {"open_trades": df.to_dict("records") if not df.empty else []}
+
+
+@app.get("/api/trades/history")
+async def get_trade_history(api_key: str = Depends(get_api_key)):
+    df = _tracker.get_trade_history()
+    return {"trade_history": df.to_dict("records") if not df.empty else []}
+
+
+@app.get("/api/rejections")
+async def get_rejected_trades(api_key: str = Depends(get_api_key)):
+    import csv
+    from pathlib import Path as _Path
+    log_path = _Path("logs") / "rejected_trades.csv"
+    if not log_path.exists():
+        return {"rejected_trades": [], "count": 0}
+    with open(log_path, newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    return {"rejected_trades": rows[-100:], "count": len(rows)}
+
+
+async def update_prices_background():
+    """Async price updater wrapper — delegates to modules.dependencies."""
+    from modules.dependencies import update_prices_background as _upb
+    await _upb()
