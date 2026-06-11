@@ -42,6 +42,23 @@ def _patch_paths(monkeypatch, tmp_path: Path, module):
     monkeypatch.setattr(module, "_PDF_DIR", tmp_path / "web-ui" / "reports" / "pdf")
 
 
+def _make_test_app(router):
+    """
+    Build a minimal FastAPI test app with:
+      - app.state.limiter set  (required by @limiter.limit via slowapi)
+      - auth dependency overridden (no DB / env key needed in unit tests)
+    """
+    from fastapi import FastAPI
+    from modules.rate_limit import limiter as _limiter
+    import modules.auth as _auth
+
+    app = FastAPI()
+    app.state.limiter = _limiter                                  # FIX BUG 2
+    app.dependency_overrides[_auth.get_api_key] = lambda: "test-key"  # FIX BUG 3
+    app.include_router(router)
+    return app
+
+
 # ---------------------------------------------------------------------------
 # 1. WeasyPrint not installed → RuntimeError
 # ---------------------------------------------------------------------------
@@ -222,11 +239,9 @@ async def test_pdf_route_returns_503_when_weasyprint_missing():
     generate_pdf_tearsheet raises RuntimeError (WeasyPrint not installed).
     """
     from httpx import AsyncClient, ASGITransport
-    from fastapi import FastAPI
     from app_routes.public import router
 
-    app = FastAPI()
-    app.include_router(router)
+    app = _make_test_app(router)
 
     async def _mock_pdf_gen(symbol):
         raise RuntimeError("WeasyPrint is not installed.")
@@ -271,8 +286,7 @@ async def test_pdf_route_returns_200_with_file(tmp_path):
     pdf_file = tmp_path / "HDFC_tearsheet.pdf"
     pdf_file.write_bytes(b"%PDF-1.4 dummy")
 
-    app = FastAPI()
-    app.include_router(router)
+    app = _make_test_app(router)
 
     async def _mock_pdf_gen(symbol):
         return str(pdf_file)

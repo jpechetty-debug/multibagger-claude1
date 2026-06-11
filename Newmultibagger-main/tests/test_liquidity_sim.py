@@ -83,7 +83,9 @@ class TestSimulateLiquidity:
         assert "sizing_recommendation" in d
         assert "risk" in d
 
-    def test_zero_position_gives_zero_slippage(self):
+    def test_simulate_liquidity_zero_position_module_fn(self):
+        # Note: the HTTP endpoint validates position_cr > 0, so 0 is blocked at the API layer.
+        # This test ensures the underlying module function gracefully handles 0.0 directly.
         result = simulate_liquidity(make_stock(), position_cr=0.0)
         assert result.entry_slippage_cr == 0.0
         assert result.roundtrip_slippage_cr == 0.0

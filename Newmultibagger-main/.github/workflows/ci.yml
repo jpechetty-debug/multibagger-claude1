@@ -59,6 +59,16 @@ jobs:
         run: |
           python scripts/create_backup_artifact.py || true
 
+      - name: Check factor staleness
+        run: |
+          python -c "
+          from modules.india_factor_loader import factor_returns_are_stale
+          import sys
+          if factor_returns_are_stale(45):
+              print('ERROR: india_factor_returns.csv is stale (>45 days). Run scripts/build_india_factors.py --update')
+              sys.exit(1)
+          "
+
       - name: Run unit tests (exclude live/integration)
         run: pytest -m "not live and not integration" --cov-report=xml --cov-report=term-missing -q
 
