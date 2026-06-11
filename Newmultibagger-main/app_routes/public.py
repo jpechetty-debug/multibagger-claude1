@@ -20,6 +20,7 @@ from modules.news_sentiment import engine as news_engine
 from modules.rate_limit import limiter
 from modules.symbol_utils import normalize_symbol
 from modules.auth import get_api_key
+from modules.connections import _run_blocking
 
 router = APIRouter()
 
@@ -43,33 +44,39 @@ async def deep_health_check():
     checks: dict = {}
     overall_ok = True
 
-    # 1. DB Connectivity
+    # 1. DB Connectivity — run in thread to avoid blocking the event loop
     try:
         from modules.connections import get_connection
 
-        conn = get_connection()
-        try:
-            conn.execute("SELECT 1")
-            row = conn.execute("SELECT COUNT(*) as cnt FROM multibaggers").fetchone()
-            checks["database"] = {"status": "ok", "stock_count": row[0] if row else 0}
-        finally:
-            conn.close()
+        def _check_db():
+            conn = get_connection()
+            try:
+                conn.execute("SELECT 1")
+                row = conn.execute("SELECT COUNT(*) as cnt FROM multibaggers").fetchone()
+                return {"status": "ok", "stock_count": row[0] if row else 0}
+            finally:
+                conn.close()
+
+        checks["database"] = await _run_blocking(_check_db)
     except Exception as exc:
         checks["database"] = {"status": "error", "error": str(exc)}
         overall_ok = False
 
-    # 2. Cache Health
+    # 2. Cache Health — run in thread to avoid blocking the event loop
     try:
         cache_path = _Path(__file__).resolve().parents[1] / "data_cache.db"
-        if cache_path.exists():
-            c = _sqlite3.connect(str(cache_path), timeout=2)
-            try:
-                c.execute("SELECT 1")
-                checks["cache"] = {"status": "ok", "path": str(cache_path)}
-            finally:
-                c.close()
-        else:
-            checks["cache"] = {"status": "missing", "path": str(cache_path)}
+
+        def _check_cache():
+            if cache_path.exists():
+                c = _sqlite3.connect(str(cache_path), timeout=2)
+                try:
+                    c.execute("SELECT 1")
+                    return {"status": "ok", "path": str(cache_path)}
+                finally:
+                    c.close()
+            return {"status": "missing", "path": str(cache_path)}
+
+        checks["cache"] = await _run_blocking(_check_cache)
     except Exception as exc:
         checks["cache"] = {"status": "error", "error": str(exc)}
         overall_ok = False

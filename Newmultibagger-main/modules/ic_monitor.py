@@ -181,3 +181,53 @@ def detect_ic_drift(
         "drift":          round(drift,        4),
         "drift_detected": drift > drift_threshold,
     }
+
+
+# ---------------------------------------------------------------------------
+# Runtime helpers used by the scoring engine
+# ---------------------------------------------------------------------------
+
+import json as _json
+from pathlib import Path as _Path
+
+_IC_CACHE_PATH = _Path(__file__).resolve().parents[1] / "runtime" / "regime_ic_cache.json"
+
+
+def load_regime_ic_cache() -> dict:
+    """Load the persisted regime → IC mapping written by the holdout pipeline.
+
+    Returns a dict of the form::
+
+        {
+            "BULLISH": {"ic": 0.12, "n": 45, "valid": True},
+            "BEARISH": {"ic": 0.03, "n": 12, "valid": False},
+            ...
+        }
+
+    Returns an empty dict when the cache file does not exist yet (first run
+    before the holdout pipeline has completed).
+    """
+    try:
+        if _IC_CACHE_PATH.exists():
+            return _json.loads(_IC_CACHE_PATH.read_text())
+    except Exception:
+        pass
+    return {}
+
+
+def get_current_regime() -> str:
+    """Return the current market regime label as used by the scoring weights.
+
+    Reads the regime_status from the shared runtime cache file written by the
+    regime watcher background task.  Falls back to ``"SIDEWAYS"`` when the
+    cache is unavailable so the scoring engine always gets a valid string.
+    """
+    _runtime_cache = _Path(__file__).resolve().parents[1] / "runtime" / "regime_status.json"
+    try:
+        if _runtime_cache.exists():
+            payload = _json.loads(_runtime_cache.read_text())
+            regime = payload.get("regime", "SIDEWAYS")
+            return str(regime).upper() if regime else "SIDEWAYS"
+    except Exception:
+        pass
+    return "SIDEWAYS"

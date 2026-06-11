@@ -141,18 +141,23 @@ async def get_llm_thesis(request: Request, symbol: str):
     try:
         symbol = _validate_symbol(symbol)
         from sqlalchemy import text
-
         from modules.llm_engine import generate_thesis
 
-        with get_sqla_connection() as conn:
-            target = pd.read_sql(
-                text("SELECT * FROM multibaggers WHERE symbol = :symbol"),
-                conn,
-                params={"symbol": symbol},
-            )
+        # DB read must run in a thread — pd.read_sql blocks the event loop
+        def _fetch_stock_data() -> dict | None:
+            with get_sqla_connection() as conn:
+                target = pd.read_sql(
+                    text("SELECT * FROM multibaggers WHERE symbol = :symbol"),
+                    conn,
+                    params={"symbol": symbol},
+                )
             if target.empty:
-                return {"thesis": "Stock not found in database to generate thesis."}
-            stock_data = target.iloc[0].to_dict()
+                return None
+            return target.iloc[0].to_dict()
+
+        stock_data = await _run_blocking(_fetch_stock_data)
+        if stock_data is None:
+            return {"thesis": "Stock not found in database to generate thesis."}
 
         thesis = await _run_blocking(generate_thesis, stock_data)
         return {"thesis": thesis}
@@ -674,5 +679,3 @@ def _duck_query(sql: str, params: list | None = None):
         finally:
             conn.close()
         return df
-
-
