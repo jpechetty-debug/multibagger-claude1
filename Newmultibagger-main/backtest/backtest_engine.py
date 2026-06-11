@@ -3,9 +3,24 @@ from typing import Any, cast
 import logging
 import numpy as np
 import pandas as pd
+# vectorbt applies a plotly template that includes 'heatmapgl' which was
+# removed in plotly 5.x. Silence the validation error so the import succeeds.
+try:
+    import plotly.basedatatypes as _pbd
+    _orig_process = _pbd.BasePlotlyType._process_kwargs.__wrapped__         if hasattr(_pbd.BasePlotlyType._process_kwargs, '__wrapped__')         else _pbd.BasePlotlyType._process_kwargs
+
+    def _safe_process_kwargs(self, **kwargs):
+        safe = {k: v for k, v in kwargs.items()
+                if k not in ('heatmapgl',)}
+        return _orig_process(self, **safe)
+
+    _pbd.BasePlotlyType._process_kwargs = _safe_process_kwargs
+except Exception:
+    pass
+
 try:
     import vectorbt as vbt
-except Exception:  # plotly 5.x removes heatmapgl; vectorbt template registration crashes
+except Exception:
     vbt = None  # type: ignore[assignment]
 import yfinance as yf
 import os

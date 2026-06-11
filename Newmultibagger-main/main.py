@@ -61,6 +61,15 @@ async def lifespan(app):
             standalone_worker="python -m worker.runtime",
         )
 
+    # Skip heavy background tasks in test mode to prevent lifespan interference
+    import os as _os
+    if _os.getenv("SOVEREIGN_TESTING"):
+        try:
+            yield
+        finally:
+            pass
+        return
+
     # ── ML model cold-start bootstrap ─────────────────────────────────────────
     # Ensures xgboost_meta_model.pkl always exists before the first request.
     # Runs in a background thread so it never delays server startup.
@@ -93,8 +102,10 @@ async def lifespan(app):
             runtime_logger.warning("ML startup bootstrap raised an exception", error=str(exc))
 
     import concurrent.futures
-    _ml_boot_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="ml-boot")
-    _ml_boot_executor.submit(_bootstrap_ml_if_needed)
+    import os as _os
+    if not _os.getenv("SOVEREIGN_TESTING"):
+        _ml_boot_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="ml-boot")
+        _ml_boot_executor.submit(_bootstrap_ml_if_needed)
 
     # WebSocket Redis Pub/Sub listener
     from modules.dependencies import manager

@@ -72,3 +72,30 @@ def check_factor_alerts(
         if "size" in name.lower() and b < size_threshold:
             alerts.append(f"SIZE_TILT: {name} beta={b:.3f} < {size_threshold}")
     return alerts
+
+
+async def fetch_factor_returns_with_retry(symbol: str, period: str = "1y") -> dict:
+    """Fetch price history for factor computation with exponential backoff.
+
+    Wraps the yfinance fetch in the project-standard retry harness so
+    transient 429 / connection errors are handled uniformly.
+    """
+    from modules.retry_utils import run_with_exponential_backoff
+    import yfinance as yf
+
+    async def _fetch():
+        ticker = yf.Ticker(symbol)
+        hist   = ticker.history(period=period)
+        if hist.empty:
+            return {"symbol": symbol, "error": "no data"}
+        return {
+            "symbol":  symbol,
+            "returns": hist["Close"].pct_change().dropna().tolist(),
+            "dates":   hist.index.strftime("%Y-%m-%d").tolist(),
+        }
+
+    return await run_with_exponential_backoff(
+        _fetch,
+        context=f"factor_returns:{symbol}",
+        should_retry=lambda exc: "429" in str(exc) or "ConnectionError" in str(exc),
+    )

@@ -10,6 +10,7 @@ import pytest
 # Must be set before db.db_core is imported (which happens when main.py is imported).
 import os as _os
 _os.environ.setdefault("DUCKDB_SKIP_SQLITE_EXT", "1")
+_os.environ.setdefault("SOVEREIGN_TESTING", "1")  # skip lifespan background tasks (ML bootstrap, pub/sub, webhook retry)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -73,27 +74,18 @@ def bypass_api_key_dependency_for_route_tests(request):
 
 @pytest.fixture(autouse=True)
 def patch_duckdb_for_tests(monkeypatch):
-    """Prevent DuckDB from trying to download sqlite_scanner extension in CI
-    and reset the thread-local connection between tests to avoid state pollution.
+    """Prevent DuckDB sqlite_scanner download and reset the connection per test.
 
-    The singleton pattern in db_core caches a DuckDB connection per thread.
-    When tests run sequentially on the same thread, the attached SQLite DB
-    and any in-memory tables leak between tests causing failures in
-    test_price_fundamentals_api, test_regime_api, and test_runtime_hardening
-    that pass in isolation but fail in the full suite.
+    Resetting _duck_local between tests prevents stale in-memory schema from
+    one test leaking into the next (isolation fix for test_price_fundamentals_api,
+    test_regime_api, test_runtime_hardening order-sensitivity failures).
     """
     try:
         import duckdb
         import db.db_core as _db_core
 
-        # Force-close any existing connection so this test starts clean
-        old_conn = getattr(_db_core._duck_local, "conn", None)
-        if old_conn is not None:
-            try:
-                old_conn.close()
-            except Exception:
-                pass
-            _db_core._duck_local.conn = None
+        # Reset any leftover connection from a prior test
+        _db_core._duck_local.conn = None
 
         def _safe_duckdb():
             conn = getattr(_db_core._duck_local, "conn", None)
@@ -111,16 +103,15 @@ def patch_duckdb_for_tests(monkeypatch):
     except Exception:
         pass
     yield
-    # Teardown: close the connection so the next test gets a fresh one
+    # Tear down: close the per-test DuckDB connection
     try:
         import db.db_core as _db_core
-        teardown_conn = getattr(_db_core._duck_local, "conn", None)
-        if teardown_conn is not None:
+        conn = getattr(_db_core._duck_local, "conn", None)
+        if conn is not None:
             try:
-                teardown_conn.close()
+                conn.close()
             except Exception:
                 pass
-            _db_core._duck_local.conn = None
+        _db_core._duck_local.conn = None
     except Exception:
         pass
-

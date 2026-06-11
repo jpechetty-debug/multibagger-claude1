@@ -130,6 +130,24 @@ def evaluate_holdout(
 # ---------------------------------------------------------------------------
 
 def compare_performance(
+    wf_ic: float | None = None,
+    holdout_ic: float | None = None,
+    threshold: float = 0.30,
+    *,
+    wf_sharpe: float | None = None,
+    holdout_sharpe: float | None = None,
+) -> dict:
+    """Accept either IC-based or Sharpe-based kwargs for backward compatibility."""
+    if wf_ic is None and wf_sharpe is not None:
+        wf_ic = wf_sharpe
+    if holdout_ic is None and holdout_sharpe is not None:
+        holdout_ic = holdout_sharpe
+    if wf_ic is None or holdout_ic is None:
+        raise ValueError("Must provide either (wf_ic, holdout_ic) or (wf_sharpe, holdout_sharpe)")
+    return _compare_performance_impl(wf_ic, holdout_ic, threshold)
+
+
+def _compare_performance_impl(
     wf_ic: float,
     holdout_ic: float,
     threshold: float = 0.30,
@@ -152,5 +170,6 @@ def compare_performance(
         "wf_ic":               round(wf_ic,       4),
         "holdout_ic":          round(holdout_ic,   4),
         "ic_gap":              round(gap,           4),
+        "sharpe_gap":          round(gap,           4),   # alias for wf_sharpe callers
         "overfitting_detected": gap > threshold,
     }
