@@ -77,9 +77,12 @@ def _load_current_scores() -> dict[str, float]:
 @router.get("/status")
 async def get_swarm_status():
     """Proxy swarm status from Ruflo microservice."""
+    import sys
+    # npx.cmd is Windows-only; use "npx" on Linux/macOS
+    npx_cmd = "npx.cmd" if sys.platform == "win32" else "npx"
     try:
         result = subprocess.run(
-            ["npx.cmd", "ruflo", "swarm", "status", "--format", "json"],
+            [npx_cmd, "ruflo", "swarm", "status", "--format", "json"],
             cwd=RUFLO_DIR,
             capture_output=True,
             text=True,
@@ -89,7 +92,8 @@ async def get_swarm_status():
             return json.loads(result.stdout)
         return {"status": "offline", "error": result.stderr}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        # Use "error" key to match SwarmStatusResponse contract (not "message")
+        return {"status": "error", "error": str(e)}
 
 
 @router.get("/alerts")
