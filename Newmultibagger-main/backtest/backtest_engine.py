@@ -3,7 +3,10 @@ from typing import Any, cast
 import logging
 import numpy as np
 import pandas as pd
-import vectorbt as vbt
+try:
+    import vectorbt as vbt
+except Exception:  # plotly 5.x removes heatmapgl; vectorbt template registration crashes
+    vbt = None  # type: ignore[assignment]
 import yfinance as yf
 import os
 

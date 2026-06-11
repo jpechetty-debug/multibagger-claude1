@@ -73,20 +73,29 @@ def bypass_api_key_dependency_for_route_tests(request):
 
 @pytest.fixture(autouse=True)
 def patch_duckdb_for_tests(monkeypatch):
-    """Prevent DuckDB from trying to download sqlite_scanner extension in CI.
+    """Prevent DuckDB from trying to download sqlite_scanner extension in CI
+    and reset the thread-local connection between tests to avoid state pollution.
 
-    When the extension server is unreachable (sandboxed CI, offline dev),
-    DuckDB raises an HTTP 403 which causes any test that imports main.py to
-    fail at collection time with a 500.  We patch get_duckdb_connection to
-    return a plain in-memory DuckDB connection so the extension is never
-    attempted.
+    The singleton pattern in db_core caches a DuckDB connection per thread.
+    When tests run sequentially on the same thread, the attached SQLite DB
+    and any in-memory tables leak between tests causing failures in
+    test_price_fundamentals_api, test_regime_api, and test_runtime_hardening
+    that pass in isolation but fail in the full suite.
     """
     try:
         import duckdb
         import db.db_core as _db_core
 
+        # Force-close any existing connection so this test starts clean
+        old_conn = getattr(_db_core._duck_local, "conn", None)
+        if old_conn is not None:
+            try:
+                old_conn.close()
+            except Exception:
+                pass
+            _db_core._duck_local.conn = None
+
         def _safe_duckdb():
-            import threading
             conn = getattr(_db_core._duck_local, "conn", None)
             if conn is not None:
                 try:
@@ -102,3 +111,16 @@ def patch_duckdb_for_tests(monkeypatch):
     except Exception:
         pass
     yield
+    # Teardown: close the connection so the next test gets a fresh one
+    try:
+        import db.db_core as _db_core
+        teardown_conn = getattr(_db_core._duck_local, "conn", None)
+        if teardown_conn is not None:
+            try:
+                teardown_conn.close()
+            except Exception:
+                pass
+            _db_core._duck_local.conn = None
+    except Exception:
+        pass
+
