@@ -23,7 +23,7 @@ def _copy_or_create(src: Path, dst: Path, minimal_sql: str) -> None:
         return
     if src.exists():
         shutil.copy2(src, dst)
-        print(f"  Copied {src.name} → backups/ ({dst.stat().st_size:,} bytes)")
+        print(f"  Copied {src.name} -> backups/ ({dst.stat().st_size:,} bytes)")
     else:
         conn = sqlite3.connect(dst)
         conn.executescript(minimal_sql)
