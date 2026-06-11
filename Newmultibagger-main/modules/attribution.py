@@ -64,18 +64,18 @@ def analyze_alpha_attribution(portfolio, universe):
     _log.info("-" * 55)
 
     dominant_factor = "None"
-    max_diff = 0
+    max_diff = float("-inf")  # was 0 — missed negative dominant factors
 
     for k in keys:
         u = universe_factors.get(k, 0)
         p = portfolio_factors.get(k, 0)
         diff = p - u
-        diff_pct = (diff / u) * 100 if u > 0 else 0
+        diff_pct = (diff / u) * 100 if u != 0 else 0  # guard zero-division on both sides
 
         _log.info(f"{k:<15} | {u:>8.1f} | {p:>8.1f} | {diff_pct:>+8.1f}%")
 
-        if diff_pct > max_diff:
-            max_diff = diff_pct  # type: ignore
+        if abs(diff_pct) > abs(max_diff):  # largest absolute exposure, positive or negative
+            max_diff = diff_pct
             dominant_factor = k
 
     _log.info("-" * 55)

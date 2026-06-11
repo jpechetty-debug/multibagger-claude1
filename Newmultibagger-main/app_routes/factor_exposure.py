@@ -77,7 +77,7 @@ def _build_portfolio_returns() -> pd.Series:
     series = (
         history_df
         .set_index("exit_dt")["pnl_decimal"]
-        .resample("W-MON")
+        .resample("W-MON")  # pandas 3.x: W-MON = week ending Monday
         .mean()
         .rename("portfolio")
     )
@@ -104,15 +104,18 @@ def _run_factor_analysis(
 
     factor_returns = load_factor_returns(start=start, end=end)
     if not factor_returns:
+        # Do NOT raise HTTPException inside a thread — asyncio.to_thread propagates
+        # it as a plain Exception, so FastAPI catches it as a 500 rather than 503.
+        # Return a sentinel dict instead; the route handler re-raises it correctly.
         meta = factor_metadata()
-        raise HTTPException(
-            status_code=503,
-            detail={
+        return {
+            "__http_error__": 503,
+            "detail": {
                 "error": "India factor returns data unavailable.",
                 "hint": "Ensure data/india_factor_returns.csv exists.",
                 "meta": meta,
             },
-        )
+        }
 
     # Align portfolio returns to the factor window
     factor_idx = next(iter(factor_returns.values())).index
@@ -221,6 +224,9 @@ async def get_factor_exposure(
                     )
 
         result = await _run_blocking(_run_factor_analysis, start, end)
+        # Surface the sentinel error produced when HTTPException can't be raised in thread
+        if isinstance(result, dict) and "__http_error__" in result:
+            raise HTTPException(status_code=result["__http_error__"], detail=result["detail"])
         return result
 
     except HTTPException:

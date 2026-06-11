@@ -575,12 +575,10 @@ async def get_portfolio_state():
     """Return summary metrics for the paper trading portfolio."""
     try:
         def _get_counts():
-            conn = get_connection()
-            try:
-                open_pos = pd.read_sql("SELECT count(*) as cnt FROM open_positions", conn).iloc[0]["cnt"]
-                return int(open_pos)
-            finally:
-                conn.close()
+            # PortfolioTracker owns portfolio_history.db; open positions live in
+            # the "trades" table (status='OPEN').  Do NOT query stocks.db here.
+            df = portfolio_tracker.get_open_positions()
+            return len(df)
 
         active_count = await _run_blocking(_get_counts)
 
