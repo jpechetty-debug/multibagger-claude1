@@ -42,7 +42,6 @@ def _write_signed_cache(path, content: str) -> None:
     Path(path).write_text(content, encoding="utf-8")
     sig = hashlib.sha256(content.encode("utf-8")).hexdigest()
     Path(str(path) + ".sha256").write_text(sig, encoding="utf-8")
-    return None
 
 
 def _write_verified_cache(path: Path, content: str) -> None:

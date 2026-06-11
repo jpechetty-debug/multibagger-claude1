@@ -151,11 +151,6 @@ def run_stress_test(portfolio_stocks, weights=None):
     _log.info("=" * 50 + "\n")
 
 
-# ── Alias for test_risk_scenario_replay.py ────────────────────────────────────
-def run_adversarial_scenario_replay(portfolio_stocks, benchmark_returns=None, weights=None):
-    """Alias — delegates to run_stress_tests for backward compatibility."""
-    return run_stress_tests(portfolio_stocks, benchmark_returns=benchmark_returns, weights=weights)
-
 
 # ── run_adversarial_scenario_replay ──────────────────────────────────────────
 # Full implementation matching tests/test_risk_scenario_replay.py contract.

@@ -55,6 +55,10 @@ jobs:
           mkdir -p runtime/models
           python scripts/train_hybrid_model.py --bootstrap || true
 
+      - name: Create backup artifacts for tests
+        run: |
+          python scripts/create_backup_artifact.py || true
+
       - name: Run unit tests (exclude live/integration)
         run: pytest -m "not live and not integration" --cov-report=xml --cov-report=term-missing -q
 
