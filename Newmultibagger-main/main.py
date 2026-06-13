@@ -200,45 +200,6 @@ app.include_router(liquidity_sim_router)
 static_dir = WEB_UI_DIR / "dist" if (WEB_UI_DIR / "dist").exists() else WEB_UI_DIR
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
-# ── Institutional OMS Endpoints ─────────────────────────────────────────────
-@app.post("/api/order")
-async def place_order(order_req: dict):
-    from modules.risk_compat import check_kill_switch, validate_var_budget, validate_correlation_risk
-    from modules.execution import reconciler
-    
-    if check_kill_switch():
-        log_rejected_trade(order_req, "kill_switch")
-        return {"status": "rejected", "reason": "kill_switch"}
-    if not validate_var_budget():
-        log_rejected_trade(order_req, "var_budget")
-        return {"status": "rejected", "reason": "var_budget"}
-    if not validate_correlation_risk():
-        log_rejected_trade(order_req, "correlation_risk")
-        return {"status": "rejected", "reason": "correlation_risk"}
-
-    return reconciler.submit_order(order_req)
-
-def log_rejected_trade(order: dict, reason: str):
-    import csv
-    with open("rejected_trades.csv", "a") as f:
-        csv.writer(f).writerow([order.get("symbol"), reason])
-
-@app.get("/api/trades/open")
-async def get_open_trades():
-    from modules.tracking.tracker import PortfolioTracker
-    return PortfolioTracker().get_open_positions().to_dict(orient="records")
-
-@app.get("/api/trades/history")
-async def get_trade_history():
-    from modules.tracking.tracker import PortfolioTracker
-    return PortfolioTracker().get_trade_history().to_dict(orient="records")
-
-@app.get("/api/rejections")
-async def get_rejections():
-    import os
-    if os.path.exists("rejected_trades.csv"):
-        return {"status": "ok", "has_data": True}
-    return {"status": "ok"}
 
 if __name__ == "__main__":
     import uvicorn
@@ -290,49 +251,59 @@ async def _run_blocking(fn, *args):
 
 @app.get("/api/multibaggers-async")
 async def get_multibaggers(api_key: str = Depends(get_api_key)):
-    """Non-blocking multibagger list."""
-    from db.db_core import execute_sql
-    return await _run_blocking(execute_sql, "SELECT symbol, score FROM multibaggers ORDER BY score DESC LIMIT 50", {}, True)
-    return {"multibaggers": rows or []}
+    """Non-blocking multibagger list via ScreenerRepository."""
+    from modules.data_layer.data_service import fetch_screener_rows
+    rows = await fetch_screener_rows(limit=50)
+    return {"multibaggers": [r.model_dump() for r in rows]}
 
 
 @app.get("/api/microcaps-async")
 async def get_microcaps(api_key: str = Depends(get_api_key)):
-    """Non-blocking microcap list."""
-    from db.db_core import execute_sql
-    return await _run_blocking(execute_sql, "SELECT symbol, score FROM multibaggers WHERE market_cap_cr < 500 ORDER BY score DESC LIMIT 50", {}, True)
-    return {"microcaps": rows or []}
+    """Non-blocking microcap list (market_cap_cr < 500)."""
+    from modules.data_layer.data_service import fetch_screener_rows
+    all_rows = await fetch_screener_rows(limit=500)
+    micros = [r.model_dump() for r in all_rows if (r.market_cap_cr or 9999) < 500]
+    return {"microcaps": micros[:50]}
 
 
 # ── Gate 2+5: Order lifecycle with full risk gating ───────────────────────────
 
 @app.post("/api/order")
 async def place_order(request: dict, api_key: str = Depends(get_api_key)):
-    """Risk-gated order: check_kill_switch → validate_var_budget → validate_correlation_risk."""
+    """Risk-gated order: kill_switch → var_budget → correlation_risk → tracker."""
     from fastapi.responses import JSONResponse
-    symbol        = request.get("symbol", "").upper()
-    price         = float(request.get("price", 0))
-    quantity      = int(request.get("quantity", 0))
-    current_vix   = float(request.get("vix", 15.0))
+
+    symbol               = request.get("symbol", "").upper()
+    price                = float(request.get("price", 0))
+    quantity             = int(request.get("quantity", 0))
+    current_vix          = float(request.get("vix", 15.0))
     drawdown_rate_weekly = float(request.get("drawdown_rate_weekly", 0.0))
-    projected_var = float(request.get("projected_var_pct", 0.5))
-    max_var       = float(request.get("max_var_pct", 2.0))
-    portfolio_avg_corr = float(request.get("portfolio_avg_corr", 0.3))
-    kill = _risk_governor.check_kill_switch(current_vix=current_vix, drawdown_rate_weekly=drawdown_rate_weekly)
-    if kill.get("kill_switch_active"):
-        _risk_governor.log_rejected_trade(symbol, kill.get("reason", "kill_switch"), price)
-        return JSONResponse(status_code=409, content={"error": "Kill switch active"})
-    var_ok = _risk_governor.validate_var_budget(projected_var, max_var)
-    if not var_ok.get("approved"):
-        _risk_governor.log_rejected_trade(symbol, var_ok.get("reason", "var_budget"), price)
-        return JSONResponse(status_code=409, content={"error": "VaR budget exceeded"})
-    corr_ok = _risk_governor.validate_correlation_risk(portfolio_avg_corr)
-    if not corr_ok.get("approved"):
-        _risk_governor.log_rejected_trade(symbol, corr_ok.get("reason", "correlation"), price)
-        return JSONResponse(status_code=409, content={"error": "Correlation risk exceeded"})
+    projected_var        = float(request.get("projected_var_pct", 0.5))
+    max_var              = float(request.get("max_var_pct", 2.0))
+    portfolio_avg_corr   = float(request.get("portfolio_avg_corr", 0.3))
+
+    kill_safe, kill_msg = _risk_governor.check_kill_switch(
+        current_vix=current_vix,
+        drawdown_rate_weekly=drawdown_rate_weekly,
+    )
+    if not kill_safe:
+        _risk_governor.log_rejected_trade(symbol, kill_msg, price)
+        return JSONResponse(status_code=409, content={"error": kill_msg})
+
+    var_safe, var_msg = _risk_governor.validate_var_budget(projected_var, max_var)
+    if not var_safe:
+        _risk_governor.log_rejected_trade(symbol, var_msg, price)
+        return JSONResponse(status_code=409, content={"error": var_msg})
+
+    corr_safe, corr_msg = _risk_governor.validate_correlation_risk(portfolio_avg_corr)
+    if not corr_safe:
+        _risk_governor.log_rejected_trade(symbol, corr_msg, price)
+        return JSONResponse(status_code=409, content={"error": corr_msg})
+
     result = _tracker.log_entry(symbol=symbol, price=price, score=0.0, quantity=quantity)
     if result.get("status") == "rejected":
         return JSONResponse(status_code=409, content={"error": result["reason"]})
+
     return {"status": "accepted", "symbol": symbol, "quantity": quantity, "price": price}
 
 

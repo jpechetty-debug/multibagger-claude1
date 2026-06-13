@@ -246,18 +246,21 @@ async def feature_importance(_: str = Depends(get_api_key)):
 
 @router.get("/walk-forward")
 async def walk_forward_report(_: str = Depends(get_api_key)):
-    """Last persisted walk-forward validation report.
-
-    Fields: status, folds, rows, oos_r2, mae, rmse, spearman_ic,
-    hit_rate, top_quantile_sharpe, holdout_rows_excluded, windows
-    (per-fold IC, hit_rate, sharpe).
-
-    Returns 404 when training has never been run.
-    """
+    """Last persisted walk-forward report plus IC-by-regime summary."""
     report = load_walk_forward_report()
     if report is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No walk-forward report found. Run POST /api/ml/train first.",
         )
-    return report
+    # Attach IC-by-regime if the cache exists (written by retrain_xgboost task)
+    ic_by_regime = {}
+    try:
+        import json
+        from pathlib import Path
+        p = Path("runtime/regime_ic_cache.json")
+        if p.exists():
+            ic_by_regime = json.loads(p.read_text()).get("ic_by_regime", {})
+    except Exception:
+        pass
+    return {**report, "ic_by_regime": ic_by_regime}

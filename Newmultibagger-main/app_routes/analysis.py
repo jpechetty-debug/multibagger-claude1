@@ -134,3 +134,16 @@ async def get_drift(symbol: str):
         }
     except Exception as e:
         return {"error": str(e)}
+
+@router.get("/api/peer-compare/{symbol}")
+@limiter.limit("10/minute")
+async def get_peer_comparison(request: Request, symbol: str):
+    """Sector-relative peer comparison — wraps modules.peer_analysis."""
+    try:
+        from modules.peer_analysis import get_peer_comparison as _compare
+        symbol = normalize_symbol(symbol)
+        result = await _compare(symbol)
+        return {"status": "success", "symbol": symbol, **result}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+

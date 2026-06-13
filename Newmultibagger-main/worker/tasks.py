@@ -203,6 +203,36 @@ def retrain_xgboost():
 
         success = run_automated_training()
         wf = load_walk_forward_report() or {}
+
+        if success:
+            try:
+                import json
+                from pathlib import Path
+                windows = wf.get("windows", [])
+                if windows:
+                    regime_buckets: dict[str, list[float]] = {
+                        "BULL": [], "BEAR": [], "SIDEWAYS": []
+                    }
+                    for w in windows:
+                        regime = w.get("regime", "SIDEWAYS")
+                        ic = w.get("spearman_ic")
+                        if regime in regime_buckets and ic is not None:
+                            regime_buckets[regime].append(float(ic))
+
+                    ic_summary = {
+                        r: round(sum(v) / len(v), 4) if v else None
+                        for r, v in regime_buckets.items()
+                    }
+                    cache_path = Path("runtime/regime_ic_cache.json")
+                    cache_path.parent.mkdir(exist_ok=True)
+                    cache_path.write_text(json.dumps({
+                        "ic_by_regime": ic_summary,
+                        "folds": len(windows),
+                        "updated_at": datetime.now().isoformat(),
+                    }))
+                    logger.info("ic_cache.updated", ic_by_regime=ic_summary)
+            except Exception as exc:
+                logger.warning("ic_cache.update_failed", error=str(exc))
         return {
             "status": "success" if success else "skipped",
             "retrained_at": datetime.now().isoformat(),
@@ -274,6 +304,26 @@ def prune_pit_data():
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+@app.task(name="worker.tasks.check_all_thesis_breaks", time_limit=300)
+@celery_task_timer("check_all_thesis_breaks")
+def check_all_thesis_breaks_task():
+    """
+    Scan every open position for thesis breaks and persist results to
+    thesis_break.json so /api/thesis_break returns live data.
+
+    Scheduled: weekday mornings before market open (08:00 IST).
+    """
+    from modules.tracking.thesis_monitor import check_all_thesis_breaks
+    import json
+    from pathlib import Path
+
+    breaks = check_all_thesis_breaks()
+    payload = {"items": breaks, "count": len(breaks)}
+    Path("thesis_break.json").write_text(json.dumps(payload))
+    logger.info("thesis_break_scan.complete", breaks_found=len(breaks))
+    return payload
 
 
 @app.task(name="worker.tasks.refresh_regime_cache")

@@ -90,6 +90,19 @@ app.conf.update(
             "args": (),
             "options": {"queue": "maintenance"},
         },
+        # Thesis break monitoring — weekdays before market open
+        "thesis-break-scan": {
+            "task": "worker.tasks.check_all_thesis_breaks",
+            "schedule": crontab(hour="8", minute="0", day_of_week="1-5"),
+            "options": {"queue": "maintenance"},
+        },
+        # Weekly stress test — Saturday early morning alongside backtest refresh
+        "weekly-stress-test": {
+            "task": "worker.tasks.run_stress_test",
+            "schedule": crontab(hour="3", minute="0", day_of_week="6"),
+            "args": [{}],
+            "options": {"queue": "compute"},
+        },
     },
     # Task Routing
     task_routes={
