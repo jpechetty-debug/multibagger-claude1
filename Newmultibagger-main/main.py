@@ -242,12 +242,6 @@ _risk_governor = _RiskGovernor()
 _tracker       = _PortfolioTracker()
 
 
-async def _run_blocking(fn, *args):
-    """Run a synchronous function in the default thread pool."""
-    import asyncio, functools
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, functools.partial(fn, *args))
-
 
 @app.get("/api/multibaggers-async")
 async def get_multibaggers(api_key: str = Depends(get_api_key)):
