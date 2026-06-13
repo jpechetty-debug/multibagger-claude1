@@ -193,6 +193,11 @@ from pathlib import Path as _Path
 _IC_CACHE_PATH = _Path(__file__).resolve().parents[1] / "runtime" / "regime_ic_cache.json"
 
 
+# IC below this is treated as a low-confidence signal for every regime when
+# only an overall (non-regime-split) IC is available.
+_LOW_IC_THRESHOLD = 0.05
+
+
 def load_regime_ic_cache() -> dict:
     """Load the persisted regime → IC mapping written by the holdout pipeline.
 
@@ -204,15 +209,47 @@ def load_regime_ic_cache() -> dict:
             ...
         }
 
+    Backward compatibility — ``worker.tasks.retrain_xgboost`` currently
+    writes a flat ``{"ic_by_regime": {"overall": <ic>, "folds": <n>, ...}}``
+    payload because per-regime predictions aren't available from the
+    walk-forward report. When the cache is in that flat form, this function
+    expands it into the per-regime shape above by applying the overall IC
+    to every known regime (BULL, BEAR, SIDEWAYS) — so the scoring engine's
+    ``low_regime_ic`` check still functions until true regime-split IC is
+    computed.
+
     Returns an empty dict when the cache file does not exist yet (first run
     before the holdout pipeline has completed).
     """
     try:
-        if _IC_CACHE_PATH.exists():
-            return _json.loads(_IC_CACHE_PATH.read_text())
+        if not _IC_CACHE_PATH.exists():
+            return {}
+        raw = _json.loads(_IC_CACHE_PATH.read_text())
     except Exception:
-        pass
-    return {}
+        return {}
+
+    ic_by_regime = raw.get("ic_by_regime", {})
+    if not isinstance(ic_by_regime, dict):
+        return {}
+
+    # Already in the per-regime shape (keys are regime labels with dict values
+    # containing "ic") — return as-is.
+    if ic_by_regime and all(
+        isinstance(v, dict) and "ic" in v for v in ic_by_regime.values()
+    ):
+        return ic_by_regime
+
+    # Flat shape: {"overall": <ic>, "folds": <n>, "note": ...}
+    overall_ic = ic_by_regime.get("overall")
+    if overall_ic is None:
+        return {}
+    n_obs = int(ic_by_regime.get("folds", 0))
+    entry = {
+        "ic": float(overall_ic),
+        "n": n_obs,
+        "valid": float(overall_ic) >= _LOW_IC_THRESHOLD,
+    }
+    return {regime: entry for regime in ("BULL", "BEAR", "SIDEWAYS")}
 
 
 def get_current_regime() -> str:
