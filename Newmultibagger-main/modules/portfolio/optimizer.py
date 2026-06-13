@@ -23,11 +23,27 @@ class PortfolioOptimizer:
         "slippage": 0.0015,  # 0.15% avg impact cost (Small/Midcap)
     }
 
+    # Regime-based limits: (max_single_weight, max_sector_weight)
+    REGIME_LIMITS = {
+        "BULLISH":  (0.10, 0.25),
+        "VOLATILE": (0.05, 0.15),
+        "BEARISH":  (0.02, 0.10),
+    }
+
     def __init__(self, capital=100000):
         self.total_capital = capital
         self.max_single_weight = 0.10
         self.min_single_weight = 0.02
         self.max_sector_weight = config.MAX_SECTOR_EXPOSURE
+        self.regime = "BULLISH" # Default
+        
+        # Load HMM model
+        try:
+            from modules.risk.regime_hmm import RegimeHMM
+            self.hmm = RegimeHMM()
+        except Exception as e:
+            _log.warning(f"Failed to load RegimeHMM, defaulting to BULLISH regime limits: {e}")
+            self.hmm = None
 
     @staticmethod
     def net_returns_after_costs(gross_return, turnover_pa):
@@ -54,6 +70,15 @@ class PortfolioOptimizer:
         """
         if not stocks:
             return pd.DataFrame()
+
+        # Update limits based on regime
+        if self.hmm:
+            self.regime = self.hmm.predict_regime()
+            
+        if self.regime in self.REGIME_LIMITS:
+            self.max_single_weight, self.max_sector_weight = self.REGIME_LIMITS[self.regime]
+        
+        _log.info(f"Optimizer operating in {self.regime} regime. Limits -> Single: {self.max_single_weight:.0%}, Sector: {self.max_sector_weight:.0%}")
 
         df = pd.DataFrame(stocks)
 

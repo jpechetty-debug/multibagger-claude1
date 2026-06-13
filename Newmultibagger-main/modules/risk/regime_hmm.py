@@ -20,6 +20,8 @@ class RegimeHMM:
     def __init__(self, model_path=MODEL_PATH):
         self.model_path = model_path
         self.model = None
+        self._cached_regime = None
+        self._cached_regime_date = None
         self._load_model()
 
     def _load_model(self):
@@ -77,32 +79,49 @@ class RegimeHMM:
         # Determine the time window
         target_dt = datetime.now() if target_date is None else pd.to_datetime(target_date)
 
-        # Fetch trailing 60 days to get state sequence
+        # Check cache
+        if self._cached_regime and self._cached_regime_date:
+            if (target_dt - self._cached_regime_date).days == 0:
+                return self._cached_regime
+
+        # Fetch trailing 90 days to get state sequence
         start_dt = target_dt - timedelta(days=90)
-        data = yf.download(
-            ticker,
-            start=start_dt.strftime("%Y-%m-%d"),
-            end=target_dt.strftime("%Y-%m-%d"),
-            progress=False,
-        )
+        try:
+            data = yf.download(
+                ticker,
+                start=start_dt.strftime("%Y-%m-%d"),
+                end=target_dt.strftime("%Y-%m-%d"),
+                progress=False,
+            )
+        except Exception as e:
+            _log.error(f"Error fetching data for HMM prediction: {e}")
+            return "VOLATILE"
 
         if data.empty:
+            _log.warning("HMM prediction: No data retrieved, returning VOLATILE")
             return "VOLATILE"
 
         close = data["Close", ticker] if isinstance(data.columns, pd.MultiIndex) else data["Close"]
 
         returns = np.log(close / close.shift(1)).dropna()
         if len(returns) < 10:
+            _log.warning("HMM prediction: Insufficient returns data, returning VOLATILE")
             return "VOLATILE"
 
         X = returns.values.reshape(-1, 1)
 
-        # Predict hidden states for the sequence
-        hidden_states = self.model.predict(X)  # type: ignore
-        current_state = hidden_states[-1]
-
-        # Map hidden states to human labels
-        return self._map_state_to_regime(current_state)
+        try:
+            # Predict hidden states for the sequence
+            hidden_states = self.model.predict(X)  # type: ignore
+            current_state = hidden_states[-1]
+            
+            regime = self._map_state_to_regime(current_state)
+            self._cached_regime = regime
+            self._cached_regime_date = target_dt
+            return regime
+        except Exception as e:
+            _log.error(f"Error during HMM prediction: {e}")
+            return "VOLATILE"
 
     def _map_state_to_regime(self, state_idx):
         """
