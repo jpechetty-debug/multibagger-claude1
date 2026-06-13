@@ -43,7 +43,7 @@ def _get_queue() -> asyncio.Queue:
     return _queue
 
 
-async def _dispatch_async(fn: Callable, *args: Any, **kwargs: Any) -> str:
+async def _dispatch_async(fn: Callable, *args: Any, _task_options: dict | None = None, **kwargs: Any) -> str:
     """Enqueue a callable for the dev worker loop."""
     q = _get_queue()
     await q.put((fn, args, kwargs))
@@ -82,7 +82,7 @@ async def run_dev_worker(*, max_tasks: int = 0) -> None:
 # Celery prod-mode dispatcher
 # ---------------------------------------------------------------------------
 
-def _dispatch_celery(fn: Callable, *args: Any, **kwargs: Any) -> str:
+def _dispatch_celery(fn: Callable, *args: Any, _task_options: dict | None = None, **kwargs: Any) -> str:
     """Send task via Celery. Expects fn to be a registered Celery task."""
     from worker.celery_app import app  # noqa: F811 — deferred import
 
@@ -93,7 +93,8 @@ def _dispatch_celery(fn: Callable, *args: Any, **kwargs: Any) -> str:
         )
 
     task_name = getattr(fn, "name", fn.__name__)
-    result = app.send_task(task_name, args=args, kwargs=kwargs)
+    opts = _task_options or {}
+    result = app.send_task(task_name, args=args, kwargs=kwargs, **opts)
     logger.info("task.enqueued", mode="celery", task=task_name, task_id=result.id)
     return result.id  # type: ignore
 
@@ -102,17 +103,33 @@ def _dispatch_celery(fn: Callable, *args: Any, **kwargs: Any) -> str:
 # Public API
 # ---------------------------------------------------------------------------
 
-async def dispatch(fn: Callable, *args: Any, **kwargs: Any) -> str:
+async def dispatch(fn: Callable, *args: Any, _task_options: dict | None = None, **kwargs: Any) -> str:
     """
     Dispatch a task using the active mode.
 
     Returns the task ID. Must be awaited in both dev and prod modes.
     """
     if _MODE == "celery":
-        return _dispatch_celery(fn, *args, **kwargs)
-    return await _dispatch_async(fn, *args, **kwargs)
+        return _dispatch_celery(fn, *args, _task_options=_task_options, **kwargs)
+    return await _dispatch_async(fn, *args, _task_options=_task_options, **kwargs)
 
 
 def get_mode() -> str:
     """Return current dispatch mode: 'celery' or 'asyncio'."""
     return _MODE
+
+
+def get_bus_status() -> dict:
+    """Return bus status showing mode and queue depth."""
+    status = {"mode": _MODE, "queue_depth": 0}
+    if _MODE == "asyncio":
+        if _queue is not None:
+            status["queue_depth"] = _queue.qsize()
+    else:
+        try:
+            from worker.celery_app import app
+            with app.connection_or_acquire() as conn:
+                status["queue_depth"] = conn.default_channel.client.llen("celery")
+        except Exception:
+            status["queue_depth"] = -1
+    return status

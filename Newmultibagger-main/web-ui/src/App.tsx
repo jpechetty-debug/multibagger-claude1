@@ -10,6 +10,7 @@ import {
 import { Header } from './components/layout/Header'
 import { Routes, Route } from 'react-router-dom'
 import { SignalGrid } from './components/signals/SignalGrid'
+import { ScreenerGrid } from './components/signals/ScreenerGrid'
 import { SwingTradeGrid } from './components/signals/SwingTradeGrid'
 import { StrategyIntelligence } from './components/signals/StrategyIntelligence'
 import { FloorDock } from './components/layout/FloorDock'
@@ -122,6 +123,21 @@ export default function App() {
           <>
             {activeTab === 'Signals' && (
               <SignalGrid
+                signals={filteredSignals}
+                totalSignalCount={signals.length}
+                searchTerm={searchTerm}
+                loading={loading}
+                isRefreshing={refreshing}
+                error={errorMessage}
+                lastUpdated={lastUpdated}
+                onRetry={() => void loadData('initial')}
+                onSearch={setSearchTerm}
+                highReliabilityOnly={highReliabilityOnly}
+                onToggleReliability={setHighReliabilityOnly}
+              />
+            )}
+            {activeTab === 'Screener' && (
+              <ScreenerGrid
                 signals={filteredSignals}
                 totalSignalCount={signals.length}
                 searchTerm={searchTerm}

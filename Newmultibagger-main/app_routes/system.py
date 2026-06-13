@@ -164,13 +164,11 @@ async def websocket_prices(websocket: WebSocket):
 async def run_scan(request: Request):
     """Trigger full market scan."""
     try:
-        process = await asyncio.create_subprocess_exec(
-            sys.executable,
-            os.path.join("scripts", "internal", "screener.py"),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        return {"status": "scan_initiated", "pid": process.pid}
+        from worker.task_bus import dispatch
+        from worker.tasks import run_full_scan
+
+        task_id = await dispatch(run_full_scan, _task_options={"queue": "screening"})
+        return {"status": "scan_initiated", "task_id": task_id, "mode": "async"}
     except Exception as e:
         return {"error": str(e)}
 

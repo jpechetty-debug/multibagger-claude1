@@ -86,21 +86,22 @@ async def trigger_training(
             "last_training": get_last_training_info(),
         }
 
-    # ── Try Celery (async, preferred) ─────────────────────────────────────────
+    # ── Try Celery/Asyncio (preferred) ─────────────────────────────────────────
     try:
+        from worker.task_bus import dispatch
         from worker.tasks import retrain_xgboost
 
-        task = retrain_xgboost.apply_async(queue="ml")
-        _log.info("ML retraining dispatched to Celery", task_id=task.id)
+        task_id = await dispatch(retrain_xgboost, _task_options={"queue": "ml"})
+        _log.info("ML retraining dispatched", task_id=task_id)
         return {
             "status": "queued",
-            "task_id": task.id,
-            "mode": "celery",
+            "task_id": task_id,
+            "mode": "async",
         }
-    except Exception as celery_err:
+    except Exception as dispatch_err:
         _log.warning(
-            "Celery unavailable — falling back to inline training",
-            error=str(celery_err),
+            "Task bus unavailable — falling back to inline training",
+            error=str(dispatch_err),
         )
 
     # ── Inline fallback (blocking — completes before response) ───────────────
@@ -143,14 +144,15 @@ async def trigger_batch_inference(_: str = Depends(get_api_key)):
             detail="Model not trained. Call POST /api/ml/train first.",
         )
 
-    # ── Try Celery ────────────────────────────────────────────────────────────
+    # ── Try Dispatch ────────────────────────────────────────────────────────────
     try:
+        from worker.task_bus import dispatch
         from worker.tasks import batch_ml_inference
 
-        task = batch_ml_inference.apply_async(queue="ml")
-        return {"status": "queued", "task_id": task.id, "mode": "celery"}
-    except Exception as celery_err:
-        _log.warning("Celery unavailable — running inference inline", error=str(celery_err))
+        task_id = await dispatch(batch_ml_inference, _task_options={"queue": "ml"})
+        return {"status": "queued", "task_id": task_id, "mode": "async"}
+    except Exception as dispatch_err:
+        _log.warning("Task bus unavailable — running inference inline", error=str(dispatch_err))
 
     # ── Inline fallback ───────────────────────────────────────────────────────
     try:

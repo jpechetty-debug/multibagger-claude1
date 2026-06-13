@@ -58,4 +58,4 @@ async def test_dispatch_celery_mode():
             task_id = await dispatch(dummy_async_task, 10, 20)
 
             assert task_id == "mock-celery-id"
-            mock_celery.assert_called_once_with(dummy_async_task, 10, 20)
+            mock_celery.assert_called_once_with(dummy_async_task, 10, 20, _task_options=None)
