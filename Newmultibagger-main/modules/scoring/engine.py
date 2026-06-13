@@ -13,6 +13,7 @@ from typing import Any
 
 from config import MAX_FUNDAMENTAL_AGE_DAYS, STALE_DATA_WARNING_DAYS
 
+from modules.audit import audit_stock_data
 from modules.data_utils import safe_float
 from modules.data_layer.dq_gates import validate_record
 from modules.field_names import normalize_data_keys
@@ -150,6 +151,11 @@ def calculate_institutional_score(
     # with no "or" fallbacks.
     data = normalize_data_keys(data)
 
+    # ── Gate 0: Per-row sanity checks (audit_stock_data) ──────────────────
+    # Flags missing critical fields, invalid prices, zero market cap, etc.
+    # Hard rejections (is_clean=False) get a degraded score path.
+    is_clean, audit_flags = audit_stock_data(data)
+
     # ── Extract shared date fields once ──
     as_of = data.get("As_Of_Date")
     quarter_end = data.get("Quarter_End")
@@ -162,6 +168,11 @@ def calculate_institutional_score(
     data_quality_flags: list[str] = []
     _staleness_penalty: float = 0.0
     _scoring_strategy_override: str | None = None
+    if not is_clean:
+        data_quality_flags.append("audit_dirty")
+        if audit_flags:
+            data_quality_flags.append(audit_flags)
+        _scoring_strategy_override = "AUDIT_DEGRADED"
     if as_of:
         as_of_date = date.fromisoformat(str(as_of))
         age_days = (date.today() - as_of_date).days
