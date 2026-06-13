@@ -15,9 +15,9 @@ def test_pledge_penalty():
     """Verify that pledge > 0 correctly penalises the conviction score."""
     base_data = {
         "symbol": "TEST.NS",
-        "market_cap_cr": 1000,
-        "sales_cagr_5y": 20,
-        "avg_roe_5y": 20,
+        "Market_Cap_Cr": 1000,
+        "Sales_Growth_5Y%": 20,
+        "Avg_ROE_5Y%": 20,
     }
     
     # Calculate with 30% pledge
@@ -39,15 +39,12 @@ def test_multibagger_hunt_threshold():
     """Verify multibagger-hunt filters properly with >= 15 threshold."""
     client = TestClient(app)
     
-    with patch("db.db_core.duck_conn.execute") as mock_execute:
-        # Mock the dataframe return
-        mock_execute.return_value.df.return_value = pd.DataFrame()
-        
+    with patch("app_routes.stocks._duck_query", return_value=pd.DataFrame()) as mock_dq:
         response = client.get("/api/multibagger-hunt")
         assert response.status_code == 200
         
-        mock_execute.assert_called_once()
-        query = mock_execute.call_args[0][0]
+        mock_dq.assert_called_once()
+        query = mock_dq.call_args[0][0]
         
         assert "CAST(sales_cagr_5y AS DOUBLE) >= 15" in query, "sales_cagr_5y threshold should be >= 15"
         assert "CAST(avg_roe_5y AS DOUBLE) >= 15" in query, "avg_roe_5y threshold should be >= 15"

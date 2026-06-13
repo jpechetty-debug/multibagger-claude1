@@ -9,11 +9,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
-try:
-    import plotly.graph_objects as _go
-    _go.Heatmap()  # version probe
-except Exception as _plotly_err:
-    pytestmark = pytest.mark.skip(reason=f"plotly incompatible: {_plotly_err}")
+plotly = pytest.importorskip("plotly", reason="plotly not installed")
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
