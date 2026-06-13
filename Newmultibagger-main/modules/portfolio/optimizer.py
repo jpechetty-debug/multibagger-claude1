@@ -57,7 +57,6 @@ class PortfolioOptimizer:
         """
         total_cost = sum(PortfolioOptimizer.COSTS.values())
         drag = total_cost * turnover_pa
-        drag = total_cost * turnover_pa
         return gross_return - drag
 
     def optimize_allocation(self, stocks, history_df=None, method="risk_parity"):
@@ -83,7 +82,7 @@ class PortfolioOptimizer:
                 _log.warning(f"Failed to predict regime, defaulting to VOLATILE: {e}")
                 self.regime = "VOLATILE"
             
-        if self.regime in self.REGIME_LIMITS and self.regime != "TEST":
+        if self.regime in self.REGIME_LIMITS and self.regime != "TEST" and not self.regime_override:
             self.max_single_weight, self.max_sector_weight = self.REGIME_LIMITS[self.regime]
         
         _log.info(f"Optimizer operating in {self.regime} regime. Limits -> Single: {self.max_single_weight:.0%}, Sector: {self.max_sector_weight:.0%}")
