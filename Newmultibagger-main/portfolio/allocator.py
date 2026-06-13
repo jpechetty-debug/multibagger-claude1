@@ -115,7 +115,7 @@ class PortfolioAllocator:
             # Don't exceed base allocation (e.g. 10% NAV)
             # ML rank score: predicted 3-month return in % (e.g. +2.5 or -1.2)
             # Scale to [0.7 .. 1.3] conviction multiplier — strong signal → larger size
-            ml_score = float(cand.get("ml_rank_score") or cand.get("ml_prediction") or 0.0)
+            ml_score = float(cand.get("ML_Predicted_Return") or 0.0)
             conviction_mult = max(0.7, min(1.3, 1.0 + ml_score / 10.0))
 
             final_amt = min(risk_based_amt, base_allocation_amt * conviction_mult)
