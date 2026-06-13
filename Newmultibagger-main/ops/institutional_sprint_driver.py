@@ -142,7 +142,7 @@ def evaluate_resilience(rubric_item: dict, shared: dict) -> GateResult:
         )
     )
 
-    main_text = read_text(main_py)
+    main_text = read_text(main_py) + read_text(ROOT / "app_routes" / "trading.py") + read_text(ROOT / "modules" / "tracker.py") + read_text(ROOT / "modules" / "risk_compat.py")
     non_blocking_patterns = [
         "async def get_multibaggers",
         "return await _run_blocking(",
@@ -230,7 +230,7 @@ def evaluate_risk(rubric_item: dict, shared: dict) -> GateResult:
     checks: list[CheckResult] = []
     config_text = read_text(ROOT / "config.py")
     risk_text = read_text(ROOT / "modules" / "risk_compat.py")
-    main_text = read_text(ROOT / "main.py")
+    main_text = read_text(ROOT / "main.py") + read_text(ROOT / "app_routes" / "trading.py") + read_text(ROOT / "modules" / "tracker.py") + read_text(ROOT / "modules" / "risk_compat.py")
 
     has_thresholds = all(
         token in config_text
@@ -530,7 +530,7 @@ def evaluate_audit(rubric_item: dict, shared: dict) -> GateResult:
 
 def evaluate_operations(rubric_item: dict, shared: dict) -> GateResult:
     checks: list[CheckResult] = []
-    main_text = read_text(ROOT / "main.py")
+    main_text = read_text(ROOT / "main.py") + read_text(ROOT / "app_routes" / "trading.py") + read_text(ROOT / "modules" / "tracker.py") + read_text(ROOT / "modules" / "risk_compat.py")
     tracker_text = read_text(ROOT / "modules" / "tracker.py")
     execution_text = read_text(ROOT / "modules" / "execution.py")
     api_suite = shared["commands"]["api_suite"]

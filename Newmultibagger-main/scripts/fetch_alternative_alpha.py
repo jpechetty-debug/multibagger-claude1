@@ -13,7 +13,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from db.repository import get_connection, _utc_now
+from db.repository import get_connection
+from db.models import _utc_now
 from modules.data_layer.nse_sast_scraper import NSEScraper, parse_nse_date
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

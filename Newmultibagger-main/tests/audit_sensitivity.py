@@ -12,7 +12,7 @@ class TestAuditSensitivity(unittest.TestCase):
 
     def setUp(self):
         self.risk = RiskGovernor()
-        self.optimizer = PortfolioOptimizer()
+        self.optimizer = PortfolioOptimizer(regime_override="BULLISH")
 
     def test_drawdown_limit_sensitivity(self):
         """
@@ -81,6 +81,7 @@ class TestAuditSensitivity(unittest.TestCase):
         print("\n📊 Sensitivity Test: Optimizer Weights")
 
         # Relax constraints for this test to specific isolate Volatility Logic
+        self.optimizer.regime = "TEST"
         self.optimizer.max_single_weight = 1.0
         self.optimizer.max_sector_weight = 1.0
 

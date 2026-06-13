@@ -13,7 +13,6 @@ from typing import Any
 
 import joblib
 import numpy as np
-import optuna
 import pandas as pd
 import shap
 import xgboost as xgb
@@ -194,12 +193,17 @@ def optuna_optimize(
     Returns:
         Best hyper-parameter dict (compatible with ``_make_xgb_regressor``).
     """
+    try:
+        import optuna
+    except ImportError:
+        raise ImportError("optuna is required for optimization. Run `pip install optuna`")
+
     optuna.logging.set_verbosity(optuna.logging.WARNING)
 
     X = _sanitize_features(train_df[FEATURES])
     y = train_df["forward_return"].values
 
-    def _objective(trial: optuna.Trial) -> float:
+    def _objective(trial: "optuna.Trial") -> float:
         params = {
             "n_estimators":     trial.suggest_int("n_estimators",     **_OPTUNA_SEARCH_SPACE["n_estimators"]),
             "learning_rate":    trial.suggest_float("learning_rate",  **_OPTUNA_SEARCH_SPACE["learning_rate"]),

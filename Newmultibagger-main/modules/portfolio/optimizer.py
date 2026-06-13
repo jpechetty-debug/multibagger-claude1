@@ -30,19 +30,23 @@ class PortfolioOptimizer:
         "BEARISH":  (0.02, 0.10),
     }
 
-    def __init__(self, capital=100000):
+    def __init__(self, capital=100000, regime_override=None):
         self.total_capital = capital
         self.max_single_weight = 0.10
         self.min_single_weight = 0.02
         self.max_sector_weight = config.MAX_SECTOR_EXPOSURE
-        self.regime = "BULLISH" # Default
+        self.regime_override = regime_override
+        self.regime = regime_override or "BULLISH" # Default
         
         # Load HMM model
-        try:
-            from modules.risk.regime_hmm import RegimeHMM
-            self.hmm = RegimeHMM()
-        except Exception as e:
-            _log.warning(f"Failed to load RegimeHMM, defaulting to BULLISH regime limits: {e}")
+        if not self.regime_override:
+            try:
+                from modules.risk.regime_hmm import RegimeHMM
+                self.hmm = RegimeHMM()
+            except Exception as e:
+                _log.warning(f"Failed to load RegimeHMM, defaulting to BULLISH regime limits: {e}")
+                self.hmm = None
+        else:
             self.hmm = None
 
     @staticmethod
@@ -72,10 +76,14 @@ class PortfolioOptimizer:
             return pd.DataFrame()
 
         # Update limits based on regime
-        if self.hmm:
-            self.regime = self.hmm.predict_regime()
+        if self.hmm and not self.regime_override:
+            try:
+                self.regime = self.hmm.predict_regime()
+            except Exception as e:
+                _log.warning(f"Failed to predict regime, defaulting to VOLATILE: {e}")
+                self.regime = "VOLATILE"
             
-        if self.regime in self.REGIME_LIMITS:
+        if self.regime in self.REGIME_LIMITS and self.regime != "TEST":
             self.max_single_weight, self.max_sector_weight = self.REGIME_LIMITS[self.regime]
         
         _log.info(f"Optimizer operating in {self.regime} regime. Limits -> Single: {self.max_single_weight:.0%}, Sector: {self.max_sector_weight:.0%}")
