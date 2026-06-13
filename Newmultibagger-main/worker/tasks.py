@@ -210,18 +210,10 @@ def retrain_xgboost():
                 from pathlib import Path
                 windows = wf.get("windows", [])
                 if windows:
-                    regime_buckets: dict[str, list[float]] = {
-                        "BULL": [], "BEAR": [], "SIDEWAYS": []
-                    }
-                    for w in windows:
-                        regime = w.get("regime", "SIDEWAYS")
-                        ic = w.get("spearman_ic")
-                        if regime in regime_buckets and ic is not None:
-                            regime_buckets[regime].append(float(ic))
-
                     ic_summary = {
-                        r: round(sum(v) / len(v), 4) if v else None
-                        for r, v in regime_buckets.items()
+                        "overall": round(wf.get("spearman_ic") or 0.0, 4),
+                        "folds": len(windows),
+                        "note": "regime-split requires pred_df; using overall fold IC",
                     }
                     cache_path = Path("runtime/regime_ic_cache.json")
                     cache_path.parent.mkdir(exist_ok=True)

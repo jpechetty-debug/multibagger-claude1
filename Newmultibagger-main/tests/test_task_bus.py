@@ -4,6 +4,12 @@ from unittest.mock import patch, MagicMock
 
 from worker.task_bus import dispatch, run_dev_worker, get_mode
 
+@pytest.fixture(autouse=True)
+def reset_task_bus_queue():
+    import worker.task_bus
+    worker.task_bus._queue = None
+    yield
+
 # A dummy task for testing
 async def dummy_async_task(x, y):
     return x + y

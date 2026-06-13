@@ -21,10 +21,10 @@ def test_perfect_correlation_high_ic():
         "prediction": np.arange(n, dtype=float),
         "forward_return": np.arange(n, dtype=float) * 0.01,
     })
-    regimes = pd.Series(["BULLISH"] * n, index=df.index)
+    regimes = pd.Series(["BULL"] * n, index=df.index)
     result = compute_ic_by_regime(df, regimes)
-    assert result["BULLISH"]["confidence"] == "HIGH"
-    assert result["BULLISH"]["ic"] == pytest.approx(1.0)
+    assert result["BULL"]["confidence"] == "HIGH"
+    assert result["BULL"]["ic"] == pytest.approx(1.0)
 
 
 def test_random_predictions_low_confidence():
@@ -34,9 +34,9 @@ def test_random_predictions_low_confidence():
         "prediction": rng.randn(n),
         "forward_return": rng.randn(n),
     })
-    regimes = pd.Series(["BEARISH"] * n, index=df.index)
+    regimes = pd.Series(["BEAR"] * n, index=df.index)
     result = compute_ic_by_regime(df, regimes)
-    assert result["BEARISH"]["confidence"] == "LOW_SIGNAL_CONFIDENCE"
+    assert result["BEAR"]["confidence"] == "LOW_SIGNAL_CONFIDENCE"
 
 
 def test_multiple_regimes():
@@ -44,17 +44,17 @@ def test_multiple_regimes():
     n = 60
     preds = rng.randn(n)
     actuals = rng.randn(n)
-    # Make BULLISH highly correlated
+    # Make BULL highly correlated
     actuals[:20] = preds[:20] * 0.5 + rng.randn(20) * 0.01
     df = pd.DataFrame({"prediction": preds, "forward_return": actuals})
     regimes = pd.Series(
-        ["BULLISH"] * 20 + ["BEARISH"] * 20 + ["VOLATILE"] * 20,
+        ["BULL"] * 20 + ["BEAR"] * 20 + ["SIDEWAYS"] * 20,
         index=df.index,
     )
     result = compute_ic_by_regime(df, regimes)
-    assert "BULLISH" in result
-    assert "BEARISH" in result
-    assert result["BULLISH"]["ic"] > result["BEARISH"]["ic"]
+    assert "BULL" in result
+    assert "BEAR" in result
+    assert result["BULL"]["ic"] > result["BEAR"]["ic"]
 
 
 def test_insufficient_data():
