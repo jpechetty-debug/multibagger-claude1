@@ -54,3 +54,26 @@ def apply_slippage_to_returns(gross_return_pct, slippage_pct, turnover=1.0):
 
     net_return = gross_return_pct - total_drag
     return net_return, total_drag
+
+
+def liquidity_gate(
+    market_cap_cr: float,
+    avg_volume_cr: float,
+    *,
+    max_slippage_pct: float = 0.5,
+) -> tuple[bool, float, str]:
+    """Pre-trade liquidity gate that rejects stocks with excessive slippage.
+
+    Args:
+        market_cap_cr: Market capitalisation in Crores.
+        avg_volume_cr: Average daily traded value in Crores.
+        max_slippage_pct: Maximum acceptable one-way impact cost (default 0.5%).
+
+    Returns:
+        (passes, slippage_pct, reason)
+        ``passes`` is True when the estimated impact cost is within the
+        acceptable threshold.
+    """
+    slippage_pct, reason = calculate_slippage(market_cap_cr, avg_volume_cr)
+    passes = slippage_pct <= max_slippage_pct
+    return passes, slippage_pct, reason

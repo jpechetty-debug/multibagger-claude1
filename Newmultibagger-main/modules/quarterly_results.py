@@ -287,6 +287,20 @@ def calculate_growth_rates(quarters: list[dict]) -> list[dict]:
     return quarters
 
 
+def _margin_expansion_slope(quarters: list[dict]) -> float:
+    """Compute linear regression slope of net profit margins across quarters.
+
+    A positive slope indicates that margins are expanding over time (earnings
+    velocity).  Returns 0.0 when fewer than 3 data points are available.
+    """
+    margins = [q["margin"] for q in quarters if q.get("margin") is not None]
+    if len(margins) < 3:
+        return 0.0
+    x = np.arange(len(margins), dtype=float)
+    coeffs = np.polyfit(x, margins, 1)
+    return round(float(coeffs[0]), 4)
+
+
 def analyze_quarterly_trends(quarters: list[dict]) -> dict:
     """Analyze trends across quarters."""
     if len(quarters) < 3:
@@ -345,6 +359,8 @@ def analyze_quarterly_trends(quarters: list[dict]) -> dict:
         "avg_revenue_growth": round(avg_revenue_growth, 1),
         "avg_profit_growth": round(avg_profit_growth, 1),
         "avg_margin": round(avg_margin, 1),
+        "margin_expansion_slope": _margin_expansion_slope(quarters),
+        "earnings_velocity_positive": _margin_expansion_slope(quarters) > 0,
         "quarters_with_growth": quarters_with_growth,
         "total_quarters": total_data,
     }

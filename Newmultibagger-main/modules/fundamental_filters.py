@@ -120,3 +120,74 @@ def validate_garp_criteria(stock_data):
         return False, f"Poor Cash Flow Quality (CFO/PAT: {cfo_pat})"
 
     return True, "Passed"
+
+
+def build_sector_relative_filter(
+    stocks: list[dict],
+    sector_medians: dict[str, dict[str, float]],
+    *,
+    outperformance_ratio: float = 1.20,
+    min_metrics_to_beat: int = 2,
+) -> list[dict]:
+    """Filter stocks that beat their sector median by *outperformance_ratio*.
+
+    For each stock the function checks three metrics against the sector median:
+      - ROE  (Avg_ROE_5Y% or ROE%)
+      - Sales Growth (Sales_Growth_5Y% or Sales_Growth_TTM%)
+      - PE Ratio (PE_Ratio) — *inverted*: lower is better, so the stock must
+        have PE <= median / outperformance_ratio.
+
+    A stock passes when it beats at least *min_metrics_to_beat* of the three
+    sector benchmarks.
+
+    Args:
+        stocks: List of stock dictionaries (screener output).
+        sector_medians: ``{sector: {median_roe, median_growth, median_pe}}``
+            as returned by ``calculate_sector_medians()``.
+        outperformance_ratio: Multiplier for median threshold (1.20 = 20%
+            above median).
+        min_metrics_to_beat: How many metrics a stock must outperform to pass.
+
+    Returns:
+        Filtered list of stock dicts with an added ``sector_relative_pass``
+        key describing which metrics passed.
+    """
+    passed: list[dict] = []
+
+    for stock in stocks:
+        sector = str(stock.get("Sector", "Unknown"))
+        medians = sector_medians.get(sector)
+        if medians is None:
+            # No median data for this sector — skip (conservative).
+            continue
+
+        beats = []
+
+        # --- ROE ---
+        roe = stock.get("Avg_ROE_5Y%") or stock.get("avg_roe_5y")
+        if roe is None:
+            roe = stock.get("ROE%") or stock.get("roe")
+        median_roe = medians.get("median_roe", 0)
+        if roe is not None and median_roe > 0 and roe >= median_roe * outperformance_ratio:
+            beats.append("roe")
+
+        # --- Growth ---
+        growth = stock.get("Sales_Growth_5Y%") or stock.get("sales_cagr_5y")
+        if growth is None:
+            growth = stock.get("Sales_Growth_TTM%") or stock.get("sales_growth")
+        median_growth = medians.get("median_growth", 0)
+        if growth is not None and median_growth > 0 and growth >= median_growth * outperformance_ratio:
+            beats.append("growth")
+
+        # --- PE (inverted: lower is better) ---
+        pe = stock.get("PE_Ratio") or stock.get("pe_ratio")
+        median_pe = medians.get("median_pe", 0)
+        if pe is not None and pe > 0 and median_pe > 0:
+            if pe <= median_pe / outperformance_ratio:
+                beats.append("pe")
+
+        if len(beats) >= min_metrics_to_beat:
+            stock["sector_relative_pass"] = ",".join(beats)
+            passed.append(stock)
+
+    return passed

@@ -84,6 +84,11 @@ class Multibagger(Base):
     ml_predicted_return = Column(Float)
     shap_breakdown = Column(Text)
     shap_top_drivers = Column(Text)
+    
+    # Phase 1: New Alpha Data
+    ocf_yield = Column(Float)
+    earnings_velocity_qoq = Column(Float)
+    earnings_velocity_yoy = Column(Float)
 
     __table_args__ = (
         CheckConstraint("pe_ratio >= -100 AND pe_ratio <= 1000"),
@@ -106,10 +111,36 @@ class FundamentalsPIT(Base):
     debt_equity = Column(Float)
     market_cap_cr = Column(Float)
     cfo_pat_ratio = Column(Float)
+    
+    # Phase 1: New Alpha Data
+    ocf_yield = Column(Float)
+    earnings_velocity_qoq = Column(Float)
+    earnings_velocity_yoy = Column(Float)
+
     source_updated_at = Column(DateTime)
     created_at = Column(DateTime, default=_utc_now)
 
     __table_args__ = (Index("idx_fundamentals_pit_as_of_date", "as_of_date"),)
+
+
+class InstitutionalFlow(Base):
+    """Phase 1: Base table for SEBI SAST and Block Deals."""
+
+    __tablename__ = "institutional_flows"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    symbol = Column(String, nullable=False)
+    execution_date = Column(Date, nullable=False)
+    transaction_type = Column(String)   # e.g., 'SAST', 'BLOCK', 'BULK'
+    party_name = Column(String)
+    quantity = Column(Float)
+    price_per_share = Column(Float)
+    value_cr = Column(Float)
+    reported_at = Column(DateTime, default=_utc_now)
+
+    __table_args__ = (
+        Index("idx_inst_flows_sym_date", "symbol", "execution_date"),
+    )
 
 
 class ScoreHistory(Base):
