@@ -1,12 +1,15 @@
 # master_picks.py
 # Consolidated list of all stocks provided by User
 
-from user_picks import USER_PICKS
-from user_picks_v2 import USER_PICKS_V2
-from user_picks_v3 import USER_PICKS_V3
-from user_picks_v4 import USER_PICKS_V4
+import os
+import sys
 
-MASTER_PICKS = sorted(set(USER_PICKS + USER_PICKS_V2 + USER_PICKS_V3 + USER_PICKS_V4))
+# Add root directory to python path so we can import from ticker_list
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
+from ticker_list import TICKERS
+
+MASTER_PICKS = TICKERS.copy()
 # Remove TATAMOTORS.NS if it's giving 404
 if "TATAMOTORS.NS" in MASTER_PICKS:
     MASTER_PICKS.remove("TATAMOTORS.NS")

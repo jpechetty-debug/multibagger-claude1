@@ -4,6 +4,9 @@ import sys
 # Add current dir to path to import screener
 sys.path.append(os.getcwd())
 
+if sys.stdout.encoding.lower() != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8')
+
 
 import pandas as pd
 import screener
@@ -19,7 +22,7 @@ def scan_master_picks():
 
     for symbol in MASTER_PICKS:
         print(f"Analyzing {symbol}...", end="\r")
-        data = screener.get_stock_data(symbol)
+        data = screener.get_stock_data_sync(symbol)
         if data:
             # Calculate institutional score
             score_data = screener.calculate_institutional_score(data, market_regime=market_regime)
