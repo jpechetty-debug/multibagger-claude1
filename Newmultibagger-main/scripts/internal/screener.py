@@ -1890,33 +1890,33 @@ def main(argv=None):
                 from modules.hybrid_scoring import predict_and_explain
 
                 factors = {
-                    "score": score,
-                    "sales_cagr_5y": stock.get("Sales_Growth_5Y%", 0),
-                    "avg_roe_5y": stock.get("Avg_ROE_5Y%", 0),
-                    "pe_ratio": stock.get("PE_Ratio", 0),
-                    "debt_equity": stock.get("Debt_Equity", 0),
-                    "cfo_pat_ratio": stock.get("CFO_PAT_Ratio", 0),
-                    "market_cap_cr": stock.get("Market_Cap_Cr", 0),
-                    "ret_1m": stock.get("Ret_1M", 0),
-                    "ret_3m": stock.get("Ret_3M", 0),
-                    "ret_6m": stock.get("Ret_6M", 0),
-                    "vol_breakout": stock.get("Vol_Breakout", 0),
-                    "dist_from_52w_high": stock.get("Dist_From_52W_High", 0),
-                    "roce": stock.get("ROCE%", 0),
+                    # 📈 Fundamental features ───────────────────────────────
+                    "score":               score,
+                    "sales_cagr_5y":       stock.get("Sales_Growth_5Y%",   0) or 0,
+                    "avg_roe_5y":          stock.get("Avg_ROE_5Y%",        0) or 0,
+                    "pe_ratio":            stock.get("PE_Ratio",            0) or 0,
+                    "debt_equity":         stock.get("Debt_Equity",         0) or 0,
+                    "cfo_pat_ratio":       stock.get("CFO_PAT_Ratio",       0) or 0,
+                    "market_cap_cr":       stock.get("Market_Cap_Cr",       0) or 0,
+                    "roce":                stock.get("ROCE%",               0) or 0,
+                    # 📈 Momentum / technical features ────────────────────────
+                    "ret_1m":              stock.get("Ret_1M",              0) or 0,
+                    "ret_3m":              stock.get("Ret_3M",              0) or 0,
+                    "ret_6m":              stock.get("Ret_6M",              0) or 0,
+                    "vol_breakout":        stock.get("Vol_Breakout",        0) or 0,
+                    "dist_from_52w_high":  stock.get("Dist_From_52W_High",  0) or 0,
                 }
+
                 ml_res = predict_and_explain(factors)
                 stock["ML_Predicted_Return"] = ml_res.get("ml_prediction")
+                stock["SHAP_Breakdown"]      = json.dumps(ml_res.get("shap_values", {}))
+                stock["SHAP_Top_Drivers"]    = json.dumps(ml_res.get("top_drivers",  []))
 
-                # Convert SHAP dict to JSON string for easier SQLite storage
-                import json
-
-                stock["SHAP_Breakdown"] = json.dumps(ml_res.get("shap_values", {}))
-                stock["SHAP_Top_Drivers"] = json.dumps(ml_res.get("top_drivers", []))
             except Exception:
-                # Silent fail if ML model not ready
+                # Silent fail — model may not be trained yet
                 stock["ML_Predicted_Return"] = None
-                stock["SHAP_Breakdown"] = "{}"
-                stock["SHAP_Top_Drivers"] = "[]"
+                stock["SHAP_Breakdown"]      = "{}"
+                stock["SHAP_Top_Drivers"]    = "[]"
 
             # Trade Setup
             calculate_trade_setup(stock)

@@ -86,22 +86,21 @@ async def trigger_training(
             "last_training": get_last_training_info(),
         }
 
-    # ── Try Celery/Asyncio (preferred) ─────────────────────────────────────────
+    # ── Try Celery (async, preferred) ─────────────────────────────────────────
     try:
-        from worker.task_bus import dispatch
         from worker.tasks import retrain_xgboost
 
-        task_id = await dispatch(retrain_xgboost, _task_options={"queue": "ml"})
-        _log.info("ML retraining dispatched", task_id=task_id)
+        task = retrain_xgboost.apply_async(queue="ml")
+        _log.info("ML retraining dispatched to Celery", task_id=task.id)
         return {
             "status": "queued",
-            "task_id": task_id,
-            "mode": "async",
+            "task_id": task.id,
+            "mode": "celery",
         }
-    except Exception as dispatch_err:
+    except Exception as celery_err:
         _log.warning(
-            "Task bus unavailable — falling back to inline training",
-            error=str(dispatch_err),
+            "Celery unavailable — falling back to inline training",
+            error=str(celery_err),
         )
 
     # ── Inline fallback (blocking — completes before response) ───────────────
@@ -144,15 +143,14 @@ async def trigger_batch_inference(_: str = Depends(get_api_key)):
             detail="Model not trained. Call POST /api/ml/train first.",
         )
 
-    # ── Try Dispatch ────────────────────────────────────────────────────────────
+    # ── Try Celery ────────────────────────────────────────────────────────────
     try:
-        from worker.task_bus import dispatch
         from worker.tasks import batch_ml_inference
 
-        task_id = await dispatch(batch_ml_inference, _task_options={"queue": "ml"})
-        return {"status": "queued", "task_id": task_id, "mode": "async"}
-    except Exception as dispatch_err:
-        _log.warning("Task bus unavailable — running inference inline", error=str(dispatch_err))
+        task = batch_ml_inference.apply_async(queue="ml")
+        return {"status": "queued", "task_id": task.id, "mode": "celery"}
+    except Exception as celery_err:
+        _log.warning("Celery unavailable — running inference inline", error=str(celery_err))
 
     # ── Inline fallback ───────────────────────────────────────────────────────
     try:
@@ -248,21 +246,18 @@ async def feature_importance(_: str = Depends(get_api_key)):
 
 @router.get("/walk-forward")
 async def walk_forward_report(_: str = Depends(get_api_key)):
-    """Last persisted walk-forward report plus IC-by-regime summary."""
+    """Last persisted walk-forward validation report.
+
+    Fields: status, folds, rows, oos_r2, mae, rmse, spearman_ic,
+    hit_rate, top_quantile_sharpe, holdout_rows_excluded, windows
+    (per-fold IC, hit_rate, sharpe).
+
+    Returns 404 when training has never been run.
+    """
     report = load_walk_forward_report()
     if report is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No walk-forward report found. Run POST /api/ml/train first.",
         )
-    # Attach IC-by-regime if the cache exists (written by retrain_xgboost task)
-    ic_by_regime = {}
-    try:
-        import json
-        from pathlib import Path
-        p = Path("runtime/regime_ic_cache.json")
-        if p.exists():
-            ic_by_regime = json.loads(p.read_text()).get("ic_by_regime", {})
-    except Exception:
-        pass
-    return {**report, "ic_by_regime": ic_by_regime}
+    return report
