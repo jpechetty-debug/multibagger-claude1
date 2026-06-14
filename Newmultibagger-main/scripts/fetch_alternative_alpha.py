@@ -24,7 +24,7 @@ async def fetch_and_store_flows():
     """Fetch SAST and Block deals, then insert into db."""
     sast_records = []
     block_records = []
-    
+
     async with NSEScraper() as scraper:
         logger.info("Fetching SAST data...")
         sast_data = await scraper.fetch_sast_data()
@@ -33,11 +33,11 @@ async def fetch_and_store_flows():
             symbol = item.get("symbol")
             if not symbol:
                 continue
-            
+
             try:
                 date_str = item.get("acqDate", item.get("date", ""))
                 execution_date = parse_nse_date(date_str) if date_str else _utc_now().date()
-                
+
                 sast_records.append({
                     "symbol": symbol,
                     "execution_date": execution_date,
@@ -57,13 +57,13 @@ async def fetch_and_store_flows():
             symbol = item.get("symbol")
             if not symbol:
                 continue
-            
+
             try:
                 date_str = item.get("date", "")
                 execution_date = parse_nse_date(date_str) if date_str else _utc_now().date()
                 qty = float(item.get("quantity", 0) or 0)
                 price = float(item.get("tradePrice", 0) or 0)
-                
+
                 block_records.append({
                     "symbol": symbol,
                     "execution_date": execution_date,
@@ -87,13 +87,13 @@ async def fetch_and_store_flows():
         # We can use INSERT OR IGNORE by using a unique index, but since we didn't specify unique on (symbol, execution_date, party_name)
         # we will just insert. In production, we'd want an upsert logic.
         logger.info(f"Inserting {len(all_records)} flow records into DB.")
-        
+
         insert_sql = """
-            INSERT INTO institutional_flows 
+            INSERT INTO institutional_flows
             (symbol, execution_date, transaction_type, party_name, quantity, price_per_share, value_cr, reported_at)
             VALUES (:symbol, :execution_date, :transaction_type, :party_name, :quantity, :price_per_share, :value_cr, CURRENT_TIMESTAMP)
         """
-        
+
         conn.executemany(insert_sql, all_records)
         conn.commit()
         logger.info("Successfully saved flow records.")

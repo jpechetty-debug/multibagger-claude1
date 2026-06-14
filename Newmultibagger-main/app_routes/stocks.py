@@ -75,7 +75,8 @@ async def get_multibaggers(request: Request, as_of_date: str | None = None):
                 ).df()
             except Exception:
                 # DuckDB sqlite extension unavailable (CI / sandboxed) — fall back to plain SQLite
-                import sqlite3, pandas as _pd
+                import sqlite3
+                import pandas as _pd
                 from db.db_core import DB_PATH
                 conn = sqlite3.connect(DB_PATH)
                 df = _pd.read_sql(f"SELECT * FROM multibaggers ORDER BY score DESC LIMIT {_TOP_N}", conn)
@@ -670,7 +671,8 @@ def _duck_query(sql: str, params: list | None = None):
             return duck_conn.execute(sql, params).df()
         return duck_conn.execute(sql).df()
     except Exception:
-        import sqlite3, pandas as _pd
+        import sqlite3
+        import pandas as _pd
         from db.db_core import DB_PATH
         fallback_sql = sql.replace("sqlite_db.", "")
         conn = sqlite3.connect(DB_PATH)

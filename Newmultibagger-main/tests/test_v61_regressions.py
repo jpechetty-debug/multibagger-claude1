@@ -19,15 +19,15 @@ def test_pledge_penalty():
         "Sales_Growth_5Y%": 20,
         "Avg_ROE_5Y%": 20,
     }
-    
+
     # Calculate with 30% pledge
     data_with_pledge = dict(base_data, Pledge_Pct=30)
     result_with_pledge = calculate_institutional_score(data_with_pledge)
-    
+
     # Calculate with 0% pledge
     data_no_pledge = dict(base_data, Pledge_Pct=0)
     result_no_pledge = calculate_institutional_score(data_no_pledge)
-    
+
     assert result_with_pledge["conviction_score"] < result_no_pledge["conviction_score"], "Pledge should penalise conviction score"
 
 def test_bull_regime_uses_momentum_weights():
@@ -38,13 +38,13 @@ def test_bull_regime_uses_momentum_weights():
 def test_multibagger_hunt_threshold():
     """Verify multibagger-hunt filters properly with >= 15 threshold."""
     client = TestClient(app)
-    
+
     with patch("app_routes.stocks._duck_query", return_value=pd.DataFrame()) as mock_dq:
         response = client.get("/api/multibagger-hunt")
         assert response.status_code == 200
-        
+
         mock_dq.assert_called_once()
         query = mock_dq.call_args[0][0]
-        
+
         assert "CAST(sales_cagr_5y AS DOUBLE) >= 15" in query, "sales_cagr_5y threshold should be >= 15"
         assert "CAST(avg_roe_5y AS DOUBLE) >= 15" in query, "avg_roe_5y threshold should be >= 15"

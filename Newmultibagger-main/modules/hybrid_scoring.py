@@ -66,18 +66,18 @@ FEATURE_BOUNDS: dict[str, tuple[float, float]] = {
 }
 
 # XGBoost hyper-parameters — kept in one place so train + WF folds are identical.
-_XGB_PARAMS: dict[str, Any] = dict(
-    n_estimators=100,
-    learning_rate=0.05,
-    max_depth=4,
-    subsample=0.8,
-    colsample_bytree=0.8,
-    min_child_weight=3,
-    reg_alpha=0.1,
-    reg_lambda=1.0,
-    random_state=42,
-    eval_metric="rmse",
-)
+_XGB_PARAMS: dict[str, Any] = {
+    "n_estimators": 100,
+    "learning_rate": 0.05,
+    "max_depth": 4,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "min_child_weight": 3,
+    "reg_alpha": 0.1,
+    "reg_lambda": 1.0,
+    "random_state": 42,
+    "eval_metric": "rmse",
+}
 
 # ---------------------------------------------------------------------------
 # Logging — graceful fallback if project logger is unavailable

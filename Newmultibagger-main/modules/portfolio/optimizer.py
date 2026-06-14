@@ -37,7 +37,7 @@ class PortfolioOptimizer:
         self.max_sector_weight = config.MAX_SECTOR_EXPOSURE
         self.regime_override = regime_override
         self.regime = regime_override or "BULLISH" # Default
-        
+
         # Load HMM model
         if not self.regime_override:
             try:
@@ -81,10 +81,10 @@ class PortfolioOptimizer:
             except Exception as e:
                 _log.warning(f"Failed to predict regime, defaulting to VOLATILE: {e}")
                 self.regime = "VOLATILE"
-            
+
         if self.regime in self.REGIME_LIMITS and self.regime != "TEST" and not self.regime_override:
             self.max_single_weight, self.max_sector_weight = self.REGIME_LIMITS[self.regime]
-        
+
         _log.info(f"Optimizer operating in {self.regime} regime. Limits -> Single: {self.max_single_weight:.0%}, Sector: {self.max_sector_weight:.0%}")
 
         df = pd.DataFrame(stocks)
