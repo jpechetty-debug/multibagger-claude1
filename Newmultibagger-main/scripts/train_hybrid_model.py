@@ -61,6 +61,8 @@ Examples
     parser.add_argument("--force",      action="store_true", help="Force retraining regardless of data size")
     parser.add_argument("--bootstrap",  action="store_true", help="Cold-start: train on multibaggers proxy target (use when PIT data is empty)")
     parser.add_argument("--validate",   action="store_true", help="Re-run walk-forward validation only — no production refit")
+    parser.add_argument("--optimize",   action="store_true", help="Run Optuna Bayesian hyperparameter search before training")
+    parser.add_argument("--n-trials",   type=int, default=30, help="Number of Optuna trials (default: 30)")
     parser.add_argument("--dry-run",    action="store_true", help="Print status without training")
     parser.add_argument("--status",     action="store_true", help="Print last training metadata and walk-forward report")
     parser.add_argument("--importance", action="store_true", help="Print feature importances from trained model")
@@ -180,7 +182,54 @@ Examples
         _print_json(report, "Walk-Forward Validation Report")
         sys.exit(0)
 
-    # ── Check trigger unless --force ──────────────────────────────────────────
+    # ── Optuna optimization if requested ──────────────────────────────────────────
+    if args.optimize:
+        logger.info("Running Optuna hyperparameter optimization…")
+        try:
+            import pandas as pd
+            from modules.data_layer.db_utils import get_db_connection
+            from modules.hybrid_scoring import optuna_optimize, _XGB_PARAMS
+
+            with get_db_connection("stocks.db") as conn:
+                df = pd.read_sql(
+                    """
+                    SELECT symbol, as_of_date, price AS pit_price,
+                           score, sales_cagr_5y, avg_roe_5y, pe_ratio,
+                           debt_equity, cfo_pat_ratio, market_cap_cr,
+                           ret_1m, ret_3m, ret_6m,
+                           vol_breakout, dist_from_52w_high, roce
+                    FROM fundamentals_pit
+                    """,
+                    conn,
+                )
+
+            if df.empty or len(df) < 20:
+                print(f"Not enough PIT data for optimization ({len(df)} rows, need 20+).")
+                sys.exit(1)
+
+            # Use score proxy as forward_return
+            df["forward_return"] = (
+                (df["score"] - df["score"].min())
+                / max(df["score"].max() - df["score"].min(), 1.0)
+            ) - 0.5
+
+            best_params = optuna_optimize(
+                df, n_trials=args.n_trials, cv_folds=3, timeout_seconds=600
+            )
+
+            # Save optimized params
+            params_path = model_dir / "optuna_best_params.json"
+            with open(params_path, "w") as fh:
+                json.dump(best_params, fh, indent=2)
+            print(f"\u2713 Best params saved to {params_path}")
+            _print_json(best_params, "Optuna Best Parameters")
+
+        except Exception as exc:
+            print(f"Optuna optimization failed: {exc}")
+            sys.exit(1)
+        sys.exit(0)
+
+    # ── Check trigger unless --force ────────────────────────────────────────────
     if not args.force:
         if not check_retraining_trigger():
             logger.info(
@@ -203,7 +252,7 @@ Examples
             folds=wf.get("folds"),
             wf_status=wf.get("status"),
         )
-        print(f"✓ Model saved to {model_dir / 'xgboost_meta_model.pkl'}")
+        print(f"[OK] Model saved to {model_dir / 'xgboost_meta_model.pkl'}")
         if wf.get("status") == "BOOTSTRAP":
             print("  ⚠  Bootstrap model (proxy target) — will improve as PIT data accumulates.")
         elif wf.get("status") == "OK":

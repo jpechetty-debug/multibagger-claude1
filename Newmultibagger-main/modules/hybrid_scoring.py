@@ -13,6 +13,7 @@ from typing import Any
 
 import joblib
 import numpy as np
+import optuna
 import pandas as pd
 import shap
 import xgboost as xgb
@@ -66,17 +67,34 @@ FEATURE_BOUNDS: dict[str, tuple[float, float]] = {
 }
 
 # XGBoost hyper-parameters — kept in one place so train + WF folds are identical.
-_XGB_PARAMS: dict[str, Any] = {
-    "n_estimators": 100,
-    "learning_rate": 0.05,
-    "max_depth": 4,
-    "subsample": 0.8,
-    "colsample_bytree": 0.8,
-    "min_child_weight": 3,
-    "reg_alpha": 0.1,
-    "reg_lambda": 1.0,
-    "random_state": 42,
-    "eval_metric": "rmse",
+# These serve as both the default config AND the Optuna warm-start initial trial.
+_XGB_PARAMS: dict[str, Any] = dict(
+    n_estimators=100,
+    learning_rate=0.05,
+    max_depth=4,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    min_child_weight=3,
+    reg_alpha=0.1,
+    reg_lambda=1.0,
+    random_state=42,
+    eval_metric="rmse",
+)
+
+# SHAP dominance threshold: reject model if any single feature accounts for
+# more than this fraction of total absolute SHAP importance.
+SHAP_DOMINANCE_THRESHOLD = 0.90
+
+# Optuna search space bounds (warm-started from _XGB_PARAMS).
+_OPTUNA_SEARCH_SPACE: dict[str, dict[str, Any]] = {
+    "n_estimators":     {"low": 50,   "high": 500},
+    "learning_rate":    {"low": 0.01, "high": 0.3,  "log": True},
+    "max_depth":        {"low": 3,    "high": 8},
+    "subsample":        {"low": 0.5,  "high": 1.0},
+    "colsample_bytree": {"low": 0.4,  "high": 1.0},
+    "min_child_weight": {"low": 1,    "high": 10},
+    "reg_alpha":        {"low": 1e-3, "high": 10.0, "log": True},
+    "reg_lambda":       {"low": 1e-3, "high": 10.0, "log": True},
 }
 
 # ---------------------------------------------------------------------------
@@ -144,8 +162,154 @@ def _alias_factors(factors_dict: dict) -> dict:
 # Model factory
 # ---------------------------------------------------------------------------
 
-def _make_xgb_regressor() -> xgb.XGBRegressor:
-    return xgb.XGBRegressor(**_XGB_PARAMS)
+def _make_xgb_regressor(params: dict[str, Any] | None = None) -> xgb.XGBRegressor:
+    """Create an XGBRegressor from the given params or the legacy defaults."""
+    effective = {**_XGB_PARAMS, **(params or {})}
+    return xgb.XGBRegressor(**effective)
+
+
+# ---------------------------------------------------------------------------
+# Optuna Bayesian hyperparameter optimization
+# ---------------------------------------------------------------------------
+
+def optuna_optimize(
+    train_df: pd.DataFrame,
+    *,
+    n_trials: int = 30,
+    cv_folds: int = 3,
+    timeout_seconds: int | None = 300,
+) -> dict[str, Any]:
+    """Run Optuna Bayesian search over XGBoost hyper-parameters.
+
+    The first trial ("warm-start") is seeded with the legacy ``_XGB_PARAMS``
+    so the search always starts from a known-good baseline.  Subsequent
+    trials explore the search space defined by ``_OPTUNA_SEARCH_SPACE``.
+
+    Args:
+        train_df: DataFrame with FEATURES columns + ``forward_return``.
+        n_trials: Total number of Optuna trials (including the warm-start).
+        cv_folds: Number of cross-validation folds for each trial.
+        timeout_seconds: Max wall-clock seconds for the entire study.
+
+    Returns:
+        Best hyper-parameter dict (compatible with ``_make_xgb_regressor``).
+    """
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+
+    X = _sanitize_features(train_df[FEATURES])
+    y = train_df["forward_return"].values
+
+    def _objective(trial: optuna.Trial) -> float:
+        params = {
+            "n_estimators":     trial.suggest_int("n_estimators",     **_OPTUNA_SEARCH_SPACE["n_estimators"]),
+            "learning_rate":    trial.suggest_float("learning_rate",  **_OPTUNA_SEARCH_SPACE["learning_rate"]),
+            "max_depth":        trial.suggest_int("max_depth",        **_OPTUNA_SEARCH_SPACE["max_depth"]),
+            "subsample":        trial.suggest_float("subsample",      **_OPTUNA_SEARCH_SPACE["subsample"]),
+            "colsample_bytree": trial.suggest_float("colsample_bytree", **_OPTUNA_SEARCH_SPACE["colsample_bytree"]),
+            "min_child_weight": trial.suggest_int("min_child_weight", **_OPTUNA_SEARCH_SPACE["min_child_weight"]),
+            "reg_alpha":        trial.suggest_float("reg_alpha",      **_OPTUNA_SEARCH_SPACE["reg_alpha"]),
+            "reg_lambda":       trial.suggest_float("reg_lambda",     **_OPTUNA_SEARCH_SPACE["reg_lambda"]),
+            "random_state":     42,
+            "eval_metric":      "rmse",
+        }
+
+        from sklearn.model_selection import KFold
+
+        kf = KFold(n_splits=cv_folds, shuffle=True, random_state=42)
+        fold_scores: list[float] = []
+
+        for train_idx, val_idx in kf.split(X):
+            X_tr, X_val = X.iloc[train_idx], X.iloc[val_idx]
+            y_tr, y_val = y[train_idx], y[val_idx]
+
+            model = xgb.XGBRegressor(**params)
+            model.fit(X_tr, y_tr, eval_set=[(X_val, y_val)], verbose=False)
+            preds = model.predict(X_val)
+
+            # Spearman IC as the optimization target (higher is better)
+            ic = _spearman_ic(pd.Series(y_val), pd.Series(preds))
+            fold_scores.append(ic if ic is not None else 0.0)
+
+        return float(np.mean(fold_scores))
+
+    study = optuna.create_study(direction="maximize", study_name="xgb_hyperparam")
+
+    # Warm-start: enqueue the legacy params as the first trial
+    study.enqueue_trial({
+        "n_estimators":     _XGB_PARAMS["n_estimators"],
+        "learning_rate":    _XGB_PARAMS["learning_rate"],
+        "max_depth":        _XGB_PARAMS["max_depth"],
+        "subsample":        _XGB_PARAMS["subsample"],
+        "colsample_bytree": _XGB_PARAMS["colsample_bytree"],
+        "min_child_weight": _XGB_PARAMS["min_child_weight"],
+        "reg_alpha":        _XGB_PARAMS["reg_alpha"],
+        "reg_lambda":       _XGB_PARAMS["reg_lambda"],
+    })
+
+    study.optimize(_objective, n_trials=n_trials, timeout=timeout_seconds)
+
+    best = study.best_params
+    best["random_state"] = 42
+    best["eval_metric"] = "rmse"
+
+    _log.info(
+        "Optuna optimization complete",
+        best_ic=round(study.best_value, 4),
+        n_trials=len(study.trials),
+        best_params=best,
+    )
+    return best
+
+
+# ---------------------------------------------------------------------------
+# SHAP dominance guard
+# ---------------------------------------------------------------------------
+
+def check_shap_dominance(
+    model: xgb.XGBRegressor,
+    X: pd.DataFrame,
+    *,
+    threshold: float = SHAP_DOMINANCE_THRESHOLD,
+    sample_size: int = 200,
+) -> tuple[bool, str, dict[str, float]]:
+    """Check whether any single feature dominates SHAP importance.
+
+    Args:
+        model: Trained XGBRegressor.
+        X: Feature DataFrame (sanitized).
+        threshold: Maximum allowed fraction for a single feature (default 0.90).
+        sample_size: How many rows to sample for SHAP computation.
+
+    Returns:
+        (passes, reason, importance_dict)
+        ``passes`` is True when no single feature exceeds the threshold.
+    """
+    X_sample = X.sample(n=min(sample_size, len(X)), random_state=42)
+
+    explainer = shap.TreeExplainer(model)
+    shap_values = explainer.shap_values(X_sample)
+
+    mean_abs_shap = np.abs(shap_values).mean(axis=0)
+    total = float(mean_abs_shap.sum())
+    if total == 0:
+        return True, "Zero total SHAP — trivial model", {}
+
+    importance: dict[str, float] = {}
+    for i, feat in enumerate(FEATURES):
+        importance[feat] = round(float(mean_abs_shap[i]) / total, 6)
+
+    max_feat = max(importance, key=importance.get)  # type: ignore[arg-type]
+    max_share = importance[max_feat]
+
+    if max_share > threshold:
+        reason = (
+            f"REJECTED: Feature '{max_feat}' drives {max_share:.1%} of model "
+            f"predictions (threshold: {threshold:.0%}). Likely data leakage or "
+            f"overfitting to a single signal."
+        )
+        return False, reason, importance
+
+    return True, "OK", importance
 
 
 # ---------------------------------------------------------------------------
@@ -629,6 +793,20 @@ def train_hybrid_model() -> bool:
     model = _make_xgb_regressor()
     _log.info("Fitting production XGBoost regressor", rows=len(X))
     model.fit(X, y)
+
+    # ── 6b. SHAP dominance guard ──
+    try:
+        passes, reason, shap_imp = check_shap_dominance(model, X)
+        if not passes:
+            _log.error(
+                "Model REJECTED by SHAP dominance guard",
+                reason=reason,
+                importance=shap_imp,
+            )
+            return False
+        _log.info("SHAP dominance guard passed", top_feature_share=max(shap_imp.values()) if shap_imp else 0)
+    except Exception as exc:
+        _log.warning("SHAP dominance check failed — proceeding anyway", error=str(exc))
 
     # Cache SHAP expected value
     try:
