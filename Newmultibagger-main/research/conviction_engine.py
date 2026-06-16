@@ -76,12 +76,31 @@ def calculate_conviction_score(stock_data):
         if pledge == 0:
             score += 10
             details.append("Zero Pledge (+10)")
-        elif pledge > 0:
+        elif pledge <= 5:
+            # Minor / administrative pledge — SEBI watch-list threshold.
+            # Consistent with promoter_intel.py "pledge_current < 5" buy-signal boundary.
+            score -= 5
+            details.append("Minor Pledge <=5% (-5)")
+        elif pledge <= 20:
+            # Moderate concern — insider.py flags pledge > 5 as a warning,
+            # score_diagnostics.py marks pledge > 10 as high-impact.
+            score -= 12
+            details.append("Moderate Pledge <=20% (-12)")
+        elif pledge <= 50:
+            # High risk — risk.py treats pledge > 25 as a governance red flag.
             score -= 20
-            details.append("Promoter Pledge Penalty (-20)")
+            details.append("High Pledge <=50% (-20)")
+        else:
+            # Severe — SEBI CIR/CFD/CMD1/168/2019 mandatory-action territory.
+            score -= 25
+            details.append("Critical Pledge >50% (-25)")
 
-    # Cap Score
-    final_score = min(score, max_score)
+    # Cap and floor: conviction score must stay in [0, max_score].
+    # Without the floor, a stock with minimal positives and any pledge can
+    # produce a negative conviction_score that propagates into the scoring
+    # engine's capped_conviction_score and the GARP rank_score, silently
+    # deflating the final score with no transparency to the user.
+    final_score = max(0, min(score, max_score))
 
     return {
         "conviction_score": final_score,
