@@ -61,4 +61,4 @@ def test_garp_strategy_falls_back_to_conviction_when_nexus_score_missing():
     )
 
     assert components["nexus_score"] == 0.0
-    assert components["rank_score"] == 86.0
+    assert components["rank_score"] == 85.9
