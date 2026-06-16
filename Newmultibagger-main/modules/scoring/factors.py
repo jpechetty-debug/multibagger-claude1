@@ -18,10 +18,20 @@ from .normalization import FactorState, _Number, _StockData, normalize_metric
 
 
 _REGIME_ALIASES = {
+    # Multi-word forms produced by analyze_market_regime()
     "bull market": "momentum",
     "bear market": "quality",
     "correction":  "value",
     "recovery":    "momentum",
+    # Short-form equivalents (direct API / CLI callers)
+    # Keeping "bull" and "bear" in SCORING_WEIGHTS for legacy compatibility,
+    # but route them through the alias table so this file is the single source
+    # of routing truth rather than relying on implicit dict membership.
+    "bullish":     "momentum",
+    "bearish":     "quality",
+    # Common freeform inputs that should not silently fall through to "balanced"
+    "neutral":     "balanced",
+    "unknown":     "balanced",
 }
 
 def _resolve_mode_and_weights(market_regime: str | None, sector: str = "") -> tuple[str, dict[str, float], str]:

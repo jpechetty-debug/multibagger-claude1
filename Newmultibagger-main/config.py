@@ -189,18 +189,13 @@ SCORING_WEIGHTS = {
         "w_mom": 0.00,
         "w_sentiment": 0.10,
     },
+    # "bull" / "bear": reached only when the caller passes the short-form string
+    # directly (e.g. CLI flags or internal overrides).  The multi-word forms
+    # "bull market" and "bear market" — which analyze_market_regime() returns —
+    # are intercepted by _REGIME_ALIASES in factors.py and redirected to
+    # "momentum" / "quality" before this dict is ever consulted, so they are NOT
+    # separate entries here.  "correction" is likewise aliased to "value".
     "bull": {
-        "w_sales": 0.10,
-        "w_roe": 0.05,
-        "w_cfo": 0.05,
-        "w_val": 0.05,
-        "w_eps": 0.25,
-        "w_fscore": 0.10,
-        "w_de": 0.05,
-        "w_mom": 0.20,
-        "w_sentiment": 0.15,  # Aggressive news follow
-    },
-    "bull market": {
         "w_sales": 0.10,
         "w_roe": 0.05,
         "w_cfo": 0.05,
@@ -222,17 +217,6 @@ SCORING_WEIGHTS = {
         "w_mom": 0.00,
         "w_sentiment": 0.10,
     },
-    "bear market": {
-        "w_sales": 0.10,
-        "w_roe": 0.20,
-        "w_cfo": 0.15,
-        "w_val": 0.10,
-        "w_eps": 0.10,
-        "w_fscore": 0.15,
-        "w_de": 0.10,
-        "w_mom": 0.00,
-        "w_sentiment": 0.10,
-    },
     "sideways": {
         "w_sales": 0.15,
         "w_roe": 0.15,
@@ -243,17 +227,6 @@ SCORING_WEIGHTS = {
         "w_de": 0.10,
         "w_mom": 0.10,
         "w_sentiment": 0.10,  # Alternative Data Factor (v11.0)
-    },
-    "correction": {
-        "w_sales": 0.10,
-        "w_roe": 0.15,
-        "w_cfo": 0.10,
-        "w_val": 0.30,
-        "w_eps": 0.10,
-        "w_fscore": 0.10,
-        "w_de": 0.10,
-        "w_mom": 0.00,
-        "w_sentiment": 0.05,  # Conservative filtering
     },
 }
 
