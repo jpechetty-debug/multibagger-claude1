@@ -21,7 +21,7 @@ def _apply_spline_cap(
     min_cap: _Number,
     name: str,
     score_ceiling: float,
-    disqualifiers: list[str],
+    disqualifiers: list[tuple[str, float]],
 ) -> float:
     val = optional_float(val)
     if val is None:
@@ -43,7 +43,7 @@ def _apply_spline_cap(
 
     if cap < 96:
         score_ceiling = min(score_ceiling, cap)
-        disqualifiers.append(f"{name} ({val:.1f})")
+        disqualifiers.append((f"{name} ({val:.1f})", cap))
 
     return score_ceiling
 
@@ -51,9 +51,9 @@ def _apply_spline_cap(
 def _apply_score_ceiling_rules(
     data: _StockData,
     state: FactorState,
-) -> tuple[float, list[str]]:
+) -> tuple[float, list[tuple[str, float]]]:
     score_ceiling = 100.0
-    disqualifiers: list[str] = []
+    disqualifiers: list[tuple[str, float]] = []
 
     score_ceiling = _apply_spline_cap(
         state.best_roe,
@@ -124,8 +124,9 @@ def _apply_score_ceiling_rules(
     # A missing F_Score (common for Indian mid/small-caps) is not evidence of
     # poor quality — treating None as 0 incorrectly hard-caps such stocks at 65.
     if f_score_val is not None and f_score_val <= 4:
-        score_ceiling = min(score_ceiling, 65 + (f_score_val * 5.9))
-        disqualifiers.append(f"Quality Floor Spline (F:{f_score_val})")
+        cap = 65 + (f_score_val * 5.9)
+        score_ceiling = min(score_ceiling, cap)
+        disqualifiers.append((f"Quality Floor Spline (F:{f_score_val})", cap))
 
     value_gap = safe_float(data.get("Value_Gap%"))
     if value_gap < 0:
@@ -221,7 +222,7 @@ def _apply_checklist_gate(
     state: FactorState,
     base_score: float,
     score_ceiling: float,
-    disqualifiers: list[str],
+    disqualifiers: list[tuple[str, float]],
 ) -> tuple[int, int, float, float]:
     checklist_pass = 0
     checklist_total = 12
@@ -276,6 +277,6 @@ def _apply_checklist_gate(
     score_ceiling = min(score_ceiling, current_ceiling)
 
     if checklist_pass < 9:
-        disqualifiers.append(f"Institutional Quality Gate {checklist_pass}/{checklist_total}")
+        disqualifiers.append((f"Institutional Quality Gate {checklist_pass}/{checklist_total}", current_ceiling))
 
     return checklist_pass, checklist_total, base_score, score_ceiling

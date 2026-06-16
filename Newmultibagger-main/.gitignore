@@ -1,4 +1,4 @@
-﻿error_log.txt
+error_log.txt
 error_log_utf8.txt
 
 # ML model artifacts — directory tracked, binaries ignored
@@ -8,3 +8,4 @@ runtime/models/*
 xgboost_walk_forward.json
 *.bm25.pkl
 graphify-out/
+temp_extract/

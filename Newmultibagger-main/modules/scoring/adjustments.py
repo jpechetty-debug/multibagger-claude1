@@ -155,8 +155,8 @@ def _apply_optional_intel_adjustments(
     data: _StockData,
     factor_audit: list[dict[str, Any]],
     score_ceiling: float,
-    disqualifiers: list[str],
-) -> tuple[float, float, float, list[str]]:
+    disqualifiers: list[tuple[str, float]],
+) -> tuple[float, float, float, list[tuple[str, float]]]:
     total_bonus = 0.0
     total_penalty = 0.0
     symbol = data.get("Symbol", "")
@@ -165,7 +165,7 @@ def _apply_optional_intel_adjustments(
         promoter_result = calculate_promoter_score(symbol) or {}
         if promoter_result.get("is_disqualified"):
             score_ceiling = min(score_ceiling, 60)
-            disqualifiers.append("D15: Heavy Insider Sell-Off")
+            disqualifiers.append(("D15: Heavy Insider Sell-Off", 60))
             factor_audit.append({"name": "D15: Heavy Insider Sell-Off", "value": -40})
 
         promoter_adjustment = promoter_result.get("score_adjustment", 0)
@@ -183,13 +183,13 @@ def _apply_optional_intel_adjustments(
         estimate_momentum = estimate_result.get("momentum", {})
         if estimate_momentum.get("is_disqualified"):
             score_ceiling = min(score_ceiling, 55)
-            disqualifiers.append("D16: Estimate Collapse (3Q consecutive downgrades)")
+            disqualifiers.append(("D16: Estimate Collapse (3Q consecutive downgrades)", 55))
             factor_audit.append({"name": "D16: Estimate Collapse", "value": -45})
 
         estimate_cap = estimate_momentum.get("score_cap")
         if estimate_cap is not None:
             score_ceiling = min(score_ceiling, estimate_cap)
-            disqualifiers.append(f"Earnings Miss Streak (cap {estimate_cap})")
+            disqualifiers.append((f"Earnings Miss Streak (cap {estimate_cap})", estimate_cap))
             factor_audit.append({"name": "Earnings Miss Streak", "value": -(100 - estimate_cap)})
 
         estimate_adjustment = estimate_momentum.get("score_adjustment", 0)

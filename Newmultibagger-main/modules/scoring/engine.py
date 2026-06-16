@@ -53,49 +53,7 @@ def _calculate_tiebreak_epsilon(symbol: str) -> float:
     return sym_hash / 100000.0
 
 
-def _stale_data_result(data: _StockData, age_days: int) -> dict[str, Any]:
-    symbol = data.get("Symbol") or "UNKNOWN"
-    return {
-        "total_score": 0.0,
-        "raw_score": 0.0,
-        "checklist_score": "0/12",
-        "data_confidence": 0.0,
-        "data_quality_flags": ["stale_data"],
-        "conviction_score": 0.0,
-        "conviction_boost": 0.0,
-        "institutional_interest": False,
-        "super_investors": "",
-        "scoring_strategy": "STALE_DATA",
-        "factor_penalties": [
-            {
-                "name": "STALE_DATA",
-                "value": -100,
-                "age_days": age_days,
-                "max_age_days": MAX_FUNDAMENTAL_AGE_DAYS,
-            }
-        ],
-        "factor_breakdown": {
-            "Fundamentals": 0.0,
-            "Value": 0.0,
-            "Risk": 0.0,
-            "Momentum": 0.0,
-            "News_Sentiment": 0.0,
-            "Smart_Money": 0.0,
-            "Sector": 0.0,
-        },
-        "signal": "STALE_DATA",
-        "status": "STALE_DATA",
-        "error_code": "STALE_DATA",
-        "warning": (
-            f"Data for {symbol} is {age_days} days old; "
-            f"max allowed is {MAX_FUNDAMENTAL_AGE_DAYS} days."
-        ),
-        "stale_data": {
-            "symbol": symbol,
-            "age_days": age_days,
-            "max_age_days": MAX_FUNDAMENTAL_AGE_DAYS,
-        },
-    }
+
 
 
 def _build_factor_breakdown(
@@ -300,13 +258,13 @@ def calculate_institutional_score(
     base_score += _calculate_tiebreak_epsilon(data.get("Symbol", ""))
     final_score = min(base_score, score_ceiling)
 
-    for disqualifier in disqualifiers:
-        factor_audit.append({"name": disqualifier, "value": round(score_ceiling - 100, 1)})
+    for disqualifier_name, cap_val in disqualifiers:
+        factor_audit.append({"name": disqualifier_name, "value": round(cap_val - 100, 1)})
 
     raw_score = round(max(0, min(base_score, 100.0)), 1)
 
     # Cap institutional conviction score so it doesn't bypass the fundamental score ceiling
-    capped_conviction_score = min(conviction["conviction_score"], score_ceiling)
+    capped_conviction_score = min(conviction["conviction_score"], score_ceiling, max(final_score, 0))
 
     result = {
         "total_score": round(max(0, min(final_score, 100.0)), 5),

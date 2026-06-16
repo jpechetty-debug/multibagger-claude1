@@ -286,8 +286,13 @@ def check_shap_dominance(
     """
     X_sample = X.sample(n=min(sample_size, len(X)), random_state=42)
 
-    explainer = shap.TreeExplainer(model)
-    shap_values = explainer.shap_values(X_sample)
+    try:
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(X_sample)
+        if len(shap_values.shape) < 2 or shap_values.shape[0] == 0:
+            return True, "SHAP values empty — sample size too small", {}
+    except Exception as exc:
+        return True, f"SHAP computation failed: {str(exc)}", {}
 
     mean_abs_shap = np.abs(shap_values).mean(axis=0)
     total = float(mean_abs_shap.sum())
@@ -546,28 +551,10 @@ def load_walk_forward_report() -> dict | None:
 # Training-data helpers  ← FIXED: correct import paths
 # ---------------------------------------------------------------------------
 
-def _get_historical_targets(symbols: list[str]) -> dict[str, float]:
-    """Return {symbol: current_price} via async data manager (sync-wrapped).
-
-    Fixed: was importing from ``modules.data_service`` and
-    ``modules.data_utils`` — both wrong.  Correct paths are under
-    ``modules.data_layer.*``.
-    """
-    from modules.data_layer.data_service import get_data_manager    # ← FIXED
-    from modules.data_layer.data_utils import run_coroutine_sync    # ← FIXED
-
-    async def _fetch():
-        return await get_data_manager().fetch_batch(symbols)
-
-    data = run_coroutine_sync(_fetch())
-    return {
-        s: d.get("price", d.get("Price"))
-        for s, d in data.items()
-        if d.get("price") is not None or d.get("Price") is not None
-    }
 
 
-def _build_training_frame(df: pd.DataFrame, current_prices: dict) -> pd.DataFrame:
+
+def _build_training_frame(df: pd.DataFrame) -> pd.DataFrame:
     """Attach forward returns (3-month) to each PIT row."""
     from modules.price_utils import fetch_forward_prices
 
@@ -656,6 +643,7 @@ def bootstrap_synthetic_model() -> bool:
     wf_report = {
         "status":     "BOOTSTRAP",
         "reason":     "trained on proxy score targets — replace via POST /api/ml/train",
+        "is_bootstrap": True,
         "folds":      0,
         "rows":       int(len(df)),
         "spearman_ic": None,
@@ -734,10 +722,7 @@ def train_hybrid_model() -> bool:
         return False
 
     # ── 2. Construct forward-return targets ──
-    symbols = df["symbol"].unique().tolist()
-    _log.info("Fetching current prices to build Y", symbols=len(symbols))
-    current_prices = _get_historical_targets(symbols)
-    train_df = _build_training_frame(df, current_prices)
+    train_df = _build_training_frame(df)
 
     if train_df.empty or len(train_df) < 10:
         _log.info("Too few rows with valid forward returns", rows=len(train_df))
