@@ -120,9 +120,10 @@ def _apply_score_ceiling_rules(
         )
 
     f_score_val = optional_float(data.get("F_Score"))
-    if f_score_val is None:
-        f_score_val = 0
-    if f_score_val <= 4:
+    # Only apply the ceiling when F_Score is actually present and genuinely low.
+    # A missing F_Score (common for Indian mid/small-caps) is not evidence of
+    # poor quality — treating None as 0 incorrectly hard-caps such stocks at 65.
+    if f_score_val is not None and f_score_val <= 4:
         score_ceiling = min(score_ceiling, 65 + (f_score_val * 5.9))
         disqualifiers.append(f"Quality Floor Spline (F:{f_score_val})")
 
