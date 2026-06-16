@@ -105,11 +105,28 @@ def enrich(
             rs_rating = 0
             if not hist.empty and len(hist) > 126:
                 price_6m_ago = hist["Close"].iloc[-126]
-                rs_rating = (
-                    round(((price - price_6m_ago) / price_6m_ago) * 100, 2)
-                    if price_6m_ago > 0
-                    else 0
-                )
+                if price_6m_ago > 0:
+                    stock_6m_ret = ((price - price_6m_ago) / price_6m_ago) * 100
+                    # RS_Rating must be a ratio vs the benchmark, not an absolute return.
+                    # Using absolute % (the previous calculation) writes values of 30, -10,
+                    # etc. into the DB, which saturate the normalization range (0.0–2.0)
+                    # immediately and make every stock with a positive 6M return look equal.
+                    try:
+                        nifty = yf.Ticker("^NSEI")
+                        nifty_hist = nifty.history(period="1y")
+                        if not nifty_hist.empty and len(nifty_hist) > 126:
+                            nifty_6m_ago = nifty_hist["Close"].iloc[-126]
+                            nifty_6m_ret = ((nifty_hist["Close"].iloc[-1] - nifty_6m_ago) / nifty_6m_ago) * 100
+                            if nifty_6m_ret != 0:
+                                rs_rating = round(stock_6m_ret / nifty_6m_ret, 2)
+                            else:
+                                rs_rating = 1.0 if stock_6m_ret > 0 else 0.0
+                        else:
+                            # Fallback: assume flat benchmark (10% annualised → ~5% 6M)
+                            nifty_6m_ret = 5.0
+                            rs_rating = round(stock_6m_ret / nifty_6m_ret, 2)
+                    except Exception:
+                        rs_rating = 1.0 if stock_6m_ret > 0 else 0.0
 
             high_52w = info.get("fiftyTwoWeekHigh", price)
             low_52w = info.get("fiftyTwoWeekLow", price)

@@ -44,7 +44,8 @@ class GarpStrategy(BaseStrategy):
     def _normalize_rs_score(cls, rs_value):
         from modules.scoring import normalize_metric
         rs = cls._safe_float(rs_value)
-        return normalize_metric(rs, 0.5, 1.5)
+        # Must match factors.py: ratio scale, midpoint 1.0 = market-neutral.
+        return normalize_metric(rs, 0.0, 2.0)
 
     @classmethod
     def _build_rank_components(cls, stock):

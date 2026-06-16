@@ -130,8 +130,18 @@ def _build_factor_state(data: _StockData, score_sentiment: float) -> FactorState
     score_mom_tech = normalize_metric(down_from_high, 0, 40, invert=True) if price > 0 else 0
 
     rs_rating = optional_float(data.get("RS_Rating"))
-    # Phase 2.5: Smooth sigmoid replaces coarse 25-point cliff bucketing
-    score_rs = normalize_metric(rs_rating, 0.5, 1.5) if rs_rating is not None else 50.0
+    # RS_Rating is a ratio: stock_6m_return / nifty_6m_return (screener.py canonical source).
+    # Semantic anchors from the codebase:
+    #   < 0.8  → momentum lost (thesis_check.py)
+    #     1.0  → exactly in line with the market (neutral → score 50)
+    #     1.5  → 50 % outperformance             → score ~82
+    #     2.0  → double the market return         → score ~95
+    #     3.0+ → exceptional                      → score ~100
+    # Range (0.0, 2.0) keeps the midpoint at 1.0 (true neutral) and preserves
+    # discrimination across the full realistic live-scan output of 0–3+.
+    # The previous range (0.5, 1.5) saturated at RS > ~1.8, making a 2× outperformer
+    # indistinguishable from a 5× outperformer.
+    score_rs = normalize_metric(rs_rating, 0.0, 2.0) if rs_rating is not None else 50.0
     score_mom_combined = (score_mom_tech * 0.5) + (score_rs * 0.5)
 
     # Fundamental Anchoring (Tactical Implementation)
