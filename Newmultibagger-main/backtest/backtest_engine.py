@@ -663,7 +663,6 @@ class VectorBTEngine:
                 }
 
             previous_positions: set[str] = set()
-            is_initial_period = True
             gross_returns = {}
             net_returns = {}
             turnovers = {}
@@ -747,12 +746,6 @@ class VectorBTEngine:
                 selected = ranked.head(top_count)
                 current_positions = set(selected["symbol"].tolist())
                 turnover = _portfolio_turnover(previous_positions, current_positions)
-                
-                # Assume portfolio was held historically on the first period
-                if is_initial_period:
-                    turnover = 0.0
-                    is_initial_period = False
-                    
                 period_gross_return = float(selected["forward_return"].mean())
                 period_net_return = float(
                     apply_transaction_costs(

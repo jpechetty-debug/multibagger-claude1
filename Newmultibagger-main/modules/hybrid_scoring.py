@@ -841,6 +841,7 @@ class PredictionResult:
     shap_values:        dict[str, float]
     shap_expected_value:float | None
     top_drivers:        list[dict]
+    is_bootstrap:       bool = False
 
     def to_dict(self) -> dict:
         return {
@@ -848,6 +849,7 @@ class PredictionResult:
             "shap_values":         self.shap_values,
             "shap_expected_value": self.shap_expected_value,
             "top_drivers":         self.top_drivers,
+            "is_bootstrap":        self.is_bootstrap,
         }
 
 
@@ -862,6 +864,7 @@ def predict_and_explain(
         shap_values={},
         shap_expected_value=None,
         top_drivers=[],
+        is_bootstrap=False,
     ).to_dict()
 
     if not os.path.exists(MODEL_PATH):
@@ -915,11 +918,15 @@ def predict_and_explain(
             for feat, shap_val in list(sorted_breakdown.items())[:top_n_drivers]
         ]
 
+        report = load_walk_forward_report()
+        is_bootstrap = report.get("is_bootstrap", False) if report else False
+
         return PredictionResult(
             ml_prediction=float(raw_prediction * 100.0),
             shap_values=sorted_breakdown,
             shap_expected_value=expected_value,
             top_drivers=top_drivers,
+            is_bootstrap=is_bootstrap,
         ).to_dict()
 
     except Exception as exc:
@@ -939,7 +946,7 @@ def batch_predict(
     if not os.path.exists(MODEL_PATH):
         _log.warning("Model not found — batch_predict returning empty predictions")
         return [
-            {**s, "ml_prediction": None, "shap_values": {}, "top_drivers": []}
+            {**s, "ml_prediction": None, "shap_values": {}, "top_drivers": [], "is_bootstrap": False}
             for s in stocks
         ]
 
@@ -951,12 +958,14 @@ def batch_predict(
     raw_preds = model.predict(X_all)
     shap_all  = explainer.shap_values(X_all)
 
-    ev: float | None = None
     try:
         ev = float(explainer.expected_value)
         ev = ev if np.isfinite(ev) else None
     except Exception:
         pass
+
+    report = load_walk_forward_report()
+    is_bootstrap = report.get("is_bootstrap", False) if report else False
 
     results = []
     for i, stock in enumerate(stocks):
@@ -984,6 +993,7 @@ def batch_predict(
             "shap_values":         sorted_bd,
             "shap_expected_value": ev,
             "top_drivers":         top_drivers,
+            "is_bootstrap":        is_bootstrap,
         })
 
     return results
