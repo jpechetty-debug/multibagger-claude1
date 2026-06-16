@@ -792,17 +792,23 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         if not financials.empty:
             try:
                 revs = financials.loc["Total Revenue"].dropna().iloc[::-1] # Oldest to newest
-                if len(revs) >= 2:
+                # A true 5Y CAGR requires 6 data points (5 growth intervals).
+                # yfinance typically returns 4 annual columns for Indian stocks,
+                # giving only 3 growth intervals.  Using those 3 intervals but
+                # labelling the result "5Y" overstates the CAGR by ~4% at 20%
+                # growth.  When fewer than 6 points are available, leave
+                # revenue_cagr_5y = 0 so the scorer falls back to TTM growth
+                # rather than emitting a mislabeled figure.
+                if len(revs) >= 6:
                     start_rev = revs.iloc[0]
                     end_rev = revs.iloc[-1]
-                    years = len(revs) - 1
+                    years = len(revs) - 1          # exactly 5 intervals when len==6
                     if start_rev > 0 and end_rev > 0:
                         cagr_rev = (end_rev / start_rev) ** (1 / years) - 1
                         revenue_cagr_5y = round(cagr_rev * 100, 2)
                     else:
-                        revenue_cagr_5y = round(sales_growth * 100, 2)
-                else:
-                    revenue_cagr_5y = round(sales_growth * 100, 2)
+                        revenue_cagr_5y = 0        # can't compute — scorer uses TTM
+                # fewer than 6 points → revenue_cagr_5y stays 0
 
                 # Avg ROE
                 net_income_series = financials.loc["Net Income"].iloc[::-1]

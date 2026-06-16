@@ -131,9 +131,18 @@ def calculate_all_cagrs_from_normalized(fin) -> dict[str, float | str | None]:
         return default
 
     available_years = fin.data_points
-    periods = {"3Y": 3, "5Y": min(4, available_years - 1)}
-    if available_years >= 5:
-        periods["5Y"] = 4
+    # 3Y CAGR requires 4 data points (3 growth intervals: FY20→FY21→FY22→FY23).
+    # 5Y CAGR requires 6 data points (5 growth intervals: FY18→…→FY23).
+    # When fewer than 6 points are available the "5Y" label would be dishonest —
+    # e.g. 5 points only yields a 4-year CAGR.  Omit "5Y" from the periods dict
+    # so _5Y output fields remain None rather than carrying a mislabeled value.
+    # Screener.in data uses its own pre-computed CAGR (correctly labeled) and
+    # never flows through this function, so coverage is not affected in practice.
+    periods: dict[str, int] = {}
+    if available_years >= 4:
+        periods["3Y"] = 3
+    if available_years >= 6:
+        periods["5Y"] = 5
 
     # Revenue CAGR
     rev_cagrs = _cagr_from_series(fin.revenue_series, periods) if fin.revenue_series else {}
@@ -218,14 +227,17 @@ def calculate_all_cagrs(ticker) -> dict[str, float | str | None]:
         _log.error(f"Caught unhandled exception: {e}", exc_info=True)
         return default
 
-    periods = {"3Y": 3, "5Y": min(4, len(fin.columns) - 1)}
-    # yfinance annual financials typically have 4 columns (4 years)
-    # Adjust 5Y to available data
+    # 3Y CAGR requires 4 annual columns (3 growth intervals).
+    # 5Y CAGR requires 6 annual columns (5 growth intervals).
+    # yfinance typically returns 4 columns for Indian stocks, so 5Y will be
+    # None in most cases — which is honest.  The previous code silently used
+    # 3 or 4 years of growth but still emitted the "5Y" label.
     available_years = len(fin.columns)
-    if available_years >= 5:
-        periods["5Y"] = 4  # 5 data points = 4 years of growth
-    elif available_years >= 4:
-        periods["5Y"] = available_years - 1
+    periods: dict[str, int] = {}
+    if available_years >= 4:
+        periods["3Y"] = 3
+    if available_years >= 6:
+        periods["5Y"] = 5
 
     # --- Revenue CAGR ---
     rev_series = _extract_series(
