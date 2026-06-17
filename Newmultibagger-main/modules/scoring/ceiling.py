@@ -32,14 +32,22 @@ def _apply_spline_cap(
         if val <= max_penalty_val:
             cap = min_cap
         elif val < full_score_val:
-            ratio = (full_score_val - val) / float(full_score_val - max_penalty_val)
-            cap = 100.0 - (ratio**1.5) * (100.0 - min_cap)
+            denom = float(full_score_val - max_penalty_val)
+            if denom == 0:
+                cap = min_cap
+            else:
+                ratio = (full_score_val - val) / denom
+                cap = 100.0 - (ratio**1.5) * (100.0 - min_cap)
     else:
         if val >= max_penalty_val:
             cap = min_cap
         elif val > full_score_val:
-            ratio = (val - full_score_val) / float(max_penalty_val - full_score_val)
-            cap = 100.0 - (ratio**1.5) * (100.0 - min_cap)
+            denom = float(max_penalty_val - full_score_val)
+            if denom == 0:
+                cap = min_cap
+            else:
+                ratio = (val - full_score_val) / denom
+                cap = 100.0 - (ratio**1.5) * (100.0 - min_cap)
 
     if cap < 96:
         score_ceiling = min(score_ceiling, cap)
@@ -124,7 +132,7 @@ def _apply_score_ceiling_rules(
     # A missing F_Score (common for Indian mid/small-caps) is not evidence of
     # poor quality — treating None as 0 incorrectly hard-caps such stocks at 65.
     if f_score_val is not None and f_score_val <= 4:
-        cap = 65 + (f_score_val * 5.9)
+        cap = 50 + (f_score_val * 7.5)
         score_ceiling = min(score_ceiling, cap)
         disqualifiers.append((f"Quality Floor Spline (F:{f_score_val})", cap))
 
@@ -246,6 +254,8 @@ def _apply_checklist_gate(
 
     sg_5y = optional_float(data.get("Sales_Growth_5Y%"))
     sg_ttm = optional_float(data.get("Sales_Growth_TTM%"))
+    if sg_ttm is not None:
+        sg_ttm = max(-100.0, min(300.0, sg_ttm))
     sg = sg_5y if sg_5y is not None else (sg_ttm if sg_ttm is not None else 0)
     if sg > 15:
         checklist_pass += 1

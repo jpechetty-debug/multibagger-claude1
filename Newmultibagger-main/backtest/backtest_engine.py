@@ -124,7 +124,7 @@ def benchmark_metrics(strategy_returns: pd.Series, benchmark_returns: pd.Series)
     benchmark_cagr = _annualized_return_pct(aligned["benchmark"])
     alpha_monthly = float(aligned["strategy"].mean() - aligned["benchmark"].mean())
     excess_returns = aligned["strategy"] - aligned["benchmark"]
-    tracking_error = float(excess_returns.std(ddof=1) * np.sqrt(12)) if len(aligned) > 1 else 0.0
+    tracking_error_decimal = float(excess_returns.std(ddof=1) * np.sqrt(12)) if len(aligned) > 1 else 0.0
 
     benchmark_var = float(aligned["benchmark"].var(ddof=1)) if len(aligned) > 1 else 0.0
     if benchmark_var > 0:
@@ -132,14 +132,14 @@ def benchmark_metrics(strategy_returns: pd.Series, benchmark_returns: pd.Series)
     else:
         beta = 0.0
 
-    information_ratio = (alpha_monthly * 12 / tracking_error) if tracking_error > 0 else 0.0
+    information_ratio = (alpha_monthly * 12 / tracking_error_decimal) if tracking_error_decimal > 0 else 0.0
 
     return {
         "benchmark_cagr": benchmark_cagr,
         "alpha_cagr": strategy_cagr - benchmark_cagr,
         "alpha_monthly": alpha_monthly * 100,
         "beta": beta,
-        "tracking_error": tracking_error * 100,
+        "tracking_error": tracking_error_decimal * 100,
         "information_ratio": information_ratio,
         "benchmark_status": "OK",
     }

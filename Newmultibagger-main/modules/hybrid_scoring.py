@@ -209,8 +209,6 @@ def optuna_optimize(
             "min_child_weight": trial.suggest_int("min_child_weight", **_OPTUNA_SEARCH_SPACE["min_child_weight"]),
             "reg_alpha":        trial.suggest_float("reg_alpha",      **_OPTUNA_SEARCH_SPACE["reg_alpha"]),
             "reg_lambda":       trial.suggest_float("reg_lambda",     **_OPTUNA_SEARCH_SPACE["reg_lambda"]),
-            "random_state":     42,
-            "eval_metric":      "rmse",
         }
 
         from sklearn.model_selection import KFold
@@ -222,7 +220,7 @@ def optuna_optimize(
             X_tr, X_val = X.iloc[train_idx], X.iloc[val_idx]
             y_tr, y_val = y[train_idx], y[val_idx]
 
-            model = xgb.XGBRegressor(**params)
+            model = _make_xgb_regressor(params)
             model.fit(X_tr, y_tr, eval_set=[(X_val, y_val)], verbose=False)
             preds = model.predict(X_val)
 
@@ -232,7 +230,11 @@ def optuna_optimize(
 
         return float(np.mean(fold_scores))
 
-    study = optuna.create_study(direction="maximize", study_name="xgb_hyperparam")
+    study = optuna.create_study(
+        direction="maximize",
+        study_name="xgb_hyperparam",
+        sampler=optuna.samplers.TPESampler(seed=42)
+    )
 
     # Warm-start: enqueue the legacy params as the first trial
     study.enqueue_trial({
@@ -958,9 +960,10 @@ def batch_predict(
     raw_preds = model.predict(X_all)
     shap_all  = explainer.shap_values(X_all)
 
+    ev: float | None = None
     try:
-        ev = float(explainer.expected_value)
-        ev = ev if np.isfinite(ev) else None
+        ev_raw = explainer.expected_value
+        ev = float(ev_raw) if np.isfinite(float(ev_raw)) else None
     except Exception:
         pass
 
