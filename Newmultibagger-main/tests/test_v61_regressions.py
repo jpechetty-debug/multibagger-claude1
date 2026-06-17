@@ -18,6 +18,10 @@ def test_pledge_penalty():
         "Market_Cap_Cr": 1000,
         "Sales_Growth_5Y%": 20,
         "Avg_ROE_5Y%": 20,
+        "F_Score": 6,
+        "Debt_Equity": 0.5,
+        "RS_Rating": 80,
+        "ROE%": 20,
     }
 
     # Calculate with 30% pledge
