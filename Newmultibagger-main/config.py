@@ -228,6 +228,17 @@ SCORING_WEIGHTS = {
         "w_mom": 0.10,
         "w_sentiment": 0.10,  # Alternative Data Factor (v11.0)
     },
+    "multibagger": {
+        "w_sales": 0.12,     # Revenue growth — secondary to earnings leverage
+        "w_roe": 0.12,       # Capital efficiency — quality signal
+        "w_cfo": 0.06,       # Cash conversion confirms real earnings
+        "w_val": 0.05,       # Deliberately LOW — multibaggers look expensive
+        "w_eps": 0.22,       # THE key signal — earnings acceleration drives re-rating
+        "w_fscore": 0.08,    # Quality floor
+        "w_de": 0.07,        # Low debt preferred but not the differentiator
+        "w_mom": 0.18,       # RS Rating + price strength — 2nd most predictive
+        "w_sentiment": 0.10, # News/market sentiment
+    },
 }
 
 # ── Transaction Cost Model Components ──────────────────────────────────────────

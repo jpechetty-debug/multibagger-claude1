@@ -83,9 +83,22 @@ def optimize_portfolio_allocation(candidates, capital=1000000):
             if s.get("Price", 0) > 0:
                 s["Qty"] = int(s["Allocated_Capital"] / s["Price"])
 
+        # Rebuild sector_exposure from actual post-normalization weights
+        sector_exposure = {}
+        for s in selected_portfolio:
+            sec = s.get("Sector", "Unknown")
+            sector_exposure[sec] = sector_exposure.get(sec, 0) + s["Target_Weight%"] / 100
+        for sec, w in sector_exposure.items():
+            if w > MAX_SECTOR_WEIGHT:
+                _log.warning(
+                    f"  ⚠️ Sector '{sec}' weight {w*100:.1f}% exceeds "
+                    f"{MAX_SECTOR_WEIGHT*100:.0f}% cap after normalization!"
+                )
+
     _log.info(f"Selected {len(selected_portfolio)} stocks from candidate list.")
     _log.info("Sector Breakdown:")
     for sec, w in sector_exposure.items():
         _log.info(f"  - {sec}: {w * 100:.1f}%")
 
     return selected_portfolio
+

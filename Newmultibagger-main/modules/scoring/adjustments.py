@@ -85,7 +85,7 @@ def _calculate_bonus_total(data: _StockData, state: FactorState, sector_boost: _
         total_bonus += 3
 
     if state.price > 0:
-        atr_pct = state.atr / state.price
+        atr_pct = abs(state.atr) / state.price
         if atr_pct < 0.03:
             total_bonus += 2
 
@@ -105,6 +105,50 @@ def _calculate_bonus_total(data: _StockData, state: FactorState, sector_boost: _
         if (de_check is not None and de_check > 1.0) and (fs_check is not None and fs_check >= 6):
             total_bonus += 5
 
+    # ── Multibagger signals ──────────────────────────────────────────────
+    # Small/Mid Cap Advantage — 85%+ of multibaggers are sub-₹10,000 Cr
+    mcap = optional_float(data.get("Market_Cap_Cr"))
+    if mcap is not None:
+        if mcap < 2000:       # Micro/small cap — highest multibagger probability
+            total_bonus += 5
+        elif mcap < 5000:     # Mid cap — strong
+            total_bonus += 3
+        elif mcap < 10000:    # Upper mid — moderate
+            total_bonus += 1
+
+    # Margin Expansion Signal — operating leverage is a multibagger catalyst
+    opm = optional_float(data.get("Operating_Margin%"))
+    opm_5y = optional_float(data.get("Avg_OPM_5Y%"))
+    if opm is not None and opm_5y is not None and opm_5y > 0:
+        margin_expansion = opm - opm_5y
+        if margin_expansion > 5:      # Strong expanding margins
+            total_bonus += 5
+        elif margin_expansion > 2:    # Moderate expansion
+            total_bonus += 2
+
+    # ROCE Compounding Quality — ROCE > 20% means the company creates value
+    # with every reinvested rupee (Buffett's key metric for compounders)
+    roce = optional_float(data.get("ROCE%"))
+    if roce is not None:
+        if roce > 30:           # Exceptional capital allocator
+            total_bonus += 5
+        elif roce > 20:         # Strong compounder
+            total_bonus += 3
+
+    # PAT CAGR Consistency — proven compounder with sustained earnings growth
+    pat_cagr_3y = optional_float(data.get("PAT_CAGR_3Y"))
+    pat_cagr_5y = optional_float(data.get("PAT_CAGR_5Y"))
+    if pat_cagr_3y is not None and pat_cagr_5y is not None:
+        if pat_cagr_3y > 20 and pat_cagr_5y > 20:
+            total_bonus += 5    # Consistent 20%+ compounder — rare and valuable
+        elif pat_cagr_3y > 15 and pat_cagr_5y > 15:
+            total_bonus += 3    # Solid compounder
+
+    # Volume Breakout Confirmation — institutional accumulation behind price move
+    vol_breakout = optional_float(data.get("Vol_Breakout"))
+    if vol_breakout is not None and vol_breakout > 2.0:
+        total_bonus += 3  # 2x+ average volume = institutions are accumulating
+
     return total_bonus
 
 
@@ -117,7 +161,7 @@ def _apply_penalty_rules(
     total_penalty = 0
 
     if state.price > 0:
-        atr_pct = state.atr / state.price
+        atr_pct = abs(state.atr) / state.price
         if atr_pct > 0.07:
             total_penalty += 2
             factor_audit.append({"name": "High Volatility", "value": -2})

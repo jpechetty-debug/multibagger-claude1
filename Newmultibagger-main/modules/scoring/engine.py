@@ -132,22 +132,27 @@ def calculate_institutional_score(
             data_quality_flags.append(audit_flags)
         _scoring_strategy_override = "AUDIT_DEGRADED"
     if as_of:
-        as_of_date = date.fromisoformat(str(as_of))
-        age_days = (date.today() - as_of_date).days
-        if age_days > MAX_FUNDAMENTAL_AGE_DAYS:
-            # Soft penalty: -20 base, -1 per additional day, capped at -50
-            extra_days = age_days - MAX_FUNDAMENTAL_AGE_DAYS
-            _staleness_penalty = min(20.0 + extra_days, 50.0)
-            data_quality_flags.append("stale_data")
-            _scoring_strategy_override = "STALE_DATA_DEGRADED"
+        try:
+            as_of_date = date.fromisoformat(str(as_of))
+        except (ValueError, TypeError):
+            as_of_date = None
+            data_quality_flags.append("unparseable_as_of_date")
+        if as_of_date is not None:
+            age_days = (date.today() - as_of_date).days
+            if age_days > MAX_FUNDAMENTAL_AGE_DAYS:
+                # Soft penalty: -20 base, -1 per additional day, capped at -50
+                extra_days = age_days - MAX_FUNDAMENTAL_AGE_DAYS
+                _staleness_penalty = min(20.0 + extra_days, 50.0)
+                data_quality_flags.append("stale_data")
+                _scoring_strategy_override = "STALE_DATA_DEGRADED"
 
-            try:
-                from worker.tasks import refresh_stale_data
-                refresh_stale_data.delay(data.get("Symbol", "UNKNOWN"))
-            except Exception:
-                pass  # Do not block scoring if task dispatch fails
-        elif age_days > STALE_DATA_WARNING_DAYS:
-            data_quality_flags.append("stale_data")
+                try:
+                    from worker.tasks import refresh_stale_data
+                    refresh_stale_data.delay(data.get("Symbol", "UNKNOWN"))
+                except Exception:
+                    pass  # Do not block scoring if task dispatch fails
+            elif age_days > STALE_DATA_WARNING_DAYS:
+                data_quality_flags.append("stale_data")
 
     # ── Validate and sanitize row using sector limits (DQ Gates) ──
     # Keys are already canonical after normalize_data_keys(); build the
@@ -197,9 +202,9 @@ def calculate_institutional_score(
         if dq_key in sanitized and sanitized[dq_key] is not None:
             data[canonical_key] = sanitized[dq_key]
 
-    _, weights, scoring_strategy = _resolve_mode_and_weights(market_regime, sector=data.get("Sector", ""))
+    resolved_mode, weights, scoring_strategy = _resolve_mode_and_weights(market_regime, sector=data.get("Sector", ""))
     score_sentiment, w_sentiment = _calculate_sentiment_factor(data, weights)
-    state = _build_factor_state(data, score_sentiment)
+    state = _build_factor_state(data, score_sentiment, scoring_mode=resolved_mode)
     base_score, data_confidence = _calculate_base_score(data, state, weights, w_sentiment)
     base_score = _apply_sector_relative_adjustment(base_score, state, sector_medians)
 
@@ -228,10 +233,10 @@ def calculate_institutional_score(
     )
     bonus_accumulated += extra_bonus
 
-    # Phase 2.2: Proportional bonus cap — max 15 points or 20% of base_score,
+    # Phase 2.2: Proportional bonus cap — max 18 points or 20% of base_score,
     # whichever is smaller. Prevents non-fundamental inflation.
     # Floor at 5 so low-scoring stocks aren't doubly penalised
-    max_bonus = min(15.0, max(5.0, base_score * 0.20))
+    max_bonus = min(18.0, max(5.0, base_score * 0.20))
     final_bonus = min(bonus_accumulated, max_bonus)
     base_score += final_bonus
 

@@ -33,7 +33,7 @@ def calculate_conviction_score(stock_data):
     investors = get_super_investor_interest(stock_data.get("symbol", ""))
     institutional_boost = 0
     if investors:
-        institutional_boost = 15 + (len(investors) * 5)  # Base 15 + 5 per investor
+        institutional_boost = min(15 + (len(investors) * 5), 35)  # Cap to prevent single-factor dominance
         score += institutional_boost
         details.append(f"Super Investors: {', '.join(investors)} (+{institutional_boost})")
 

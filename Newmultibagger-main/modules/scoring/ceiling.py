@@ -138,11 +138,14 @@ def _apply_score_ceiling_rules(
 
     value_gap = safe_float(data.get("Value_Gap%"))
     if value_gap < 0:
+        # High-growth stocks (EPS > 20%) get a relaxed floor — growth justifies premium
+        eps_g_check = safe_float(data.get("EPS_Growth%"))
+        ov_floor = 72 if eps_g_check > 20 else 65
         score_ceiling = _apply_spline_cap(
             value_gap,
             0.0,
             -70.0,
-            65,
+            ov_floor,
             "Overvaluation Spline",
             score_ceiling,
             disqualifiers,
@@ -221,6 +224,22 @@ def _apply_score_ceiling_rules(
             score_ceiling,
             disqualifiers,
         )
+    # Earnings Deceleration Cap — growth is fading, past the inflection point
+    pat_cagr_3y = optional_float(data.get("PAT_CAGR_3Y"))
+    pat_cagr_5y = optional_float(data.get("PAT_CAGR_5Y"))
+    if pat_cagr_3y is not None and pat_cagr_5y is not None and pat_cagr_5y > 10:
+        decel_ratio = pat_cagr_3y / pat_cagr_5y if pat_cagr_5y > 0 else 1.0
+        if decel_ratio < 0.5:
+            # 3Y growth less than half of 5Y → clear deceleration
+            score_ceiling = min(score_ceiling, 75.0)
+            disqualifiers.append(("Earnings Deceleration", 75.0))
+
+    # High Pledge Risk — pledged promoter shares signal financial distress
+    pledge = optional_float(data.get("Pledge_Pct"))
+    if pledge is not None and pledge > 25:
+        pledge_cap = max(55.0, 80.0 - (pledge - 25) * 0.5)
+        score_ceiling = min(score_ceiling, pledge_cap)
+        disqualifiers.append((f"High Pledge Risk ({pledge:.0f}%)", pledge_cap))
 
     return score_ceiling, disqualifiers
 
@@ -238,7 +257,7 @@ def _apply_checklist_gate(
     mcap_cr = optional_float(data.get("Market_Cap_Cr"))
     if mcap_cr is not None and mcap_cr > 1000:
         checklist_pass += 1
-    if state.pe is not None and 0 < state.pe < 25:
+    if state.pe is not None and 0 < state.pe < 40:
         checklist_pass += 1
     if state.best_roe > 17:
         checklist_pass += 1
@@ -249,7 +268,7 @@ def _apply_checklist_gate(
     if cfo_pat is not None and cfo_pat > 1.0:
         checklist_pass += 1
     down_pct = optional_float(data.get("Down_From_52W_High%"))
-    if down_pct is not None and 0 <= down_pct < 25:
+    if down_pct is not None and 0 <= down_pct < 35:
         checklist_pass += 1
 
     sg_5y = optional_float(data.get("Sales_Growth_5Y%"))

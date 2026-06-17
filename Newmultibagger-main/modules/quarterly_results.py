@@ -25,7 +25,7 @@ def _safe_float(value) -> float | None:
         if not np.isfinite(parsed):
             return None
         return parsed
-    except:
+    except Exception:
         return None
 
 
@@ -43,7 +43,7 @@ async def get_quarterly_timeline(symbol: str, quarters: int = 12) -> dict:
                     return await asyncio.to_thread(fn)
                 except Exception as e:
                     _log.error(f"Task failed for {symbol}: {e}")
-                    return {} if "info" in str(fn) else pd.DataFrame()
+                    return pd.DataFrame()  # Safe fallback for all sub-tasks
 
             info_task = _safe_task(lambda: ticker.info)
             income_task = _safe_task(lambda: ticker.quarterly_income_stmt)
@@ -194,7 +194,7 @@ async def process_quarter_data(
                 )
                 if shares and shares > 0:
                     eps = profit / shares
-            except:
+            except Exception:
                 pass
 
         # Get Book Value per Share
@@ -213,7 +213,7 @@ async def process_quarter_data(
                 )
                 if shares is not None and shares > 0:
                     book_value_per_share = (equity / shares) if equity is not None else 0.0
-            except:
+            except Exception:
                 pass
 
         # Format quarter label
@@ -270,7 +270,10 @@ def calculate_growth_rates(quarters: list[dict]) -> list[dict]:
                 curr["profit_growth_qoq"] = round(
                     (curr["profit"] - prev["profit"]) / prev["profit"] * 100, 1
                 )
-            elif prev["profit"] <= 0 and curr["profit"] > 0:
+            elif prev["profit"] == 0:
+                # Zero base → undefined growth; leave as None for downstream
+                curr["profit_growth_qoq"] = None
+            elif prev["profit"] < 0 and curr["profit"] > 0:
                 curr["profit_growth_qoq"] = 999.9
         if i >= 4:
             prev_year, curr = quarters[i - 4], quarters[i]

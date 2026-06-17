@@ -32,6 +32,9 @@ _REGIME_ALIASES = {
     # Common freeform inputs that should not silently fall through to "balanced"
     "neutral":     "balanced",
     "unknown":     "balanced",
+    # Multibagger mode aliases (activated via FORCED_REGIME or API)
+    "growth":      "multibagger",
+    "compounder":  "multibagger",
 }
 
 def _resolve_mode_and_weights(market_regime: str | None, sector: str = "") -> tuple[str, dict[str, float], str]:
@@ -97,11 +100,14 @@ def _calculate_roe_metrics(data: _StockData) -> tuple[float, float, float]:
     return 0.0, reported_roe, 0.0
 
 
-def _build_factor_state(data: _StockData, score_sentiment: float) -> FactorState:
+def _build_factor_state(data: _StockData, score_sentiment: float, scoring_mode: str = "balanced") -> FactorState:
+    _is_mb = scoring_mode == "multibagger"
+
     sales_growth_5y = safe_float(data.get("Sales_Growth_5Y%"))
     sales_growth_ttm = safe_float(data.get("Sales_Growth_TTM%"))
     sg_val = sales_growth_5y or sales_growth_ttm
-    score_sales = normalize_metric(sales_growth_5y, 0, 40)
+    # Multibagger: raise floor from 0→5 to penalize near-zero growth
+    score_sales = normalize_metric(sales_growth_5y, 5 if _is_mb else 0, 40)
 
     roe_val, best_roe, roe_confidence = _calculate_roe_metrics(data)
     score_roe = normalize_metric(roe_val, 10, 30) * roe_confidence
@@ -119,7 +125,24 @@ def _build_factor_state(data: _StockData, score_sentiment: float) -> FactorState
     else:
         score_val = score_peg
 
-    score_eps = normalize_metric(safe_float(data.get("EPS_Growth%")), 5, 30)
+    # Multi-period EPS scoring: prefer 3Y CAGR (more reliable) with TTM for recency
+    eps_ttm = safe_float(data.get("EPS_Growth%"))
+    eps_cagr_3y = optional_float(data.get("EPS_CAGR_3Y"))
+    eps_lo = 10 if _is_mb else 5
+    eps_hi = 50 if _is_mb else 30
+    score_eps_ttm = normalize_metric(eps_ttm, eps_lo, eps_hi)
+    if eps_cagr_3y is not None:
+        score_eps_3y = normalize_metric(eps_cagr_3y, eps_lo, eps_hi)
+        # Blend: 60% 3Y CAGR (proven track record) + 40% TTM (recency signal)
+        score_eps = score_eps_3y * 0.6 + score_eps_ttm * 0.4
+    else:
+        score_eps = score_eps_ttm
+
+    # ROCE Quality Amplifier — high ROCE amplifies ROE score by up to 15%
+    roce_val = optional_float(data.get("ROCE%"))
+    if roce_val is not None and roce_val > 20:
+        roce_boost = min(1.15, 1.0 + (roce_val - 20) * 0.005)  # +0.5% per ROCE point above 20
+        score_roe = min(100.0, score_roe * roce_boost)
 
     f_score_val = optional_float(data.get("F_Score"))
     if f_score_val is None:
@@ -140,19 +163,25 @@ def _build_factor_state(data: _StockData, score_sentiment: float) -> FactorState
     score_mom_tech = normalize_metric(down_from_high, 0, 40, invert=True) if price > 0 else 0
 
     rs_rating = optional_float(data.get("RS_Rating"))
-    # RS_Rating is a ratio: stock_6m_return / nifty_6m_return (screener.py canonical source).
-    # Semantic anchors from the codebase:
-    #   < 0.8  → momentum lost (thesis_check.py)
-    #     1.0  → exactly in line with the market (neutral → score 50)
-    #     1.5  → 50 % outperformance             → score ~82
-    #     2.0  → double the market return         → score ~95
-    #     3.0+ → exceptional                      → score ~100
-    # Range (0.0, 2.0) keeps the midpoint at 1.0 (true neutral) and preserves
-    # discrimination across the full realistic live-scan output of 0–3+.
-    # The previous range (0.5, 1.5) saturated at RS > ~1.8, making a 2× outperformer
-    # indistinguishable from a 5× outperformer.
-    score_rs = normalize_metric(rs_rating, 0.0, 2.0) if rs_rating is not None else 50.0
+    # Multibagger: shift RS range to (0.5, 2.5) for better discrimination
+    # in the 1.0-2.0 outperformance zone where multibaggers concentrate.
+    rs_min = 0.5 if _is_mb else 0.0
+    rs_max = 2.5 if _is_mb else 2.0
+    score_rs = normalize_metric(rs_rating, rs_min, rs_max) if rs_rating is not None else 50.0
     score_mom_combined = (score_mom_tech * 0.5) + (score_rs * 0.5)
+
+    # Momentum Consistency Amplifier — sustained uptrend vs one-off spike
+    # Multibaggers show cascading returns: Ret_6M > Ret_3M > Ret_1M > 0
+    ret_1m = optional_float(data.get("Ret_1M"))
+    ret_3m = optional_float(data.get("Ret_3M"))
+    ret_6m = optional_float(data.get("Ret_6M"))
+    if ret_1m is not None and ret_3m is not None and ret_6m is not None:
+        if ret_1m > 0 and ret_3m > ret_1m and ret_6m > ret_3m:
+            # Perfect cascading uptrend — amplify by up to 15%
+            score_mom_combined = min(100.0, score_mom_combined * 1.15)
+        elif ret_1m > 0 and ret_3m > 0 and ret_6m > 0:
+            # All positive but not perfectly cascading — mild boost
+            score_mom_combined = min(100.0, score_mom_combined * 1.05)
 
     # Fundamental Anchoring (Tactical Implementation)
     # Discount technical momentum if fundamentals (ROE/Sales) are poor
@@ -207,10 +236,22 @@ def _get_available_factors(
         available.append(("val", state.score_val, weights["w_val"]))
     if safe_float(data.get("EPS_Growth%")) != 0:
         available.append(("eps", state.score_eps, weights["w_eps"]))
-    available.append(("fscore", state.score_fscore, weights["w_fscore"]))
-    available.append(("de", state.score_de, weights["w_de"]))
-    available.append(("mom", state.score_mom_combined, weights["w_mom"]))
-    available.append(("sentiment", state.score_sentiment, w_sentiment))
+    # F_Score: only count if the raw value was present (not the neutral 50.0 fallback)
+    if optional_float(data.get("F_Score")) is not None:
+        available.append(("fscore", state.score_fscore, weights["w_fscore"]))
+    # D/E: count if sector is financial (hardcoded 80) OR real Debt_Equity data exists
+    if ("Bank" in state.stock_sector or "Financial" in state.stock_sector
+            or safe_float(data.get("Debt_Equity")) != 0):
+        available.append(("de", state.score_de, weights["w_de"]))
+    # Momentum: count only if price > 0 and at least one momentum input is present
+    if state.price > 0 and (
+        safe_float(data.get("Down_From_52W_High%")) != 0
+        or optional_float(data.get("RS_Rating")) is not None
+    ):
+        available.append(("mom", state.score_mom_combined, weights["w_mom"]))
+    # Sentiment: count only when the live lookup succeeded (w_sentiment > 0)
+    if w_sentiment > 0:
+        available.append(("sentiment", state.score_sentiment, w_sentiment))
     return available
 
 

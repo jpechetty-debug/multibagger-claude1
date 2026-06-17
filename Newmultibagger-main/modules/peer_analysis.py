@@ -305,7 +305,7 @@ async def fetch_stock_metrics(symbol: str) -> dict:
                 _log.error(f"Caught unhandled exception: {e}", exc_info=True)
 
         market_cap = info.get("marketCap", 0)
-        market_cap_cr = round((market_cap * 75) / 10000000, 0) if market_cap else None
+        market_cap_cr = round(market_cap / 10000000, 0) if market_cap else None
 
         price_change_1m = None
         price_change_3m = None
@@ -322,11 +322,11 @@ async def fetch_stock_metrics(symbol: str) -> dict:
 
         # Try getting Growth from info (Fastest)
         revenue_growth = info.get("revenueGrowth")  # e.g. 0.15 for 15%
-        if revenue_growth:
+        if revenue_growth is not None:
             revenue_growth = round(revenue_growth * 100, 1)
 
         profit_growth = info.get("earningsGrowth")
-        if profit_growth:
+        if profit_growth is not None:
             profit_growth = round(profit_growth * 100, 1)
 
         # Fallback if both missing
@@ -382,7 +382,7 @@ async def get_terminal_score_from_db(symbol: str) -> int | None:
     """Fetch Terminal Score from stocks.db"""
     try:
         return await asyncio.to_thread(_sync_db_score_lookup, symbol)
-    except:
+    except Exception:
         return None
 
 
@@ -406,7 +406,7 @@ def _sync_db_score_lookup(symbol: str):
             row = cursor.fetchone()
             if row:
                 return int(row[0])
-    except:
+    except Exception:
         pass
     return None
 

@@ -25,9 +25,6 @@ def analyze_revisions(ticker):
             # Simplify: Check if 'strongBuy' + 'buy' is high relative to history or total
             # Actually, let's just look at the RATIO of Buy vs Sell in the latest period
 
-            recs.iloc[0]  # Usually latest is first or last? Need to verify.
-            # Usually yfinance recommendations are indexed 0..N
-
             # Let's calculate a "Sentiment Score" for each row and check trend
             # Score = (StrongBuy*2 + Buy*1) - (Sell*1 + StrongSell*2)
 
@@ -60,5 +57,5 @@ def analyze_revisions(ticker):
 
         return score, sentiment
 
-    except:
+    except Exception:
         return 0, "Unknown"

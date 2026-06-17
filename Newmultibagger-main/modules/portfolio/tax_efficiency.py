@@ -1,4 +1,4 @@
-def calculate_tax_efficiency(cagr, strategy_type="Balanced"):
+def calculate_tax_efficiency(cagr, strategy_type="Balanced (Neutral)"):
     """
     Phase 38: Turnover & Tax Efficiency Layer.
     Estimates the impact of Taxes on the Portfolio's CAGR.

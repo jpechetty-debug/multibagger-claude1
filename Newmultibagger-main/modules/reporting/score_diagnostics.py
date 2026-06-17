@@ -300,22 +300,31 @@ def _infer_active_ceilings(stock: dict) -> list[dict[str, Any]]:
     ceilings = []
     roe = stock.get("avg_roe_5y") or stock.get("roe") or 0
     if roe < 15:
+        # Match ceiling.py: _apply_spline_cap(roe, 15.0, 0.0, 60, ...)
+        # ratio = (15 - roe) / 15; cap = 100 - ratio^1.5 * (100 - 60)
+        ratio = max(0.0, (15.0 - roe) / 15.0)
+        cap_val = 100.0 - (ratio ** 1.5) * 40.0
         ceilings.append(
-            {"name": "ROE Decay Spline", "cap": round(50 + (roe / 15) * 50, 0), "active": True}
+            {"name": "ROE Decay Spline", "cap": round(cap_val, 0), "active": True}
         )
     sg = stock.get("sales_cagr_5y") or stock.get("sales_growth") or 0
     if sg < 10:
+        # Match ceiling.py: _apply_spline_cap(sg, 10.0, -5.0, 60, ...)
+        # ratio = (10 - sg) / 15; cap = 100 - ratio^1.5 * (100 - 60)
+        ratio = max(0.0, min(1.0, (10.0 - sg) / 15.0))
+        cap_val = 100.0 - (ratio ** 1.5) * 40.0
         ceilings.append(
             {
                 "name": "Growth Decay Spline",
-                "cap": round(50 + (max(sg, -5) / 10) * 50, 0),
+                "cap": round(cap_val, 0),
                 "active": True,
             }
         )
     fscore = stock.get("f_score")
     if fscore is not None and fscore <= 4:
+        # Match ceiling.py:135: cap = 50 + (f_score * 7.5)
         ceilings.append(
-            {"name": "Quality Floor Spline", "cap": round(65 + fscore * 5.9, 0), "active": True}
+            {"name": "Quality Floor Spline", "cap": round(50 + fscore * 7.5, 0), "active": True}
         )
     cfo = stock.get("cfo_pat_ratio") or 0
     if cfo < 0.8:

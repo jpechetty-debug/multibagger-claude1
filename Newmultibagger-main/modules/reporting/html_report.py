@@ -32,7 +32,7 @@ def _safe_float(value, default=0.0):
         if not np.isfinite(parsed):
             return default
         return parsed
-    except:
+    except Exception:
         return default
 
 
@@ -147,7 +147,8 @@ async def generate_premium_html_report(symbol: str):
         c2_pass = True
         de_str = "N/A (Bank)"
     else:
-        de_val = de / 100 if de > 2 else de
+        # yfinance debtToEquity is always a percentage (e.g. 45.0 for 0.45)
+        de_val = de / 100
         c2_pass = de_val < 1.0
         de_str = f"{de_val:.2f}"
     checklist_items.append(
@@ -227,7 +228,8 @@ async def generate_premium_html_report(symbol: str):
     eps = _safe_float(info.get("trailingEps"))
     bv = _safe_float(info.get("bookValue"))
     graham = round(((22.5 * eps * bv) ** 0.5), 2) if eps > 0 and bv > 0 else 0
-    mos = round(((graham - price) / graham) * 100, 1) if graham > price else 0
+    # Allow negative MOS so the OVERVALUED verdict (line 247) can trigger
+    mos = round(((graham - price) / graham) * 100, 1) if graham > 0 else 0
 
     rec = (
         str(manual_rec).upper()
