@@ -2041,9 +2041,9 @@ def main(argv=None):
 
             # 4. Walk-Forward Validation (Reads from stocks.db)
             try:
-                import backtest_engine
+                from scripts.internal import backtest_engine as internal_backtest
 
-                backtest_engine.run_backtest()
+                internal_backtest.run_backtest()
             except Exception as e:
                 logging.error(f"Backtest Engine Error: {e}", exc_info=True)
 

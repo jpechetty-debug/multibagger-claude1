@@ -70,30 +70,60 @@ def optimize_portfolio_allocation(candidates, capital=1000000):
         sector_exposure[sector] = current_sec_weight + target_weight
         current_total_weight += target_weight
 
-    # 2. Normalization — always scale to 100% deployment
+    # 2. Normalization — always scale to 100% deployment with iterative redistribution
     if current_total_weight > 0 and current_total_weight < 0.999:
         correction_factor = 1.0 / current_total_weight
         _log.info(f"  Note: Scaling up weights by {correction_factor:.2f}x to fully invest.")
         for s in selected_portfolio:
-            new_w = (s["Target_Weight%"] / 100) * correction_factor
-            # Enforce per-stock hard cap after scale-up
-            new_w = min(new_w, MAX_WEIGHT_PER_STOCK)
-            s["Target_Weight%"] = round(new_w * 100, 1)
+            s["Target_Weight%"] = (s["Target_Weight%"] / 100) * correction_factor * 100
+
+        # Iterative clamp-and-redistribute: clip over-weight stocks, redistribute
+        # excess proportionally to uncapped peers. Typically converges in 2–3 passes.
+        for _pass in range(10):  # Safety bound
+            excess = 0.0
+            capped_indices = set()
+            for i, s in enumerate(selected_portfolio):
+                w = s["Target_Weight%"] / 100
+                if w > MAX_WEIGHT_PER_STOCK:
+                    excess += w - MAX_WEIGHT_PER_STOCK
+                    s["Target_Weight%"] = MAX_WEIGHT_PER_STOCK * 100
+                    capped_indices.add(i)
+
+            if excess < 1e-9:
+                break  # Converged — no more excess to redistribute
+
+            # Redistribute excess proportionally among uncapped stocks
+            uncapped = [
+                (i, selected_portfolio[i]["Target_Weight%"] / 100)
+                for i in range(len(selected_portfolio))
+                if i not in capped_indices
+            ]
+            uncapped_total = sum(w for _, w in uncapped)
+            if uncapped_total <= 0:
+                break  # All stocks are at cap — can't redistribute further
+
+            for i, w in uncapped:
+                share = (w / uncapped_total) * excess
+                selected_portfolio[i]["Target_Weight%"] = (w + share) * 100
+
+        # Recompute allocated capital and quantities from final weights
+        for s in selected_portfolio:
+            new_w = s["Target_Weight%"] / 100
             s["Allocated_Capital"] = round(capital * new_w, 2)
             if s.get("Price", 0) > 0:
                 s["Qty"] = int(s["Allocated_Capital"] / s["Price"])
 
-        # Rebuild sector_exposure from actual post-normalization weights
-        sector_exposure = {}
-        for s in selected_portfolio:
-            sec = s.get("Sector", "Unknown")
-            sector_exposure[sec] = sector_exposure.get(sec, 0) + s["Target_Weight%"] / 100
-        for sec, w in sector_exposure.items():
-            if w > MAX_SECTOR_WEIGHT:
-                _log.warning(
-                    f"  ⚠️ Sector '{sec}' weight {w*100:.1f}% exceeds "
-                    f"{MAX_SECTOR_WEIGHT*100:.0f}% cap after normalization!"
-                )
+    # Rebuild sector_exposure from actual post-normalization weights (always)
+    sector_exposure = {}
+    for s in selected_portfolio:
+        sec = s.get("Sector", "Unknown")
+        sector_exposure[sec] = sector_exposure.get(sec, 0) + s["Target_Weight%"] / 100
+    for sec, w in sector_exposure.items():
+        if w > MAX_SECTOR_WEIGHT:
+            _log.warning(
+                f"  ⚠️ Sector '{sec}' weight {w*100:.1f}% exceeds "
+                f"{MAX_SECTOR_WEIGHT*100:.0f}% cap after normalization!"
+            )
 
     _log.info(f"Selected {len(selected_portfolio)} stocks from candidate list.")
     _log.info("Sector Breakdown:")

@@ -163,10 +163,11 @@ def _build_factor_state(data: _StockData, score_sentiment: float, scoring_mode: 
     score_mom_tech = normalize_metric(down_from_high, 0, 40, invert=True) if price > 0 else 0
 
     rs_rating = optional_float(data.get("RS_Rating"))
-    # Multibagger: shift RS range to (0.5, 2.5) for better discrimination
-    # in the 1.0-2.0 outperformance zone where multibaggers concentrate.
-    rs_min = 0.5 if _is_mb else 0.0
-    rs_max = 2.5 if _is_mb else 2.0
+    # RS=1.0 is market-neutral (stock matches Nifty). The midpoint must anchor
+    # there so a neutral stock scores 50, not 18. Standard: (0.0, 2.0),
+    # Multibagger: (1.0, 3.0) — shifts the upper tail to reward RS 2.0-3.0.
+    rs_min = 1.0 if _is_mb else 0.0
+    rs_max = 3.0 if _is_mb else 2.0
     score_rs = normalize_metric(rs_rating, rs_min, rs_max) if rs_rating is not None else 50.0
     score_mom_combined = (score_mom_tech * 0.5) + (score_rs * 0.5)
 
@@ -240,8 +241,9 @@ def _get_available_factors(
     if optional_float(data.get("F_Score")) is not None:
         available.append(("fscore", state.score_fscore, weights["w_fscore"]))
     # D/E: count if sector is financial (hardcoded 80) OR real Debt_Equity data exists
+    # Use optional_float so 0.0 (genuinely debt-free) is not None, but missing data is.
     if ("Bank" in state.stock_sector or "Financial" in state.stock_sector
-            or safe_float(data.get("Debt_Equity")) != 0):
+            or optional_float(data.get("Debt_Equity")) is not None):
         available.append(("de", state.score_de, weights["w_de"]))
     # Momentum: count only if price > 0 and at least one momentum input is present
     if state.price > 0 and (
