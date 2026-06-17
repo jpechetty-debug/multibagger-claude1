@@ -23,7 +23,8 @@ def optimize_portfolio_allocation(candidates, capital=1000000):
     _log.info("=" * 50)
 
     MAX_STOCKS = 12
-    MAX_SECTOR_WEIGHT = 0.30  # 30% Cap
+    MAX_WEIGHT_PER_STOCK = 0.12  # 12% hard cap per stock
+    MAX_SECTOR_WEIGHT = 0.25     # 25% cap (matches docstring)
 
     from typing import Any
     selected_portfolio: list[dict[str, Any]] = []
@@ -69,12 +70,14 @@ def optimize_portfolio_allocation(candidates, capital=1000000):
         sector_exposure[sector] = current_sec_weight + target_weight
         current_total_weight += target_weight
 
-    # 2. Normalization (Fill the rest)
-    if current_total_weight > 0 and current_total_weight < 0.95:
+    # 2. Normalization — always scale to 100% deployment
+    if current_total_weight > 0 and current_total_weight < 0.999:
         correction_factor = 1.0 / current_total_weight
         _log.info(f"  Note: Scaling up weights by {correction_factor:.2f}x to fully invest.")
         for s in selected_portfolio:
             new_w = (s["Target_Weight%"] / 100) * correction_factor
+            # Enforce per-stock hard cap after scale-up
+            new_w = min(new_w, MAX_WEIGHT_PER_STOCK)
             s["Target_Weight%"] = round(new_w * 100, 1)
             s["Allocated_Capital"] = round(capital * new_w, 2)
             if s.get("Price", 0) > 0:
