@@ -83,7 +83,7 @@ def main():
 
             # 1. Fundamental Quality
             # ROE > 12% (Efficient Use of Equity)
-            (1 if data["Profit_Margin%"] > 10 else 0)  # Proxy if ROE missing, usually want ROE > 15
+            fundamental_score = (1 if data["Profit_Margin%"] > 10 else 0)  # Proxy if ROE missing, usually want ROE > 15
 
             # 2. Financial Health
             # Debt to Equity < 1.0 (Safety)
@@ -101,7 +101,7 @@ def main():
 
             # Scoring (Max 5)
             # We strictly filter for Microcap size first
-            if is_microcap:
+            if is_microcap and fundamental_score:
                 final_score = 0
                 if is_high_promoter:
                     final_score += 1
