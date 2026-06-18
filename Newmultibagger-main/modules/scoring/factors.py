@@ -173,16 +173,22 @@ def _build_factor_state(data: _StockData, score_sentiment: float, scoring_mode: 
     score_mom_combined = (score_mom_tech * 0.5) + (score_rs * 0.5)
 
     # Momentum Consistency Amplifier — sustained uptrend vs one-off spike
-    # Multibaggers show cascading returns: Ret_6M > Ret_3M > Ret_1M > 0
+    # Detect genuine acceleration: recent monthly rate > earlier monthly rate,
+    # not just cumulative returns naturally ordered by period length.
     ret_1m = optional_float(data.get("Ret_1M"))
     ret_3m = optional_float(data.get("Ret_3M"))
     ret_6m = optional_float(data.get("Ret_6M"))
     if ret_1m is not None and ret_3m is not None and ret_6m is not None:
-        if ret_1m > 0 and ret_3m > ret_1m and ret_6m > ret_3m:
-            # Perfect cascading uptrend — amplify by up to 15%
+        # Convert cumulative returns to approximate monthly rates
+        rate_1m = ret_1m                  # 1-month rate
+        rate_3m = ret_3m / 3.0            # avg monthly rate over 3 months
+        rate_6m = ret_6m / 6.0            # avg monthly rate over 6 months
+
+        if rate_1m > 0 and rate_1m > rate_3m and rate_3m > rate_6m:
+            # Genuinely accelerating — recent months stronger than earlier
             score_mom_combined = min(100.0, score_mom_combined * 1.15)
         elif ret_1m > 0 and ret_3m > 0 and ret_6m > 0:
-            # All positive but not perfectly cascading — mild boost
+            # All positive but not accelerating — mild boost
             score_mom_combined = min(100.0, score_mom_combined * 1.05)
 
     # Fundamental Anchoring (Tactical Implementation)

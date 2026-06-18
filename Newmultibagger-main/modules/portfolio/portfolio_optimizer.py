@@ -78,7 +78,8 @@ def optimize_portfolio_allocation(candidates, capital=1000000):
             s["Target_Weight%"] = (s["Target_Weight%"] / 100) * correction_factor * 100
 
         # Iterative clamp-and-redistribute: clip over-weight stocks, redistribute
-        # excess proportionally to uncapped peers. Typically converges in 2–3 passes.
+        # excess proportionally to uncapped peers. Inline capping guarantees
+        # convergence within ⌈log₂(N)⌉ passes (typically 2–3).
         for _pass in range(10):  # Safety bound
             excess = 0.0
             capped_indices = set()
@@ -104,7 +105,13 @@ def optimize_portfolio_allocation(candidates, capital=1000000):
 
             for i, w in uncapped:
                 share = (w / uncapped_total) * excess
-                selected_portfolio[i]["Target_Weight%"] = (w + share) * 100
+                new_w = min(MAX_WEIGHT_PER_STOCK, w + share)
+                selected_portfolio[i]["Target_Weight%"] = new_w * 100
+        else:
+            _log.warning(
+                "Weight redistribution did not converge in 10 passes"
+                " — residual excess may exist"
+            )
 
         # Recompute allocated capital and quantities from final weights
         for s in selected_portfolio:

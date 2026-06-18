@@ -210,9 +210,20 @@ def main() -> int:
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     metadata = build_listing_metadata(args)
-    metadata.to_csv(output, index=False)
     active_count = int(metadata["Delisting_Date"].eq("").sum())
     delisted_count = int(metadata["Delisting_Date"].ne("").sum())
+
+    # Safety guard: abort if delisted discovery silently failed
+    if not args.skip_delisted and delisted_count == 0:
+        print(
+            "ERROR: No delisted rows found — likely a fetch failure. "
+            "The existing CSV has NOT been overwritten.\n"
+            "Pass --skip-delisted to proceed anyway.",
+            file=sys.stderr,
+        )
+        return 1
+
+    metadata.to_csv(output, index=False)
     print(
         f"Wrote {len(metadata)} NSE listing records to {output} "
         f"({active_count} active, {delisted_count} delisted)."
