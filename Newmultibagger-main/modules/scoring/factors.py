@@ -164,9 +164,10 @@ def _build_factor_state(data: _StockData, score_sentiment: float, scoring_mode: 
 
     rs_rating = optional_float(data.get("RS_Rating"))
     # RS=1.0 is market-neutral (stock matches Nifty). The midpoint must anchor
-    # there so a neutral stock scores 50, not 18. Standard: (0.0, 2.0),
-    # Multibagger: (1.0, 3.0) — shifts the upper tail to reward RS 2.0-3.0.
-    rs_min = 1.0 if _is_mb else 0.0
+    # there so a neutral stock scores 50. Standard: (0.0, 2.0) → mid=1.0,
+    # Multibagger: (-1.0, 3.0) → mid=1.0. Wider 4-unit span makes MB less
+    # sensitive near 1.0 and more sensitive in the 1.5–3.0 outperformance zone.
+    rs_min = -1.0 if _is_mb else 0.0
     rs_max = 3.0 if _is_mb else 2.0
     score_rs = normalize_metric(rs_rating, rs_min, rs_max) if rs_rating is not None else 50.0
     score_mom_combined = (score_mom_tech * 0.5) + (score_rs * 0.5)
