@@ -750,9 +750,14 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         # --- Phase 68: Robust Fundamental Fallbacks ---
         # If yfinance summary fails (None/0 for NSE), derive from financial statements
         if roe == 0:
-            roe_derived = calculate_current_roe(ticker)
-            if roe_derived > 0:
-                roe = roe_derived / 100.0  # Convert back to decimal to match yf logic
+            # Try screener_in ROE% first (already a percentage like 15.2)
+            _raw_roe = raw.get("ROE%")
+            if _raw_roe and float(_raw_roe) != 0:
+                roe = float(_raw_roe) / 100.0  # Convert to decimal
+            else:
+                roe_derived = calculate_current_roe(ticker)
+                if roe_derived > 0:
+                    roe = roe_derived / 100.0
 
         if sales_growth == 0:
             sales_growth_derived = calculate_recent_sales_growth(ticker)
@@ -767,15 +772,36 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         if peg_ratio is not None:
             peg_ratio = round(float(peg_ratio), 2)  # type: ignore
 
-        promoter_holding = (info.get("heldPercentInsiders", 0) or 0) * 100
-        inst_holding = (info.get("heldPercentInstitutions", 0) or 0) * 100
+        # --- Shareholding ---
+        promoter_holding = raw.get("Promoter_Holding%")
+        if promoter_holding is None:
+            promoter_holding = raw.get("promoter_holding")
+        if promoter_holding is None:
+            promoter_holding = (info.get("heldPercentInsiders", 0) or 0) * 100
 
-        # Pledge Percentage (NSE specific often found in 'pledgedPercent' or similar)
-        pledge_pct = info.get("pledgedPercent", 0) or 0
-        if pledge_pct > 1:
-            pledge_pct = pledge_pct  # already in pct
+        inst_holding = raw.get("Inst_Holding%")
+        if inst_holding is None:
+            fii_dii = raw.get("fii_dii", {})
+            if isinstance(fii_dii, dict) and (fii_dii.get("fii") or fii_dii.get("dii")):
+                inst_holding = (fii_dii.get("fii", 0) or 0) + (fii_dii.get("dii", 0) or 0)
+        if inst_holding is None:
+            inst_holding = (info.get("heldPercentInstitutions", 0) or 0) * 100
+            
+        promoter_holding = float(promoter_holding) if promoter_holding is not None else 0.0
+        inst_holding = float(inst_holding) if inst_holding is not None else 0.0
+
+        # Pledge Percentage (NSE specific often found in 'pledge_percent' or 'Pledge_Pct')
+        pledge_pct = raw.get("Pledge_Pct")
+        if pledge_pct is None:
+            pledge_pct = raw.get("pledge_percent")
+        if pledge_pct is None:
+            pledge_pct = info.get("pledgedPercent", 0) or 0
+            if pledge_pct > 1:
+                pledge_pct = float(pledge_pct)
+            else:
+                pledge_pct = float(pledge_pct) * 100  # convert from decimal
         else:
-            pledge_pct = pledge_pct * 100  # convert from decimal
+            pledge_pct = float(pledge_pct)
 
         total_smart_money = promoter_holding + inst_holding
 
@@ -783,38 +809,46 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         free_cashflow = info.get("freeCashflow", 0)
         info.get("operatingCashflow", 0)
 
+        # --- Sprint 1: Multi-Period CAGRs ---
+        cagr_metrics = calculate_all_cagrs(ticker)
+
+        # --- Screener.in CAGR passthrough (raw dict has 5Y/3Y growth already) ---
+        # Populate cagr_metrics from raw if yfinance-derived values are empty
+        if not cagr_metrics.get("Revenue_CAGR_5Y") and raw.get("Sales_Growth_5Y%") is not None:
+            cagr_metrics["Revenue_CAGR_5Y"] = raw["Sales_Growth_5Y%"]
+        if not cagr_metrics.get("Revenue_CAGR_3Y") and raw.get("Sales_Growth_3Y%") is not None:
+            cagr_metrics["Revenue_CAGR_3Y"] = raw["Sales_Growth_3Y%"]
+        if not cagr_metrics.get("EPS_CAGR_5Y") and raw.get("EPS_Growth%") is not None:
+            cagr_metrics["EPS_CAGR_5Y"] = raw["EPS_Growth%"]
+        if not cagr_metrics.get("EPS_CAGR_3Y") and raw.get("EPS_Growth_3Y%") is not None:
+            cagr_metrics["EPS_CAGR_3Y"] = raw["EPS_Growth_3Y%"]
+
         # 2. Sales Growth & ROE (5-Year) & Earnings Acceleration
         financials = ticker.financials
-        revenue_cagr_5y = 0
-        avg_roe_5y = 0
+        # Read from raw dict first (screener_in provides this directly)
+        revenue_cagr_5y = raw.get("Sales_Growth_5Y%") or cagr_metrics.get("Revenue_CAGR_5Y") or cagr_metrics.get("Revenue_CAGR_3Y") or 0
+        avg_roe_5y = raw.get("Avg_ROE_5Y%") or 0
         earnings_accel = False
 
-        if not financials.empty:
+        # Only attempt yfinance-based ROE derivation if raw didn't provide it
+        if avg_roe_5y == 0 and not financials.empty:
             try:
-                revs = financials.loc["Total Revenue"].dropna().iloc[::-1] # Oldest to newest
-                # A true 5Y CAGR requires 6 data points (5 growth intervals).
-                # yfinance typically returns 4 annual columns for Indian stocks,
-                # giving only 3 growth intervals.  Using those 3 intervals but
-                # labelling the result "5Y" overstates the CAGR by ~4% at 20%
-                # growth.  When fewer than 6 points are available, leave
-                # revenue_cagr_5y = 0 so the scorer falls back to TTM growth
-                # rather than emitting a mislabeled figure.
-                if len(revs) >= 6:
-                    start_rev = revs.iloc[0]
-                    end_rev = revs.iloc[-1]
-                    years = len(revs) - 1          # exactly 5 intervals when len==6
-                    if start_rev > 0 and end_rev > 0:
-                        cagr_rev = (end_rev / start_rev) ** (1 / years) - 1
-                        revenue_cagr_5y = round(cagr_rev * 100, 2)
-                    else:
-                        revenue_cagr_5y = 0        # can't compute — scorer uses TTM
-                # fewer than 6 points → revenue_cagr_5y stays 0
-
                 # Avg ROE
-                net_income_series = financials.loc["Net Income"].iloc[::-1]
+                net_income_series = None
+                for key in ["Net Income", "NetIncome", "Net Income To Company", "Income"]:
+                    if key in financials.index:
+                        net_income_series = financials.loc[key].iloc[::-1]
+                        break
+                
                 bs = ticker.balance_sheet
-                if not bs.empty and "Stockholders Equity" in bs.index:
-                    equity_series = bs.loc["Stockholders Equity"].iloc[::-1]
+                equity_series = None
+                if not bs.empty:
+                    for key in ["Stockholders Equity", "Total Stockholder Equity", "Total Equity", "Equity"]:
+                        if key in bs.index:
+                            equity_series = bs.loc[key].iloc[::-1]
+                            break
+
+                if net_income_series is not None and equity_series is not None:
                     roes = []
                     common_dates = net_income_series.index.intersection(equity_series.index)
                     for dt in common_dates:
@@ -827,15 +861,12 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
                 else:
                     avg_roe_5y = round(roe * 100, 2)
             except Exception:
-                revenue_cagr_5y = round(sales_growth * 100, 2)
                 avg_roe_5y = round(roe * 100, 2)
 
         # --- Multibagger Framework: ROCE & Median PAT Growth ---
         roce = calculate_roce(ticker)
         median_pat_growth_5y = calculate_median_pat_growth(ticker, years=5)
 
-        # --- Sprint 1: Multi-Period CAGRs ---
-        cagr_metrics = calculate_all_cagrs(ticker)
 
         # --- Sprint 1: Dividend Metrics ---
         div_metrics = extract_dividend_metrics(info)
@@ -846,15 +877,17 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
 
         # Earnings Acceleration is now calculated via check_earnings_inflection below
 
-        # 3. CFO / PAT Ratio
-        try:
-            cfo = info.get("operatingCashflow")
-            pat = info.get("netIncomeToCommon") or (
-                info.get("trailingEps", 0) * info.get("sharesOutstanding", 0)
-            )
-            cfo_pat_ratio = round(cfo / pat, 2) if cfo and pat and pat > 0 else 0
-        except Exception:
-            cfo_pat_ratio = 0
+        # 3. CFO / PAT Ratio — prefer screener_in's pre-computed value
+        cfo_pat_ratio = raw.get("CFO_PAT_Ratio") or 0
+        if not cfo_pat_ratio:
+            try:
+                cfo = info.get("operatingCashflow")
+                pat = info.get("netIncomeToCommon") or (
+                    info.get("trailingEps", 0) * info.get("sharesOutstanding", 0)
+                )
+                cfo_pat_ratio = round(cfo / pat, 2) if cfo and pat and pat > 0 else 0
+            except Exception:
+                cfo_pat_ratio = 0
 
         # --- F-Score Metrics (Full 9-Point Piotroski) ---
         f_score_method = "9pt_piotroski"
@@ -863,25 +896,31 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         except Exception:
             f_score = 0
 
-        # Fallback: If 9pt F-Score returns 0 (empty financials), use inline estimate
+        # Fallback chain: 9pt → screener_in → 5pt inline
         if f_score == 0:
-            f_score_method = "5pt_inline"
-            f_roa = 1 if info.get("returnOnAssets", 0) and info.get("returnOnAssets", 0) > 0 else 0
-            f_cfo = (
-                1
-                if info.get("operatingCashflow", 0) and info.get("operatingCashflow", 0) > 0
-                else 0
-            )
-            net_income_f = info.get("netIncomeToCommon", 0)
-            op_cash_f = info.get("operatingCashflow", 0)
-            f_quality = (
-                1
-                if (op_cash_f is not None and net_income_f is not None and op_cash_f > net_income_f)
-                else 0
-            )
-            f_leverage = 1 if debt_equity < 0.4 else 0
-            f_margin = 1 if info.get("grossMargins", 0) and info.get("grossMargins", 0) > 0 else 0
-            f_score = f_roa + f_cfo + f_quality + f_leverage + f_margin
+            # Try screener_in's F_Score (currently 2-signal, but non-zero is better than 0)
+            _raw_fscore = raw.get("F_Score")
+            if _raw_fscore is not None and int(_raw_fscore) > 0:
+                f_score = int(_raw_fscore)
+                f_score_method = "screener_in"
+            else:
+                f_score_method = "5pt_inline"
+                f_roa = 1 if info.get("returnOnAssets", 0) and info.get("returnOnAssets", 0) > 0 else 0
+                f_cfo = (
+                    1
+                    if info.get("operatingCashflow", 0) and info.get("operatingCashflow", 0) > 0
+                    else 0
+                )
+                net_income_f = info.get("netIncomeToCommon", 0)
+                op_cash_f = info.get("operatingCashflow", 0)
+                f_quality = (
+                    1
+                    if (op_cash_f is not None and net_income_f is not None and op_cash_f > net_income_f)
+                    else 0
+                )
+                f_leverage = 1 if debt_equity < 0.4 else 0
+                f_margin = 1 if info.get("grossMargins", 0) and info.get("grossMargins", 0) > 0 else 0
+                f_score = f_roa + f_cfo + f_quality + f_leverage + f_margin
 
         # --- Earnings Inflection (Rich 0-5 Score) ---
         try:
@@ -1037,10 +1076,10 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             "PEG_Ratio": _finite_or_default(peg_ratio),
             "PE_Ratio": _finite_or_default(trailing_pe),
             "Down_From_52W_High%": down_from_high_pct,
-            "Smart_Money%": round(total_smart_money * 100, 2),
+            "Smart_Money%": round(total_smart_money, 2),  # already sum of percentages, no ×100
             "Free_Cashflow": free_cashflow,
             "CFO_PAT_Ratio": cfo_pat_ratio,
-            "EPS_Growth%": round(eps_growth * 100, 2),
+            "EPS_Growth%": raw.get("EPS_Growth%") if raw.get("EPS_Growth%") is not None else round(eps_growth * 100, 2),
             "F_Score": f_score,
             "F_Score_Method": f_score_method,
             "RS_Rating": rs_rating,
@@ -1054,8 +1093,8 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             "Target_Mean_Price": target_mean,
             "Analyst_Upside%": analyst_upside,
             "Analyst_Count": analyst_count,
-            "Promoter_Holding%": round(promoter_holding * 100, 2),
-            "Inst_Holding%": round(inst_holding * 100, 2),
+            "Promoter_Holding%": round(promoter_holding, 2),
+            "Inst_Holding%": round(inst_holding, 2),
             "ATR": round(atr_current, 2),
             "Stop_Loss_ATR": stop_loss,
             "Max_Qty_1L": max_qty,

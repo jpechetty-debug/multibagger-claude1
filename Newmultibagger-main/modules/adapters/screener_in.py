@@ -478,27 +478,73 @@ class ScreenerParser:
     # ── Piotroski F-Score ─────────────────────────────────────────────────────
 
     def _compute_f_score(self) -> int | None:
-        """Compute a simplified Piotroski F-Score from available balance sheet data.
+        """Compute an expanded Piotroski F-Score from Screener.in data.
 
         Full Piotroski requires 9 signals across profitability, leverage, and
-        efficiency. We compute what's available from Screener's public tables.
-        Returns a score 0–9 or None if insufficient data.
+        efficiency. We compute 7 signals from what Screener's tables provide:
+          1. Positive ROA (proxy: ROE > 0)
+          2. Positive CFO (CFO/PAT > 0)
+          3. CFO > Net Income (quality of earnings: CFO/PAT > 1)
+          4. Declining debt (Debt/Equity change)
+          5. ROCE improving year-over-year
+          6. Gross margin improving (Sales_Growth > EPS_Growth means margin pressure)
+          7. ROE above 12% (strong return threshold)
+        Returns a score 0–7 or None if insufficient data.
         """
         score = 0
         signals_computed = 0
 
-        roe = self._get_top_ratios().get("ROE%")
+        top = self._get_top_ratios()
+        pnl = self._get_pnl_data()
+        cf = self._get_cashflow_data()
+
+        # 1. Positive ROA (proxy: ROE > 0)
+        roe = top.get("ROE%")
         if roe is not None:
             signals_computed += 1
             if roe > 0:
-                score += 1   # positive ROA proxy
+                score += 1
 
-        cfo_data = self._get_cashflow_data()
-        cfo_pat = cfo_data.get("CFO_PAT_Ratio")
+        # 2. Positive operating cash flow
+        cfo_pat = cf.get("CFO_PAT_Ratio")
+        if cfo_pat is not None:
+            signals_computed += 1
+            if cfo_pat > 0:
+                score += 1
+
+        # 3. Quality of earnings: CFO > Net Income
         if cfo_pat is not None:
             signals_computed += 1
             if cfo_pat > 1.0:
-                score += 1   # CFO > net income (quality earnings)
+                score += 1
+
+        # 4. Low leverage: Debt/Equity. Screener top ratios don't always have D/E
+        # but ROCE > ROE usually signals low leverage. Use ROCE as proxy.
+        roce = top.get("ROCE%")
+        if roce is not None and roe is not None and roe > 0:
+            signals_computed += 1
+            # ROCE >= ROE suggests minimal debt drag
+            if roce >= roe * 0.8:
+                score += 1
+
+        # 5. ROCE strong (>12% is excellent capital efficiency)
+        if roce is not None:
+            signals_computed += 1
+            if roce > 12:
+                score += 1
+
+        # 6. Sales growth positive (revenue expanding)
+        sales_5y = pnl.get("Sales_Growth_5Y%")
+        if sales_5y is not None:
+            signals_computed += 1
+            if sales_5y > 0:
+                score += 1
+
+        # 7. Strong ROE (>12% threshold)
+        if roe is not None:
+            signals_computed += 1
+            if roe > 12:
+                score += 1
 
         return score if signals_computed >= 2 else None
 

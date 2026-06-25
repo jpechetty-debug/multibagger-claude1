@@ -72,6 +72,10 @@ class StockDataPayload(BaseModel):
     Industry: str | None = "Unknown"
     Data_Source: str = "unknown"
 
+    Promoter_Holding_pct: float | None = Field(alias="Promoter_Holding%", default=None)
+    Inst_Holding_pct: float | None = Field(alias="Inst_Holding%", default=None)
+    Pledge_Pct: float | None = None
+
     # Fetch Validity fields
     History_Bars_1Y: int | None = None
     Price_Age_Days: int | None = None

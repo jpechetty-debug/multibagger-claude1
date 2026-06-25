@@ -28,26 +28,18 @@ def calculate_piotroski_f_score(ticker):
             return 0
 
         # 1. Profitability (4 pts)
-        net_income = fin.loc["Net Income"].iloc[0] if "Net Income" in fin.index else 0
-        total_assets = bs.loc["Total Assets"].iloc[0] if "Total Assets" in bs.index else 1
+        net_income = extract_financial_metric(fin, ["Net Income", "NetIncome", "Net Income To Company", "Income"], 0, 0)
+        total_assets = extract_financial_metric(bs, ["Total Assets", "Assets"], 1, 0)
         roa = _safe_div(net_income, total_assets)
         if roa > 0:
             f_score += 1
 
-        cfo = cf.loc["Operating Cash Flow"].iloc[0] if "Operating Cash Flow" in cf.index else 0
+        cfo = extract_financial_metric(cf, ["Operating Cash Flow", "Operating Cashflow", "Cash From Operations"], 0, 0)
         if cfo > 0:
             f_score += 1
 
-        net_income_prev = (
-            fin.loc["Net Income"].iloc[1]
-            if len(fin.columns) > 1 and "Net Income" in fin.index
-            else 0
-        )
-        total_assets_prev = (
-            bs.loc["Total Assets"].iloc[1]
-            if len(bs.columns) > 1 and "Total Assets" in bs.index
-            else 1
-        )
+        net_income_prev = extract_financial_metric(fin, ["Net Income", "NetIncome", "Net Income To Company", "Income"], 0, 1)
+        total_assets_prev = extract_financial_metric(bs, ["Total Assets", "Assets"], 1, 1)
         roa_prev = _safe_div(net_income_prev, total_assets_prev)
         if roa > roa_prev:
             f_score += 1
@@ -56,62 +48,34 @@ def calculate_piotroski_f_score(ticker):
             f_score += 1
 
         # 2. Leverage (3 pts)
-        ltd = bs.loc["Long Term Debt"].iloc[0] if "Long Term Debt" in bs.index else 0
-        ltd_prev = (
-            bs.loc["Long Term Debt"].iloc[1]
-            if len(bs.columns) > 1 and "Long Term Debt" in bs.index
-            else 0
-        )
+        ltd = extract_financial_metric(bs, ["Long Term Debt", "Long-Term Debt"], 0, 0)
+        ltd_prev = extract_financial_metric(bs, ["Long Term Debt", "Long-Term Debt"], 0, 1)
         if _safe_div(ltd, total_assets) <= _safe_div(ltd_prev, total_assets_prev):
             f_score += 1
 
-        current_assets = bs.loc["Current Assets"].iloc[0] if "Current Assets" in bs.index else 0
-        current_liab = (
-            bs.loc["Current Liabilities"].iloc[0] if "Current Liabilities" in bs.index else 1
-        )
+        current_assets = extract_financial_metric(bs, ["Current Assets"], 0, 0)
+        current_liab = extract_financial_metric(bs, ["Current Liabilities"], 1, 0)
         curr_ratio = _safe_div(current_assets, current_liab)
 
-        current_assets_prev = (
-            bs.loc["Current Assets"].iloc[1]
-            if len(bs.columns) > 1 and "Current Assets" in bs.index
-            else 0
-        )
-        current_liab_prev = (
-            bs.loc["Current Liabilities"].iloc[1]
-            if len(bs.columns) > 1 and "Current Liabilities" in bs.index
-            else 1
-        )
+        current_assets_prev = extract_financial_metric(bs, ["Current Assets"], 0, 1)
+        current_liab_prev = extract_financial_metric(bs, ["Current Liabilities"], 1, 1)
         curr_ratio_prev = _safe_div(current_assets_prev, current_liab_prev)
 
         if curr_ratio > curr_ratio_prev:
             f_score += 1
 
-        shares = (
-            bs.loc["Ordinary Shares Number"].iloc[0] if "Ordinary Shares Number" in bs.index else 0
-        )
-        shares_prev = (
-            bs.loc["Ordinary Shares Number"].iloc[1]
-            if len(bs.columns) > 1 and "Ordinary Shares Number" in bs.index
-            else 0
-        )
+        shares = extract_financial_metric(bs, ["Ordinary Shares Number", "Common Stock", "Share Capital"], 0, 0)
+        shares_prev = extract_financial_metric(bs, ["Ordinary Shares Number", "Common Stock", "Share Capital"], 0, 1)
         if shares <= shares_prev:
             f_score += 1
 
         # 3. Efficiency (2 pts)
-        gp = fin.loc["Gross Profit"].iloc[0] if "Gross Profit" in fin.index else 0
-        rev = fin.loc["Total Revenue"].iloc[0] if "Total Revenue" in fin.index else 1
+        gp = extract_financial_metric(fin, ["Gross Profit"], 0, 0)
+        rev = extract_financial_metric(fin, ["Total Revenue", "Operating Revenue", "Revenue From Operations"], 1, 0)
         gm = _safe_div(gp, rev)
 
-        gp_prev = (
-            fin.loc["Gross Profit"].iloc[1]
-            if len(fin.columns) > 1 and "Gross Profit" in fin.index
-            else 0
-        )
-        rev_prev = (
-            fin.loc["Total Revenue"].iloc[1]
-            if len(fin.columns) > 1 and "Total Revenue" in fin.index
-            else 1
-        )
+        gp_prev = extract_financial_metric(fin, ["Gross Profit"], 0, 1)
+        rev_prev = extract_financial_metric(fin, ["Total Revenue", "Operating Revenue", "Revenue From Operations"], 1, 1)
         gm_prev = _safe_div(gp_prev, rev_prev)
         if gm > gm_prev:
             f_score += 1
@@ -127,17 +91,18 @@ def calculate_piotroski_f_score(ticker):
         return 0
 
 
-def extract_financial_metric(df, keys, default=0):
+def extract_financial_metric(df, keys, default=0, offset=0):
     """
     Finds a metric in a DataFrame using a list of possible keys or partial matches.
+    Can extract values from previous years using the offset parameter.
     """
-    if df.empty:
+    if df.empty or len(df.columns) <= offset:
         return default
 
     # 1. Try exact matches first
     for key in keys:
         if key in df.index:
-            val = df.loc[key].iloc[0]
+            val = df.loc[key].iloc[offset]
             if val is not None and not (isinstance(val, float) and pd.isna(val)):
                 return val
 
@@ -145,7 +110,7 @@ def extract_financial_metric(df, keys, default=0):
     for key in keys:
         for index_name in df.index:
             if key.lower() in index_name.lower():
-                val = df.loc[index_name].iloc[0]
+                val = df.loc[index_name].iloc[offset]
                 if val is not None and not (isinstance(val, float) and pd.isna(val)):
                     return val
     return default
