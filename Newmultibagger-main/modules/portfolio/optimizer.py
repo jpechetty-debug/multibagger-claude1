@@ -16,13 +16,6 @@ class PortfolioOptimizer:
     - Max Sector Weight: 25%
     """
 
-    # Transaction Cost Model (India/NSE)
-    COSTS = {
-        "stt": 0.002,  # 0.2% round-trip (Delivery)
-        "brokerage": 0.0006,  # 0.03% each way (Institutional/Pro rate)
-        "slippage": 0.0015,  # 0.15% avg impact cost (Small/Midcap)
-    }
-
     # Regime-based limits: (max_single_weight, max_sector_weight)
     REGIME_LIMITS = {
         "BULLISH":  (0.10, 0.25),
@@ -50,12 +43,14 @@ class PortfolioOptimizer:
             self.hmm = None
 
     @staticmethod
-    def net_returns_after_costs(gross_return, turnover_pa):
+    def net_returns_after_costs(gross_return, turnover_pa, cap_category="Mid"):
         """
         Adjusts returns for transaction costs.
         turnover_pa: Annual portfolio turnover (e.g., 2.0 = 200%)
         """
-        total_cost = sum(PortfolioOptimizer.COSTS.values())
+        from backtest.backtest_engine import compute_round_trip_cost
+
+        total_cost = compute_round_trip_cost(cap_category)
         drag = total_cost * turnover_pa
         return gross_return - drag
 

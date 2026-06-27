@@ -1,10 +1,12 @@
 import os
 import re
 
+from ticker_list import NIFTY_MICROCAP_CSV_PATH, TICKER_LIST_PATH
+
 
 def expand_microcaps():
-    csv_file = "MW-NIFTY-MICROCAP-250-12-Feb-2026.csv"
-    ticker_file = "ticker_list.py"
+    csv_file = NIFTY_MICROCAP_CSV_PATH
+    ticker_file = TICKER_LIST_PATH
 
     if not os.path.exists(csv_file):
         print(f"Error: {csv_file} not found.")

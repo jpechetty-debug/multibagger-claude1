@@ -1,9 +1,11 @@
 import os
 
+from ticker_list import NIFTY_500_CSV_PATH, TICKER_LIST_PATH
+
 
 def update_ticker_list():
-    csv_file = "MW-NIFTY-500-12-Feb-2026.csv"
-    ticker_file = "ticker_list.py"
+    csv_file = NIFTY_500_CSV_PATH
+    ticker_file = TICKER_LIST_PATH
 
     if not os.path.exists(csv_file):
         print(f"Error: {csv_file} not found.")

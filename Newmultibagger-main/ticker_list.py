@@ -1,6 +1,28 @@
+import os
+from pathlib import Path
+
+
 # List of NSE stocks to screen
 # Expanded to include specific sectors: Renewables, Defense, EMS, Tech
 # CORRECTIONS APPLIED: Fixed outdated/incorrect symbols
+PROJECT_ROOT = Path(__file__).resolve().parent
+TICKER_LIST_PATH = Path(os.getenv("TICKER_LIST_PATH", str(PROJECT_ROOT / "ticker_list.py")))
+NIFTY_500_CSV_PATH = Path(
+    os.getenv("NIFTY_500_CSV_PATH", str(PROJECT_ROOT / "MW-NIFTY-500-12-Feb-2026.csv"))
+)
+NIFTY_MICROCAP_CSV_PATH = Path(
+    os.getenv(
+        "NIFTY_MICROCAP_CSV_PATH",
+        str(PROJECT_ROOT / "MW-NIFTY-MICROCAP-250-12-Feb-2026.csv"),
+    )
+)
+NIFTY_MQ50_CSV_PATH = Path(
+    os.getenv(
+        "NIFTY_MQ50_CSV_PATH",
+        str(PROJECT_ROOT / "MW-NIFTY500-MULTICAP-MOMENTUM-QUALITY-50-12-Feb-2026.csv"),
+    )
+)
+
 TICKERS = [
     # --- EXISTING LIST ---
     "RELIANCE.NS",
@@ -2024,6 +2046,10 @@ TICKERS = [
     "INNOVISION.NS",
     "INSECTICID.NS",
 ]
+
+_duplicate_tickers = sorted({symbol for symbol in TICKERS if TICKERS.count(symbol) > 1})
+if _duplicate_tickers:
+    raise AssertionError(f"Duplicate tickers in TICKERS: {', '.join(_duplicate_tickers)}")
 
 # --- MULTIBAGGER HUNT FRAMEWORK (MARCH 2026) ---
 # Derived from structural framework for falling markets.

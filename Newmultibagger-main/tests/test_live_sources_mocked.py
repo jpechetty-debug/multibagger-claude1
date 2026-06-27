@@ -64,7 +64,7 @@ async def test_yfinance_provider_fetch(dummy_executor):
             assert data["source"] == "yfinance"
             assert data["Price"] == 100.5
             assert data["ROE%"] == 15.0
-            assert data["Sales_Growth_5Y%"] == 10.0
+            assert data["Sales_Growth_TTM%"] == 10.0
             assert "info" in data
             assert not data["financials"].empty
             assert not data["balance_sheet"].empty

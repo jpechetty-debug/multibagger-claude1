@@ -143,10 +143,6 @@ def calculate_all_cagrs_from_normalized(fin) -> dict[str, float | str | None]:
         periods["3Y"] = 3
     if available_years >= 6:
         periods["5Y"] = 5
-    elif available_years == 5:
-        periods["5Y"] = 4
-    elif available_years == 4:
-        periods["5Y"] = 3
 
     # Revenue CAGR
     rev_cagrs = _cagr_from_series(fin.revenue_series, periods) if fin.revenue_series else {}
@@ -242,10 +238,6 @@ def calculate_all_cagrs(ticker) -> dict[str, float | str | None]:
         periods["3Y"] = 3
     if available_years >= 6:
         periods["5Y"] = 5
-    elif available_years == 5:
-        periods["5Y"] = 4
-    elif available_years == 4:
-        periods["5Y"] = 3
 
     # --- Revenue CAGR ---
     rev_series = _extract_series(
