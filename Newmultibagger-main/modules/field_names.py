@@ -17,6 +17,7 @@ FIELD_MAPPING: dict[str, str] = {
     "Sector": "sector",
     "Score": "score",
     "F_Score": "f_score",
+    "F_Score_Max": "f_score_max",
     "Rating": "rating",
     "Buy_Below": "buy_below",
     "Stop_Loss": "stop_loss",

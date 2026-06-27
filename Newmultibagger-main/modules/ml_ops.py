@@ -26,6 +26,7 @@ from modules.data_layer.db_utils import get_db_connection    # ← FIXED: was mo
 
 ML_METADATA_TABLE  = "ml_metadata"
 _RETRAIN_THRESHOLD = 50   # new PIT rows since last run triggers retraining
+_BOOTSTRAP_UPGRADE_MIN_PIT_ROWS = 100
 
 
 # ---------------------------------------------------------------------------
@@ -126,6 +127,34 @@ def check_retraining_trigger(threshold_new_records: int = _RETRAIN_THRESHOLD) ->
     return False
 
 
+def log_bootstrap_upgrade_availability(
+    min_pit_rows: int = _BOOTSTRAP_UPGRADE_MIN_PIT_ROWS,
+) -> int | None:
+    """Log when a bootstrap model can be replaced by PIT-trained ML."""
+    try:
+        from modules.hybrid_scoring import load_walk_forward_report
+
+        wf = load_walk_forward_report() or {}
+        if not wf.get("is_bootstrap"):
+            return None
+
+        with get_db_connection("stocks.db") as conn:
+            pit_count = int(
+                conn.execute("SELECT COUNT(*) FROM fundamentals_pit").fetchone()[0]
+            )
+
+        if pit_count >= min_pit_rows:
+            logger.info(
+                "Bootstrap model detected with sufficient PIT data; attempting full PIT-trained upgrade",
+                pit_rows=pit_count,
+                min_pit_rows=min_pit_rows,
+            )
+        return pit_count
+    except Exception as exc:
+        logger.debug(f"Bootstrap upgrade availability check skipped: {exc}")
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Automated training orchestration
 # ---------------------------------------------------------------------------
@@ -139,6 +168,7 @@ def run_automated_training() -> bool:
     initialize_ml_metadata()
     logger.info("Starting automated ML retraining…")
 
+    log_bootstrap_upgrade_availability()
     success = train_hybrid_model()
 
     if not success:

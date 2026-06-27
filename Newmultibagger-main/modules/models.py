@@ -67,6 +67,7 @@ class StockDataPayload(BaseModel):
     Sales_Growth_TTM_pct: float | None = Field(alias="Sales_Growth_TTM%", default=None)
     CFO_PAT_Ratio: float | None = None
     F_Score: int | None = None
+    F_Score_Max: int | None = None
     Market_Cap_Cr: float | None = None
     Sector: str | None = "Unknown"
     Industry: str | None = "Unknown"

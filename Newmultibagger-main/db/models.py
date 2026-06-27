@@ -37,6 +37,7 @@ class Multibagger(Base):
     sector = Column(String)
     score = Column(Integer)
     f_score = Column(Integer)
+    f_score_max = Column(Integer)
     rating = Column(String)
     buy_below = Column(Float)
     stop_loss = Column(Float)

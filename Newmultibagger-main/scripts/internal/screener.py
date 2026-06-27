@@ -59,6 +59,72 @@ class TickerShim:
 
 # --- Utils ---
 
+def _frame_from_attr(obj, *names):
+    for name in names:
+        frame = getattr(obj, name, pd.DataFrame())
+        if isinstance(frame, pd.DataFrame) and not frame.empty:
+            return frame
+    return pd.DataFrame()
+
+
+def _backfill_financial_statements(ticker, source_ticker):
+    """Populate annual statement frames needed by the 9-point F-Score."""
+    if ticker.financials.empty:
+        ticker.financials = _frame_from_attr(source_ticker, "financials")
+    if ticker.balance_sheet.empty:
+        ticker.balance_sheet = _frame_from_attr(source_ticker, "balance_sheet")
+    if ticker.cashflow.empty:
+        ticker.cashflow = _frame_from_attr(source_ticker, "cashflow", "cash_flow")
+
+
+def _has_piotroski_statement_frames(ticker) -> bool:
+    return not (ticker.financials.empty or ticker.balance_sheet.empty or ticker.cashflow.empty)
+
+
+def _positive_int(value) -> int | None:
+    try:
+        if value is None or pd.isna(value):
+            return None
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None
+
+
+def _calculate_f_score_with_method(ticker, raw, info, debt_equity):
+    f_score_max = 9
+    try:
+        f_score = int(calculate_piotroski_f_score(ticker))
+    except Exception:
+        f_score = 0
+
+    if f_score > 0 or _has_piotroski_statement_frames(ticker):
+        return max(f_score, 0), "9pt_piotroski", f_score_max
+
+    raw_fscore = _positive_int(raw.get("F_Score"))
+    if raw_fscore is not None:
+        method = "screener_in" if raw.get("source") == "screener_in" else "provider_f_score"
+        raw_max = _positive_int(raw.get("F_Score_Max"))
+        f_score_max = raw_max or (7 if method == "screener_in" else 9)
+        return raw_fscore, method, f_score_max
+
+    f_roa = 1 if info.get("returnOnAssets", 0) and info.get("returnOnAssets", 0) > 0 else 0
+    f_cfo = (
+        1
+        if info.get("operatingCashflow", 0) and info.get("operatingCashflow", 0) > 0
+        else 0
+    )
+    net_income_f = info.get("netIncomeToCommon", 0)
+    op_cash_f = info.get("operatingCashflow", 0)
+    f_quality = (
+        1
+        if (op_cash_f is not None and net_income_f is not None and op_cash_f > net_income_f)
+        else 0
+    )
+    f_leverage = 1 if debt_equity < 0.4 else 0
+    f_margin = 1 if info.get("grossMargins", 0) and info.get("grossMargins", 0) > 0 else 0
+    return f_roa + f_cfo + f_quality + f_leverage + f_margin, "5pt_inline", 5
+
 # --- V3.1: Data Quality Gate ---
 _DATA_QUALITY_FIELDS = [
     "PE_Ratio",
@@ -630,6 +696,7 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
                     )
                 else:
                     ticker.quarterly_financials = pd.DataFrame()
+                _backfill_financial_statements(ticker, _t)
                 if _needs_info_backfill(info):
                     candidate_info = getattr(_t, "info", {})
                     if isinstance(candidate_info, dict):
@@ -902,38 +969,9 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
                 cfo_pat_ratio = 0
 
         # --- F-Score Metrics (Full 9-Point Piotroski) ---
-        f_score_method = "9pt_piotroski"
-        try:
-            f_score = calculate_piotroski_f_score(ticker)
-        except Exception:
-            f_score = 0
-
-        # Fallback chain: 9pt → screener_in → 5pt inline
-        if f_score == 0:
-            # Try screener_in's F_Score (currently 2-signal, but non-zero is better than 0)
-            _raw_fscore = raw.get("F_Score")
-            if _raw_fscore is not None and int(_raw_fscore) > 0:
-                f_score = int(_raw_fscore)
-                f_score_method = "screener_in"
-            else:
-                f_score_method = "5pt_inline"
-                f_roa = 1 if info.get("returnOnAssets", 0) and info.get("returnOnAssets", 0) > 0 else 0
-                f_cfo = (
-                    1
-                    if info.get("operatingCashflow", 0) and info.get("operatingCashflow", 0) > 0
-                    else 0
-                )
-                net_income_f = info.get("netIncomeToCommon", 0)
-                op_cash_f = info.get("operatingCashflow", 0)
-                f_quality = (
-                    1
-                    if (op_cash_f is not None and net_income_f is not None and op_cash_f > net_income_f)
-                    else 0
-                )
-                f_leverage = 1 if debt_equity < 0.4 else 0
-                f_margin = 1 if info.get("grossMargins", 0) and info.get("grossMargins", 0) > 0 else 0
-                f_score = f_roa + f_cfo + f_quality + f_leverage + f_margin
-
+        f_score, f_score_method, f_score_max = _calculate_f_score_with_method(
+            ticker, raw, info, debt_equity
+        )
         # --- Earnings Inflection (Rich 0-5 Score) ---
         try:
             inflection = check_earnings_inflection(ticker)
@@ -1054,14 +1092,7 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             "Sales_Growth_5Y%": _is_present_metric(revenue_cagr_5y)
             or _is_finite_number(info.get("revenueGrowth")),
             "CFO_PAT_Ratio": _is_present_metric(cfo_pat_ratio),
-            "F_Score": (f_score_method == "9pt_piotroski")
-            or (
-                f_score > 0
-                and (
-                    info.get("returnOnAssets") is not None
-                    or info.get("operatingCashflow") is not None
-                )
-            ),
+            "F_Score": f_score_max in (5, 7, 9) and f_score is not None,
             "Market_Cap_Cr": _is_present_metric(market_cap_crore),
         }
 
@@ -1093,6 +1124,7 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             "CFO_PAT_Ratio": cfo_pat_ratio,
             "EPS_Growth%": raw.get("EPS_Growth%") if raw.get("EPS_Growth%") is not None else round(eps_growth * 100, 2),
             "F_Score": f_score,
+            "F_Score_Max": f_score_max,
             "F_Score_Method": f_score_method,
             "RS_Rating": rs_rating,
             "Earnings_Accel": earnings_accel,

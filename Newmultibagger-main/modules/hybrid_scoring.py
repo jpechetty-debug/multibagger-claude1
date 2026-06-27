@@ -575,6 +575,36 @@ def _build_training_frame(df: pd.DataFrame) -> pd.DataFrame:
     return train_df
 
 
+def _bootstrap_proxy_return(df: pd.DataFrame) -> pd.Series:
+    """Cold-start proxy target until real forward-return PIT rows accumulate."""
+    score = pd.to_numeric(df["score"], errors="coerce").fillna(0.0)
+    score_min = score.min()
+    score_max = score.max()
+    score_range = max(float(score_max - score_min), 1.0)
+    score_norm = (score - score_min) / score_range
+
+    roe_signal = (
+        pd.to_numeric(df.get("avg_roe_5y", 0.0), errors="coerce")
+        .clip(-50, 100)
+        .fillna(0.0)
+        / 100.0
+    )
+    de_signal = 1.0 - (
+        pd.to_numeric(df.get("debt_equity", 1.0), errors="coerce")
+        .clip(0, 5)
+        .fillna(1.0)
+        / 5.0
+    )
+    growth_signal = (
+        pd.to_numeric(df.get("sales_cagr_5y", 0.0), errors="coerce")
+        .clip(-50, 200)
+        .fillna(0.0)
+        / 200.0
+    )
+
+    return (0.50 * score_norm + 0.20 * roe_signal + 0.15 * de_signal + 0.15 * growth_signal) - 0.5
+
+
 # ---------------------------------------------------------------------------
 # Bootstrap: synthetic model from multibaggers (cold-start when PIT is empty)
 # ---------------------------------------------------------------------------
@@ -585,8 +615,7 @@ def bootstrap_synthetic_model() -> bool:
     Used for cold-start: when ``fundamentals_pit`` is empty or too small
     to run ``train_hybrid_model()``, this function trains on the live
     ``multibaggers`` table using a proxy forward-return target derived
-    from the existing score column (score-normalised to [0,1] range,
-    shifted to mean-zero so the regressor learns relative ranking).
+    from score, profitability, leverage, and growth signals.
 
     The resulting model is intentionally weak — its sole purpose is to
     make ``model_is_trained()`` return True so the screener, API, and
@@ -627,13 +656,7 @@ def bootstrap_synthetic_model() -> bool:
         )
         return False
 
-    # Proxy target: score normalised to [0,1], de-meaned → relative signal
-    # This makes the model learn the same relative ordering as the rule-based
-    # scorer while the shape of the output is a forward-return-like float.
-    score_min = df["score"].min()
-    score_max = df["score"].max()
-    score_range = max(score_max - score_min, 1.0)
-    proxy_return = ((df["score"] - score_min) / score_range) - 0.5   # ∈ [-0.5, 0.5]
+    proxy_return = _bootstrap_proxy_return(df)
 
     X = _sanitize_features(df[FEATURES])
     y = proxy_return.values
@@ -644,8 +667,9 @@ def bootstrap_synthetic_model() -> bool:
     # WF report: mark as bootstrap so consumers can distinguish
     wf_report = {
         "status":     "BOOTSTRAP",
-        "reason":     "trained on proxy score targets — replace via POST /api/ml/train",
+        "reason":     "trained on multi-signal proxy targets; replace via POST /api/ml/train",
         "is_bootstrap": True,
+        "proxy_features": ["score", "avg_roe_5y", "debt_equity", "sales_cagr_5y"],
         "folds":      0,
         "rows":       int(len(df)),
         "spearman_ic": None,

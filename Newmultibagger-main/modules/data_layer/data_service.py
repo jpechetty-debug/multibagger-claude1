@@ -115,6 +115,7 @@ SCREENER_FLOAT_FIELDS = (
 )
 SCREENER_INT_FIELDS = (
     "f_score",
+    "f_score_max",
     "earnings_accel",
     "sector_leader",
     "institutional_interest",
@@ -206,6 +207,9 @@ class ScreenerRow(BaseModel):
     sector: str | None = Field(default=None, validation_alias=_validation_alias("Sector", "sector"))
     score: float | None = Field(default=None, validation_alias=_validation_alias("Score", "score"))
     f_score: int | None = Field(default=None, validation_alias=_validation_alias("F_Score", "f_score"))
+    f_score_max: int | None = Field(
+        default=None, validation_alias=_validation_alias("F_Score_Max", "f_score_max")
+    )
     rating: str | None = Field(default=None, validation_alias=_validation_alias("Rating", "rating"))
     buy_below: float | None = Field(
         default=None, validation_alias=_validation_alias("Buy_Below", "buy_below")

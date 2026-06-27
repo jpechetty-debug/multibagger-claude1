@@ -191,6 +191,7 @@ def _ensure_runtime_schema():
             _ensure_column(conn, "multibaggers", "data_quality_flags", "TEXT")
             _ensure_column(conn, "multibaggers", "data_confidence", "REAL")
             _ensure_column(conn, "multibaggers", "f_score_method", "TEXT")
+            _ensure_column(conn, "multibaggers", "f_score_max", "INTEGER")
             # Backtest columns
             _ensure_column(conn, "multibaggers", "backtest_cagr", "REAL")
             _ensure_column(conn, "multibaggers", "backtest_win_rate", "REAL")
@@ -635,6 +636,7 @@ def init_db():
             sector TEXT,
             score INTEGER,
             f_score INTEGER,
+            f_score_max INTEGER,
             rating TEXT,
             buy_below REAL,
             stop_loss REAL,
@@ -857,6 +859,7 @@ def save_multibaggers(df, *, replace_existing: bool = False):
         "Sector",
         "Score",
         "F_Score",
+        "F_Score_Max",
         "Rating",
         "Buy_Below",
         "Stop_Loss",
