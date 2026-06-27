@@ -273,9 +273,17 @@ class ScreenerParser:
                     result["EPS_Growth_3Y%"] = _parse_percent(cells[3].get_text(strip=True))
 
             # "Return on Equity" row in P&L (multi-year ROE)
+            # NOTE: Unlike the CAGR rows above, the ROE row is year-by-year
+            # (e.g. [label, 2020, 2021, 2022, 2023, 2024]), NOT [label, 10Y, 5Y, 3Y, TTM].
+            # Compute the arithmetic mean across all available year values.
             elif "return on equity" in label:
-                if len(cells) >= 3:
-                    result["Avg_ROE_5Y%"] = _parse_percent(cells[2].get_text(strip=True))
+                roe_vals = [
+                    _parse_percent(c.get_text(strip=True))
+                    for c in cells[1:]
+                ]
+                valid = [v for v in roe_vals if v is not None]
+                if valid:
+                    result["Avg_ROE_5Y%"] = round(sum(valid) / len(valid), 2)
 
         return result
 

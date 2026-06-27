@@ -777,7 +777,10 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         if promoter_holding is None:
             promoter_holding = raw.get("promoter_holding")
         if promoter_holding is None:
-            promoter_holding = (info.get("heldPercentInsiders", 0) or 0) * 100
+            _raw_insiders = info.get("heldPercentInsiders")
+            if _raw_insiders is not None and 0 < _raw_insiders < 1.0:
+                promoter_holding = round(_raw_insiders * 100, 2)
+            # else: leave as None — yfinance returns 1.0 as sentinel for missing data
 
         inst_holding = raw.get("Inst_Holding%")
         if inst_holding is None:
@@ -785,7 +788,10 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             if isinstance(fii_dii, dict) and (fii_dii.get("fii") or fii_dii.get("dii")):
                 inst_holding = (fii_dii.get("fii", 0) or 0) + (fii_dii.get("dii", 0) or 0)
         if inst_holding is None:
-            inst_holding = (info.get("heldPercentInstitutions", 0) or 0) * 100
+            _raw_inst = info.get("heldPercentInstitutions")
+            if _raw_inst is not None and 0 < _raw_inst < 1.0:
+                inst_holding = round(_raw_inst * 100, 2)
+            # else: leave as None — sentinel check
             
         promoter_holding = float(promoter_holding) if promoter_holding is not None else 0.0
         inst_holding = float(inst_holding) if inst_holding is not None else 0.0
@@ -826,7 +832,13 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         # 2. Sales Growth & ROE (5-Year) & Earnings Acceleration
         financials = ticker.financials
         # Read from raw dict first (screener_in provides this directly)
-        revenue_cagr_5y = raw.get("Sales_Growth_5Y%") or cagr_metrics.get("Revenue_CAGR_5Y") or cagr_metrics.get("Revenue_CAGR_3Y") or 0
+        revenue_cagr_5y = (
+            raw.get("Sales_Growth_5Y%")
+            or cagr_metrics.get("Revenue_CAGR_5Y")
+            or cagr_metrics.get("Revenue_CAGR_3Y")
+            or raw.get("Sales_Growth_TTM%")
+            or 0
+        )
         avg_roe_5y = raw.get("Avg_ROE_5Y%") or 0
         earnings_accel = False
 

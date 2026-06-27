@@ -93,7 +93,7 @@ class YFinanceProvider(DataProvider):
             "source": self.name,
             "Price": info.get("currentPrice") or info.get("regularMarketPrice"),
             "ROE%": (info.get("returnOnEquity") or 0) * 100,
-            "Sales_Growth_5Y%": (info.get("revenueGrowth") or 0) * 100,
+            "Sales_Growth_TTM%": (info.get("revenueGrowth") or 0) * 100,
             "PE_Ratio": info.get("trailingPE"),
             "Debt_Equity": info.get("debtToEquity"),
             "F_Score": info.get("piotroskiScore"),

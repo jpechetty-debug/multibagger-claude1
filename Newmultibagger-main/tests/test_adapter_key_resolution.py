@@ -291,7 +291,7 @@ class TestYFinanceAdapterUnchanged:
         import inspect
         from modules.adapters.yfinance import YFinanceProvider
         src = inspect.getsource(YFinanceProvider.fetch_fundamentals)
-        for key in ["PE_Ratio", "ROE%", "Debt_Equity", "Sales_Growth_5Y%", "source"]:
+        for key in ["PE_Ratio", "ROE%", "Debt_Equity", "Sales_Growth_TTM%", "source"]:
             assert f'"{key}"' in src, f"YFinanceProvider missing key {key!r} in return dict"
 
 

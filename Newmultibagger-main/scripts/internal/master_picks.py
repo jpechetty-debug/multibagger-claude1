@@ -10,7 +10,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 from ticker_list import TICKERS
 
 MASTER_PICKS = TICKERS.copy()
-# Remove TATAMOTORS.NS if it's giving 404
+# Remove TATAMOTORS.NS and AKZOINDIA.NS if they give 404 and hang
 if "TATAMOTORS.NS" in MASTER_PICKS:
     MASTER_PICKS.remove("TATAMOTORS.NS")
+if "AKZOINDIA.NS" in MASTER_PICKS:
+    MASTER_PICKS.remove("AKZOINDIA.NS")
     # Adding TATAMOTORS.BO as a fallback if needed, but for now just focus on the working ones.

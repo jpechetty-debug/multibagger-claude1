@@ -11,7 +11,7 @@ def scan_specific_symbols():
 
     for symbol in symbols:
         print(f"Analyzing {symbol}...")
-        data = screener.get_stock_data(symbol)
+        data = screener.get_stock_data_sync(symbol)
         if data:
             score_data = screener.calculate_institutional_score(data, market_regime=market_regime)
             data["Score"] = score_data["total_score"]
