@@ -149,7 +149,8 @@ def _build_factor_state(data: _StockData, score_sentiment: float, scoring_mode: 
         # Phase 2.3: Missing F_Score → neutral, not penalized
         score_fscore = 50.0
     else:
-        score_fscore = (f_score_val / 9.0) * 100
+        f_score_max = optional_float(data.get("F_Score_Max")) or 9.0
+        score_fscore = (f_score_val / f_score_max) * 100
 
     stock_sector = data.get("Sector", "") or ""
     if "Bank" in stock_sector or "Financial" in stock_sector:
