@@ -2047,6 +2047,8 @@ TICKERS = [
     "INSECTICID.NS",
 ]
 
+
+
 _duplicate_tickers = sorted({symbol for symbol in TICKERS if TICKERS.count(symbol) > 1})
 if _duplicate_tickers:
     raise AssertionError(f"Duplicate tickers in TICKERS: {', '.join(_duplicate_tickers)}")
@@ -2115,3 +2117,13 @@ SECTORS = [
     "DODLA.NS",
     "JYOTHYLAB.NS",
 ]
+
+# Guard: warn if SECTORS contains tickers already in TICKERS (prevents double-scanning)
+_sectors_in_tickers = sorted(set(SECTORS) & set(TICKERS))
+if _sectors_in_tickers:
+    import warnings
+    warnings.warn(
+        f"SECTORS contains {len(_sectors_in_tickers)} tickers already in TICKERS: "
+        f"{_sectors_in_tickers[:5]}{'...' if len(_sectors_in_tickers) > 5 else ''}",
+        stacklevel=1,
+    )

@@ -237,7 +237,7 @@ def _get_available_factors(
         or safe_float(data.get("Sales_Growth_TTM%")) != 0
     ):
         available.append(("sales", state.score_sales, weights["w_sales"]))
-    if state.roe_val != 0:
+    if optional_float(data.get("ROE%")) is not None or optional_float(data.get("Avg_ROE_5Y%")) is not None:
         available.append(("roe", state.score_roe, weights["w_roe"]))
     if safe_float(data.get("CFO_PAT_Ratio")) != 0:
         available.append(("cfo", state.score_cfo, weights["w_cfo"]))
@@ -248,10 +248,10 @@ def _get_available_factors(
     # F_Score: only count if the raw value was present (not the neutral 50.0 fallback)
     if optional_float(data.get("F_Score")) is not None:
         available.append(("fscore", state.score_fscore, weights["w_fscore"]))
-    # D/E: count if sector is financial (hardcoded 80) OR real Debt_Equity data exists
-    # Use optional_float so 0.0 (genuinely debt-free) is not None, but missing data is.
-    if ("Bank" in state.stock_sector or "Financial" in state.stock_sector
-            or optional_float(data.get("Debt_Equity")) is not None):
+    # D/E: count toward confidence ONLY when real Debt_Equity data exists.
+    # Financial-sector stocks still receive the hardcoded 80.0 score via
+    # _build_factor_state, but that synthetic value must not inflate confidence.
+    if optional_float(data.get("Debt_Equity")) is not None:
         available.append(("de", state.score_de, weights["w_de"]))
     # Momentum: count only if price > 0 and at least one momentum input is present
     if state.price > 0 and (
