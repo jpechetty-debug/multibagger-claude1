@@ -7,6 +7,30 @@ This acts as a "Cloning Source" for the Conviction Engine.
 NOTE: This registry should be updated quarterly based on shareholding patterns.
 """
 
+import warnings
+from datetime import datetime
+
+REGISTRY_AS_OF = "2025-Q3"
+
+def _check_registry_staleness():
+    """Emit a runtime warning if the registry is older than 120 days."""
+    try:
+        year, quarter = REGISTRY_AS_OF.split("-Q")
+        quarter_month = {1: 1, 2: 4, 3: 7, 4: 10}[int(quarter)]
+        registry_date = datetime(int(year), quarter_month, 1)
+        age_days = (datetime.now() - registry_date).days
+        if age_days > 120:
+            warnings.warn(
+                f"Super investor registry is {age_days} days old "
+                f"(REGISTRY_AS_OF={REGISTRY_AS_OF}). Update from SEBI shareholding data.",
+                UserWarning,
+                stacklevel=2,
+            )
+    except (ValueError, KeyError):
+        pass
+
+_check_registry_staleness()
+
 SUPER_INVESTORS = {
     "DOLLY_KHANNA": {
         "style": "Momentum + Value in Smallcaps",

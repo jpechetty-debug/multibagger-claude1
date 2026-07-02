@@ -40,7 +40,7 @@ def _build_conviction_input(data: _StockData) -> _StockData:
         "symbol": data.get("Symbol", ""),
         "sales_growth": safe_float(data.get("Sales_Growth_5Y%")),
         "profit_growth": safe_float(data.get("EPS_Growth%")),
-        "roce": safe_float(data.get("Avg_ROE_5Y%")),
+        "roce": safe_float(data.get("ROCE%")),
         "debt_to_equity": safe_float(data.get("Debt_Equity")),
         "promoter_holding": safe_float(data.get("Promoter_Holding%")),
         "pledge": safe_float(data.get("Pledge_Pct")),
@@ -112,14 +112,16 @@ def calculate_institutional_score(
     as_of = data.get("As_Of_Date")
     quarter_end = data.get("Quarter_End")
 
-    # ── PIT hard gate: block scoring if data is too fresh (SEBI 45-day lag) ──
-    if quarter_end and as_of:
-        enforce_pit_gate(as_of, quarter_end, symbol=data.get("Symbol", "UNKNOWN"))
-
-    # ── Data freshness soft gate: penalise stale data instead of blocking ──
+    # ── Data quality tracking (initialised before gates so gates can append) ──
     data_quality_flags: list[str] = []
     _staleness_penalty: float = 0.0
     _scoring_strategy_override: str | None = None
+
+    # ── PIT hard gate: block scoring if data is too fresh (SEBI 45-day lag) ──
+    if quarter_end and as_of:
+        enforce_pit_gate(as_of, quarter_end, symbol=data.get("Symbol", "UNKNOWN"))
+    else:
+        data_quality_flags.append("PIT_GATE_SKIPPED_MISSING_DATES")
     if as_of:
         try:
             as_of_date = date.fromisoformat(str(as_of))
