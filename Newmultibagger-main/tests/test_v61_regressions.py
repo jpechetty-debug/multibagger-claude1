@@ -52,3 +52,45 @@ def test_multibagger_hunt_threshold():
 
         assert "CAST(sales_cagr_5y AS DOUBLE) >= 15" in query, "sales_cagr_5y threshold should be >= 15"
         assert "CAST(avg_roe_5y AS DOUBLE) >= 15" in query, "avg_roe_5y threshold should be >= 15"
+        assert "CAST(score AS DOUBLE) >= 70.0" in query
+        assert "data_confidence" in query
+        assert "stale_data" in query
+
+
+def test_multibagger_hunt_applies_phase1_trust_gate():
+    client = TestClient(app)
+    base = {
+        "price": 100.0,
+        "sector": "Tech",
+        "score": 82.0,
+        "f_score": 7,
+        "rating": "A",
+        "sales_cagr_5y": 22.0,
+        "avg_roe_5y": 21.0,
+        "debt_equity": 0.2,
+        "cfo_pat_ratio": 1.1,
+        "promoter_holding": 55.0,
+        "pledge_pct": 0.0,
+        "piotroski_score": 7,
+        "market_cap_cr": 2500.0,
+        "data_confidence": 75.0,
+        "data_quality_flags": "",
+        "avg_volume_10d": 10_000_000,
+    }
+    rows = pd.DataFrame(
+        [
+            {**base, "symbol": "PASS.NS"},
+            {**base, "symbol": "STALE.NS", "data_quality_flags": "stale_data"},
+            {**base, "symbol": "ILLIQ.NS", "avg_volume_10d": 1_000},
+        ]
+    )
+
+    with patch("app_routes.stocks._duck_query", return_value=rows):
+        response = client.get("/api/multibagger-hunt")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [row["symbol"] for row in payload] == ["PASS.NS"]
+    assert payload[0]["trust_gate_pass"] is True
+    assert payload[0]["trust_gate_reasons"] == ["PASS"]
+    assert payload[0]["liquidity_score"] == 100.0

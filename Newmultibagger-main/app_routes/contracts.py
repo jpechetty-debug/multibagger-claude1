@@ -113,6 +113,10 @@ class MultibaggerOut(BaseModel):
     pledge_pct: float | None = None
     piotroski_score: int | None = None
     data_quality: float | None = None
+    data_confidence: float | None = None
     data_quality_flags: str | None = None
+    liquidity_score: float | None = None
+    trust_gate_pass: bool | None = None
+    trust_gate_reasons: list[str] | None = None
 
     model_config = {"extra": "allow", "from_attributes": True}

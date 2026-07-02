@@ -254,7 +254,7 @@ Examples
         )
         print(f"[OK] Model saved to {model_dir / 'xgboost_meta_model.pkl'}")
         if wf.get("status") == "BOOTSTRAP":
-            print("  ⚠  Bootstrap model (proxy target) — will improve as PIT data accumulates.")
+            print("  [!] Bootstrap model (proxy target) — will improve as PIT data accumulates.")
         elif wf.get("status") == "OK":
             print(f"  WF IC={wf.get('spearman_ic'):.4f}  hit_rate={wf.get('hit_rate'):.4f}  folds={wf.get('folds')}")
     else:

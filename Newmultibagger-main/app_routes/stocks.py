@@ -30,6 +30,24 @@ api_logger = get_logger("sovereign.api")
 import re
 
 _SYMBOL_RE = re.compile(r"^[A-Z0-9&]{1,20}(\.(NS|BO|BSE))?$", re.IGNORECASE)
+HUNT_MIN_SCORE = 70.0
+HUNT_MIN_DATA_CONFIDENCE = 60.0
+HUNT_MIN_LIQUIDITY_SCORE = 70.0
+_HARD_DQ_FLAGS = {
+    "stale_data",
+    "unparseable_as_of_date",
+    "mock_history",
+    "pit_gate_skipped_missing_dates",
+}
+_SEVERE_GOVERNANCE_FLAG_TOKENS = (
+    "fraud",
+    "governance",
+    "auditor_resignation",
+    "pledge_rising",
+    "promoter_selling",
+    "red_flag",
+)
+
 
 def _validate_symbol(symbol: str) -> str:
     s = symbol.strip().upper()
@@ -37,7 +55,103 @@ def _validate_symbol(symbol: str) -> str:
         raise HTTPException(status_code=422, detail=f"Invalid symbol: {symbol!r}")
     return s
 
+
 router = APIRouter()
+
+
+def _as_float(value, default: float | None = None) -> float | None:
+    try:
+        if value is None or value == "":
+            return default
+        result = float(value)
+        return result if np.isfinite(result) else default
+    except (TypeError, ValueError):
+        return default
+
+
+def _flag_set(value) -> set[str]:
+    if value is None:
+        return set()
+    if isinstance(value, (list, tuple, set)):
+        raw = ",".join(str(item) for item in value)
+    else:
+        raw = str(value)
+    return {part.strip().lower() for part in re.split(r"[,;|]", raw) if part.strip()}
+
+
+def _liquidity_score(record: dict) -> tuple[float | None, str | None]:
+    direct = _as_float(record.get("liquidity_score"))
+    if direct is not None:
+        return direct, None
+
+    avg_volume = _as_float(record.get("avg_volume_10d"), _as_float(record.get("volume")))
+    price = _as_float(record.get("price"))
+    if avg_volume is None or price is None:
+        return None, "LIQUIDITY_NOT_AVAILABLE"
+
+    from modules.liquidity import analyze_liquidity
+
+    score, risk_flag, reason = analyze_liquidity(
+        {
+            "Price": price,
+            "Avg_Volume_10D": avg_volume,
+            "ATR": record.get("atr"),
+        }
+    )
+    if risk_flag:
+        return float(score), f"LIQUIDITY_RISK:{reason or 'risk_flag'}"
+    return float(score), None
+
+
+def _trust_gate_record(record: dict) -> dict | None:
+    reasons: list[str] = []
+
+    score = _as_float(record.get("score"), 0.0) or 0.0
+    if score < HUNT_MIN_SCORE:
+        reasons.append(f"SCORE_BELOW_{HUNT_MIN_SCORE:.0f}")
+
+    confidence = _as_float(record.get("data_confidence"))
+    if confidence is None:
+        confidence = _as_float(record.get("data_quality"), 0.0)
+    if (confidence or 0.0) < HUNT_MIN_DATA_CONFIDENCE:
+        reasons.append(f"DATA_CONFIDENCE_BELOW_{HUNT_MIN_DATA_CONFIDENCE:.0f}")
+
+    flags = _flag_set(record.get("data_quality_flags"))
+    blocked_flags = sorted(flags & _HARD_DQ_FLAGS)
+    if blocked_flags:
+        reasons.extend(f"DQ_FLAG:{flag}" for flag in blocked_flags)
+    if any(token in flag for flag in flags for token in _SEVERE_GOVERNANCE_FLAG_TOKENS):
+        reasons.append("SEVERE_GOVERNANCE_FLAG")
+
+    pledge = _as_float(record.get("pledge_pct"), 0.0) or 0.0
+    if pledge > 0.0:
+        reasons.append("PROMOTER_PLEDGE_PRESENT")
+
+    liq_score, liq_reason = _liquidity_score(record)
+    if liq_score is None:
+        reasons.append(liq_reason or "LIQUIDITY_NOT_AVAILABLE")
+    elif liq_score < HUNT_MIN_LIQUIDITY_SCORE:
+        reasons.append(f"LIQUIDITY_SCORE_BELOW_{HUNT_MIN_LIQUIDITY_SCORE:.0f}")
+    elif liq_reason:
+        reasons.append(liq_reason)
+
+    gated = {
+        **record,
+        "data_confidence": confidence,
+        "liquidity_score": liq_score,
+        "trust_gate_pass": not reasons,
+        "trust_gate_reasons": reasons or ["PASS"],
+    }
+    return gated if not reasons else None
+
+
+def _apply_multibagger_trust_gate(records: list[dict]) -> list[dict]:
+    passed: list[dict] = []
+    for record in records:
+        gated = _trust_gate_record(record)
+        if gated is not None:
+            passed.append(gated)
+    return passed
 
 
 @router.get("/api/stocks", response_model=list[MultibaggerOut])
@@ -101,10 +215,16 @@ async def get_multibaggers(request: Request, as_of_date: str | None = None):
 async def get_multibagger_hunt(request: Request):
     """Fetch stocks meeting the strict Multibagger Hunt criteria using DuckDB for speed"""
     try:
-        query = """
+        query = f"""
             SELECT * FROM sqlite_db.multibaggers
             WHERE CAST(sales_cagr_5y AS DOUBLE) >= 15
               AND CAST(avg_roe_5y AS DOUBLE) >= 15
+              AND CAST(score AS DOUBLE) >= {HUNT_MIN_SCORE}
+              AND COALESCE(CAST(data_confidence AS DOUBLE), CAST(data_quality AS DOUBLE), 0) >= {HUNT_MIN_DATA_CONFIDENCE}
+              AND COALESCE(LOWER(data_quality_flags), '') NOT LIKE '%stale_data%'
+              AND COALESCE(LOWER(data_quality_flags), '') NOT LIKE '%mock_history%'
+              AND COALESCE(LOWER(data_quality_flags), '') NOT LIKE '%pit_gate_skipped_missing_dates%'
+              AND COALESCE(LOWER(data_quality_flags), '') NOT LIKE '%unparseable_as_of_date%'
               AND CAST(debt_equity AS DOUBLE) <= 0.5
               AND CAST(cfo_pat_ratio AS DOUBLE) >= 0.80
               AND CAST(promoter_holding AS DOUBLE) >= 50.0
@@ -129,6 +249,7 @@ async def get_multibagger_hunt(request: Request):
             return json.loads(df.to_json(orient="records", double_precision=2))
 
         records = await _run_blocking(_run_duckdb_query)
+        records = _apply_multibagger_trust_gate(records)
 
         if not records:
             return []
