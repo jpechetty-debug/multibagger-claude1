@@ -36,7 +36,6 @@ MODULE_MAPPING = {
     "slippage": "risk.slippage",
 
     # Portfolio
-    "portfolio_optimizer": "portfolio.portfolio_optimizer",
     "allocation_hrp": "portfolio.allocation_hrp",
     "capital_efficiency": "portfolio.capital_efficiency",
     "capital_simulator": "portfolio.capital_simulator",
