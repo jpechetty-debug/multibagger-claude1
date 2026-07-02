@@ -266,6 +266,20 @@ export const api = {
     return fetchJson<SwarmAlert[]>('/swarm/alerts')
   },
 
+  triggerRescan: async (): Promise<{ status: string; message: string }> => {
+    const apiKey = import.meta.env.VITE_SOVEREIGN_API_KEY?.trim()
+    const requestInit = {
+      method: 'POST',
+      headers: apiKey ? { [API_KEY_HEADER]: apiKey } : {},
+    }
+    const response = await fetch(`${BASE_URL}/api/rescan-universe`, requestInit)
+    if (!response.ok) {
+      throw new ApiError(`Failed to trigger rescan`, response.status)
+    }
+    return response.json()
+  },
+
+
   downloadPdfReport: async (symbol: string): Promise<void> => {
     const apiKey = import.meta.env.VITE_SOVEREIGN_API_KEY?.trim()
     const requestInit = apiKey ? { headers: { [API_KEY_HEADER]: apiKey } } : undefined

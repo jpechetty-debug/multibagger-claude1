@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { TrendingUp, Heart, BarChart3 } from 'lucide-react'
+import { TrendingUp, Heart, BarChart3, RefreshCw } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { DataFreshnessBadge } from '../metrics/DataFreshnessBadge'
 import { useWatchlist } from '../../lib/useWatchlist'
+import { api } from '../../lib/api'
 
 interface HeaderProps {
   regime?: string
@@ -102,8 +104,30 @@ export function Header({
 
 function HeaderNavLinks() {
   const { count } = useWatchlist()
+  const [isScanning, setIsScanning] = useState(false)
+
+  const handleRescan = async () => {
+    try {
+      setIsScanning(true)
+      await api.triggerRescan()
+      // Toast could go here if available, but for now it just spins a bit.
+      setTimeout(() => setIsScanning(false), 2000)
+    } catch (err) {
+      console.error('Failed to trigger rescan:', err)
+      setIsScanning(false)
+    }
+  }
+
   return (
     <div className="flex items-center gap-2">
+      <button
+        onClick={handleRescan}
+        disabled={isScanning}
+        title="Rescan Universe"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-brand-border px-2.5 py-1.5 text-[10px] font-mono font-bold uppercase tracking-widest text-brand-text-dim hover:border-brand-primary/40 hover:text-brand-primary transition-colors touch-target disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <RefreshCw className={`h-3 w-3 ${isScanning ? 'animate-spin text-brand-primary' : ''}`} />
+      </button>
       <Link
         to="/watchlist"
         className="inline-flex items-center gap-1.5 rounded-lg border border-brand-border px-2.5 py-1.5 text-[10px] font-mono font-bold uppercase tracking-widest text-brand-text-dim hover:border-brand-primary/40 hover:text-brand-primary transition-colors touch-target"

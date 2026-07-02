@@ -158,6 +158,13 @@ async def websocket_prices(websocket: WebSocket):
 
 # ── REST endpoints ────────────────────────────────────────────────────────────
 
+@router.post("/api/rescan-universe")
+async def rescan_universe():
+    """Trigger the recan_universe script in the background."""
+    script_path = str(Path(__file__).resolve().parent.parent / "scripts" / "internal" / "recan_universe.py")
+    await asyncio.create_subprocess_exec(sys.executable, script_path, "--confirm")
+    return {"status": "accepted", "message": "Rescan initiated"}
+
 
 @router.post("/api/scan")
 @limiter.limit("2/minute")
