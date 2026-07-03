@@ -278,6 +278,7 @@ def test_walk_forward_strategy_backtest_trains_past_only_and_reports_portfolio_m
         min_train_periods=3,
         rebalance_frequency="monthly",
         top_quantile=0.67,
+        min_positions=1,  # isolate pure top_quantile behavior; floor tested separately
     )
 
     assert result["status"] == "OK"
@@ -296,3 +297,79 @@ def test_walk_forward_strategy_backtest_trains_past_only_and_reports_portfolio_m
         assert pd.Period(fold["train_end_period"], freq="M") < pd.Period(
             fold["test_period"], freq="M"
         )
+
+
+def test_walk_forward_min_positions_prevents_single_stock_concentration(monkeypatch):
+    """Regression test: with the default min_positions floor, a top_quantile
+    that would otherwise select only 1 name out of a small eligible universe
+    must instead hold at least min(min_positions, len(eligible universe)).
+
+    This guards against the concentration bug found in the mixed US/India
+    universe backtest, where a short PIT fundamentals history shrank the
+    eligible universe to a handful of names each quarter and top_quantile
+    alone produced 1-stock "portfolios" (100% idiosyncratic risk, no
+    diversification) that drove the reported negative alpha/Sharpe.
+    """
+    backtest_engine_module = _load_backtest_engine_module(monkeypatch)
+    feature_cols = backtest_engine_module.DEFAULT_WALK_FORWARD_FEATURES
+
+    monkeypatch.setattr(backtest_engine_module, "_make_walk_forward_model", lambda: _ScoreModel())
+    monkeypatch.setattr(
+        backtest_engine_module,
+        "_sanitize_walk_forward_features",
+        lambda df: df.apply(pd.to_numeric, errors="coerce").fillna(0.0),
+    )
+
+    price_dates = pd.date_range("2024-01-31", periods=9, freq="ME")
+    pit_dates = price_dates[:-1]
+    rows = []
+    score_map = {"AAA.NS": 90.0, "BBB.NS": 50.0, "CCC.NS": 10.0}
+    for date in pit_dates:
+        for symbol, score in score_map.items():
+            row = dict.fromkeys(feature_cols, 0.0)
+            row.update({"symbol": symbol, "as_of_date": date.strftime("%Y-%m-%d"), "score": score})  # type: ignore
+            rows.append(row)
+    pit_df = pd.DataFrame(rows)
+    monkeypatch.setattr(pd, "read_sql_query", lambda *args, **kwargs: pit_df)
+
+    fake_download = pd.concat(
+        {
+            "AAA.NS": pd.DataFrame({"Close": _prices_from_returns([0.03] * 8)}, index=price_dates),
+            "BBB.NS": pd.DataFrame({"Close": _prices_from_returns([0.01] * 8)}, index=price_dates),
+            "CCC.NS": pd.DataFrame({"Close": _prices_from_returns([-0.01] * 8)}, index=price_dates),
+            "^CNX500": pd.DataFrame({"Close": _prices_from_returns([0.005] * 8)}, index=price_dates),
+        },
+        axis=1,
+    )
+    monkeypatch.setattr(backtest_engine_module.yf, "download", lambda *args, **kwargs: fake_download)
+
+    engine = backtest_engine_module.VectorBTEngine(period="1y")
+    _bypass_survivorship(engine)
+
+    # top_quantile=0.67 alone would pick only the top 1 of 3 names (AAA.NS),
+    # per the sibling test above. With the default min_positions=10 floor,
+    # the engine must instead hold all 3 eligible names every period.
+    result = engine.run_walk_forward_strategy_backtest(
+        ["AAA", "BBB", "CCC"],
+        min_train_periods=3,
+        rebalance_frequency="monthly",
+        top_quantile=0.67,
+    )
+
+    assert result["status"] == "OK"
+    assert result["min_positions"] == 10
+    assert result["avg_holdings"] == pytest.approx(3.0)
+    assert result["min_holdings_observed"] == 3
+    for fold in result["fold_details"]:
+        assert sorted(fold["selected_symbols"]) == ["AAA.NS", "BBB.NS", "CCC.NS"]
+
+    # Explicitly disabling the floor restores the old 1-stock behavior.
+    result_no_floor = engine.run_walk_forward_strategy_backtest(
+        ["AAA", "BBB", "CCC"],
+        min_train_periods=3,
+        rebalance_frequency="monthly",
+        top_quantile=0.67,
+        min_positions=None,
+    )
+    for fold in result_no_floor["fold_details"]:
+        assert fold["selected_symbols"] == ["AAA.NS"]

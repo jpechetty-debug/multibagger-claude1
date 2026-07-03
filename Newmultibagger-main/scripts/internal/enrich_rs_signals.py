@@ -9,6 +9,8 @@ from pathlib import Path
 
 import yfinance as yf
 
+from modules.fx import to_inr_cr
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -89,7 +91,8 @@ def enrich(
             sector = info.get("sector") or "Unknown"
             roe = (info.get("returnOnEquity") or 0) * 100
             pe = info.get("trailingPE") or info.get("forwardPE") or 0
-            market_cap_cr = (info.get("marketCap") or 0) / 1e7
+            # US-listed tickers report marketCap in USD; convert via FX before Crore division.
+            market_cap_cr = to_inr_cr(info.get("marketCap"), info.get("currency")) or 0
             debt_equity = (info.get("debtToEquity") or 0) / 100
             sales_growth = (info.get("revenueGrowth") or 0) * 100
             cfo = info.get("operatingCashflow") or 0

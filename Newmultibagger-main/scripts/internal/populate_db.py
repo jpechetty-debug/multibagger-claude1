@@ -11,6 +11,7 @@ from datetime import datetime
 import yfinance as yf
 
 from modules.fundamentals import calculate_piotroski_f_score
+from modules.fx import to_inr_cr
 from modules.scoring import calculate_institutional_score
 
 TICKERS = [
@@ -60,7 +61,8 @@ def populate():
             sales_g = (info.get("revenueGrowth") or 0) * 100
             eps_g = (info.get("earningsGrowth") or 0) * 100
             pe = info.get("trailingPE") or 0
-            mcap = (info.get("marketCap") or 0) / 1e7
+            # US-listed tickers report marketCap in USD; convert via FX before Crore division.
+            mcap = to_inr_cr(info.get("marketCap"), info.get("currency")) or 0
             sector = info.get("sector", "Unknown")
             name = info.get("shortName", symbol)
             prom = (info.get("heldPercentInsiders") or 0) * 100

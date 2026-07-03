@@ -4,6 +4,8 @@ import sqlite3
 import pandas as pd
 import yfinance as yf
 
+from modules.fx import to_inr_cr
+
 
 def run_slippage_analysis():
     print("📉 Initiating Real-World Slippage Modeling (Phase 50)...")
@@ -47,7 +49,8 @@ def run_slippage_analysis():
             try:
                 t = yf.Ticker(sym)
                 info = t.info
-                mc = info.get("marketCap", 0) / 10000000  # Convert to Crores
+                # US-listed tickers report marketCap in USD; convert via FX before Crore division.
+                mc = to_inr_cr(info.get("marketCap"), info.get("currency")) or 0
                 caps.append(mc)
             except:
                 caps.append(0)

@@ -17,6 +17,7 @@ import yfinance as yf  # Kept for Nifty benchmark index only (^NSEI)
 from modules.cagr_engine import calculate_all_cagrs, classify_market_cap, extract_dividend_metrics
 from modules.data_service import DataManager, get_data_manager
 from modules.estimates import get_estimate_data
+from modules.fx import to_inr_cr
 from modules.fundamentals import (
     calculate_current_roe,
     calculate_median_pat_growth,
@@ -951,7 +952,12 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         div_metrics = extract_dividend_metrics(info)
 
         # --- Sprint 1: Market Cap Classification ---
-        market_cap_crore = (info.get("marketCap", 0) or 0) / 10000000
+        # NOTE: yfinance reports marketCap in the ticker's *local listing
+        # currency* (INR for .NS/.BO, USD for US mega-caps like MSFT/GOOGL).
+        # to_inr_cr() applies the correct FX rate before the Crore division;
+        # a bare "/ 10000000" silently treated USD as INR and understated
+        # US names by ~80-90x (see modules/fx.py for detail).
+        market_cap_crore = to_inr_cr(info.get("marketCap"), info.get("currency")) or 0
         cap_category = classify_market_cap(market_cap_crore)
 
         # Earnings Acceleration is now calculated via check_earnings_inflection below

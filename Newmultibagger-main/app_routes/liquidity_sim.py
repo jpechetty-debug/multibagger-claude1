@@ -27,6 +27,7 @@ from sqlalchemy import text
 
 from db.db_core import get_db_connection as get_sqla_connection
 from modules.connections import _run_blocking
+from modules.fx import to_inr_cr
 from modules.liquidity import simulate_liquidity
 from modules.rate_limit import limiter
 from modules.symbol_utils import canonical_symbol
@@ -108,7 +109,9 @@ def _fetch_from_yfinance(yf_symbol: str) -> dict:
     # Market cap from info (best-effort)
     try:
         info = ticker.info
-        mktcap_cr = info.get("marketCap", 0) / 1e7 if info.get("marketCap") else None
+        mktcap_cr = (
+            to_inr_cr(info.get("marketCap"), info.get("currency")) if info.get("marketCap") else None
+        )
     except Exception:
         mktcap_cr = None
 

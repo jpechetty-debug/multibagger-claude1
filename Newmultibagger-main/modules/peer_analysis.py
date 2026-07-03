@@ -13,6 +13,7 @@ import pandas as pd
 import yfinance as yf
 
 from modules.db_utils import get_db_connection
+from modules.fx import to_inr_cr
 from modules.retry_utils import run_with_exponential_backoff
 from core.observability.logger import get_logger
 _log = get_logger("modules.peer_analysis")
@@ -305,7 +306,8 @@ async def fetch_stock_metrics(symbol: str) -> dict:
                 _log.error(f"Caught unhandled exception: {e}", exc_info=True)
 
         market_cap = info.get("marketCap", 0)
-        market_cap_cr = round(market_cap / 10000000, 0) if market_cap else None
+        market_cap_cr_raw = to_inr_cr(market_cap, info.get("currency")) if market_cap else None
+        market_cap_cr = round(market_cap_cr_raw, 0) if market_cap_cr_raw is not None else None
 
         price_change_1m = None
         price_change_3m = None

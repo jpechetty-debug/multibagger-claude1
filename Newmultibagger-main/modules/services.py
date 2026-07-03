@@ -8,6 +8,7 @@ from abc import ABC
 from typing import cast
 
 from modules.models import ScoringResult, StockDataPayload
+from modules.fx import to_inr_cr
 from core.observability.logger import get_logger
 _log = get_logger(__name__)
 
@@ -57,7 +58,7 @@ class IngestionService(BaseService):
                 "History_Bars_1Y": len(hist),
                 "Sector": raw_info.get("sector", "Unknown"),
                 "Industry": raw_info.get("industry", "Unknown"),
-                "Market_Cap_Cr": raw_info.get("marketCap", 0) / 10000000,
+                "Market_Cap_Cr": to_inr_cr(raw_info.get("marketCap"), raw_info.get("currency")) or 0,
                 "PE_Ratio": raw_info.get("trailingPE", 0),
                 "ROE%": raw_info.get("returnOnEquity", 0) * 100
                 if raw_info.get("returnOnEquity")

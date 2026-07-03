@@ -10,6 +10,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from modules.cagr_engine import calculate_all_cagrs, classify_market_cap, extract_dividend_metrics
+from modules.fx import to_inr_cr
 
 
 def test_market_cap_classifier():
@@ -81,7 +82,7 @@ def test_cagr_with_live_ticker():
         print(f"  Dividend Payout: {div['Dividend_Payout']}%")
 
         # Cap category
-        mcap = info.get("marketCap", 0) / 1e7  # USD to rough Cr
+        mcap = to_inr_cr(info.get("marketCap"), info.get("currency")) or 0
         cap = classify_market_cap(mcap)
         print(f"  Market Cap: {mcap:.0f} Cr -> {cap}")
 

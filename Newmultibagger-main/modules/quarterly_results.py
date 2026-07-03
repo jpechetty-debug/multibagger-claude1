@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 
+from modules.fx import to_inr_cr
 from modules.retry_utils import run_with_exponential_backoff
 from core.observability.logger import get_logger
 _log = get_logger("modules.quarterly_results")
@@ -174,10 +175,11 @@ async def process_quarter_data(
                     ebitda = val
                     break
 
-        # Convert to Crores
-        revenue_cr = revenue / 10000000
-        profit_cr = profit / 10000000
-        ebitda_cr = ebitda / 10000000
+        # Convert to Crores (currency-aware: US tickers report in USD)
+        currency = company_info.get("currency") if company_info else None
+        revenue_cr = to_inr_cr(revenue, currency) or 0.0
+        profit_cr = to_inr_cr(profit, currency) or 0.0
+        ebitda_cr = to_inr_cr(ebitda, currency) or 0.0
 
         # Calculate margins
         margin = (profit / revenue * 100) if revenue > 0 else 0

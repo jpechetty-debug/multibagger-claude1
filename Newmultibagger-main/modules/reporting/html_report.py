@@ -6,6 +6,7 @@ import numpy as np
 import yfinance as yf
 from jinja2 import Environment, FileSystemLoader
 
+from modules.fx import to_inr_cr
 from modules.price_fundamentals import get_price_vs_fundamentals
 from modules.quarterly_results import get_quarterly_timeline
 from modules.shareholding import get_shareholding_pattern
@@ -112,7 +113,7 @@ async def generate_premium_html_report(symbol: str):
         "momentum_50d_pct": f"{_safe_float(info.get('fiftyDayAverageChangePercent')) * 100:.2f}",
         "market_cap_cr": f"{f_override.get('Market_Cap_Cr'):,.0f}"
         if "Market_Cap_Cr" in f_override
-        else f"{_safe_float(info.get('marketCap')) / 10000000:,.0f}",
+        else f"{(to_inr_cr(info.get('marketCap'), info.get('currency')) or 0):,.0f}",
         "pe_ratio": f"{_safe_float(info.get('trailingPE')):,.2f}",
         "range_low": f"{_safe_float(info.get('fiftyTwoWeekLow')):,.2f}",
         "range_high": f"{_safe_float(info.get('fiftyTwoWeekHigh')):,.2f}",
@@ -291,7 +292,7 @@ async def generate_premium_html_report(symbol: str):
     mcap_cr = (
         _safe_float(f_override.get("Market_Cap_Cr"))
         if "Market_Cap_Cr" in f_override
-        else _safe_float(info.get("marketCap")) / 10000000
+        else (to_inr_cr(info.get("marketCap"), info.get("currency")) or 0)
     )
     model_bps = 200
     if mcap_cr > 50000:

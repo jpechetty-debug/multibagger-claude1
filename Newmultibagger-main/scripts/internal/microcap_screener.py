@@ -2,6 +2,7 @@ import pandas as pd
 import yfinance as yf
 
 from ticker_list import TICKERS
+from modules.fx import to_inr_cr
 
 
 def get_microcap_data(ticker_symbol):
@@ -14,11 +15,9 @@ def get_microcap_data(ticker_symbol):
 
         # --- 1. Market Cap Check ---
         # We want approx 100Cr to 5000Cr (or 10,000Cr for small caps)
-        # yfinance marketCap is in absolute currency units
-        market_cap = info.get("marketCap", 0)
-        if market_cap is None:
-            market_cap = 0
-        market_cap_cr = market_cap / 10000000  # Convert to Crores
+        # yfinance marketCap is in the ticker's local listing currency (USD
+        # for US names in TICKERS) — convert via FX before Crore division.
+        market_cap_cr = to_inr_cr(info.get("marketCap"), info.get("currency")) or 0
 
         # --- 2. Skin in the Game (Promoter Holding) ---
         # 'heldPercentInsiders' is the proxy. 0.5 = 50%

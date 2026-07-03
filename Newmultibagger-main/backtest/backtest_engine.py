@@ -521,6 +521,7 @@ class VectorBTEngine:
         rebalance_frequency: str = "Q",
         top_quantile: float = 0.8,
         max_positions: int | None = None,
+        min_positions: int | None = 10,
     ) -> dict:
         """
         Expanding-window portfolio backtest using PIT fundamentals only.
@@ -529,6 +530,15 @@ class VectorBTEngine:
         test period, ranks the period's universe, buys the top slice equal
         weight, charges turnover-based transaction costs, and compares the
         resulting portfolio stream to the configured benchmark.
+
+        min_positions: floor on the number of names held each rebalance,
+            applied *after* the top_quantile slice is computed. Prevents the
+            walk-forward selection from silently collapsing to a 1-2 stock
+            "portfolio" (all idiosyncratic risk, no diversification) in
+            periods where the eligible universe is small — e.g. because PIT
+            fundamentals history is short and most symbols fail
+            min_train_periods. Set to None to disable and allow
+            top_quantile to produce arbitrarily small (even 1-stock) slices.
         """
         try:
             frequency = _normalise_rebalance_frequency(rebalance_frequency)
@@ -666,6 +676,7 @@ class VectorBTEngine:
             gross_returns = {}
             net_returns = {}
             turnovers = {}
+            holdings_counts = {}
             folds = []
 
             for test_period in periods[int(min_train_periods):]:
@@ -740,11 +751,18 @@ class VectorBTEngine:
 
                 ranked = test_df.sort_values("prediction", ascending=False)
                 top_count = max(1, int(np.ceil(len(ranked) * (1 - float(top_quantile)))))
+                if min_positions is not None:
+                    # Diversification floor: never let a small eligible
+                    # universe force a 1-2 stock, all-idiosyncratic-risk
+                    # "portfolio". Bounded by len(ranked) since we can't
+                    # hold more names than are actually eligible this period.
+                    top_count = max(top_count, min(int(min_positions), len(ranked)))
                 if max_positions is not None:
                     top_count = min(top_count, int(max_positions))
                 top_count = min(top_count, len(ranked))
                 selected = ranked.head(top_count)
                 current_positions = set(selected["symbol"].tolist())
+                holdings_counts[test_period] = len(current_positions)
                 turnover = _portfolio_turnover(previous_positions, current_positions)
                 period_gross_return = float(selected["forward_return"].mean())
                 period_net_return = float(
@@ -805,6 +823,9 @@ class VectorBTEngine:
                 "avg_turnover": float(turnover_series.mean()),
                 "top_quantile": float(top_quantile),
                 "max_positions": max_positions,
+                "min_positions": min_positions,
+                "avg_holdings": float(np.mean(list(holdings_counts.values()))) if holdings_counts else 0.0,
+                "min_holdings_observed": int(min(holdings_counts.values())) if holdings_counts else 0,
                 "fold_details": folds,
             }
             result.update(_clean_metrics(metrics))
