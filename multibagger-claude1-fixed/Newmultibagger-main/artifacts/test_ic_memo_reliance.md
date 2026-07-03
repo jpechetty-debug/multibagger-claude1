@@ -1,0 +1,3 @@
+TCS.NS exhibits a Sovereign Score of 29.95923/100 with a N/A rating, reflecting moderate fundamental alignment. The investment profile is supported by a Piotroski F-Score of None/9 and a 5-year sales CAGR of 9.6%, demonstrating structural quality. Valuation metrics show a P/E of 17.519865 with a 0% margin to fair value, while hybrid ML models forecast a N/A% forward return.
+
+[Sovereign Rule-Based Engine: Quantitative Fallback Active]

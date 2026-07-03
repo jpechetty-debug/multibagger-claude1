@@ -1,0 +1,59 @@
+{
+  "model_name": "Sovereign XGBoost Meta-Model",
+  "version": "1.2.0",
+  "type": "Regressor",
+  "framework": "XGBoost",
+  "target": "forward_return",
+  "target_description": "Percentage price change from Point-In-Time (PIT) report date to Current Date",
+  "features": [
+    {
+      "name": "score",
+      "type": "float",
+      "description": "Base Sovereign composite score (0-100)",
+      "bounds": [0.0, 100.0]
+    },
+    {
+      "name": "sales_cagr_5y",
+      "type": "float",
+      "description": "5-year compounded annual growth rate of revenue",
+      "bounds": [-100.0, 300.0]
+    },
+    {
+      "name": "avg_roe_5y",
+      "type": "float",
+      "description": "Average Return on Equity over 5 years",
+      "bounds": [-100.0, 200.0]
+    },
+    {
+      "name": "pe_ratio",
+      "type": "float",
+      "description": "Trailing Price-to-Earnings ratio",
+      "bounds": [0.0, 300.0]
+    },
+    {
+      "name": "debt_equity",
+      "type": "float",
+      "description": "Total Debt-to-Equity ratio",
+      "bounds": [0.0, 10.0]
+    },
+    {
+      "name": "cfo_pat_ratio",
+      "type": "float",
+      "description": "Cash Flow from Operations / Profit After Tax ratio",
+      "bounds": [-5.0, 10.0]
+    },
+    {
+      "name": "market_cap_cr",
+      "type": "float",
+      "description": "Market Capitalization in Crores (INR)",
+      "bounds": [0.0, 5000000.0]
+    }
+  ],
+  "hyperparameters": {
+    "n_estimators": 100,
+    "learning_rate": 0.05,
+    "max_depth": 4,
+    "subsample": 0.8,
+    "random_state": 42
+  }
+}

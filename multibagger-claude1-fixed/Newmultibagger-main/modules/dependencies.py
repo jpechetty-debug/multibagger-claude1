@@ -149,15 +149,9 @@ class ConnectionManager:
                 logger.info("Redis Pub/Sub listener task cancelled")
                 break
             except Exception as e:
-                # Use simple exponential backoff for logs to prevent flooding
-                retry_interval = getattr(self, '_retry_interval', 5)
-                if retry_interval <= 5:
-                    logger.error(f"Redis Pub/Sub connection failed, retrying in {retry_interval} seconds", error=str(e))
-                else:
-                    logger.debug(f"Redis Pub/Sub connection failed (suppressed log), retrying in {retry_interval} seconds")
+                logger.error("Redis Pub/Sub connection failed, retrying in 5 seconds", error=str(e))
                 self.redis = None
-                await asyncio.sleep(retry_interval)
-                self._retry_interval = min(retry_interval * 2, 60)
+                await asyncio.sleep(5)
 
 
 manager = ConnectionManager()
