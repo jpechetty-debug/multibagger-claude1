@@ -1,7 +1,7 @@
 # modules/hybrid_scoring.py
 # Sovereign AI — XGBoost Meta-Model with SHAP Explainability
-# Full implementation: walk-forward validation, holdout audit, leakage guard,
-# per-fold IC tracking, regime-conditional IC, and SHAP waterfall export.
+# Two-model architecture: Classifier (multibagger probability) + Regressor (return)
+# Walk-forward validation, holdout audit, leakage guard, SHAP waterfall export.
 
 from __future__ import annotations
 
@@ -18,6 +18,14 @@ import pandas as pd
 import shap
 import xgboost as xgb
 
+from modules.feature_factory import (
+    EXTENDED_FEATURES,
+    EXTENDED_FEATURE_BOUNDS,
+    sanitize_features as _sanitize_extended,
+    compute_all_features,
+    compute_features_batch,
+)
+
 warnings.filterwarnings("ignore")
 
 # ---------------------------------------------------------------------------
@@ -25,6 +33,7 @@ warnings.filterwarnings("ignore")
 # ---------------------------------------------------------------------------
 
 MODEL_PATH               = os.path.join("runtime", "models", "xgboost_meta_model.pkl")
+CLASSIFIER_PATH          = os.path.join("runtime", "models", "xgboost_classifier.pkl")
 WALK_FORWARD_REPORT_PATH = os.path.join("runtime", "models", "xgboost_walk_forward.json")
 SHAP_CACHE_PATH          = os.path.join("runtime", "models", "shap_expected_value.json")
 
@@ -32,39 +41,13 @@ SHAP_CACHE_PATH          = os.path.join("runtime", "models", "shap_expected_valu
 HOLDOUT_START = "2018-01-01"
 HOLDOUT_END   = "2020-12-31"
 
-FEATURES: list[str] = [
-    "score",
-    "sales_cagr_5y",
-    "avg_roe_5y",
-    "pe_ratio",
-    "debt_equity",
-    "cfo_pat_ratio",
-    "market_cap_cr",
-    "ret_1m",
-    "ret_3m",
-    "ret_6m",
-    "vol_breakout",
-    "dist_from_52w_high",
-    "roce",
-]
+# Use extended 30+ features from feature_factory
+FEATURES: list[str] = EXTENDED_FEATURES
+FEATURE_BOUNDS: dict[str, tuple[float, float]] = EXTENDED_FEATURE_BOUNDS
 
-# Hardcoded, data-independent bounds — intentionally stateless so they can be
-# applied identically in training and inference without leaking any fold stats.
-FEATURE_BOUNDS: dict[str, tuple[float, float]] = {
-    "score":               (0.0,    100.0),
-    "sales_cagr_5y":       (-100.0, 300.0),
-    "avg_roe_5y":          (-100.0, 200.0),
-    "pe_ratio":            (0.0,    300.0),
-    "debt_equity":         (0.0,    10.0),
-    "cfo_pat_ratio":       (-5.0,   10.0),
-    "market_cap_cr":       (0.0,    5_000_000.0),
-    "ret_1m":              (-1.0, 5.0),
-    "ret_3m":              (-1.0, 10.0),
-    "ret_6m":              (-1.0, 5.0),
-    "vol_breakout":        (0.0,    100.0),
-    "dist_from_52w_high":  (0.0,    1.0),
-    "roce":                (-100.0, 200.0),
-}
+# Blending weights for two-model architecture
+CLASSIFIER_WEIGHT = 0.6
+REGRESSOR_WEIGHT = 0.4
 
 # XGBoost hyper-parameters — kept in one place so train + WF folds are identical.
 # These serve as both the default config AND the Optuna warm-start initial trial.
@@ -124,38 +107,51 @@ _SANITIZE_IS_STATELESS = True
 def _sanitize_features(df: pd.DataFrame) -> pd.DataFrame:
     """Coerce features to finite floats and clip to FEATURE_BOUNDS.
 
-    Intentionally stateless — no scaler, no mean-fill from training data.
-    Missing columns are zero-filled; infinite / NaN values are zero-filled.
+    Delegates to feature_factory.sanitize_features() for the extended
+    30+ feature set. XGBoost handles NaN natively.
     """
     assert _SANITIZE_IS_STATELESS, "Must remain stateless — no fitted transforms here."
-    out = df.copy()
-    for col in FEATURES:
-        if col not in out.columns:
-            out[col] = 0.0
-        out[col] = pd.to_numeric(out[col], errors="coerce")
-        out[col] = out[col].replace([np.inf, -np.inf], np.nan).fillna(0.0)
-        lo, hi = FEATURE_BOUNDS.get(col, (-1e9, 1e9))
-        out[col] = out[col].clip(lower=lo, upper=hi)
-    return out[FEATURES]
+    return _sanitize_extended(df)
 
 
 def _alias_factors(factors_dict: dict) -> dict:
-    """Map legacy camelCase / Title_Case factor names to FEATURES snake_case keys."""
-    return {
-        "score":               factors_dict.get("score",               factors_dict.get("Score", 0.0)),
-        "sales_cagr_5y":       factors_dict.get("sales_cagr_5y",       factors_dict.get("Sales_Growth_5Y%", 0.0)),
-        "avg_roe_5y":          factors_dict.get("avg_roe_5y",          factors_dict.get("Avg_ROE_5Y%", 0.0)),
-        "pe_ratio":            factors_dict.get("pe_ratio",            factors_dict.get("PE_Ratio", 0.0)),
-        "debt_equity":         factors_dict.get("debt_equity",         factors_dict.get("Debt_Equity", 0.0)),
-        "cfo_pat_ratio":       factors_dict.get("cfo_pat_ratio",       factors_dict.get("CFO_PAT_Ratio", 0.0)),
-        "market_cap_cr":       factors_dict.get("market_cap_cr",       factors_dict.get("Market_Cap_Cr", 0.0)),
-        "ret_1m":              factors_dict.get("ret_1m",              factors_dict.get("Ret_1M", 0.0)),
-        "ret_3m":              factors_dict.get("ret_3m",              factors_dict.get("Ret_3M", 0.0)),
-        "ret_6m":              factors_dict.get("ret_6m",              factors_dict.get("Ret_6M", 0.0)),
-        "vol_breakout":        factors_dict.get("vol_breakout",        factors_dict.get("Vol_Breakout", 0.0)),
-        "dist_from_52w_high":  factors_dict.get("dist_from_52w_high",  factors_dict.get("Dist_From_52W_High", 0.0)),
-        "roce":                factors_dict.get("roce",                factors_dict.get("ROCE%", 0.0)),
+    """Map legacy camelCase / Title_Case factor names to FEATURES snake_case keys.
+
+    For the original 13 features, maps known aliases. For the new 17+ features,
+    computes them live via feature_factory if a symbol is available.
+    """
+    # Map the original 13 legacy aliases
+    mapped = {
+        "score":               factors_dict.get("score",               factors_dict.get("Score", np.nan)),
+        "sales_cagr_5y":       factors_dict.get("sales_cagr_5y",       factors_dict.get("Sales_Growth_5Y%", np.nan)),
+        "avg_roe_5y":          factors_dict.get("avg_roe_5y",          factors_dict.get("Avg_ROE_5Y%", np.nan)),
+        "pe_ratio":            factors_dict.get("pe_ratio",            factors_dict.get("PE_Ratio", np.nan)),
+        "debt_equity":         factors_dict.get("debt_equity",         factors_dict.get("Debt_Equity", np.nan)),
+        "cfo_pat_ratio":       factors_dict.get("cfo_pat_ratio",       factors_dict.get("CFO_PAT_Ratio", np.nan)),
+        "market_cap_cr":       factors_dict.get("market_cap_cr",       factors_dict.get("Market_Cap_Cr", np.nan)),
+        "ret_1m":              factors_dict.get("ret_1m",              factors_dict.get("Ret_1M", np.nan)),
+        "ret_3m":              factors_dict.get("ret_3m",              factors_dict.get("Ret_3M", np.nan)),
+        "ret_6m":              factors_dict.get("ret_6m",              factors_dict.get("Ret_6M", np.nan)),
+        "vol_breakout":        factors_dict.get("vol_breakout",        factors_dict.get("Vol_Breakout", np.nan)),
+        "dist_from_52w_high":  factors_dict.get("dist_from_52w_high",  factors_dict.get("Dist_From_52W_High", np.nan)),
+        "roce":                factors_dict.get("roce",                factors_dict.get("ROCE%", np.nan)),
     }
+
+    # Compute extended features if symbol is available
+    symbol = factors_dict.get("symbol", factors_dict.get("Symbol", ""))
+    if symbol:
+        extended = compute_all_features(str(symbol), factors_dict)
+        # Only fill features that aren't already in the mapped dict
+        for feat in FEATURES:
+            if feat not in mapped:
+                mapped[feat] = extended.get(feat, np.nan)
+    else:
+        # Fill remaining features from dict or NaN
+        for feat in FEATURES:
+            if feat not in mapped:
+                mapped[feat] = factors_dict.get(feat, np.nan)
+
+    return mapped
 
 
 # ---------------------------------------------------------------------------
@@ -166,6 +162,26 @@ def _make_xgb_regressor(params: dict[str, Any] | None = None) -> xgb.XGBRegresso
     """Create an XGBRegressor from the given params or the legacy defaults."""
     effective = {**_XGB_PARAMS, **(params or {})}
     return xgb.XGBRegressor(**effective)
+
+
+def _make_xgb_classifier(params: dict[str, Any] | None = None) -> xgb.XGBClassifier:
+    """Create an XGBClassifier for multibagger probability prediction."""
+    base = {
+        "n_estimators": 100,
+        "learning_rate": 0.05,
+        "max_depth": 4,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "min_child_weight": 3,
+        "reg_alpha": 0.1,
+        "reg_lambda": 1.0,
+        "random_state": 42,
+        "eval_metric": "logloss",
+        "scale_pos_weight": 3.0,  # Compensate for class imbalance
+        "use_label_encoder": False,
+    }
+    base.update(params or {})
+    return xgb.XGBClassifier(**base)
 
 
 # ---------------------------------------------------------------------------
@@ -557,27 +573,23 @@ def load_walk_forward_report() -> dict | None:
 
 
 def _build_training_frame(df: pd.DataFrame) -> pd.DataFrame:
-    """Attach forward returns (3-month) to each PIT row."""
-    from modules.price_utils import fetch_forward_prices
+    """Attach 6-month forward returns and multibagger labels to PIT rows."""
+    from modules.target_engineering import build_training_targets
 
-    out = df.copy()
-    out["forward_price"] = fetch_forward_prices(out, months=3)
-    out = out.dropna(subset=["pit_price", "forward_price"])
-    out = out[out["pit_price"] > 0]
-    if out.empty:
-        return out
-
-    out["forward_return"] = (out["forward_price"] - out["pit_price"]) / out["pit_price"]
-    out.replace([np.inf, -np.inf], np.nan, inplace=True)
-    train_df = out.dropna(subset=["forward_return"]).copy()
+    train_df = build_training_targets(df, horizon_months=6)
     if not train_df.empty:
+        # Compute extended features
+        feat_df = compute_features_batch(train_df)
+        for col in FEATURES:
+            if col in feat_df.columns:
+                train_df[col] = feat_df[col].values
         train_df[FEATURES] = _sanitize_features(train_df[FEATURES])
     return train_df
 
 
 def _bootstrap_proxy_return(df: pd.DataFrame) -> pd.Series:
     """Cold-start proxy target until real forward-return PIT rows accumulate."""
-    score = pd.to_numeric(df["score"], errors="coerce").fillna(0.0)
+    score = pd.to_numeric(df.get("score", 0.0), errors="coerce").fillna(0.0)
     score_min = score.min()
     score_max = score.max()
     score_range = max(float(score_max - score_min), 1.0)
@@ -633,7 +645,7 @@ def bootstrap_synthetic_model() -> bool:
         with get_db_connection("stocks.db") as conn:
             df = pd.read_sql(
                 """
-                SELECT symbol,
+                SELECT symbol, sector,
                        score,
                        sales_cagr_5y, avg_roe_5y, pe_ratio,
                        debt_equity,   cfo_pat_ratio, market_cap_cr,
@@ -655,6 +667,12 @@ def bootstrap_synthetic_model() -> bool:
             minimum=20,
         )
         return False
+
+    # Compute extended features
+    feat_df = compute_features_batch(df)
+    for col in FEATURES:
+        if col in feat_df.columns:
+            df[col] = feat_df[col].values
 
     proxy_return = _bootstrap_proxy_return(df)
 
@@ -798,16 +816,40 @@ def train_hybrid_model() -> bool:
     else:
         _log.info("Walk-forward skipped", reason=validation.get("reason"))
 
-    # ── 6. Production fit on train_only ──
+    # ── 6. Production fit: Two-model architecture ──
     X = _sanitize_features(train_only[FEATURES])
-    y = train_only["forward_return"]
-    model = _make_xgb_regressor()
-    _log.info("Fitting production XGBoost regressor", rows=len(X))
-    model.fit(X, y)
+    y_return = train_only["forward_return"]
 
-    # ── 6b. SHAP dominance guard ──
+    # Model A: Regressor (expected return)
+    regressor = _make_xgb_regressor()
+    _log.info("Fitting production XGBoost regressor", rows=len(X))
+    regressor.fit(X, y_return)
+
+    # Model B: Classifier (multibagger probability)
+    classifier = None
+    if "is_multibagger" in train_only.columns:
+        y_class = train_only["is_multibagger"]
+        n_pos = int(y_class.sum())
+        n_neg = len(y_class) - n_pos
+        if n_pos >= 5 and n_neg >= 5:  # Need minimum samples per class
+            classifier = _make_xgb_classifier()
+            _log.info(
+                "Fitting production XGBoost classifier",
+                rows=len(X),
+                positives=n_pos,
+                negatives=n_neg,
+            )
+            classifier.fit(X, y_class)
+        else:
+            _log.info(
+                "Skipping classifier: insufficient class balance",
+                positives=n_pos,
+                negatives=n_neg,
+            )
+
+    # ── 6b. SHAP dominance guard (on regressor) ──
     try:
-        passes, reason, shap_imp = check_shap_dominance(model, X)
+        passes, reason, shap_imp = check_shap_dominance(regressor, X)
         if not passes:
             _log.error(
                 "Model REJECTED by SHAP dominance guard",
@@ -821,7 +863,7 @@ def train_hybrid_model() -> bool:
 
     # Cache SHAP expected value
     try:
-        explainer = shap.TreeExplainer(model)
+        explainer = shap.TreeExplainer(regressor)
         ev = float(explainer.expected_value)
         os.makedirs(os.path.dirname(SHAP_CACHE_PATH), exist_ok=True)
         with open(SHAP_CACHE_PATH, "w") as fh:
@@ -832,7 +874,7 @@ def train_hybrid_model() -> bool:
     # ── 7. Holdout evaluation & overfitting check ──
     if not holdout_only.empty:
         try:
-            holdout_metrics = evaluate_holdout(model, holdout_only)
+            holdout_metrics = evaluate_holdout(regressor, holdout_only)
             if holdout_metrics.get("status") == "OK":
                 wf_ic      = float(validation.get("spearman_ic") or 0.0)
                 holdout_ic = float(holdout_metrics.get("spearman_ic") or 0.0)
@@ -848,12 +890,18 @@ def train_hybrid_model() -> bool:
         except Exception as exc:
             _log.warning("Holdout evaluation failed", error=str(exc))
 
-    # ── 8. Persist model ──
-    in_sample_r2 = model.score(X, y)
+    # ── 8. Persist models ──
+    in_sample_r2 = regressor.score(X, y_return)
     _log.info("Training complete", in_sample_r2=round(in_sample_r2, 4), rows=len(X))
     os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
-    joblib.dump(model, MODEL_PATH)
-    _log.info("Model saved", path=MODEL_PATH)
+    joblib.dump(regressor, MODEL_PATH)
+    _log.info("Regressor saved", path=MODEL_PATH)
+
+    if classifier is not None:
+        os.makedirs(os.path.dirname(CLASSIFIER_PATH), exist_ok=True)
+        joblib.dump(classifier, CLASSIFIER_PATH)
+        _log.info("Classifier saved", path=CLASSIFIER_PATH)
+
     return True
 
 
@@ -864,6 +912,8 @@ def train_hybrid_model() -> bool:
 @dataclass
 class PredictionResult:
     ml_prediction:      float | None
+    classifier_prob:    float | None
+    regressor_return:   float | None
     shap_values:        dict[str, float]
     shap_expected_value:float | None
     top_drivers:        list[dict]
@@ -872,6 +922,8 @@ class PredictionResult:
     def to_dict(self) -> dict:
         return {
             "ml_prediction":       self.ml_prediction,
+            "classifier_prob":     self.classifier_prob,
+            "regressor_return":    self.regressor_return,
             "shap_values":         self.shap_values,
             "shap_expected_value": self.shap_expected_value,
             "top_drivers":         self.top_drivers,
@@ -883,10 +935,12 @@ def predict_and_explain(
     factors_dict: dict,
     top_n_drivers: int = 5,
 ) -> dict:
-    """Given a live stock's factor dict, predict 3-month forward return and
-    generate SHAP values (waterfall-ready)."""
+    """Given a live stock's factor dict, predict multibagger probability
+    (blended classifier + regressor) and generate SHAP values."""
     _FALLBACK = PredictionResult(
         ml_prediction=None,
+        classifier_prob=None,
+        regressor_return=None,
         shap_values={},
         shap_expected_value=None,
         top_drivers=[],
@@ -902,21 +956,44 @@ def predict_and_explain(
         return _FALLBACK
 
     try:
-        model: xgb.XGBRegressor = joblib.load(MODEL_PATH)
+        regressor: xgb.XGBRegressor = joblib.load(MODEL_PATH)
 
         mapped = _alias_factors(factors_dict)
         X_pred = pd.DataFrame(
-            [{f: mapped.get(f, 0.0) for f in FEATURES}], columns=FEATURES
+            [{f: mapped.get(f, np.nan) for f in FEATURES}], columns=FEATURES
         )
         X_pred = _sanitize_features(X_pred)
 
-        raw_prediction = float(model.predict(X_pred)[0])
-        if not np.isfinite(raw_prediction):
+        # Regressor prediction
+        raw_return = float(regressor.predict(X_pred)[0])
+        regressor_return = raw_return * 100.0 if np.isfinite(raw_return) else None
+
+        # Classifier prediction (if available)
+        classifier_prob = None
+        if os.path.exists(CLASSIFIER_PATH):
+            try:
+                classifier: xgb.XGBClassifier = joblib.load(CLASSIFIER_PATH)
+                proba = classifier.predict_proba(X_pred)[0]
+                classifier_prob = float(proba[1]) * 100.0 if len(proba) > 1 else None
+            except Exception:
+                pass
+
+        # Blended score
+        if classifier_prob is not None and regressor_return is not None:
+            # Normalize regressor return to 0-100 scale for blending
+            reg_norm = min(max(regressor_return, 0), 100)
+            ml_prediction = CLASSIFIER_WEIGHT * classifier_prob + REGRESSOR_WEIGHT * reg_norm
+        elif classifier_prob is not None:
+            ml_prediction = classifier_prob
+        elif regressor_return is not None:
+            ml_prediction = regressor_return
+        else:
             return _FALLBACK
 
-        explainer  = shap.TreeExplainer(model)
+        # SHAP from regressor
+        explainer = shap.TreeExplainer(regressor)
         shap_array = explainer.shap_values(X_pred)
-        shap_row   = shap_array[0]
+        shap_row = shap_array[0]
 
         expected_value: float | None = None
         try:
@@ -948,7 +1025,9 @@ def predict_and_explain(
         is_bootstrap = report.get("is_bootstrap", False) if report else False
 
         return PredictionResult(
-            ml_prediction=float(raw_prediction * 100.0),
+            ml_prediction=float(ml_prediction),
+            classifier_prob=classifier_prob,
+            regressor_return=regressor_return,
             shap_values=sorted_breakdown,
             shap_expected_value=expected_value,
             top_drivers=top_drivers,
@@ -968,21 +1047,41 @@ def batch_predict(
     stocks: list[dict],
     factors_map: dict[str, list[str]] | None = None,
 ) -> list[dict]:
-    """Vectorised predict_and_explain for a list of stock dicts."""
+    """Vectorised predict_and_explain for a list of stock dicts.
+
+    Uses two-model blended scoring when classifier is available.
+    """
     if not os.path.exists(MODEL_PATH):
         _log.warning("Model not found — batch_predict returning empty predictions")
         return [
-            {**s, "ml_prediction": None, "shap_values": {}, "top_drivers": [], "is_bootstrap": False}
+            {**s, "ml_prediction": None, "classifier_prob": None, "regressor_return": None,
+             "shap_values": {}, "top_drivers": [], "is_bootstrap": False}
             for s in stocks
         ]
 
-    model: xgb.XGBRegressor = joblib.load(MODEL_PATH)
-    explainer = shap.TreeExplainer(model)
+    regressor: xgb.XGBRegressor = joblib.load(MODEL_PATH)
+    explainer = shap.TreeExplainer(regressor)
 
-    rows  = [_alias_factors(s) for s in stocks]
+    # Load classifier if available
+    classifier = None
+    if os.path.exists(CLASSIFIER_PATH):
+        try:
+            classifier = joblib.load(CLASSIFIER_PATH)
+        except Exception:
+            pass
+
+    rows = [_alias_factors(s) for s in stocks]
     X_all = _sanitize_features(pd.DataFrame(rows, columns=FEATURES))
-    raw_preds = model.predict(X_all)
-    shap_all  = explainer.shap_values(X_all)
+    raw_returns = regressor.predict(X_all)
+    shap_all = explainer.shap_values(X_all)
+
+    # Classifier probabilities
+    class_probs = None
+    if classifier is not None:
+        try:
+            class_probs = classifier.predict_proba(X_all)[:, 1]
+        except Exception:
+            pass
 
     ev: float | None = None
     try:
@@ -996,8 +1095,23 @@ def batch_predict(
 
     results = []
     for i, stock in enumerate(stocks):
-        pred_raw = float(raw_preds[i])
-        ml_pred  = float(pred_raw * 100.0) if np.isfinite(pred_raw) else None
+        raw_ret = float(raw_returns[i])
+        reg_return = float(raw_ret * 100.0) if np.isfinite(raw_ret) else None
+
+        cls_prob = None
+        if class_probs is not None:
+            cls_prob = float(class_probs[i]) * 100.0 if np.isfinite(class_probs[i]) else None
+
+        # Blended score
+        if cls_prob is not None and reg_return is not None:
+            reg_norm = min(max(reg_return, 0), 100)
+            ml_pred = CLASSIFIER_WEIGHT * cls_prob + REGRESSOR_WEIGHT * reg_norm
+        elif cls_prob is not None:
+            ml_pred = cls_prob
+        elif reg_return is not None:
+            ml_pred = reg_return
+        else:
+            ml_pred = None
 
         breakdown = {
             feat: float(shap_all[i][j]) if np.isfinite(shap_all[i][j]) else 0.0
@@ -1017,6 +1131,8 @@ def batch_predict(
         results.append({
             **stock,
             "ml_prediction":       ml_pred,
+            "classifier_prob":     cls_prob,
+            "regressor_return":    reg_return,
             "shap_values":         sorted_bd,
             "shap_expected_value": ev,
             "top_drivers":         top_drivers,

@@ -232,7 +232,7 @@ def test_peers_financials_technicals_shareholding_endpoints(monkeypatch):
             "pattern": {"promoters": 52.1, "institutions": 31.0, "public": 16.9},
         }
 
-    monkeypatch.setattr(peer_analysis_module, "get_peer_comparison", fake_peers)
+    monkeypatch.setattr(peer_analysis_module, "compare_with_peers", fake_peers)
     monkeypatch.setattr(financials_module, "get_quarterly_results", fake_financials)
     monkeypatch.setattr(technicals_module, "get_technical_analysis", fake_technicals)
     monkeypatch.setattr(shareholding_module, "get_shareholding_pattern", fake_shareholding)

@@ -90,10 +90,10 @@ class TestSanitizeFeatures:
         result = _sanitize_features(df)
         assert list(result.columns) == FEATURES
 
-    def test_fills_missing_columns_with_zero(self):
+    def test_fills_missing_columns_with_nan(self):
         df = pd.DataFrame([{"score": 50.0}])
         result = _sanitize_features(df)
-        assert result["sales_cagr_5y"].iloc[0] == 0.0
+        assert np.isnan(result["sales_cagr_5y"].iloc[0])
 
     def test_clips_to_feature_bounds(self):
         df = pd.DataFrame([{"score": 9999.0, "pe_ratio": -999.0}])
@@ -103,16 +103,16 @@ class TestSanitizeFeatures:
         assert result["score"].iloc[0]    == hi_s
         assert result["pe_ratio"].iloc[0] == lo_p
 
-    def test_replaces_inf_with_zero(self):
+    def test_replaces_inf_with_nan(self):
         df = pd.DataFrame([{"ret_6m": np.inf, "ret_3m": -np.inf}])
         result = _sanitize_features(df)
-        assert result["ret_6m"].iloc[0] == 0.0
-        assert result["ret_3m"].iloc[0] == 0.0
+        assert np.isnan(result["ret_6m"].iloc[0])
+        assert np.isnan(result["ret_3m"].iloc[0])
 
-    def test_replaces_nan_with_zero(self):
+    def test_replaces_nan_with_nan(self):
         df = pd.DataFrame([{"avg_roe_5y": np.nan}])
         result = _sanitize_features(df)
-        assert result["avg_roe_5y"].iloc[0] == 0.0
+        assert np.isnan(result["avg_roe_5y"].iloc[0])
 
     def test_stateless_sentinel(self):
         assert hybrid_scoring._SANITIZE_IS_STATELESS is True
@@ -136,10 +136,10 @@ class TestAliasFactors:
         assert out["pe_ratio"] == 18.0
         assert out["roce"]     == 22.0
 
-    def test_missing_keys_default_to_zero(self):
+    def test_missing_keys_default_to_nan(self):
         out = _alias_factors({})
         for feat in FEATURES:
-            assert out[feat] == 0.0
+            assert np.isnan(out[feat])
 
 
 # ---------------------------------------------------------------------------
