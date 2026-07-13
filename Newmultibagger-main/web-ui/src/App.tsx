@@ -90,8 +90,8 @@ export default function App() {
     return () => clearInterval(interval)
   }, [loadData])
 
-  // Always show Top 50 by score; search/filter applies within that universe.
-  const TOP_N = 50
+  // Always show Top 100 by score; search/filter applies within that universe.
+  const TOP_N = 100
   const top50 = [...signals]
     .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
     .slice(0, TOP_N)

@@ -100,11 +100,11 @@ export function ScreenerGrid({
             <Database className="w-8 h-8 text-brand-primary" />
             Quantitative Screener
             <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-primary/15 border border-brand-primary/30 px-3 py-1 text-xs font-mono font-black uppercase tracking-widest text-brand-primary">
-              Top 50
+              Top 100
             </span>
           </h2>
           <p className="max-w-2xl text-sm leading-relaxed text-brand-text-dim">
-            Highest-conviction picks ranked by Nexus score — top 50 by institutional grade.
+            Highest-conviction picks ranked by Nexus score — top 100 by institutional grade.
           </p>
         </div>
         <div className="flex items-center gap-4">

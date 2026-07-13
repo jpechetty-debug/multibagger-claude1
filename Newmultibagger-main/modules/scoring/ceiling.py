@@ -140,7 +140,7 @@ def _apply_score_ceiling_rules(
     if value_gap < 0:
         # High-growth stocks (EPS > 20%) get a relaxed floor — growth justifies premium
         eps_g_check = safe_float(data.get("EPS_Growth%"))
-        ov_floor = 72 if eps_g_check > 20 else 65
+        ov_floor = 78 if eps_g_check > 20 else 70  # Relaxed — multibaggers often look expensive
         score_ceiling = _apply_spline_cap(
             value_gap,
             0.0,
@@ -255,9 +255,9 @@ def _apply_checklist_gate(
     checklist_total = 12
 
     mcap_cr = optional_float(data.get("Market_Cap_Cr"))
-    if mcap_cr is not None and mcap_cr > 1000:
+    if mcap_cr is not None and mcap_cr > 300:  # Relaxed from 1000 — multibaggers are small/mid
         checklist_pass += 1
-    if state.pe is not None and 0 < state.pe < 40:
+    if state.pe is not None and 0 < state.pe < 50:  # Relaxed from 40 — growth stocks trade higher
         checklist_pass += 1
     if state.best_roe > 17:
         checklist_pass += 1

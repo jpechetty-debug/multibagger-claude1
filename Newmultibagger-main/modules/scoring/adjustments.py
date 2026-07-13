@@ -1,8 +1,12 @@
 """
 Scoring — Bonus, penalty, and intelligence-driven score adjustments.
 
-Includes sector-relative bonuses, categorical penalties, promoter intel,
-and analyst estimate adjustments.
+Phase 1 rebalance:
+- Merged overlapping bonuses (ROCE/ROE, mcap/growth combos)
+- Reduced bonus cap from 18 → 12 to prevent mediocre stock inflation
+- Made bonuses multiplicative-aware (quality tiers)
+- Penalties are proportional and additive
+- Removed absolute mcap bias — small cap advantage is via tiered filters, not bonus inflation
 """
 
 from __future__ import annotations
@@ -42,61 +46,129 @@ def _apply_sector_relative_adjustment(
 
 
 def _calculate_bonus_total(data: _StockData, state: FactorState, sector_boost: _Number) -> float:
-    total_bonus: float = 0.0
+    """
+    Rebalanced bonus system — 3 quality tiers with capped stacking.
+
+    Tier A (High-conviction signals): max 5 pts each, max 2 signals = 10 pts
+    Tier B (Supporting signals): max 3 pts each, max 2 signals = 6 pts
+    Tier C (Confirming signals): max 2 pts each
+
+    Total bonus hard-capped at 12 (was effectively ~50 uncapped).
+    """
+    tier_a_bonus: float = 0.0  # High-conviction: earnings inflection, value gap
+    tier_b_bonus: float = 0.0  # Supporting: quality, ownership
+    tier_c_bonus: float = 0.0  # Confirming: technical, low vol, sector
+
+    # ── TIER A: Earnings & Valuation (max 10 pts) ───────────────────────
+    # Earnings inflection — the single most predictive multibagger signal
     inflection_score = safe_float(data.get("Earnings_Inflection_Score"))
     if inflection_score >= 4:
-        total_bonus += 8
+        tier_a_bonus += 5
     elif inflection_score >= 3:
-        total_bonus += 5
+        tier_a_bonus += 3
     elif inflection_score >= 2:
-        total_bonus += 3
+        tier_a_bonus += 2
     elif inflection_score >= 1:
-        total_bonus += 1
+        tier_a_bonus += 1
     elif safe_float(data.get("Earnings_Accel")):
-        total_bonus += 2
+        tier_a_bonus += 1
 
-    total_bonus += sector_boost
-
+    # Value gap — margin of safety
     value_gap = safe_float(data.get("Value_Gap%"))
     if value_gap > 50:
-        total_bonus += 10
+        tier_a_bonus += 5
     elif value_gap > 20:
-        total_bonus += 5
+        tier_a_bonus += 3
 
+    tier_a_bonus = min(10, tier_a_bonus)
+
+    # ── TIER B: Quality & Ownership (max 6 pts) ────────────────────────
+    # Compounding quality — ROCE+ROE combined (was separate, causing double-count)
+    roce = optional_float(data.get("ROCE%"))
+    if roce is not None and state.best_roe > 0:
+        avg_quality = (roce + state.best_roe) / 2
+        if avg_quality > 30:
+            tier_b_bonus += 3  # Exceptional (was 5+5=10 for ROCE>30 AND ROE>17)
+        elif avg_quality > 20:
+            tier_b_bonus += 2
+    elif state.best_roe > 25:
+        tier_b_bonus += 2
+
+    # F-Score — quality floor (only really high scores rewarded)
     f_score_check = optional_float(data.get("F_Score"))
     if f_score_check is not None and f_score_check >= 8:
-        total_bonus += 5
+        tier_b_bonus += 3
 
-    if data.get("Technical_Signal") == "Bullish":
-        total_bonus += 5
+    # Consistent compounder — PAT CAGR both 3Y and 5Y strong
+    # (Merged: was separate ROCE bonus + PAT bonus causing overlap)
+    pat_cagr_3y = optional_float(data.get("PAT_CAGR_3Y"))
+    pat_cagr_5y = optional_float(data.get("PAT_CAGR_5Y"))
+    if pat_cagr_3y is not None and pat_cagr_5y is not None:
+        if pat_cagr_3y > 20 and pat_cagr_5y > 20:
+            tier_b_bonus += 3
+        elif pat_cagr_3y > 15 and pat_cagr_5y > 15:
+            tier_b_bonus += 1
 
-    rating = str(data.get("Analyst_Rating") or "").lower()
-    upside = safe_float(data.get("Analyst_Upside%"))
-    if "strong buy" in rating:
-        total_bonus += 5
-    elif "buy" in rating:
-        total_bonus += 2
-    if upside > 20:
-        total_bonus += 5
+    tier_b_bonus = min(6, tier_b_bonus)
 
-    if state.inst_hold > 20:
-        total_bonus += 5
-    elif state.inst_hold > 10:
-        total_bonus += 2
-    if state.prom_hold > 60:
-        total_bonus += 3
+    # ── TIER C: Confirming signals (max 4 pts) ─────────────────────────
+    tier_c_bonus += sector_boost  # Sector outperformance
 
+    # Ownership alignment — ONE bonus for combined ownership strength
+    # (Was: inst>20 +5, prom>60 +3, creating 8 pts for a common combo)
+    if state.inst_hold > 20 and state.prom_hold > 50:
+        tier_c_bonus += 2  # Strong alignment
+    elif state.inst_hold > 15 or state.prom_hold > 55:
+        tier_c_bonus += 1
+
+    # Low volatility confirmation
     if state.price > 0:
         atr_pct = abs(state.atr) / state.price
         if atr_pct < 0.03:
-            total_bonus += 2
+            tier_c_bonus += 1
 
-    avg_roe_5y = safe_float(data.get("Avg_ROE_5Y%"))
-    if state.pe is not None and 0 < state.pe < 12 and avg_roe_5y > 25:
-        total_bonus += 7
-    if state.pe is not None and 0 < state.pe < 7 and avg_roe_5y > 15:
-        total_bonus += 7
+    # Technical confirmation
+    if data.get("Technical_Signal") == "Bullish":
+        tier_c_bonus += 1
 
+    # Deep value combo — PE < 10 with ROE > 25 (rare, high-conviction)
+    if state.pe is not None and 0 < state.pe < 10 and state.best_roe > 25:
+        tier_c_bonus += 2
+
+    # Volume breakout — institutional accumulation
+    vol_breakout = optional_float(data.get("Vol_Breakout"))
+    if vol_breakout is not None and vol_breakout > 2.0:
+        tier_c_bonus += 1
+
+    tier_c_bonus = min(4, tier_c_bonus)
+
+    # Analyst sentiment — separate small bonus
+    analyst_bonus = 0.0
+    rating = str(data.get("Analyst_Rating") or "").lower()
+    upside = safe_float(data.get("Analyst_Upside%"))
+    if "strong buy" in rating:
+        analyst_bonus += 2
+    elif "buy" in rating:
+        analyst_bonus += 1
+    if upside > 20:
+        analyst_bonus += 1
+    analyst_bonus = min(3, analyst_bonus)
+
+    # ── Margin expansion signal (kept, but capped) ─────────────────────
+    margin_bonus = 0.0
+    opm = optional_float(data.get("Operating_Margin%"))
+    opm_5y = optional_float(data.get("Avg_OPM_5Y%"))
+    if opm is not None and opm_5y is not None and opm_5y > 0:
+        margin_expansion = opm - opm_5y
+        if margin_expansion > 5:
+            margin_bonus += 2
+        elif margin_expansion > 2:
+            margin_bonus += 1
+
+    # ── TOTAL: Hard cap at 12 ──────────────────────────────────────────
+    raw_total = tier_a_bonus + tier_b_bonus + tier_c_bonus + analyst_bonus + margin_bonus
+
+    # Utility/Energy sector D/E exemption (carried forward)
     if (
         "Utility" in state.stock_sector
         or "Energy" in state.stock_sector
@@ -105,53 +177,9 @@ def _calculate_bonus_total(data: _StockData, state: FactorState, sector_boost: _
         de_check = optional_float(data.get("Debt_Equity"))
         fs_check = optional_float(data.get("F_Score"))
         if (de_check is not None and de_check > 1.0) and (fs_check is not None and fs_check >= 6):
-            total_bonus += 5
+            raw_total += 2
 
-    # ── Multibagger signals ──────────────────────────────────────────────
-    # Small/Mid Cap Advantage — 85%+ of multibaggers are sub-₹10,000 Cr
-    mcap = optional_float(data.get("Market_Cap_Cr"))
-    if mcap is not None:
-        if mcap < 2000:       # Micro/small cap — highest multibagger probability
-            total_bonus += 5
-        elif mcap < 5000:     # Mid cap — strong
-            total_bonus += 3
-        elif mcap < 10000:    # Upper mid — moderate
-            total_bonus += 1
-
-    # Margin Expansion Signal — operating leverage is a multibagger catalyst
-    opm = optional_float(data.get("Operating_Margin%"))
-    opm_5y = optional_float(data.get("Avg_OPM_5Y%"))
-    if opm is not None and opm_5y is not None and opm_5y > 0:
-        margin_expansion = opm - opm_5y
-        if margin_expansion > 5:      # Strong expanding margins
-            total_bonus += 5
-        elif margin_expansion > 2:    # Moderate expansion
-            total_bonus += 2
-
-    # ROCE Compounding Quality — ROCE > 20% means the company creates value
-    # with every reinvested rupee (Buffett's key metric for compounders)
-    roce = optional_float(data.get("ROCE%"))
-    if roce is not None:
-        if roce > 30:           # Exceptional capital allocator
-            total_bonus += 5
-        elif roce > 20:         # Strong compounder
-            total_bonus += 3
-
-    # PAT CAGR Consistency — proven compounder with sustained earnings growth
-    pat_cagr_3y = optional_float(data.get("PAT_CAGR_3Y"))
-    pat_cagr_5y = optional_float(data.get("PAT_CAGR_5Y"))
-    if pat_cagr_3y is not None and pat_cagr_5y is not None:
-        if pat_cagr_3y > 20 and pat_cagr_5y > 20:
-            total_bonus += 5    # Consistent 20%+ compounder — rare and valuable
-        elif pat_cagr_3y > 15 and pat_cagr_5y > 15:
-            total_bonus += 3    # Solid compounder
-
-    # Volume Breakout Confirmation — institutional accumulation behind price move
-    vol_breakout = optional_float(data.get("Vol_Breakout"))
-    if vol_breakout is not None and vol_breakout > 2.0:
-        total_bonus += 3  # 2x+ average volume = institutions are accumulating
-
-    return total_bonus
+    return min(12.0, raw_total)
 
 
 def _apply_penalty_rules(
@@ -250,5 +278,5 @@ def _apply_optional_intel_adjustments(
     except Exception as e:
         logger.warning(f"Estimate data adjustment failed for {symbol}: {e}", exc_info=True)
 
-    # Cap extra bonuses to 10 points to prevent stacking (Issue 6)
-    return min(total_bonus, 10.0), total_penalty, score_ceiling, disqualifiers
+    # Cap intel bonuses to 8 points (was 10 — tightened to match new bonus budget)
+    return min(total_bonus, 8.0), total_penalty, score_ceiling, disqualifiers

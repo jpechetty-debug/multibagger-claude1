@@ -247,7 +247,7 @@ _tracker       = _PortfolioTracker()
 async def get_multibaggers(api_key: str = Depends(get_api_key)):
     """Non-blocking multibagger list via ScreenerRepository."""
     from modules.data_layer.data_service import fetch_screener_rows
-    rows = await fetch_screener_rows(limit=50)
+    rows = await fetch_screener_rows(limit=100)
     return {"multibaggers": [r.model_dump() for r in rows]}
 
 

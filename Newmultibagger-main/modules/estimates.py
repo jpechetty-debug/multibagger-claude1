@@ -371,10 +371,31 @@ def get_estimate_data(
         try:
             local_info = info
             if local_info is None:
-                import yfinance as yf
+                # DB-backed fallback — avoid yfinance API call
+                try:
+                    from modules.db_utils import get_db_connection
 
-                ticker = yf.Ticker(symbol)
-                local_info = ticker.info or {}
+                    clean_sym = symbol.replace(".NS", "").replace(".BO", "")
+                    with get_db_connection("stocks.db") as conn:
+                        cursor = conn.cursor()
+                        cursor.execute(
+                            "SELECT * FROM multibaggers WHERE symbol IN (?, ?) LIMIT 1",
+                            (symbol, clean_sym),
+                        )
+                        row = cursor.fetchone()
+                        if row:
+                            cols = [d[0] for d in cursor.description]
+                            local_info = dict(zip(cols, row))
+                        else:
+                            local_info = {}
+                except Exception:
+                    _log.warning(
+                        "DEPRECATION: yfinance fallback used for estimates %s", symbol
+                    )
+                    import yfinance as yf
+
+                    ticker = yf.Ticker(symbol)
+                    local_info = ticker.info or {}
             own_est = compute_own_estimate(local_info)
             result["own_estimate"] = own_est
             result["source"] = "self_computed"

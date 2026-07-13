@@ -251,7 +251,7 @@ export function SignalGrid({
               </p>
               <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[11px] font-mono font-bold uppercase tracking-wide text-brand-text-dim">
                 <span>Showing {signals.length}/{totalSignalCount} signals</span>
-                <span>Top 50 by score</span>
+                <span>Top 100 by score</span>
               </p>
             </div>
           </div>

@@ -2,13 +2,86 @@ import asyncio
 
 import numpy as np
 import pandas as pd
-import yfinance as yf
 
 from modules.retry_utils import run_with_exponential_backoff
 from core.observability.logger import get_logger
 _log = get_logger(__name__)
 
 
+# ---------------------------------------------------------------------------
+# Price history — DB-backed with yfinance lazy fallback
+# ---------------------------------------------------------------------------
+
+def _get_price_history_from_db(symbol: str, days: int = 252) -> pd.DataFrame:
+    """Fetch cached OHLCV data from data_cache.db or multibaggers table.
+
+    Falls back to yfinance ONLY if DB has no data — but logs a warning
+    so we know which symbols still need the Shoonya pipeline.
+    """
+    try:
+        from modules.data_layer.db_utils import get_db_connection
+
+        clean_sym = symbol.replace(".NS", "").replace(".BO", "")
+        # Try pit_store for historical price data
+        with get_db_connection("pit_store.db") as conn:
+            df = pd.read_sql(
+                """
+                SELECT value AS Close, as_of_date AS Date
+                FROM pit_data
+                WHERE symbol = ? AND metric_name = 'price'
+                ORDER BY as_of_date DESC
+                LIMIT ?
+                """,
+                conn,
+                params=(clean_sym, days),
+            )
+        if not df.empty:
+            df["Date"] = pd.to_datetime(df["Date"])
+            df = df.set_index("Date").sort_index()
+            return df
+    except Exception as exc:
+        _log.debug("DB price lookup failed for %s: %s", symbol, exc)
+
+    return pd.DataFrame()
+
+
+def _get_price_history_fallback(symbol: str, period: str = "6mo") -> pd.DataFrame:
+    """Last-resort yfinance fallback — logs a deprecation warning."""
+    try:
+        import yfinance as yf
+
+        _log.warning(
+            "DEPRECATION: Using yfinance fallback for %s — migrate to Shoonya/NSE",
+            symbol,
+        )
+        if not symbol.endswith(".NS") and not symbol.endswith(".BO"):
+            symbol += ".NS"
+        ticker = yf.Ticker(symbol)
+        df = ticker.history(period=period)
+        return df
+    except Exception as exc:
+        _log.error("yfinance fallback also failed for %s: %s", symbol, exc)
+        return pd.DataFrame()
+
+
+def get_price_history(symbol: str, period: str = "6mo") -> pd.DataFrame:
+    """Unified price history: DB first, yfinance fallback.
+
+    Returns a DataFrame with at least a 'Close' column indexed by date.
+    """
+    days_map = {"1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 730, "5y": 1825}
+    days = days_map.get(period, 180)
+
+    df = _get_price_history_from_db(symbol, days=days)
+    if not df.empty and len(df) >= 20:
+        return df
+
+    return _get_price_history_fallback(symbol, period=period)
+
+
+# ---------------------------------------------------------------------------
+# Technical indicator calculations (pure math — no data source dependency)
+# ---------------------------------------------------------------------------
 
 def calculate_rsi(data, window=14):
     delta = data.diff()
@@ -45,16 +118,13 @@ def calculate_atr(high, low, close, window=14):
     return atr
 
 
+# ---------------------------------------------------------------------------
+# Technical analysis — uses unified get_price_history()
+# ---------------------------------------------------------------------------
+
 async def get_technical_analysis(symbol):
     try:
-        if not symbol.endswith(".NS") and not symbol.endswith(".BO"):
-            symbol += ".NS"
-
-        ticker = yf.Ticker(symbol)
-        df = await run_with_exponential_backoff(
-            lambda: asyncio.to_thread(lambda: ticker.history(period="6mo")),
-            context=f"yfinance technicals for {symbol}",
-        )
+        df = get_price_history(symbol, period="6mo")
 
         if df.empty or len(df) < 30:
             return {"error": "Insufficient historical data"}
@@ -130,17 +200,19 @@ def calculate_momentum_features(df):
     """
     try:
         close = df["Close"]
-        volume = df["Volume"]
+        volume = df.get("Volume")
 
         # 1. Price Momentum
         ret_1m = (close.iloc[-1] / close.iloc[-21] - 1) if len(close) > 21 else 0
         ret_3m = (close.iloc[-1] / close.iloc[-63] - 1) if len(close) > 63 else 0
         ret_6m = (close.iloc[-1] / close.iloc[-126] - 1) if len(close) > 126 else 0
 
-        # 2. Volume Breakout
-        avg_vol_20d = volume.rolling(window=20).mean().iloc[-1]
-        current_vol = volume.iloc[-1]
-        vol_ratio = (current_vol / avg_vol_20d) if avg_vol_20d > 0 else 1.0
+        # 2. Volume Breakout (only if volume data exists)
+        vol_ratio = 1.0
+        if volume is not None and not volume.empty:
+            avg_vol_20d = volume.rolling(window=20).mean().iloc[-1]
+            current_vol = volume.iloc[-1]
+            vol_ratio = (current_vol / avg_vol_20d) if avg_vol_20d > 0 else 1.0
 
         # 3. 52-Week High Proximity
         high_52w = close.rolling(window=252).max().iloc[-1] if len(close) >= 252 else close.max()
