@@ -26,6 +26,7 @@ from modules.fundamentals import (
     calculate_roce,
     check_earnings_inflection,
 )
+from modules.fundamental_filters import classify_multibagger_tier, get_tier_label
 from modules.logger import ScanLogger
 from modules.ml_ranker import LightGBMRanker
 from modules.models import StockDataPayload
@@ -41,6 +42,7 @@ from modules.technicals import (
     calculate_momentum_features,
     calculate_rsi,
 )
+from modules.risk.slippage import liquidity_gate
 from ticker_list import TICKERS
 
 
@@ -1086,6 +1088,12 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         # Phase 22: Volume Data
         avg_vol_10d = info.get("averageVolume10days", info.get("averageVolume", 0))
 
+        # --- Phase 3.3: Liquidity Gate ---
+        avg_volume_cr = (avg_vol_10d * current_price / 1e7) if avg_vol_10d and current_price else 0
+        liq_pass, liq_slippage, liq_reason = liquidity_gate(
+            market_cap_crore, avg_volume_cr
+        )
+
         # Data-quality availability flags (presence-based, not score/value-based).
         dq_flags = {
             "PE_Ratio": trailing_pe is not None and trailing_pe > 0,
@@ -1171,9 +1179,31 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             "Dividend_Yield": div_metrics.get("Dividend_Yield", 0),
             "Dividend_Payout": div_metrics.get("Dividend_Payout", 0),
             "Cap_Category": cap_category,
+            # --- Phase 3 Analytical Engine ---
+            "Liquidity_Pass": liq_pass,
+            "Slippage_Pct": round(liq_slippage, 2),
+            "Slippage_Reason": liq_reason,
             "_dq_flags": dq_flags,
             "Data_Quality_Flags": "mock_history" if is_mock_history else "",
         }
+
+        # --- Phase 3.1 & 3.2: Tier classification + Earnings velocity ---
+        tier_name, tier_reason = classify_multibagger_tier(final_data)
+        final_data["Multibagger_Tier"] = tier_name
+        final_data["Tier_Label"] = get_tier_label(final_data)
+        final_data["Tier_Reason"] = tier_reason
+
+        from modules.quarterly_results import _margin_expansion_slope
+        # Build lightweight margin list from available data
+        opm_current = _safe_float(_finite_or_default(final_data.get("Profit_Margin%"), 0))
+        avg_opm = _safe_float(_finite_or_default(raw.get("Avg_OPM_5Y%"), opm_current))
+        # Use available margin proxies for slope (at least current vs avg)
+        if opm_current and avg_opm and opm_current != avg_opm:
+            margin_points = [{"margin": avg_opm}, {"margin": (avg_opm + opm_current) / 2}, {"margin": opm_current}]
+            final_data["Margin_Expansion_Slope"] = _margin_expansion_slope(margin_points)
+        else:
+            final_data["Margin_Expansion_Slope"] = 0.0
+        final_data["Earnings_Velocity_Positive"] = final_data["Margin_Expansion_Slope"] > 0
 
         # --- V7.1: FUNDAMENTALS OVERRIDE LAYER ---
         # If the analyst seed provides hard fundamentals, override the dict
