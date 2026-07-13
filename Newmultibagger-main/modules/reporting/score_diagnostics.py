@@ -15,8 +15,15 @@ from datetime import datetime
 from typing import Any
 
 import numpy as np
-from modules.db_utils import get_db_connection
 from core.observability.logger import get_logger
+from modules.db_utils import get_db_connection
+from modules.field_names import normalize_data_keys
+from modules.scoring.ceiling import (
+    build_ceiling_diagnostics as _build_ceiling_diagnostics,
+    build_checklist_status as _build_scoring_checklist_status,
+)
+from modules.scoring.factors import _build_factor_state
+
 _log = get_logger(__name__)
 
 
@@ -295,72 +302,22 @@ def _infer_delta_reason(delta: float, current: float, previous: float) -> str:
     return "Significant decline — possible earnings miss or data degradation"
 
 
+def _build_diagnostic_scoring_context(stock: dict) -> tuple[dict[str, Any], Any]:
+    data = normalize_data_keys(stock)
+    state = _build_factor_state(data, score_sentiment=50.0, scoring_mode="balanced")
+    return data, state
+
+
 def _infer_active_ceilings(stock: dict) -> list[dict[str, Any]]:
-    """Infer which score ceilings are likely active based on stock characteristics."""
-    ceilings = []
-    roe = stock.get("avg_roe_5y") or stock.get("roe") or 0
-    if roe < 15:
-        # Match ceiling.py: _apply_spline_cap(roe, 15.0, 0.0, 60, ...)
-        # ratio = (15 - roe) / 15; cap = 100 - ratio^1.5 * (100 - 60)
-        ratio = max(0.0, (15.0 - roe) / 15.0)
-        cap_val = 100.0 - (ratio ** 1.5) * 40.0
-        ceilings.append(
-            {"name": "ROE Decay Spline", "cap": round(cap_val, 0), "active": True}
-        )
-    sg = stock.get("sales_cagr_5y") or stock.get("sales_growth") or 0
-    if sg < 10:
-        # Match ceiling.py: _apply_spline_cap(sg, 10.0, -5.0, 60, ...)
-        # ratio = (10 - sg) / 15; cap = 100 - ratio^1.5 * (100 - 60)
-        ratio = max(0.0, min(1.0, (10.0 - sg) / 15.0))
-        cap_val = 100.0 - (ratio ** 1.5) * 40.0
-        ceilings.append(
-            {
-                "name": "Growth Decay Spline",
-                "cap": round(cap_val, 0),
-                "active": True,
-            }
-        )
-    fscore = stock.get("f_score")
-    if fscore is not None and fscore <= 4:
-        # Match ceiling.py:135: cap = 50 + (f_score * 7.5)
-        ceilings.append(
-            {"name": "Quality Floor Spline", "cap": round(50 + fscore * 7.5, 0), "active": True}
-        )
-    cfo = stock.get("cfo_pat_ratio") or 0
-    if cfo < 0.8:
-        ceilings.append(
-            {"name": "Cash Quality Spline", "cap": round(50 + (cfo / 0.8) * 50, 0), "active": True}
-        )
-    return ceilings
+    """Return display ceilings from the scoring ceiling source of truth."""
+    data, state = _build_diagnostic_scoring_context(stock)
+    return _build_ceiling_diagnostics(data, state)
 
 
 def _build_checklist_status(stock: dict) -> dict[str, Any]:
-    """Reconstruct checklist pass/fail from stock data."""
-    checks = {}
-    mcap = stock.get("market_cap_cr")
-    checks["Market Cap > 1000 Cr"] = mcap is not None and mcap > 1000
-    pe = stock.get("pe_ratio")
-    checks["PE < 25"] = pe is not None and 0 < pe < 25
-    roe = stock.get("avg_roe_5y") or stock.get("roe") or 0
-    checks["ROE > 17%"] = roe > 17
-    de = stock.get("debt_equity")
-    checks["Debt/Equity < 1"] = de is not None and 0 <= de < 1.0
-    cfo = stock.get("cfo_pat_ratio") or 0
-    checks["CFO/PAT > 1"] = cfo > 1.0
-    sg = stock.get("sales_cagr_5y") or stock.get("sales_growth") or 0
-    checks["Sales Growth > 15%"] = sg > 15
-    fscore = stock.get("f_score")
-    checks["F-Score ≥ 6"] = fscore is not None and fscore >= 6
-    prom = stock.get("promoter_holding") or 0
-    checks["Promoter > 50%"] = prom > 50
-
-    passed = sum(1 for v in checks.values() if v)
-    return {
-        "items": checks,
-        "passed": passed,
-        "total": len(checks),
-        "grade": "A" if passed >= 7 else "B" if passed >= 5 else "C" if passed >= 3 else "D",
-    }
+    """Return checklist pass/fail from the scoring ceiling source of truth."""
+    data, state = _build_diagnostic_scoring_context(stock)
+    return _build_scoring_checklist_status(data, state)
 
 
 def get_calibration_report() -> dict[str, Any]:

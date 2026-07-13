@@ -244,6 +244,87 @@ def _apply_score_ceiling_rules(
     return score_ceiling, disqualifiers
 
 
+CHECKLIST_TOTAL = 12
+
+
+def _build_checklist_items(data: _StockData, state: FactorState) -> dict[str, bool]:
+    mcap_cr = optional_float(data.get("Market_Cap_Cr"))
+    de_val = optional_float(data.get("Debt_Equity"))
+    cfo_pat = optional_float(data.get("CFO_PAT_Ratio"))
+    down_pct = optional_float(data.get("Down_From_52W_High%"))
+    sg_5y = optional_float(data.get("Sales_Growth_5Y%"))
+    sg_ttm = optional_float(data.get("Sales_Growth_TTM%"))
+    if sg_ttm is not None:
+        sg_ttm = max(-100.0, min(300.0, sg_ttm))
+    sg = sg_5y if sg_5y is not None else (sg_ttm if sg_ttm is not None else 0)
+    eps_g = safe_float(data.get("EPS_Growth%"))
+    f_val_check = optional_float(data.get("F_Score"))
+    value_gap = safe_float(data.get("Value_Gap%"))
+
+    return {
+        "Market Cap > 300 Cr": mcap_cr is not None and mcap_cr > 300,
+        "PE < 50": state.pe is not None and 0 < state.pe < 50,
+        "ROE > 17%": state.best_roe > 17,
+        "Debt/Equity < 1": de_val is not None and 0 <= de_val < 1.0,
+        "CFO/PAT > 1": cfo_pat is not None and cfo_pat > 1.0,
+        "Within 35% of 52W High": down_pct is not None and 0 <= down_pct < 35,
+        "Sales Growth > 15%": sg > 15,
+        "EPS Growth > 0%": eps_g > 0,
+        "Promoter > 50%": state.prom_hold > 50,
+        "F-Score >= 6": f_val_check is not None and f_val_check >= 6,
+        "Sales and EPS Growth > 10%": sg > 10 and eps_g > 10,
+        "Value Gap > 0 or PE < 20": value_gap > 0 or (state.pe is not None and 0 < state.pe < 20),
+    }
+
+
+def _checklist_penalty_and_ceiling(checklist_pass: int) -> tuple[float, float]:
+    if checklist_pass >= 9:
+        checklist_penalty = (CHECKLIST_TOTAL - checklist_pass) * 0.66
+        current_ceiling = 80 + (checklist_pass - 9) * (20 / 3.0)
+    else:
+        checklist_penalty = 2.0 + ((9 - checklist_pass) / 9.0 * 18.0)
+        current_ceiling = 40 + (checklist_pass / 9.0 * 40.0)
+    return checklist_penalty, current_ceiling
+
+
+def build_checklist_status(data: _StockData, state: FactorState) -> dict[str, Any]:
+    checks = _build_checklist_items(data, state)
+    passed = sum(1 for value in checks.values() if value)
+    _, current_ceiling = _checklist_penalty_and_ceiling(passed)
+
+    return {
+        "items": checks,
+        "passed": passed,
+        "total": len(checks),
+        "grade": "A" if passed >= 7 else "B" if passed >= 5 else "C" if passed >= 3 else "D",
+        "ceiling": round(current_ceiling, 1),
+    }
+
+
+def build_ceiling_diagnostics(data: _StockData, state: FactorState) -> list[dict[str, Any]]:
+    _, disqualifiers = _apply_score_ceiling_rules(data, state)
+    checklist_status = build_checklist_status(data, state)
+    checklist_ceiling = float(checklist_status["ceiling"])
+    if checklist_ceiling < 100:
+        disqualifiers.append(
+            (
+                f"Institutional Quality Gate {checklist_status['passed']}/{checklist_status['total']}",
+                checklist_ceiling,
+            )
+        )
+
+    seen: set[tuple[str, float]] = set()
+    ceilings = []
+    for name, cap in sorted(disqualifiers, key=lambda item: item[1]):
+        cap_value = round(float(cap), 1)
+        key = (name, cap_value)
+        if key in seen:
+            continue
+        seen.add(key)
+        ceilings.append({"name": name, "cap": cap_value, "active": True})
+    return ceilings
+
+
 def _apply_checklist_gate(
     data: _StockData,
     state: FactorState,
@@ -251,57 +332,14 @@ def _apply_checklist_gate(
     score_ceiling: float,
     disqualifiers: list[tuple[str, float]],
 ) -> tuple[int, int, float, float]:
-    checklist_pass = 0
-    checklist_total = 12
-
-    mcap_cr = optional_float(data.get("Market_Cap_Cr"))
-    if mcap_cr is not None and mcap_cr > 300:  # Relaxed from 1000 — multibaggers are small/mid
-        checklist_pass += 1
-    if state.pe is not None and 0 < state.pe < 50:  # Relaxed from 40 — growth stocks trade higher
-        checklist_pass += 1
-    if state.best_roe > 17:
-        checklist_pass += 1
-    de_val = optional_float(data.get("Debt_Equity"))
-    if de_val is not None and 0 <= de_val < 1.0:
-        checklist_pass += 1
-    cfo_pat = optional_float(data.get("CFO_PAT_Ratio"))
-    if cfo_pat is not None and cfo_pat > 1.0:
-        checklist_pass += 1
-    down_pct = optional_float(data.get("Down_From_52W_High%"))
-    if down_pct is not None and 0 <= down_pct < 35:
-        checklist_pass += 1
-
-    sg_5y = optional_float(data.get("Sales_Growth_5Y%"))
-    sg_ttm = optional_float(data.get("Sales_Growth_TTM%"))
-    if sg_ttm is not None:
-        sg_ttm = max(-100.0, min(300.0, sg_ttm))
-    sg = sg_5y if sg_5y is not None else (sg_ttm if sg_ttm is not None else 0)
-    if sg > 15:
-        checklist_pass += 1
-    eps_g = safe_float(data.get("EPS_Growth%"))
-    if eps_g > 0:
-        checklist_pass += 1
-    if state.prom_hold > 50:
-        checklist_pass += 1
-    f_val_check = optional_float(data.get("F_Score"))
-    if f_val_check is not None and f_val_check >= 6:
-        checklist_pass += 1
-    if sg > 10 and eps_g > 10:
-        checklist_pass += 1
-    value_gap = safe_float(data.get("Value_Gap%"))
-    if value_gap > 0 or (state.pe is not None and 0 < state.pe < 20):
-        checklist_pass += 1
+    checklist_status = build_checklist_status(data, state)
+    checklist_pass = int(checklist_status["passed"])
+    checklist_total = int(checklist_status["total"])
 
     if checklist_pass >= 11:
         base_score += 5
 
-    if checklist_pass >= 9:
-        checklist_penalty = (12 - checklist_pass) * 0.66
-        current_ceiling = 80 + (checklist_pass - 9) * (20 / 3.0)
-    else:
-        checklist_penalty = 2.0 + ((9 - checklist_pass) / 9.0 * 18.0)
-        current_ceiling = 40 + (checklist_pass / 9.0 * 40.0)
-
+    checklist_penalty, current_ceiling = _checklist_penalty_and_ceiling(checklist_pass)
     base_score -= checklist_penalty
     score_ceiling = min(score_ceiling, current_ceiling)
 
