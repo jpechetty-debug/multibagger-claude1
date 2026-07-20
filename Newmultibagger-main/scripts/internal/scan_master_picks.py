@@ -86,19 +86,7 @@ def scan_master_picks():
                 stock["Backtest_Max_DD"] = bt.get("max_drawdown", 0.0)
                 stock["Backtest_Sharpe"] = bt.get("sharpe_ratio", 0.0)
 
-        df = pd.DataFrame(results)
-        print("\n\n" + "=" * 80)
-        print(f"{'SYMBOL':<15} {'PRICE':<10} {'ROE%':<10} {'SCORE':<10} {'RATING':<20}")
-        print("-" * 80)
-
-        for _, row in df.sort_values(by="Score", ascending=False).iterrows():
-            print(
-                f"{row['Symbol']:<15} {row['Price']:<10.2f} {row['Avg_ROE_5Y%']:<10.1f} {row['Score']:<10.1f} {row['Rating']:<20}"
-            )
-
-        print("=" * 80)
-
-        # Save to DB
+        # Save to DB first to avoid data loss if printing fails
         try:
             import db.repository as database
 
@@ -112,6 +100,18 @@ def scan_master_picks():
         # Also save a CSV for summary
         df.to_csv("master_picks_report.csv", index=False)
         print("✅ Consolidated report saved to master_picks_report.csv")
+
+        print("\n\n" + "=" * 80)
+        print(f"{'SYMBOL':<15} {'PRICE':<10} {'ROE%':<10} {'SCORE':<10} {'RATING':<20}")
+        print("-" * 80)
+
+        for _, row in df.sort_values(by="Score", ascending=False).iterrows():
+            price_val = row.get('Price', row.get('Current_Price', 0.0))
+            print(
+                f"{row['Symbol']:<15} {price_val:<10.2f} {row.get('Avg_ROE_5Y%', 0.0):<10.1f} {row.get('Score', 0.0):<10.1f} {row.get('Rating', 'Unknown'):<20}"
+            )
+
+        print("=" * 80)
     else:
         print("\nNo data fetched for any symbols.")
 

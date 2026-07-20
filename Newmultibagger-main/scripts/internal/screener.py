@@ -1528,6 +1528,8 @@ def main(argv=None):
 
     # Run the async fetch loop
     async def fetch_all_data(dm):
+        # Pre-load NSE bhavcopy for bulk price lookups (avoids per-symbol yfinance calls)
+        await dm.load_bhavcopy_prices()
         print(f"Fetching data for {len(scan_tickers)} stocks concurrently...")
 
         def _extract_hard_error(payload):

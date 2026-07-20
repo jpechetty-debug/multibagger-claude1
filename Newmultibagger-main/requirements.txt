@@ -77,3 +77,7 @@ pytest-cov>=5.0.0
 # ── Agentic Platform & MCP ───────────────────────────────────────────────────
 mcp
 fastmcp
+ 
+requests-cache
+requests-ratelimiter
+pyrate-limiter

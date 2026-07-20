@@ -679,6 +679,7 @@ class DataManager:
         self.providers = self._build_fundamental_provider_chain()
 
         self.cache = PersistentCache()
+        self.bhavcopy_prices: dict[str, dict] = {}
         current_year = datetime.now().year
         self.valid_trading_days = get_valid_trading_days(
             f"{current_year - 10}-01-01", f"{current_year + 2}-12-31"
@@ -759,9 +760,38 @@ class DataManager:
             logger.debug("yfinance price fallback failed for %s: %s", symbol, exc)
             return None
 
+    async def load_bhavcopy_prices(self) -> None:
+        """Pre-load NSE bhavcopy prices for bulk lookups."""
+        if self.bhavcopy_prices:
+            return  # Already loaded
+        try:
+            from modules.adapters.nse_bhavcopy import download_bhavcopy
+            loop = asyncio.get_running_loop()
+            self.bhavcopy_prices = await loop.run_in_executor(
+                self.executor, download_bhavcopy
+            )
+            logger.info(f"Loaded {len(self.bhavcopy_prices)} bhavcopy prices")
+        except Exception as e:
+            logger.warning(f"Bhavcopy load failed, will use yfinance fallback: {e}")
+            self.bhavcopy_prices = {}
+
+    def _get_bhavcopy_price(self, symbol: str) -> float | None:
+        """Get price from pre-loaded bhavcopy data."""
+        if not self.bhavcopy_prices:
+            return None
+        from modules.adapters.nse_bhavcopy import get_bhavcopy_price
+        return get_bhavcopy_price(self.bhavcopy_prices, symbol)
+
     async def _enrich_price_if_missing(self, symbol: str, data: dict[str, Any]) -> None:
         if data.get("Price") or data.get("price"):
             return
+        # Try bhavcopy first (instant, no network call)
+        bhav_price = self._get_bhavcopy_price(symbol)
+        if bhav_price is not None:
+            data["Price"] = bhav_price
+            data["price_source"] = "nse_bhavcopy"
+            return
+        # Fallback to yfinance
         price = await self._fetch_yfinance_price_fallback(symbol)
         if price is not None:
             data["Price"] = price
@@ -894,6 +924,7 @@ class DataManager:
 
     async def async_fetch_history(self, symbol: str, period: str = "1y") -> pd.DataFrame:
         async with self.semaphore:
+            await asyncio.sleep(1.0)  # Rate limit yfinance requests to avoid 429
             loop = asyncio.get_running_loop()
             ticker = yf.Ticker(symbol)
             df = pd.DataFrame()
@@ -944,6 +975,7 @@ class DataManager:
 
     async def async_fetch_quarterly_results(self, symbol: str) -> list[dict[str, Any]]:
         async with self.semaphore:
+            await asyncio.sleep(1.0)  # Rate limit yfinance requests to avoid 429
             loop = asyncio.get_running_loop()
             ticker = yf.Ticker(symbol)
             qf = await loop.run_in_executor(self.executor, lambda: ticker.quarterly_financials)

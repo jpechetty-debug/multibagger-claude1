@@ -23,11 +23,11 @@ _log = get_logger(__name__)
 
 
 # ── Freshness Thresholds (configurable via env in future) ────────────────────
-FRESH_MAX_DAYS = 3
-STALE_MAX_DAYS = 7
+FRESH_MAX_DAYS = 7       # Data ≤7 days old = FRESH
+STALE_MAX_DAYS = 21      # Data 8-21 days old = STALE
 # >STALE_MAX_DAYS = EXPIRED
 
-BUY_BLOCK_AGE_DAYS = 5  # Block BUY labels if data older than this
+BUY_BLOCK_AGE_DAYS = 30  # Block BUY labels only if data older than 30 days
 
 UNIVERSE_STALE_ALERT_PCT = 20.0  # Alert if >20% universe is stale
 
