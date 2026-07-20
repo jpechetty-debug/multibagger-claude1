@@ -21,8 +21,8 @@ from modules.hybrid_scoring import (
     batch_predict,
     model_is_trained,
     predict_and_explain,
-    train_hybrid_model,
 )
+from modules.ml_ops import run_automated_training
 
 
 class LightGBMRanker:
@@ -88,7 +88,7 @@ class LightGBMRanker:
         compatibility but ignored — hybrid_scoring reads directly from the DB.
         """
         logger.info("Delegating ranker training to consolidated XGBoost Meta-Model…")
-        return train_hybrid_model()
+        return run_automated_training()
 
     # ------------------------------------------------------------------
     # Heuristic fallback

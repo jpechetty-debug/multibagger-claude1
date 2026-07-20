@@ -577,7 +577,7 @@ class VectorBTEngine:
             raw_prices = yf.download(
                 download_symbols,
                 period=self.period,
-                interval="1mo",
+                interval="1d",
                 progress=False,
                 group_by="ticker",
                 auto_adjust=True,
@@ -702,24 +702,40 @@ class VectorBTEngine:
 
                 # Module 6.3 Friction Replay Simulator
                 # Apply liquidity filter to ensure we don't buy illiquid stocks
-                # We need mock price/volume for the filter. In reality, we should pull from price_matrix,
-                # but for this test_df we can pull the most recent close price from price_matrix.
+                # Use the daily price matrix to obtain the latest close and each
+                # symbol's trading-session coverage for the liquidity filter.
                 try:
-                    period_prices = price_matrix.loc[str(test_period)]
-                    if isinstance(period_prices, pd.DataFrame):
-                        period_prices = period_prices.iloc[-1]
+                    period_history = price_matrix.loc[str(test_period)]
                 except KeyError:
-                    period_prices = pd.Series(dtype=float)
+                    period_history = pd.DataFrame()
 
-                if not period_prices.empty:
+                if isinstance(period_history, pd.Series):
+                    period_history = period_history.to_frame().T
+
+                if not period_history.empty:
+                    period_prices = period_history.iloc[-1]
+                    business_days = len(period_history.index.unique())
                     universe_data = []
                     for s in test_df['symbol'].unique():
                         p = period_prices.get(s, np.nan)
                         # Mock volume = min_turnover / p if we don't have volume to avoid dropping large caps.
                         # Real implementation would use actual volume, but we bypass for now if volume is missing
                         v = (5_000_000 / p) + 100 if pd.notna(p) and p > 0 else 0
-                        universe_data.append({"Symbol": s, "Price": p, "Volume": v})
-                    
+                        trading_days = (
+                            int(period_history[s].notna().sum())
+                            if s in period_history.columns
+                            else 0
+                        )
+                        universe_data.append(
+                            {
+                                "Symbol": s,
+                                "Price": p,
+                                "Volume": v,
+                                "Trading_Days": trading_days,
+                                "Business_Days": business_days,
+                            }
+                        )
+
                     liquid_universe = self.liquidity_filter.filter(universe_data)
                     liquid_symbols = [d["Symbol"] for d in liquid_universe]
                     test_df = test_df[test_df["symbol"].isin(liquid_symbols)]

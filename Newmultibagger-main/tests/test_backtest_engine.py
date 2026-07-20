@@ -267,9 +267,13 @@ def test_walk_forward_strategy_backtest_trains_past_only_and_reports_portfolio_m
         },
         axis=1,
     )
-    monkeypatch.setattr(
-        backtest_engine_module.yf, "download", lambda *args, **kwargs: fake_download
-    )
+    download_calls = []
+
+    def fake_yf_download(*args, **kwargs):
+        download_calls.append(kwargs)
+        return fake_download
+
+    monkeypatch.setattr(backtest_engine_module.yf, "download", fake_yf_download)
 
     engine = backtest_engine_module.VectorBTEngine(period="1y")
     _bypass_survivorship(engine)
@@ -291,6 +295,7 @@ def test_walk_forward_strategy_backtest_trains_past_only_and_reports_portfolio_m
     assert result["alpha_cagr"] > 0
     assert result["turnover"] == pytest.approx(1.0)
     assert result["avg_turnover"] == pytest.approx(0.2)
+    assert download_calls[0]["interval"] == "1d"
 
     for fold in result["fold_details"]:
         assert fold["selected_symbols"] == ["AAA.NS"]

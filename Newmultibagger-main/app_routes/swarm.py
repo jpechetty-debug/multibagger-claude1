@@ -86,7 +86,6 @@ async def get_swarm_status():
             cwd=RUFLO_DIR,
             capture_output=True,
             text=True,
-            shell=True,
         )
         if result.returncode == 0:
             return json.loads(result.stdout)

@@ -19,12 +19,44 @@ def test_liquidity_filter():
     universe = [
         {"Symbol": "A", "Price": 5.0, "Volume": 1000000},  # Price too low
         {"Symbol": "B", "Price": 100.0, "Volume": 10000},  # Turnover = 1,000,000 (too low)
-        {"Symbol": "C", "Price": 50.0, "Volume": 200000},  # Turnover = 10,000,000 (Passes)
+        {
+            "Symbol": "C",
+            "Price": 50.0,
+            "Volume": 200000,
+            "Trading_Days": 91,
+            "Business_Days": 100,
+        },  # Turnover = 10,000,000 and 91% coverage (passes)
     ]
     
     filtered = filter.filter(universe)
     assert len(filtered) == 1
     assert filtered[0]["Symbol"] == "C"
+
+
+def test_liquidity_filter_rejects_insufficient_trading_day_coverage():
+    """Stocks at or below 90% session coverage must be treated as illiquid."""
+    liquidity_filter = LiquidityFilter(min_price=10.0, min_turnover=5_000_000)
+
+    universe = [
+        {
+            "Symbol": "SUSPENDED",
+            "Price": 50.0,
+            "Volume": 200000,
+            "Trading_Days": 90,
+            "Business_Days": 100,
+        },
+        {
+            "Symbol": "ACTIVE",
+            "Price": 50.0,
+            "Volume": 200000,
+            "Trading_Days": 91,
+            "Business_Days": 100,
+        },
+    ]
+
+    filtered = liquidity_filter.filter(universe)
+
+    assert [stock["Symbol"] for stock in filtered] == ["ACTIVE"]
 
 def test_compute_round_trip_cost_dynamic_impact():
     """Verify that round-trip cost incorporates dynamic market impact."""
