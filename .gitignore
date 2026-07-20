@@ -174,3 +174,4 @@ graphify-out/
 *.html
 *.db
 *.log
+graphify-out/
