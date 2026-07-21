@@ -2103,6 +2103,9 @@ def main(argv=None):
         # Hard filter for zero-score data failures (v9.6)
         if "Score" in df.columns:
             df = df[df["Score"] > 5]
+        else:
+            # If every fetch failed and Score was never generated, drop all records.
+            df = df.iloc[0:0]
 
         dropped_on_save = pre_save_count - len(df)
         if dropped_on_save > 0:
