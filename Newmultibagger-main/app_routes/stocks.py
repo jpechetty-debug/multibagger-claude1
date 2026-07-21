@@ -178,8 +178,8 @@ async def get_multibaggers(request: Request, as_of_date: str | None = None):
             return await _run_blocking(_read_as_of_records)
 
         # Vectorized DuckDB Sorting — with SQLite fallback when extension unavailable
-        # UI displays Top 100 only; limiting here avoids serialising unused rows.
-        _TOP_N = 100
+        # UI displays Top 150 only; limiting here avoids serialising unused rows.
+        _TOP_N = 150
 
         def _run_duckdb_sort():
             import json
