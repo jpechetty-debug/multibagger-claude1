@@ -167,14 +167,14 @@ async def factor_exposure_meta():
     """Return India factor CSV availability and date coverage, plus staleness status."""
     try:
         meta = await _run_blocking(factor_metadata)
-        
+
         import os
         from datetime import date
         max_age = int(os.getenv("FACTOR_STALENESS_DAYS", "45"))
-        
+
         stale = True
         age_days = None
-        
+
         if meta.get("available") and meta.get("last_date"):
             try:
                 last_dt = date.fromisoformat(str(meta["last_date"]))
@@ -182,12 +182,12 @@ async def factor_exposure_meta():
                 stale = age_days > max_age
             except ValueError:
                 pass
-                
+
         meta["stale"] = stale
         meta["age_days"] = age_days
         meta["staleness_threshold_days"] = max_age
         meta["refresh_command"] = "python scripts/build_india_factors.py --update"
-        
+
         return meta
     except Exception as exc:
         _log.error("factor_meta failed", error=str(exc))

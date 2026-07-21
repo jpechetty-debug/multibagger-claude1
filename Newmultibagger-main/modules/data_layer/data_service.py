@@ -497,7 +497,7 @@ class ScreenerRepository:
                     import asyncpg
                 except ImportError as exc:
                     raise RuntimeError("asyncpg is required for Neon screener reads") from exc
-                
+
                 cls._neon_pool = await asyncpg.create_pool(
                     dsn=dsn,
                     min_size=1,

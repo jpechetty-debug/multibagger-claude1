@@ -86,7 +86,7 @@ def _make_wf_frame(
 
 class TestSanitizeFeatures:
     def test_returns_only_feature_columns(self):
-        df = pd.DataFrame([{f: 1.0 for f in FEATURES} | {"extra_col": 99.9}])
+        df = pd.DataFrame([dict.fromkeys(FEATURES, 1.0) | {"extra_col": 99.9}])
         result = _sanitize_features(df)
         assert list(result.columns) == FEATURES
 
@@ -259,12 +259,13 @@ class TestPredictAndExplain:
         joblib.dump(model, model_path)
         monkeypatch.setattr(hybrid_scoring, "MODEL_PATH", model_path)
 
-        result = hybrid_scoring.predict_and_explain({f: 0.5 for f in FEATURES})
+        result = hybrid_scoring.predict_and_explain(dict.fromkeys(FEATURES, 0.5))
         shap_vals = list(result["shap_values"].values())
         assert shap_vals == sorted(shap_vals, key=abs, reverse=True)
 
     def test_top_drivers_direction_label(self, tmp_path, monkeypatch):
-        import joblib, xgboost as xgb
+        import joblib
+        import xgboost as xgb
 
         X = pd.DataFrame(np.random.rand(40, len(FEATURES)), columns=FEATURES)
         y = X["score"] + np.random.rand(40) * 0.01
@@ -282,7 +283,8 @@ class TestPredictAndExplain:
             assert "feature_value" in driver
 
     def test_ml_prediction_is_percentage(self, tmp_path, monkeypatch):
-        import joblib, xgboost as xgb
+        import joblib
+        import xgboost as xgb
 
         X = pd.DataFrame(np.random.rand(40, len(FEATURES)), columns=FEATURES)
         y = pd.Series([0.05] * 40)
@@ -303,7 +305,8 @@ class TestPredictAndExplain:
 
 class TestBatchPredict:
     def test_returns_same_length(self, tmp_path, monkeypatch):
-        import joblib, xgboost as xgb
+        import joblib
+        import xgboost as xgb
 
         X = pd.DataFrame(np.random.rand(30, len(FEATURES)), columns=FEATURES)
         y = np.random.rand(30)
@@ -479,7 +482,8 @@ class TestGetFeatureImportance:
         assert imp == {}
 
     def test_returns_all_features(self, tmp_path, monkeypatch):
-        import joblib, xgboost as xgb
+        import joblib
+        import xgboost as xgb
 
         X = pd.DataFrame(np.random.rand(30, len(FEATURES)), columns=FEATURES)
         y = np.random.rand(30)

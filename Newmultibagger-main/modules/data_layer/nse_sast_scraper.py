@@ -2,7 +2,7 @@ import asyncio
 import logging
 from datetime import datetime, date
 import aiohttp
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ NSE_HEADERS = {
 class NSEScraper:
     def __init__(self):
         self.base_url = "https://www.nseindia.com"
-        self.session: Optional[aiohttp.ClientSession] = None
+        self.session: aiohttp.ClientSession | None = None
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession(headers=NSE_HEADERS)
@@ -32,11 +32,11 @@ class NSEScraper:
         if self.session:
             await self.session.close()
 
-    async def fetch_sast_data(self) -> List[Dict[str, Any]]:
+    async def fetch_sast_data(self) -> list[dict[str, Any]]:
         """Fetch Substantial Acquisition of Shares and Takeovers (SAST) data."""
         if not self.session:
             raise RuntimeError("Session not initialized. Use async with context manager.")
-        
+
         url = f"{self.base_url}/api/corporate-sast"
         try:
             async with self.session.get(url, headers=NSE_HEADERS, timeout=15) as resp:
@@ -50,11 +50,11 @@ class NSEScraper:
             logger.error(f"Error fetching SAST data: {e}")
             return []
 
-    async def fetch_block_deals(self) -> List[Dict[str, Any]]:
+    async def fetch_block_deals(self) -> list[dict[str, Any]]:
         """Fetch Block Deals data."""
         if not self.session:
             raise RuntimeError("Session not initialized. Use async with context manager.")
-        
+
         url = f"{self.base_url}/api/block-deal"
         try:
             async with self.session.get(url, headers=NSE_HEADERS, timeout=15) as resp:

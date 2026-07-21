@@ -22,7 +22,7 @@ def hash_api_key(key: str) -> str:
 def create_key(consumer_name: str, rate_limit: int):
     raw_key = generate_api_key()
     key_hash = hash_api_key(raw_key)
-    
+
     query = """
     INSERT INTO api_keys (key_hash, consumer_name, is_active, rate_limit_rpm, total_usage, created_at, updated_at)
     VALUES (:key_hash, :consumer_name, 1, :rate_limit, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -32,7 +32,7 @@ def create_key(consumer_name: str, rate_limit: int):
         "consumer_name": consumer_name,
         "rate_limit": rate_limit
     })
-    
+
     print(f"Successfully created API key for consumer '{consumer_name}'.")
     print(f"API Key: {raw_key}")
     print("Store this key safely! It will not be shown again.")
@@ -40,7 +40,7 @@ def create_key(consumer_name: str, rate_limit: int):
 def list_keys():
     query = "SELECT key_hash, consumer_name, is_active, rate_limit_rpm, total_usage, created_at FROM api_keys"
     results = execute_sql(query, fetch_all=True)
-    
+
     if not results:
         print("No API keys found in the database.")
         return
@@ -56,7 +56,7 @@ def set_status(consumer_name: str, active: bool):
     is_active = 1 if active else 0
     query = "UPDATE api_keys SET is_active = :is_active, updated_at = CURRENT_TIMESTAMP WHERE consumer_name = :consumer_name"
     rows_affected = execute_sql(query, {"is_active": is_active, "consumer_name": consumer_name})
-    
+
     if rows_affected:
         status_str = "activated" if active else "revoked"
         print(f"Successfully {status_str} key(s) for consumer '{consumer_name}'.")

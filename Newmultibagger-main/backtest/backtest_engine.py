@@ -500,7 +500,7 @@ class VectorBTEngine:
                 "See backtest/survivorship_adjusted_loader.py."
             )
         VectorBTEngine._survivorship_warning_emitted = True
-        
+
         # Module 6.3 Friction Replay Simulator
         self.liquidity_filter = LiquidityFilter(min_price=10.0, min_turnover=5_000_000)
 
@@ -592,7 +592,7 @@ class VectorBTEngine:
             is_single = len(download_symbols) == 1
             for sym in clean_symbols:
                 close = _extract_close_series(raw_prices, sym, single_symbol=is_single).dropna()
-                
+
                 # Module 6.1 Survivorship Bias Adjustment Rig
                 # If yfinance returned no data (likely delisted or symbol changed)
                 if close.empty:
@@ -604,14 +604,14 @@ class VectorBTEngine:
                             delisted_df.set_index('Date', inplace=True)
                         elif delisted_df.index.name != 'Date':
                             delisted_df.index = pd.to_datetime(delisted_df.index)
-                            
+
                         close = _extract_close_series(delisted_df, sym, single_symbol=True).dropna()
                         if close.empty and 'Close' in delisted_df.columns:
                             close = pd.to_numeric(delisted_df['Close'], errors="coerce").dropna()
-                            
+
                         if not close.empty:
                             _log.info(f"Spliced delisted data for {sym} ({len(close)} periods)")
-                
+
                 if not close.empty:
                     close_prices[sym] = close
 

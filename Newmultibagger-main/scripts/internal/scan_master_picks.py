@@ -17,12 +17,24 @@ def scan_master_picks():
     print(f"🚀 Starting MASTER Targeted Scan for {len(MASTER_PICKS)} Consolidated Picks...")
 
     results = []
+
+    # Initialize DataManager and pre-load bhavcopy data for fast price lookups
+    from modules.data_layer.data_service import DataManager
+    from modules.data_layer.data_utils import run_coroutine_sync
+
+    dm = DataManager()
+    print("Pre-loading Bhavcopy data...")
+    try:
+        run_coroutine_sync(dm.load_bhavcopy_prices())
+    except Exception as e:
+        print(f"Failed to pre-load Bhavcopy: {e}")
+
     market_regime = screener.analyze_market_regime()
     print(f"Market Regime: {market_regime}")
 
     for symbol in MASTER_PICKS:
         print(f"Analyzing {symbol}...", end="\r")
-        data = screener.get_stock_data_sync(symbol)
+        data = screener.get_stock_data_sync(symbol, dm=dm)
         if data:
             # Calculate institutional score
             score_data = screener.calculate_institutional_score(data, market_regime=market_regime)
@@ -68,6 +80,7 @@ def scan_master_picks():
             results.append(data)
 
     if results:
+        df = pd.DataFrame(results)
         # 1.5 Phase 68: Batch VectorBT Optimization
         symbols_to_backtest = [s.get("Symbol") for s in results if s.get("Symbol")]
         if symbols_to_backtest:

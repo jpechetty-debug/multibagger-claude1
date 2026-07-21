@@ -1,4 +1,3 @@
-import sys
 
 with open('Newmultibagger-main/worker/tasks.py', 'r', encoding='utf-8') as f:
     lines = f.readlines()

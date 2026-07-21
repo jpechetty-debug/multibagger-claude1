@@ -88,7 +88,6 @@ FIELD_MAPPING: dict[str, str] = {
     "Data_Quality_Flags": "data_quality_flags",
     # Scoring engine fields not previously in the map
     "EPS_Growth%": "eps_growth",
-    "Down_From_52W_High%": "down_from_52w_high",  # alias kept for scorer; DB col is down_from_52w
     "Profit_Margin%": "profit_margin",
     "Quarter_End": "quarter_end",
     "Earnings_Inflection_Score": "earnings_inflection_score",

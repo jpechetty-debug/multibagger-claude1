@@ -325,19 +325,20 @@ def _write_fundamentals_snapshot(df_db):
         from modules.pit_auditor import PITDataStore, sanitize as pit_sanitize
 
         # Build a mini-DataFrame with report_date/as_of_date for PIT validation
-        if "report_date" not in df_db.columns:
-            df_db["report_date"] = df_db.get("updated_at", as_of_date)
-        if "as_of_date" not in df_db.columns:
-            df_db["as_of_date"] = as_of_date
+        df_audit = df_db.copy()
+        if "report_date" not in df_audit.columns:
+            df_audit["report_date"] = df_audit.get("updated_at", as_of_date)
+        if "as_of_date" not in df_audit.columns:
+            df_audit["as_of_date"] = as_of_date
 
-        pre_count = len(df_db)
-        df_db = pit_sanitize(df_db)
-        post_count = len(df_db)
+        pre_count = len(df_audit)
+        df_audit = pit_sanitize(df_audit)
+        post_count = len(df_audit)
         if pre_count > post_count:
             _log.info(f"PIT sanitize: dropped {pre_count - post_count} look-ahead violating rows.")
 
         pit_store = PITDataStore()
-        for _, row in df_db.iterrows():
+        for _, row in df_audit.iterrows():
             sym = row.get("symbol")
             if not sym:
                 continue

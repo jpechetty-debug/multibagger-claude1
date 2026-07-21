@@ -164,7 +164,8 @@ async def test_pdf_cache_hit_skips_render(tmp_path, monkeypatch):
     pdf_file.write_bytes(b"%PDF-cached")
 
     # Force PDF mtime to be after HTML mtime
-    import os, time
+    import os
+    import time
     os.utime(str(pdf_file), (time.time() + 10, time.time() + 10))
 
     with patch(
@@ -186,7 +187,8 @@ async def test_stale_pdf_triggers_render(tmp_path, monkeypatch):
     """
     When the HTML is newer than the existing PDF, WeasyPrint must re-render.
     """
-    import time, os
+    import time
+    import os
 
     fake_wp = MagicMock()
     fake_doc = MagicMock()

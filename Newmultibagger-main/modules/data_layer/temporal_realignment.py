@@ -23,11 +23,11 @@ class TemporalRealignmentEngine:
     def align_fundamentals(self, df: pd.DataFrame, date_column: str = "as_of_date") -> pd.DataFrame:
         """
         Applies the publishing lag to the specified date column.
-        
+
         Args:
             df: DataFrame containing fundamental data.
             date_column: The column representing the reporting period end date.
-            
+
         Returns:
             A new DataFrame with the temporally realigned 'as_of_date'.
         """
@@ -39,13 +39,13 @@ class TemporalRealignmentEngine:
             return df
 
         aligned_df = df.copy()
-        
+
         # Convert to datetime safely
         aligned_df[date_column] = pd.to_datetime(aligned_df[date_column], errors="coerce")
-        
+
         # Apply strict publishing lag to prevent look-ahead bias
         aligned_df[date_column] = aligned_df[date_column] + pd.Timedelta(days=self.publishing_lag_days)
-        
+
         _log.info(f"Temporal Realignment Engine: Applied {self.publishing_lag_days}-day publishing lag to {len(aligned_df)} rows.")
-        
+
         return aligned_df

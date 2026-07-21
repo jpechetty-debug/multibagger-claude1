@@ -155,11 +155,11 @@ def factor_returns_are_stale(max_age_days: int = 45) -> bool:
     """Return True if factor returns CSV is missing or older than max_age_days."""
     if not FACTOR_CSV_PATH.exists():
         return True
-        
+
     df = _load_raw()
     if df.empty:
         return True
-        
+
     last_dt = df.index.max().date()
     age_days = (date.today() - last_dt).days
     return age_days > max_age_days

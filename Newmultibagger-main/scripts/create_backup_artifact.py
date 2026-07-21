@@ -11,7 +11,8 @@ Called by:
   - backup.sh / backup.bat post-run
 """
 from __future__ import annotations
-import shutil, sqlite3
+import shutil
+import sqlite3
 from pathlib import Path
 
 ROOT    = Path(__file__).resolve().parents[1]
@@ -27,7 +28,8 @@ def _copy_or_create(src: Path, dst: Path, minimal_sql: str) -> None:
     else:
         conn = sqlite3.connect(dst)
         conn.executescript(minimal_sql)
-        conn.commit(); conn.close()
+        conn.commit()
+        conn.close()
         print(f"  Created minimal {dst.name}")
 
 _copy_or_create(

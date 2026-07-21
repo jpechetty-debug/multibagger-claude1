@@ -34,15 +34,15 @@ if __name__ == "__main__":
 
     # Test 1: Successful Auth
     print("Test 1: Normal Auth")
-    assert test_api_key(key) == True
+    assert _check_api_key(key)
     print("Success")
 
     # Test 2: Rate Limiting
     # The limit was set to 120 RPM. Let's make 120 calls
     print("Test 2: Rate Limit")
     success_count = 0
-    for i in range(125):
-        if test_api_key(key):
+    for _i in range(125):
+        if _check_api_key(key):
             success_count += 1
     print(f"Successful calls before rate limit: {success_count}")
     assert success_count == 120
@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
     # Test 3: Invalid Key
     print("Test 3: Invalid Key")
-    assert test_api_key("sov_invalidkey") == False
+    assert not _check_api_key("sov_invalidkey")
     print("Success")
 
     # Print the DB to show usage count

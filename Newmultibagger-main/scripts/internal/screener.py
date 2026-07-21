@@ -862,7 +862,7 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             if _raw_inst is not None and 0 < _raw_inst < 1.0:
                 inst_holding = round(_raw_inst * 100, 2)
             # else: leave as None — sentinel check
-            
+
         promoter_holding = float(promoter_holding) if promoter_holding is not None else 0.0
         inst_holding = float(inst_holding) if inst_holding is not None else 0.0
 
@@ -921,7 +921,7 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
                     if key in financials.index:
                         net_income_series = financials.loc[key].iloc[::-1]
                         break
-                
+
                 bs = ticker.balance_sheet
                 equity_series = None
                 if not bs.empty:
@@ -1195,8 +1195,8 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
 
         from modules.quarterly_results import _margin_expansion_slope
         # Build lightweight margin list from available data
-        opm_current = _safe_float(_finite_or_default(final_data.get("Profit_Margin%"), 0))
-        avg_opm = _safe_float(_finite_or_default(raw.get("Avg_OPM_5Y%"), opm_current))
+        opm_current = _finite_or_default(final_data.get("Profit_Margin%"), 0.0)
+        avg_opm = _finite_or_default(raw.get("Avg_OPM_5Y%"), opm_current)
         # Use available margin proxies for slope (at least current vs avg)
         if opm_current and avg_opm and opm_current != avg_opm:
             margin_points = [{"margin": avg_opm}, {"margin": (avg_opm + opm_current) / 2}, {"margin": opm_current}]

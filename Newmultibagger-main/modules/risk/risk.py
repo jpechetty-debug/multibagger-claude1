@@ -272,7 +272,7 @@ class RiskGovernor:
 
         row = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), symbol, reason, price]
         log_path = REJECTED_TRADES_LOG
-        
+
         log_dir = os.path.dirname(log_path)
         if log_dir:
             os.makedirs(log_dir, exist_ok=True)

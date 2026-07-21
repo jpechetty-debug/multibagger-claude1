@@ -249,7 +249,7 @@ def load_regime_ic_cache() -> dict:
         "n": n_obs,
         "valid": float(overall_ic) >= _LOW_IC_THRESHOLD,
     }
-    return {regime: entry for regime in ("BULL", "BEAR", "SIDEWAYS")}
+    return dict.fromkeys(("BULL", "BEAR", "SIDEWAYS"), entry)
 
 
 def get_current_regime() -> str:

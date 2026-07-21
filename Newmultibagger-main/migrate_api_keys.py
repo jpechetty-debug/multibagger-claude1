@@ -8,7 +8,7 @@ def run_migration():
         "ALTER TABLE api_keys ADD COLUMN total_usage INTEGER DEFAULT 0;",
         "ALTER TABLE api_keys ADD COLUMN updated_at TEXT;"
     ]
-    
+
     for cmd in commands:
         try:
             execute_sql(cmd)
@@ -18,12 +18,12 @@ def run_migration():
                 print(f"Skipped (already exists): {cmd}")
             else:
                 print(f"Error executing {cmd}: {e}")
-                
+
     # Update key hashes using Python instead of relying on SQLite extensions
     try:
         keys = execute_sql("SELECT id, key FROM api_keys", fetch_all=True)
         print(f"Found {len(keys)} API keys to migrate.")
-        
+
         for k in keys:
             key_id = k["id"]
             key_val = k["key"]

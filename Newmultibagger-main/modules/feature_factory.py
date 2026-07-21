@@ -212,7 +212,7 @@ def compute_ownership_signals(symbol: str, data: dict) -> dict[str, float]:
     result: dict[str, float] = {}
 
     # Try PIT data first, fall back to multibaggers table columns
-    for feat, pit_metric, table_key in [
+    for feat, pit_metric, _table_key in [
         ("promoter_buying_3m", "promoter_holding", "promoter_holding"),
         ("dii_change_3m", "dii_holding", "dii_holding"),
         ("fii_change_3m", "fii_holding", "fii_holding"),
@@ -412,13 +412,13 @@ def _compute_sector_rs_ranks(df: pd.DataFrame) -> dict[str, float]:
     if "sector" not in df.columns or "ret_3m" not in df.columns:
         return ranks
 
-    for sector, group in df.groupby("sector"):
+    for _sector, group in df.groupby("sector"):
         if len(group) < 2:
             for sym in group["symbol"]:
                 ranks[sym] = 0.5
             continue
         pct = group["ret_3m"].rank(pct=True, na_option="bottom")
-        for sym, rank_val in zip(group["symbol"], pct):
+        for sym, rank_val in zip(group["symbol"], pct, strict=False):
             ranks[sym] = float(rank_val)
 
     return ranks
@@ -430,14 +430,14 @@ def _compute_pe_vs_sector(df: pd.DataFrame) -> dict[str, float]:
     if "sector" not in df.columns or "pe_ratio" not in df.columns:
         return result
 
-    for sector, group in df.groupby("sector"):
+    for _sector, group in df.groupby("sector"):
         pe_vals = pd.to_numeric(group["pe_ratio"], errors="coerce")
         median_pe = pe_vals.median()
         if median_pe is None or median_pe == 0 or not math.isfinite(median_pe):
             for sym in group["symbol"]:
                 result[sym] = np.nan
             continue
-        for sym, pe in zip(group["symbol"], pe_vals):
+        for sym, pe in zip(group["symbol"], pe_vals, strict=False):
             if math.isfinite(pe) and math.isfinite(median_pe):
                 result[sym] = (pe / median_pe) - 1.0
             else:

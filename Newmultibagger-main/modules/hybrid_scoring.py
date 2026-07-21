@@ -51,18 +51,18 @@ REGRESSOR_WEIGHT = 0.4
 
 # XGBoost hyper-parameters — kept in one place so train + WF folds are identical.
 # These serve as both the default config AND the Optuna warm-start initial trial.
-_XGB_PARAMS: dict[str, Any] = dict(
-    n_estimators=100,
-    learning_rate=0.05,
-    max_depth=4,
-    subsample=0.8,
-    colsample_bytree=0.8,
-    min_child_weight=3,
-    reg_alpha=0.1,
-    reg_lambda=1.0,
-    random_state=42,
-    eval_metric="rmse",
-)
+_XGB_PARAMS: dict[str, Any] = {
+    "n_estimators": 100,
+    "learning_rate": 0.05,
+    "max_depth": 4,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "min_child_weight": 3,
+    "reg_alpha": 0.1,
+    "reg_lambda": 1.0,
+    "random_state": 42,
+    "eval_metric": "rmse",
+}
 
 # SHAP dominance threshold: reject model if any single feature accounts for
 # more than this fraction of total absolute SHAP importance.

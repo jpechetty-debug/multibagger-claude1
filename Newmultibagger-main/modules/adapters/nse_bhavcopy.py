@@ -9,6 +9,7 @@ import os
 import zipfile
 from datetime import datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -53,9 +54,12 @@ _COL_MAP = {
 def _get_bhavcopy_dates(max_lookback: int = 5) -> list[str]:
     """Return date strings (YYYYMMDD) for today and recent trading days."""
     dates = []
-    dt = datetime.now()
-    for _ in range(max_lookback):
-        dates.append(dt.strftime("%Y%m%d"))
+    # Project manifesto requires IST
+    dt = datetime.now(ZoneInfo("Asia/Kolkata"))
+    while len(dates) < max_lookback:
+        # Skip weekends (5=Saturday, 6=Sunday)
+        if dt.weekday() < 5:
+            dates.append(dt.strftime("%Y%m%d"))
         dt -= timedelta(days=1)
     return dates
 
@@ -165,6 +169,12 @@ def _dataframe_to_price_dict(df: pd.DataFrame) -> dict[str, dict]:
             logger.warning(f"Bhavcopy missing symbol column. Columns: {list(df.columns)}")
             return {}
 
+    # Filter for Equity (EQ) and Book Entry (BE) series only if the column exists
+    if "SctySrs" in df.columns:
+        df = df[df["SctySrs"].isin(("EQ", "BE"))]
+    elif "SERIES" in df.columns:
+        df = df[df["SERIES"].isin(("EQ", "BE"))]
+
     sym_col = next(k for k, v in available_cols.items() if v == "symbol")
 
     for _, row in df.iterrows():
@@ -193,7 +203,11 @@ def _dataframe_to_price_dict(df: pd.DataFrame) -> dict[str, dict]:
 
 def get_bhavcopy_price(prices: dict[str, dict], symbol: str) -> float | None:
     """Get closing price for a symbol from bhavcopy data."""
-    data = prices.get(symbol) or prices.get(symbol.replace(".NS", ""))
+    data = (
+        prices.get(symbol) 
+        or prices.get(symbol.replace(".NS", "")) 
+        or prices.get(f"{symbol.replace('.NS', '')}.NS")
+    )
     if data:
         return data.get("close") or data.get("last_price")
     return None

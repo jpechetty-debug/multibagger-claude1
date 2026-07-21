@@ -48,35 +48,35 @@ def get_api_key(request: Request, background_tasks: BackgroundTasks, api_key: st
     key_hash = hashlib.sha256(api_key.encode(), usedforsecurity=False).hexdigest()
     query = "SELECT is_active, rate_limit_rpm FROM api_keys WHERE key_hash = :key_hash"
     results = execute_sql(query, {"key_hash": key_hash}, fetch_all=True)
-    
+
     if not results:
         api_logger.warning("Invalid API key attempt detected.")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid Sovereign API Key")
-        
+
     record = results[0]
     if not record["is_active"]:
         api_logger.warning("Revoked API key attempt detected.")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="API Key has been revoked")
-        
+
     # Rate limiting
     rate_limit = record["rate_limit_rpm"]
     now = time.time()
-    
+
     if key_hash not in _RATE_LIMIT_CACHE:
         _RATE_LIMIT_CACHE[key_hash] = []
-        
+
     # Clean up old timestamps (sliding window)
     timestamps = _RATE_LIMIT_CACHE[key_hash]
     timestamps = [ts for ts in timestamps if now - ts < 60]
-    
+
     if len(timestamps) >= rate_limit:
         api_logger.warning("Rate limit exceeded for API key.")
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Rate limit exceeded")
-        
+
     timestamps.append(now)
     _RATE_LIMIT_CACHE[key_hash] = timestamps
-    
+
     # Increment usage counter asynchronously
     background_tasks.add_task(_increment_usage_in_bg, key_hash)
-    
+
     return api_key

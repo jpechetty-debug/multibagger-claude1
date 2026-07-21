@@ -87,7 +87,7 @@ class YieldRedirectController:
         """
         if required_amount <= 0:
             return 0.0
-            
+
         released = min(required_amount, self.parked_cash)
         self.parked_cash -= released
         _log.info(f"Released ₹{released:,.2f} from Yield Redirect. Remaining Parked: ₹{self.parked_cash:,.2f}")
@@ -103,6 +103,6 @@ class YieldRedirectController:
         # Simple interest approximation for short periods
         daily_rate = self.ANNUAL_YIELD / 365.0
         earned_yield = self.parked_cash * daily_rate * days
-        
+
         _log.info(f"Yield Redirect generated ₹{earned_yield:,.2f} over {days} days on ₹{self.parked_cash:,.2f} parked.")
         return earned_yield

@@ -114,7 +114,7 @@ class RegimeHMM:
             # Predict hidden states for the sequence
             hidden_states = self.model.predict(X)  # type: ignore
             current_state = hidden_states[-1]
-            
+
             regime = self._map_state_to_regime(current_state)
             self._cached_regime = regime
             self._cached_regime_date = target_dt

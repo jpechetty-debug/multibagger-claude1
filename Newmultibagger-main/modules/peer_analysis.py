@@ -99,7 +99,7 @@ _STATIC_SECTOR_MAP = {
 def get_sector(symbol: str) -> str:
     """Get sector for a symbol — DB first, static fallback."""
     # Normalize
-    sym = symbol if symbol.endswith(".NS") or symbol.endswith(".BO") else f"{symbol}.NS"
+    sym = symbol if symbol.endswith((".NS", ".BO")) else f"{symbol}.NS"
 
     # 1. Try DB
     db_map = _get_db_sector_map()
@@ -169,7 +169,7 @@ def _fetch_metrics_from_db(symbol: str) -> dict | None:
                     row = cursor.fetchone()
                     if row:
                         cols = [desc[0] for desc in cursor.description]
-                        data = dict(zip(cols, row))
+                        data = dict(zip(cols, row, strict=False))
                         return _normalize_db_metrics(data, symbol)
                 except sqlite3.OperationalError:
                     continue

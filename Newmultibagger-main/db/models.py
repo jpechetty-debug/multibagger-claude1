@@ -85,7 +85,7 @@ class Multibagger(Base):
     ml_predicted_return = Column(Float)
     shap_breakdown = Column(Text)
     shap_top_drivers = Column(Text)
-    
+
     # Phase 1: New Alpha Data
     ocf_yield = Column(Float)
     earnings_velocity_qoq = Column(Float)
@@ -112,7 +112,7 @@ class FundamentalsPIT(Base):
     debt_equity = Column(Float)
     market_cap_cr = Column(Float)
     cfo_pat_ratio = Column(Float)
-    
+
     # Phase 1: New Alpha Data
     ocf_yield = Column(Float)
     earnings_velocity_qoq = Column(Float)

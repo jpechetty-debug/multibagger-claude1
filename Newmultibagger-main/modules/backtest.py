@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Sequence
+from collections.abc import Sequence
 
 import numpy as np
 import pandas as pd

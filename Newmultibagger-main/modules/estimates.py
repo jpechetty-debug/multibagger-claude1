@@ -385,7 +385,7 @@ def get_estimate_data(
                         row = cursor.fetchone()
                         if row:
                             cols = [d[0] for d in cursor.description]
-                            local_info = dict(zip(cols, row))
+                            local_info = dict(zip(cols, row, strict=False))
                         else:
                             local_info = {}
                 except Exception:

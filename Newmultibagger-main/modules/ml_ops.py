@@ -73,7 +73,7 @@ def get_last_training_info() -> dict[str, Any]:
             if row:
                 keys = ["trained_at", "record_count", "r2_score",
                         "spearman_ic", "hit_rate", "oos_r2", "wf_folds"]
-                return dict(zip(keys, row))
+                return dict(zip(keys, row, strict=False))
     except Exception as exc:
         logger.error(f"Failed to get last training info: {exc}")
     return {}

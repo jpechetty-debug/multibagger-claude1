@@ -67,7 +67,7 @@ def _fallback_rate(currency: str) -> float:
     return _DEFAULT_FALLBACK_RATES_TO_INR.get(currency.upper(), 1.0)
 
 
-def get_rate_to_inr(currency: Optional[str]) -> float:
+def get_rate_to_inr(currency: str | None) -> float:
     """Return the multiplier that converts an amount in ``currency`` to INR.
 
     Tries a live quote first (via yfinance's ``<CCY>INR=X`` FX ticker),
@@ -97,7 +97,7 @@ def get_rate_to_inr(currency: Optional[str]) -> float:
     return rate
 
 
-def _fetch_live_rate(currency: str) -> Optional[float]:
+def _fetch_live_rate(currency: str) -> float | None:
     """Best-effort live FX lookup. Returns None on any failure so the caller
     can fall back gracefully — this must never raise or block scoring."""
     try:
@@ -118,7 +118,7 @@ def _fetch_live_rate(currency: str) -> Optional[float]:
     return None
 
 
-def to_inr_cr(amount: Optional[float], currency: Optional[str]) -> Optional[float]:
+def to_inr_cr(amount: float | None, currency: str | None) -> float | None:
     """Convert a raw monetary amount (in ``currency``) to INR Crore.
 
     Examples:

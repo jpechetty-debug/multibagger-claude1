@@ -46,7 +46,7 @@ def run_pit_audit():
         # To test the logic, we simulate pushing the source_dt forward by 45 days.
         # But look-ahead is strictly as_of_date < source_updated_at.
         # Realignment violation is as_of_date < (source_updated_at + 45 days)
-        
+
         leakage = df[df['as_of_dt'] < df['source_dt'].dt.normalize()]
 
         if not leakage.empty:
@@ -55,15 +55,15 @@ def run_pit_audit():
                 logger.warning(f"  Symbol: {row['symbol']}, AsOf: {row['as_of_date']}, SourceUpdated: {row['source_updated_at']}")
         else:
             logger.info("No strict look-ahead bias detected in PIT table.")
-            
+
         # Check Temporal Realignment Compliance
         # We need to simulate how the engine works
         aligned_df = realignment_engine.align_fundamentals(df, date_column="source_updated_at")
         aligned_df['aligned_source_dt'] = pd.to_datetime(aligned_df['source_updated_at'])
-        
+
         # Check if any as_of_date is before the aligned source date (meaning lag wasn't respected)
         unaligned = aligned_df[aligned_df['as_of_dt'] < aligned_df['aligned_source_dt'].dt.normalize()]
-        
+
         if not unaligned.empty:
             logger.warning(f"DETECTED {len(unaligned)} RECORDS FAILING TEMPORAL REALIGNMENT (45-day lag not respected).")
         else:
