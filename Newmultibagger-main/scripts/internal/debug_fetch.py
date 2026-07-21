@@ -5,6 +5,7 @@ import sys
 # Add root project and Newmultibagger-main to sys.path
 root = os.getcwd()
 sys.path.insert(0, root)
+import modules.adapters.yf_patch  # noqa: F401
 
 from modules.data_service import DataManager
 

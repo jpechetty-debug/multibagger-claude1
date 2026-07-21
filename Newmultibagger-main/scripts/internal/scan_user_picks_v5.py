@@ -3,6 +3,7 @@ import sys
 
 # Add current dir to path to import screener
 sys.path.append(os.getcwd())
+import modules.adapters.yf_patch  # noqa: F401
 
 
 import pandas as pd

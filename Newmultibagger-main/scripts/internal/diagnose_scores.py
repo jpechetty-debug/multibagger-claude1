@@ -1,3 +1,4 @@
+import modules.adapters.yf_patch  # noqa: F401
 import os
 
 """Quick diagnostic of current scores in DB."""

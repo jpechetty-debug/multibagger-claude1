@@ -1,3 +1,4 @@
+import modules.adapters.yf_patch  # noqa: F401
 import json
 import os
 import sqlite3
@@ -5,11 +6,15 @@ import sqlite3
 import numpy as np
 import pandas as pd
 import yfinance as yf
+from datetime import date, timedelta
+from modules.adapters.jugaad import get_jugaad_history
 
 
 def _fetch_recent_volume_and_price(symbol: str) -> tuple:
     try:
-        hist = yf.Ticker(symbol).history(period="20d")
+        to_date = date.today()
+        from_date = to_date - timedelta(days=30)
+        hist = get_jugaad_history(symbol, from_date=from_date, to_date=to_date)
         if (
             hist is not None
             and not hist.empty

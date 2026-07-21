@@ -1,3 +1,4 @@
+import modules.adapters.yf_patch  # noqa: F401
 from __future__ import annotations
 
 import argparse

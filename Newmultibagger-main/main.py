@@ -1,3 +1,4 @@
+import modules.adapters.yf_patch  # noqa: F401
 import asyncio
 import os
 from contextlib import asynccontextmanager

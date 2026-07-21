@@ -1,3 +1,4 @@
+import modules.adapters.yf_patch  # noqa: F401
 import json
 import sqlite3
 from datetime import datetime

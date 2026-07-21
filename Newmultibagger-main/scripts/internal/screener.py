@@ -3,6 +3,7 @@ import sys
 
 # Ensure root directory is in path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+import modules.adapters.yf_patch  # noqa: F401
 
 import asyncio
 import json

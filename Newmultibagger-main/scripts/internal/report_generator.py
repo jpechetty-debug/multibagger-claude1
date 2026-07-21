@@ -1,3 +1,4 @@
+import modules.adapters.yf_patch  # noqa: F401
 """Compatibility shim for legacy top-level imports."""
 
 import sys

@@ -4,6 +4,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import modules.adapters.yf_patch  # noqa: F401
 
 import sqlite3
 from datetime import datetime

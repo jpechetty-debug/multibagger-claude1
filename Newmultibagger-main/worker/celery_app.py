@@ -1,3 +1,4 @@
+import modules.adapters.yf_patch  # noqa: F401
 # worker/celery_app.py
 """
 Sovereign AI Trading Engine v4.0 — Celery Application Configuration

@@ -151,6 +151,7 @@ def main():
     # Add scripts/internal to sys.path so we can import modules from it
     scripts_internal_path = os.path.join(PROJECT_ROOT, "scripts", "internal")
     sys.path.insert(0, scripts_internal_path)
+import modules.adapters.yf_patch  # noqa: F401
 
     # 1. Backtest Picks
     try:

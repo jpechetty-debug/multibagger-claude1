@@ -1,3 +1,4 @@
+import modules.adapters.yf_patch  # noqa: F401
 import requests
 
 BASE_URL = "http://127.0.0.1:8000"

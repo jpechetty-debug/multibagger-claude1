@@ -1,3 +1,4 @@
+import modules.adapters.yf_patch  # noqa: F401
 """
 main.py — Sovereign AI Trading Engine v3.5
 Patches applied for 9+ institutional score:

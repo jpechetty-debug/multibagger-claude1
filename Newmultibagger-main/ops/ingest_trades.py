@@ -5,6 +5,7 @@ import pandas as pd
 
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import modules.adapters.yf_patch  # noqa: F401
 
 try:
     from modules.execution_analyzer import ExecutionAnalyzer

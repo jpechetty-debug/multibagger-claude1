@@ -8,6 +8,7 @@ import pandas as pd
 # Add base dir to path
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_DIR)
+import modules.adapters.yf_patch  # noqa: F401
 import ticker_list
 
 DB_PATH = os.path.join(BASE_DIR, "stocks.db")

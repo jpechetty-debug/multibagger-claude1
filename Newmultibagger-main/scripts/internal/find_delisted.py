@@ -1,3 +1,4 @@
+import modules.adapters.yf_patch  # noqa: F401
 import time
 
 import pandas as pd

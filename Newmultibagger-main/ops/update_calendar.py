@@ -1,3 +1,4 @@
+import modules.adapters.yf_patch  # noqa: F401
 from datetime import datetime
 
 import pandas_market_calendars as mcal

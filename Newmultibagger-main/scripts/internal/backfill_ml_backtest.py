@@ -15,6 +15,7 @@ import time
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import modules.adapters.yf_patch  # noqa: F401
 
 DB_NAME = "stocks.db"
 WRITE_RETRIES = 10

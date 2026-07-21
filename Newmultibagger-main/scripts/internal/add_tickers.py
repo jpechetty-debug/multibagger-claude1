@@ -1,6 +1,7 @@
 import sys
 
 sys.path.append(".")
+import modules.adapters.yf_patch  # noqa: F401
 import ticker_list
 
 try:

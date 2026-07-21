@@ -18,6 +18,7 @@ from datetime import datetime
 # Ensure project modules are importable
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, PROJECT_ROOT)
+import modules.adapters.yf_patch  # noqa: F401
 
 from db.repository import get_connection
 from modules.data_layer.data_service import MarketDataProvider

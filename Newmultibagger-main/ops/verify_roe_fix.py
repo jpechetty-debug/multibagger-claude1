@@ -5,6 +5,7 @@ import sys
 # Add base dir to path
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_DIR)
+import modules.adapters.yf_patch  # noqa: F401
 
 import screener
 from modules.data_utils import safe_float

@@ -12,6 +12,7 @@ import pandas as pd
 # Add root project and Newmultibagger-main to sys.path
 root = os.getcwd()
 sys.path.insert(0, root)
+import modules.adapters.yf_patch  # noqa: F401
 
 import screener
 

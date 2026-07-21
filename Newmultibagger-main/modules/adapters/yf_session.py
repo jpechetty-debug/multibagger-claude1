@@ -8,7 +8,19 @@ from core.observability.logger import get_logger
 logger = get_logger("adapters.yf_session")
 
 class CachedLimiterSession(CacheMixin, LimiterMixin, Session):
-    pass
+    @property
+    def cache(self):
+        import traceback
+        # yfinance 0.2+ checks for session.cache and crashes if found.
+        # We hide it by raising AttributeError when accessed by yfinance.
+        stack = "".join(traceback.format_stack())
+        if "yfinance" in stack:
+            raise AttributeError("Hide cache from yfinance")
+        return self.__dict__.get("_real_cache")
+
+    @cache.setter
+    def cache(self, value):
+        self.__dict__["_real_cache"] = value
 
 _yf_session = None
 

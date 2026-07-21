@@ -7,6 +7,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parents[1]
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
+import modules.adapters.yf_patch  # noqa: F401
 
 from screener import load_universe_flags, refresh_and_get_blocked_symbols, save_universe_flags
 

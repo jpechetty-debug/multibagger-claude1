@@ -1,3 +1,4 @@
+import modules.adapters.yf_patch  # noqa: F401
 import yfinance as yf
 
 symbols = ["INDIGOPNTS.NS", "RELIANCE.NS", "TATAMOTORS.NS", "TATAMOTORS.BO", "ITDCEM.NS"]
