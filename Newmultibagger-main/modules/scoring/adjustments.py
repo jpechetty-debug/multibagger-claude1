@@ -109,6 +109,12 @@ def _calculate_bonus_total(data: _StockData, state: FactorState, sector_boost: _
         elif pat_cagr_3y > 15 and pat_cagr_5y > 15:
             tier_b_bonus += 1
 
+    # FII & DII Accumulation — Net institutional buying in recent quarter
+    fii_change = optional_float(data.get("FII_Change_3M")) or optional_float(data.get("fii_change_3m"))
+    dii_change = optional_float(data.get("DII_Change_3M")) or optional_float(data.get("dii_change_3m"))
+    if fii_change is not None and dii_change is not None and fii_change > 0 and dii_change > 0:
+        tier_b_bonus += 2
+
     tier_b_bonus = min(6, tier_b_bonus)
 
     # ── TIER C: Confirming signals (max 4 pts) ─────────────────────────
@@ -221,6 +227,11 @@ def _apply_penalty_rules(
     elif state.prom_hold > 0 and state.prom_hold < 30:
         total_penalty += 2
         factor_audit.append({"name": "Low Promoter Holding (<30%)", "value": -2})
+
+    cfo_pat = safe_float(data.get("CFO_PAT_Ratio"))
+    if cfo_pat > 0 and cfo_pat < 0.5:
+        total_penalty += 5
+        factor_audit.append({"name": "Weak Cash Flow Conversion (CFO/PAT < 0.5)", "value": -5})
 
     return base_score - total_penalty
 
