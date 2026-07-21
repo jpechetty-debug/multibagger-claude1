@@ -19,18 +19,27 @@ def get_jugaad_history(symbol: str, from_date: date, to_date: date) -> pd.DataFr
     
     try:
         data = stock_df(symbol=nse_symbol, from_date=from_date, to_date=to_date)
-        if not data:
+    except Exception as e:
+        logger.warning(f"jugaad-data failed for {symbol}: {e}")
+        return pd.DataFrame()
+
+    if data is None:
+        return pd.DataFrame()
+    if isinstance(data, pd.DataFrame):
+        if data.empty:
             return pd.DataFrame()
-            
-        df = pd.DataFrame(data)
-        if df.empty:
-            return df
-            
-        # jugaad-data schema map to standard yfinance schema
-        if "DATE" in df.columns:
-            df["Date"] = pd.to_datetime(df["DATE"])
-        else:
-            df["Date"] = pd.to_datetime(df.index)
+    elif not data:
+        return pd.DataFrame()
+        
+    df = pd.DataFrame(data)
+    if df.empty:
+        return df
+        
+    # jugaad-data schema map to standard yfinance schema
+    if "DATE" in df.columns:
+        df["Date"] = pd.to_datetime(df["DATE"])
+    else:
+        df["Date"] = pd.to_datetime(df.index)
             
         df = df.set_index("Date")
         
