@@ -342,3 +342,16 @@ class MlMetadata(Base):
     oos_r2       = Column(Float)
     wf_folds     = Column(Integer)
     model_path   = Column(Text)
+
+
+class ApiKey(Base):
+    __tablename__ = "api_keys"
+
+    key_hash = Column(String(64), primary_key=True)
+    consumer_name = Column(String(100), nullable=False)
+    is_active = Column(Integer, nullable=False, default=1)
+    rate_limit_rpm = Column(Integer, nullable=False, default=60)
+    total_usage = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, default=_utc_now, nullable=False)
+    updated_at = Column(DateTime, default=_utc_now, onupdate=_utc_now, nullable=False)
+

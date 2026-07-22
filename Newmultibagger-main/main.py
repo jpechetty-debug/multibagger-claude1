@@ -45,6 +45,8 @@ async def lifespan(app):
     bg_task = None
     from modules.runtime_settings import runtime_settings
     from core.observability.logger import get_logger
+    from db.repository import init_db
+    init_db()
     runtime_logger = get_logger("sovereign.runtime")
 
     if runtime_settings.embed_price_updater_in_web:
