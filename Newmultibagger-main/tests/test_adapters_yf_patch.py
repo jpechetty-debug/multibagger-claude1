@@ -1,31 +1,43 @@
 import pytest
 import yfinance as yf
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
+import time
+
 
 def test_yf_is_patched():
-    # Make sure yf_patch is loaded
-    import modules.adapters.yf_patch 
-    
+    """Importing yf_patch should set yf._is_patched = True."""
+    import modules.adapters.yf_patch
+
     assert getattr(yf, "_is_patched", False)
 
-@patch("modules.adapters.yf_patch.get_yf_session")
-def test_patched_ticker_uses_session(mock_get_session):
-    import modules.adapters.yf_patch
-    
-    # Passing no session should trigger injection
-    t = yf.Ticker("RELIANCE.NS")
-    mock_get_session.assert_called()
 
-@patch("modules.adapters.yf_patch.get_yf_session")
-def test_patched_download_uses_session(mock_get_session):
-    import modules.adapters.yf_patch
-    
-    # We mock the _original_download so we don't actually hit the network
-    with patch("modules.adapters.yf_patch._original_download") as mock_orig:
-        yf.download("RELIANCE.NS", period="1d")
-        
-        mock_get_session.assert_called()
-        
-        # Verify the session was passed down to the original function
-        mock_orig.assert_called_once()
-        assert "session" in mock_orig.call_args[1]
+def test_make_request_is_monkey_patched():
+    """The shipped patch replaces yf.data.YfData._make_request with a
+    rate-limited wrapper.  Verify the method object is NOT the original."""
+    import modules.adapters.yf_patch as yf_patch
+
+    current_method = yf.data.YfData._make_request
+    # The patched method should be yf_patch._rate_limited_make_request
+    assert current_method is yf_patch._rate_limited_make_request
+
+
+def test_rate_limit_enforced():
+    """Two rapid calls should be separated by at least ~0.5 s by the patch."""
+    import modules.adapters.yf_patch as yf_patch
+
+    call_log = []
+
+    def fake_original(self, *args, **kwargs):
+        call_log.append(time.monotonic())
+        return MagicMock()
+
+    with patch.object(yf_patch, "_original_make_request", fake_original):
+        dummy_self = MagicMock()
+        yf_patch._rate_limited_make_request(dummy_self, "url1")
+        yf_patch._rate_limited_make_request(dummy_self, "url2")
+
+    assert len(call_log) == 2
+    gap = call_log[1] - call_log[0]
+    # The limiter sleeps when gap < 0.5 s, so total should be >= 0.45 s
+    # (small tolerance for timer precision)
+    assert gap >= 0.4, f"Expected >=0.4 s between calls, got {gap:.3f} s"

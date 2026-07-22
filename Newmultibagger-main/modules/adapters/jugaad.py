@@ -30,19 +30,20 @@ def get_jugaad_history(symbol: str, from_date: date, to_date: date) -> pd.DataFr
             return pd.DataFrame()
     elif not data:
         return pd.DataFrame()
-        
-    df = pd.DataFrame(data)
-    if df.empty:
-        return df
-        
-    # jugaad-data schema map to standard yfinance schema
-    if "DATE" in df.columns:
-        df["Date"] = pd.to_datetime(df["DATE"])
-    else:
-        df["Date"] = pd.to_datetime(df.index)
-            
+
+    try:
+        df = pd.DataFrame(data)
+        if df.empty:
+            return df
+
+        # jugaad-data schema map to standard yfinance schema
+        if "DATE" in df.columns:
+            df["Date"] = pd.to_datetime(df["DATE"])
+        else:
+            df["Date"] = pd.to_datetime(df.index)
+
         df = df.set_index("Date")
-        
+
         # Standardize columns to Title Case like yfinance
         rename_map = {
             "OPEN": "Open", "HIGH": "High", "LOW": "Low", 
@@ -51,10 +52,10 @@ def get_jugaad_history(symbol: str, from_date: date, to_date: date) -> pd.DataFr
         }
         df.rename(columns=rename_map, inplace=True)
         df.sort_index(inplace=True)
-        
+
         # Ensure we return only the standard columns if they exist
         cols = [c for c in ["Open", "High", "Low", "Close", "Volume"] if c in df.columns]
         return df[cols]
     except Exception as e:
-        logger.error(f"jugaad-data failed for {symbol}: {e}")
+        logger.error(f"jugaad-data normalization failed for {symbol}: {e}")
         return pd.DataFrame()
