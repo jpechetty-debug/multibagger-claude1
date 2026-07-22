@@ -7,7 +7,7 @@ def backtest_picks():
     # Load the Top 5 Picks from the CSV we just generated
     try:
         picks_df = pd.read_csv("screener_results.csv")
-        symbols = picks_df["Symbol"].tolist()
+        symbols = picks_df["Symbol"].head(5).tolist()
     except FileNotFoundError:
         print("screener_results.csv not found. Using default list.")
         symbols = ["DATAPATTNS.NS", "PRICOLLTD.NS", "BSE.NS", "SANGHVIMOV.NS", "SARDAEN.NS"]
