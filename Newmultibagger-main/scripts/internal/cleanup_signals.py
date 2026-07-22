@@ -1,5 +1,5 @@
-import modules.adapters.yf_patch  # noqa: F401
 from __future__ import annotations
+import modules.adapters.yf_patch  # noqa: F401
 
 import argparse
 import sqlite3

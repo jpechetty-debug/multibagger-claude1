@@ -26,6 +26,7 @@ def analyze_vif():
     # 2. Select Numerical Factors for Analysis
     # We want to check if any of these are saying the same thing
     factors = [
+        "score",
         "roe",
         "avg_roe_5y",  # Quality
         "sales_growth",

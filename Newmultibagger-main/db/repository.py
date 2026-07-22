@@ -141,6 +141,9 @@ def _ensure_fundamentals_pit_table(conn):
         )
         """
     )
+    _ensure_column(conn, "fundamentals_pit", "promoter_holding", "REAL")
+    _ensure_column(conn, "fundamentals_pit", "fii_holding", "REAL")
+    _ensure_column(conn, "fundamentals_pit", "dii_holding", "REAL")
     conn.execute(
         """
         CREATE INDEX IF NOT EXISTS idx_fundamentals_pit_as_of_date
@@ -292,6 +295,9 @@ def _write_fundamentals_snapshot(df_db):
                 row.get("vol_breakout"),
                 row.get("dist_from_52w_high"),
                 row.get("ml_rank_score"),
+                row.get("promoter_holding"),
+                row.get("fii_holding"),
+                row.get("dii_holding"),
                 _to_sql_timestamp(row.get("updated_at")),
             )
         )
@@ -308,9 +314,10 @@ def _write_fundamentals_snapshot(df_db):
                     sales_cagr_5y, avg_roe_5y, pe_ratio, debt_equity,
                     market_cap_cr, cfo_pat_ratio, high_52w, low_52w,
                     roce, median_pat_growth, ret_1m, ret_3m, ret_6m,
-                    vol_breakout, dist_from_52w_high, ml_rank_score, source_updated_at
+                    vol_breakout, dist_from_52w_high, ml_rank_score,
+                    promoter_holding, fii_holding, dii_holding, source_updated_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 records,
             )

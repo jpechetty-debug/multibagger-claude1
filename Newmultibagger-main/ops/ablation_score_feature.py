@@ -107,19 +107,10 @@ def load_training_frame() -> tuple[pd.DataFrame, pd.DataFrame]:
 
     train_df = hs._build_training_frame(df)
     if train_df.empty or len(train_df) < 10:
-        logger.warning("No forward-return targets in DB — generating proxy returns from 6M returns/fundamentals for ablation")
-        train_df = df.copy()
-        # Compute extended features
-        feat_df = hs.compute_features_batch(train_df)
-        for col in hs.FEATURES:
-            if col in feat_df.columns:
-                train_df[col] = feat_df[col].values
-        train_df = hs._sanitize_features(train_df)
-        # Use ret_6m / 100 or fundamental composite (without score) as target proxy
-        ret6m = pd.to_numeric(train_df.get("ret_6m", 0.0), errors="coerce").fillna(0.0) / 100.0
-        roe = (pd.to_numeric(train_df.get("avg_roe_5y", 0.0), errors="coerce").clip(-50, 100).fillna(0.0) / 100.0)
-        cfo = (pd.to_numeric(train_df.get("cfo_pat_ratio", 0.0), errors="coerce").clip(0, 3).fillna(0.0) / 3.0)
-        train_df["forward_return"] = 0.5 * ret6m + 0.3 * roe + 0.2 * cfo
+        raise SystemExit(
+            f"Only {len(train_df)} rows with valid forward-return targets (need >= 10). "
+            "Ablation requires real historical data, not synthetic labels."
+        )
 
     try:
         from modules.holdout import split_holdout

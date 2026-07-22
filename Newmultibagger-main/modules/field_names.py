@@ -45,6 +45,8 @@ FIELD_MAPPING: dict[str, str] = {
     "Analyst_Upside%": "analyst_upside",
     "Promoter_Holding%": "promoter_holding",
     "Inst_Holding%": "inst_holding",
+    "FII_Holding%": "fii_holding",
+    "DII_Holding%": "dii_holding",
     "ATR": "atr",
     "Stop_Loss_ATR": "stop_loss_atr",
     "Max_Qty_1L": "max_qty_1l",
