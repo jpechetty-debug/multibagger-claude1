@@ -361,6 +361,9 @@ def _write_fundamentals_snapshot(df_db):
                 "debt_equity": row.get("debt_equity"),
                 "cfo_pat_ratio": row.get("cfo_pat_ratio"),
                 "market_cap_cr": row.get("market_cap_cr"),
+                "promoter_holding": row.get("promoter_holding"),
+                "fii_holding": row.get("fii_holding"),
+                "dii_holding": row.get("dii_holding"),
             }
 
             for m_name, m_val in metrics.items():

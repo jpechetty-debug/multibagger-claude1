@@ -209,6 +209,9 @@ def test_write_fundamentals_snapshot_normalizes_dates_and_syncs_pit_store(tmp_pa
                     "debt_equity": 0.25,
                     "market_cap_cr": 4200.0,
                     "cfo_pat_ratio": 1.35,
+                    "promoter_holding": 62.34,
+                    "fii_holding": 15.11,
+                    "dii_holding": 9.87,
                     "updated_at": pd.Timestamp("2026-02-19 10:15:30"),
                 }
             ]
@@ -219,7 +222,8 @@ def test_write_fundamentals_snapshot_normalizes_dates_and_syncs_pit_store(tmp_pa
     try:
         snapshot_row = pd.read_sql(
             """
-            SELECT symbol, as_of_date, source_updated_at, score, sales_cagr_5y
+            SELECT symbol, as_of_date, source_updated_at, score, sales_cagr_5y,
+                   promoter_holding, fii_holding, dii_holding
             FROM fundamentals_pit
             """,
             conn,
@@ -232,6 +236,9 @@ def test_write_fundamentals_snapshot_normalizes_dates_and_syncs_pit_store(tmp_pa
     assert snapshot_row["symbol"] == "AAA.NS"
     assert snapshot_row["as_of_date"] == "2026-02-20"
     assert snapshot_row["source_updated_at"] == "2026-02-19 10:15:30"
+    assert snapshot_row["promoter_holding"] == 62.34
+    assert snapshot_row["fii_holding"] == 15.11
+    assert snapshot_row["dii_holding"] == 9.87
     assert {
         "score",
         "sales_cagr_5y",
@@ -240,5 +247,8 @@ def test_write_fundamentals_snapshot_normalizes_dates_and_syncs_pit_store(tmp_pa
         "debt_equity",
         "cfo_pat_ratio",
         "market_cap_cr",
+        "promoter_holding",
+        "fii_holding",
+        "dii_holding",
     } <= metric_names
     assert inserted_records[-1] == ("closed",)
