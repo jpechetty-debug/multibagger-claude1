@@ -1,7 +1,10 @@
 # db/models.py
 """
 SQLAlchemy 2.0 ORM Models — Sovereign AI Trading Engine v4.0
-Mirrors the existing SQLite schema for seamless PostgreSQL/TimescaleDB migration.
+
+WARNING: This file is for documentation and IDE type-hinting only.
+It is NOT fully synchronized with the actual database schema. 
+DO NOT use `alembic revision --autogenerate` against these models.
 """
 
 from datetime import UTC, datetime

@@ -66,7 +66,6 @@ function readErrorMessage(payload: unknown, fallback: string): string {
 
 async function fetchJson<T>(path: string, timeoutMs: number = 15000): Promise<T> {
   const apiKey = import.meta.env.VITE_SOVEREIGN_API_KEY?.trim()
-  console.log(`[fetchJson] path: ${path}, apiKey from env: ${apiKey ? "FOUND" : "MISSING"}`)
   const requestInit = apiKey
     ? { headers: { [API_KEY_HEADER]: apiKey } }
     : undefined
