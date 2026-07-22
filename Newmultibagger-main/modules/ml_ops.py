@@ -19,7 +19,6 @@ from modules.hybrid_scoring import (
     MODEL_PATH,
     batch_predict,
     get_feature_importance,
-    predict_and_explain,
     train_hybrid_model,
 )
 from modules.data_layer.db_utils import get_db_connection    # ← FIXED: was modules.db_utils

@@ -6,11 +6,8 @@
 from __future__ import annotations
 
 import json
-import os
 import sys
-import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
@@ -29,8 +26,6 @@ from modules.hybrid_scoring import (
     FEATURES,
     HOLDOUT_END,
     HOLDOUT_START,
-    PredictionResult,
-    WalkForwardResult,
     _alias_factors,
     _finite_or_none,
     _sanitize_features,
@@ -344,7 +339,7 @@ class TestFeatureLeakageAudit:
         assert isinstance(report.review_count,   int)
 
     def test_high_correlation_momentum_feature_flagged(self):
-        from modules.feature_leakage_audit import audit_features, SPEARMAN_LEAK_THRESHOLD
+        from modules.feature_leakage_audit import audit_features
 
         n = 50
         y = np.linspace(0, 1, n)

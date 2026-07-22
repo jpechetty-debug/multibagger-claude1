@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Any, cast
 import logging
 import numpy as np
 import pandas as pd
@@ -30,7 +29,6 @@ from backtest.liquidity_filter import LiquidityFilter
 
 
 from config import (
-    TRANSACTION_COST,
     TC_STT_SELL,
     TC_EXCHANGE,
     TC_SEBI_FEE,

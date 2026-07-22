@@ -1,4 +1,3 @@
-import asyncio
 from datetime import date
 import pandas as pd
 from jugaad_data.nse import stock_df

@@ -1,4 +1,3 @@
-import pytest
 import yfinance as yf
 from unittest.mock import patch, MagicMock
 import time
@@ -6,7 +5,6 @@ import time
 
 def test_yf_is_patched():
     """Importing yf_patch should set yf._is_patched = True."""
-    import modules.adapters.yf_patch
 
     assert getattr(yf, "_is_patched", False)
 

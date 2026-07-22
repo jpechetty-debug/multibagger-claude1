@@ -31,13 +31,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
-import shap
 
 import modules.hybrid_scoring as hs
 from modules.data_layer.db_utils import get_db_connection

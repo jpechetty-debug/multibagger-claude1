@@ -207,7 +207,7 @@ async def get_multibaggers(request: Request, as_of_date: str | None = None):
 
         return _json_safe_clean(records)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch stocks: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch stocks: {e}") from e
 
 
 @router.get("/api/multibagger-hunt", response_model=list[MultibaggerOut])
@@ -235,7 +235,6 @@ async def get_multibagger_hunt(request: Request):
         """
 
         def _run_duckdb_query():
-            from db.db_core import duck_conn
 
             # Execute natively in DuckDB and fetch as Pandas DataFrame
             df = _duck_query(query)
@@ -256,7 +255,7 @@ async def get_multibagger_hunt(request: Request):
 
         return _json_safe_clean(records)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch multibagger hunt: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch multibagger hunt: {e}") from e
 
 
 @router.get("/api/thesis/{symbol}")
@@ -287,7 +286,7 @@ async def get_llm_thesis(request: Request, symbol: str):
         thesis = await _run_blocking(generate_thesis, stock_data)
         return {"thesis": thesis}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Thesis generation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Thesis generation failed: {e}") from e
 
 
 @router.get("/api/history/{symbol}")
@@ -343,7 +342,7 @@ async def get_microcaps(request: Request):
                 "SELECT * FROM multibaggers WHERE market_cap_cr < 500 OR market_cap_cr IS NULL ORDER BY score DESC"
             )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch microcaps: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch microcaps: {e}") from e
 
 
 @router.get("/api/thesis_status/{symbol}")
@@ -363,7 +362,7 @@ async def get_thesis_status(request: Request, symbol: str):
             result["thesis_detail"] = thesis
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Thesis status check failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Thesis status check failed: {e}") from e
 
 
 @router.get("/api/valuation/{symbol}")
@@ -537,7 +536,7 @@ async def get_valuation(request: Request, symbol: str, as_of_date: str | None = 
         return _json_safe_clean(_normalize_valuation_payload(metrics))
     except Exception as e:
         api_logger.error("Valuation failed", symbol=symbol, error=str(e))
-        raise HTTPException(status_code=500, detail=f"Valuation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Valuation failed: {e}") from e
 
 
 @router.get("/api/financials/{symbol}")
@@ -594,7 +593,7 @@ async def get_governance_data(request: Request, symbol: str):
 
         return await _run_blocking(_fetch_gov_data)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Governance data fetch failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Governance data fetch failed: {e}") from e
 
 
 @router.get("/api/peers/{symbol}")
@@ -647,7 +646,7 @@ async def get_stock_peers(request: Request, symbol: str):
 
         return await _run_blocking(_get_peers)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Peer comparison failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Peer comparison failed: {e}") from e
 
 
 @router.get("/api/technicals/{symbol}")
@@ -659,7 +658,7 @@ async def get_technicals(request: Request, symbol: str):
 
         return _json_safe_clean(await get_technical_analysis(symbol))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Technical analysis failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Technical analysis failed: {e}") from e
 
 
 @router.get("/api/promoter/{symbol}")
@@ -673,7 +672,7 @@ async def get_promoter_intel(request: Request, symbol: str):
             symbol += ".NS"
         return await _run_blocking(calculate_promoter_score, symbol)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Promoter intel failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Promoter intel failed: {e}") from e
 
 
 @router.get("/api/shareholding/{symbol}")
@@ -706,7 +705,7 @@ async def quarterly_results_endpoint(request: Request, symbol: str, quarters: in
         _cache_set(cache_key, cleaned)
         return cleaned
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch quarterly results: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch quarterly results: {e}") from e
 
 
 @router.get("/api/price-fundamentals/{symbol}")
@@ -729,7 +728,7 @@ async def price_fundamentals_endpoint(request: Request, symbol: str, years: int 
         _cache_set(full_cache_key, cleaned)
         return cleaned
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch price vs fundamentals: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch price vs fundamentals: {e}") from e
 
 
 @router.get("/api/estimates/{symbol}")

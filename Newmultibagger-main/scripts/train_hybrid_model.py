@@ -188,7 +188,7 @@ Examples
         try:
             import pandas as pd
             from modules.data_layer.db_utils import get_db_connection
-            from modules.hybrid_scoring import optuna_optimize, _XGB_PARAMS
+            from modules.hybrid_scoring import optuna_optimize
 
             with get_db_connection("stocks.db") as conn:
                 df = pd.read_sql(

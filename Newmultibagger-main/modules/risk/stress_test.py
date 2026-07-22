@@ -9,7 +9,6 @@ def _build_weights(portfolio_stocks, weights=None):
 
 
 import pandas as pd
-import numpy as np
 
 def _calculate_1yr_beta(symbol: str) -> float | None:
     try:

@@ -191,7 +191,7 @@ async def factor_exposure_meta():
         return meta
     except Exception as exc:
         _log.error("factor_meta failed", error=str(exc))
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.get("/api/factor-exposure")
@@ -217,11 +217,11 @@ async def get_factor_exposure(
             if val is not None:
                 try:
                     date.fromisoformat(val)
-                except ValueError:
+                except ValueError as exc:
                     raise HTTPException(
                         status_code=400,
                         detail=f"Invalid {label} date '{val}'. Use YYYY-MM-DD.",
-                    )
+                    ) from exc
 
         result = await _run_blocking(_run_factor_analysis, start, end)
         # Surface the sentinel error produced when HTTPException can't be raised in thread
@@ -233,4 +233,4 @@ async def get_factor_exposure(
         raise
     except Exception as exc:
         _log.error("factor_exposure failed", error=str(exc))
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from exc

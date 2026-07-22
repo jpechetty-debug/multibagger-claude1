@@ -1,7 +1,6 @@
 import argparse
 import hashlib
 import secrets
-from datetime import datetime
 import sys
 import os
 

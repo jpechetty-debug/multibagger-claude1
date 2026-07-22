@@ -1,6 +1,6 @@
 from core.observability.logger import get_logger
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 logger = get_logger("adapters.base")
 

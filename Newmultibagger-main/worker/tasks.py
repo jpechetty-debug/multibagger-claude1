@@ -7,7 +7,6 @@ All logging via SovereignLogger (structured JSON + console).
 
 import os
 import sys
-import traceback
 from datetime import datetime
 from typing import Any
 
@@ -385,7 +384,7 @@ def refresh_stale_data(self, symbol: str):
         logger.info("Stale data refreshed", symbol=symbol)
     except Exception as exc:
         logger.warning("refresh_stale_data failed", symbol=symbol, error=str(exc))
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
 
 
 @app.task(name="worker.tasks.batch_ml_inference", time_limit=600)
@@ -435,7 +434,6 @@ def check_factor_data_freshness():
     )
     import asyncio
     import os
-    from pathlib import Path
     from datetime import date
 
     max_age = int(os.getenv("FACTOR_STALENESS_DAYS", "45"))

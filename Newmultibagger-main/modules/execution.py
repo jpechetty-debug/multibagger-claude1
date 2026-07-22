@@ -9,7 +9,7 @@ executions via idempotency checks and maintains strict state transitions based
 on broker acknowledgements.
 """
 
-from typing import Any, Optional
+from typing import Any
 import datetime
 from core.observability.logger import get_logger
 

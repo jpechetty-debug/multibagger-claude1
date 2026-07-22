@@ -10,8 +10,6 @@ All public functions maintain identical signatures to the legacy module
 for backwards compatibility.
 """
 
-import os
-import sqlite3
 import time
 from datetime import datetime
 

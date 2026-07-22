@@ -1,4 +1,3 @@
-import os
 import sqlite3
 from typing import Any
 from modules.db_utils import get_db_connection

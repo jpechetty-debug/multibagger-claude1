@@ -1,7 +1,5 @@
 import pandas as pd
 from datetime import datetime
-from zoneinfo import ZoneInfo
-import pytest
 
 from modules.adapters.nse_bhavcopy import (
     _get_bhavcopy_dates,

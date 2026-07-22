@@ -81,7 +81,6 @@ def _fetch_from_yfinance(yf_symbol: str) -> dict:
     Live fallback: pull 20-day OHLCV from yfinance and compute
     10-day average volume, current price, and ATR.
     """
-    import numpy as np
     import yfinance as yf
 
     ticker = yf.Ticker(yf_symbol)

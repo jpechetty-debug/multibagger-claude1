@@ -12,10 +12,9 @@ tests run without any live market data, WeasyPrint install, or web-ui directory.
 
 from __future__ import annotations
 
-import importlib
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -122,7 +121,6 @@ async def test_missing_html_triggers_generation(tmp_path, monkeypatch):
 
     fake_doc.write_pdf.side_effect = _fake_write_pdf
 
-    import modules.reporting.html_report
     with patch(
         "modules.reporting.html_report.generate_premium_html_report",
         side_effect=_fake_generate,
@@ -281,7 +279,6 @@ async def test_pdf_route_returns_200_with_file(tmp_path):
     the correct Content-Disposition attachment filename.
     """
     from httpx import AsyncClient, ASGITransport
-    from fastapi import FastAPI
     from app_routes.public import router
 
     # Create a real dummy PDF file

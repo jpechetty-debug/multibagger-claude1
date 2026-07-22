@@ -127,7 +127,7 @@ async def trigger_training(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Training failed: {exc}",
-        )
+        ) from exc
 
 
 @router.post("/inference", status_code=status.HTTP_202_ACCEPTED)
@@ -161,7 +161,7 @@ async def trigger_batch_inference(_: str = Depends(get_api_key)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Inference failed: {exc}",
-        )
+        ) from exc
 
 
 @router.get("/explain/{symbol}")
@@ -205,7 +205,7 @@ async def explain_stock(
             ).fetchone()
     except Exception as exc:
         _log.error("DB lookup failed in /explain", symbol=symbol, error=str(exc))
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     if not row:
         raise HTTPException(

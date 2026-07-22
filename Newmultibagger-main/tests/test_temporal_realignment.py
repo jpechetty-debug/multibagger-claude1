@@ -1,7 +1,6 @@
 """Tests for Phase 6.2: Temporal Realignment Engine."""
 
 import pandas as pd
-import pytest
 
 import sys
 from pathlib import Path

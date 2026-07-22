@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -45,7 +45,6 @@ _curl_stub.requests = _curl_requests_stub  # type: ignore[attr-defined]
 sys.modules.setdefault("curl_cffi", _curl_stub)
 sys.modules.setdefault("curl_cffi.requests", _curl_requests_stub)
 
-import bs4 as _bs4_check  # should be installed in the project
 
 from modules.adapters.screener_in import (
     ScreenerInProvider,

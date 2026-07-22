@@ -1,7 +1,5 @@
 """Tests for Phase 6.3: Friction Replay Simulator."""
 
-import pytest
-import numpy as np
 
 import sys
 from pathlib import Path

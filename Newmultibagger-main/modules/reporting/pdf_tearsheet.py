@@ -29,9 +29,7 @@ WeasyPrint install
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
-from datetime import datetime
 
 from core.observability.logger import get_logger
 
@@ -118,7 +116,7 @@ async def generate_pdf_tearsheet(symbol: str) -> str:
     # 0. WeasyPrint availability guard
     # ------------------------------------------------------------------
     try:
-        from weasyprint import HTML as WPHtml, CSS as WPCss  # noqa: N814
+        from weasyprint import HTML as WPHtml  # noqa: N814
     except ImportError as exc:
         raise RuntimeError(
             "WeasyPrint is not installed. "

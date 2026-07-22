@@ -28,14 +28,14 @@ class YFinanceSource(DataSource):
                 "cash_flow": ticker.cashflow,
             }
         except Exception as e:
-            raise Exception(f"YFinance fundamentals failed: {e}")
+            raise Exception(f"YFinance fundamentals failed: {e}") from e
 
     def fetch_history(self, symbol: str, period: str = "1y") -> pd.DataFrame:
         try:
             ticker = yf.Ticker(symbol)
             return ticker.history(period=period, auto_adjust=True)
         except Exception as e:
-            raise Exception(f"YFinance history failed: {e}")
+            raise Exception(f"YFinance history failed: {e}") from e
 
     def fetch_quarterly_results(self, symbol: str) -> list[dict]:
         try:
@@ -101,4 +101,4 @@ class YFinanceSource(DataSource):
             return timeline
 
         except Exception as e:
-            raise Exception(f"YFinance quarterly results failed: {e}")
+            raise Exception(f"YFinance quarterly results failed: {e}") from e

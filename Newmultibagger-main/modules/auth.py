@@ -2,6 +2,7 @@
 import os
 import time
 import hashlib
+import secrets
 
 from fastapi import Depends, HTTPException, status, Request, BackgroundTasks
 from fastapi.security import APIKeyHeader
@@ -41,7 +42,7 @@ def get_api_key(request: Request, background_tasks: BackgroundTasks, api_key: st
         )
 
     # Allow fallback master key if defined
-    if expected_key and api_key == expected_key:
+    if expected_key and secrets.compare_digest(api_key, expected_key):
         return api_key
 
     # Check against database

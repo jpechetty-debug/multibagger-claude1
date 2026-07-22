@@ -8,7 +8,7 @@ import asyncio
 import functools
 import inspect
 from collections.abc import Callable
-from typing import Any, Optional
+from typing import Any
 
 from modules.runtime_settings import runtime_settings
 from worker.redis_cache import cache as redis_cache, DEFAULT_TTL

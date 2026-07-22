@@ -27,7 +27,6 @@ from modules.connections import (
     get_connection,
 )
 from modules.auth import get_api_key
-from modules.dependencies import update_prices_background
 from core.observability.logger import get_logger
 
 app_logger = get_logger("sovereign.app")
@@ -204,6 +203,35 @@ static_dir = WEB_UI_DIR / "dist" if (WEB_UI_DIR / "dist").exists() else WEB_UI_D
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 
+
+
+# ── Gate 1: Non-blocking async endpoint patterns ───────────────────────────────────
+
+from modules.risk.risk import RiskGovernor as _RiskGovernor
+from modules.tracking.tracker import PortfolioTracker as _PortfolioTracker
+
+_risk_governor = _RiskGovernor()
+_tracker       = _PortfolioTracker()
+
+
+
+@app.get("/api/multibaggers-async")
+async def get_multibaggers(api_key: str = Depends(get_api_key)):
+    """Non-blocking multibagger list via ScreenerRepository."""
+    from modules.data_layer.data_service import fetch_screener_rows
+    rows = await fetch_screener_rows(limit=100)
+    return {"multibaggers": [r.model_dump() for r in rows]}
+
+
+@app.get("/api/microcaps-async")
+async def get_microcaps(api_key: str = Depends(get_api_key)):
+    """Non-blocking microcap list (market_cap_cr < 500)."""
+    from modules.data_layer.data_service import fetch_screener_rows
+    all_rows = await fetch_screener_rows(limit=500)
+    micros = [r.model_dump() for r in all_rows if (r.market_cap_cr or 9999) < 500]
+    return {"microcaps": micros[:50]}
+
+
 if __name__ == "__main__":
     import uvicorn
 
@@ -233,33 +261,3 @@ if __name__ == "__main__":
         reload=os.getenv("SOVEREIGN_RELOAD", "false").lower() == "true",
         reload_excludes=["*.db", "*.db-journal", "*.db-wal", "*.log", "*.txt"],
     )
-
-
-# ── Gate 1: Non-blocking async endpoint patterns ───────────────────────────────────
-
-from modules.risk.risk import RiskGovernor as _RiskGovernor
-from modules.tracking.tracker import PortfolioTracker as _PortfolioTracker
-from database import weekly_audit_loop as _weekly_audit_loop
-
-_risk_governor = _RiskGovernor()
-_tracker       = _PortfolioTracker()
-
-
-
-@app.get("/api/multibaggers-async")
-async def get_multibaggers(api_key: str = Depends(get_api_key)):
-    """Non-blocking multibagger list via ScreenerRepository."""
-    from modules.data_layer.data_service import fetch_screener_rows
-    rows = await fetch_screener_rows(limit=100)
-    return {"multibaggers": [r.model_dump() for r in rows]}
-
-
-@app.get("/api/microcaps-async")
-async def get_microcaps(api_key: str = Depends(get_api_key)):
-    """Non-blocking microcap list (market_cap_cr < 500)."""
-    from modules.data_layer.data_service import fetch_screener_rows
-    all_rows = await fetch_screener_rows(limit=500)
-    micros = [r.model_dump() for r in all_rows if (r.market_cap_cr or 9999) < 500]
-    return {"microcaps": micros[:50]}
-
-

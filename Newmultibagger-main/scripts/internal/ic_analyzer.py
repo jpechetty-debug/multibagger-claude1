@@ -13,7 +13,6 @@ from scipy.stats import spearmanr
 from modules.connections import DB_PATH
 from modules.hybrid_scoring import FEATURES
 
-import yfinance as yf
 
 from modules.price_utils import fetch_forward_prices
 

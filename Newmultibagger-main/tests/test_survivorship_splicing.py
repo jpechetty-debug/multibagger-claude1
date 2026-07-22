@@ -1,6 +1,5 @@
 """Tests for Phase 6.1: Survivorship Bias Adjustment Rig."""
 
-import pytest
 import pandas as pd
 from unittest.mock import MagicMock, patch
 

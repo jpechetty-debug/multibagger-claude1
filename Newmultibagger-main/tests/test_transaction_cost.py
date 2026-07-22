@@ -165,7 +165,6 @@ class TestComputeRoundTripCost:
 
     def test_explicit_adv_30d_overrides_cap_category(self, monkeypatch):
         mod = _load_engine(monkeypatch)
-        import config
         # With a very large ADV → near-zero impact
         high_adv = mod.compute_round_trip_cost("Small", trade_value=1.0, adv_30d=1e9)
         # With cap-based (small) → higher impact

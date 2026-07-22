@@ -80,7 +80,7 @@ class NSESource(DataSource):
                 "cash_flow": pd.DataFrame(),
             }
         except Exception as e:
-            raise Exception(f"NSE fundamentals failed: {e}")
+            raise Exception(f"NSE fundamentals failed: {e}") from e
 
     def fetch_history(self, symbol: str, period: str = "1y") -> pd.DataFrame:
         # NSE history requires different endpoint and date params
@@ -108,7 +108,7 @@ class NSESource(DataSource):
 
             return pd.DataFrame()  # Return empty for now to avoid breaking if schema mismatch
         except Exception as e:
-            raise Exception(f"NSE history failed: {e}")
+            raise Exception(f"NSE history failed: {e}") from e
 
     def fetch_quarterly_results(self, symbol: str) -> list[dict]:
         return []

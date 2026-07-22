@@ -1,5 +1,4 @@
 # tests/test_mock_history_correctness.py
-import os
 import sys
 from pathlib import Path
 import pytest

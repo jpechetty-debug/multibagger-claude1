@@ -15,7 +15,7 @@ from __future__ import annotations
 from core.observability.logger import get_logger
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 logger = get_logger("dq_gates")
 
@@ -403,7 +403,6 @@ def _apply_flat_limits(df, col: str, limit: MetricLimit, mask_nan, penalties):
 
 def _apply_sector_aware_limits(df, col: str, default_limit: MetricLimit, mask_nan, penalties):
     """Apply limits per-sector, falling back to the default for unknown sectors."""
-    import numpy as np
 
     # Collect unique sectors present in the DataFrame
     sectors_in_df = df["sector"].fillna("").unique()

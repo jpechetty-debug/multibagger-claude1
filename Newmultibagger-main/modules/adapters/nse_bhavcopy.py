@@ -5,7 +5,6 @@ Downloads the daily equity bhavcopy CSV from NSE and parses it into
 a symbol-keyed price dictionary for bulk price lookups.
 """
 import io
-import os
 import zipfile
 from datetime import datetime, timedelta
 from pathlib import Path

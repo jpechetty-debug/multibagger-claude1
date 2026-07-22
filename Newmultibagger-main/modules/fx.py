@@ -28,7 +28,6 @@ it before the Crore conversion.
 from __future__ import annotations
 
 import time
-from typing import Optional
 
 from core.observability.logger import get_logger
 

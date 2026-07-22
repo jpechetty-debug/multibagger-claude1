@@ -1,10 +1,8 @@
 # scripts/pit_integrity_check.py
 import sys
-import os
 from pathlib import Path
 import pandas as pd
 import logging
-from datetime import datetime
 
 # Add project root to path
 ROOT = Path(__file__).resolve().parents[1]

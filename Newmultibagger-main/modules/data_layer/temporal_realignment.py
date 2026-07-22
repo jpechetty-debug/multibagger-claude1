@@ -1,5 +1,4 @@
 import pandas as pd
-import logging
 from core.observability.logger import get_logger
 
 _log = get_logger("data_layer.temporal_realignment")

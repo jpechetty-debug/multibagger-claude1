@@ -78,7 +78,7 @@ class GrowwSource(DataSource):
             }
 
         except Exception as e:
-            raise Exception(f"Groww fundamentals failed: {e}")
+            raise Exception(f"Groww fundamentals failed: {e}") from e
 
     def fetch_history(self, symbol: str, period: str = "1y") -> pd.DataFrame:
         # Groww does not expose a public history API — return empty so manager falls through

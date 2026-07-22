@@ -1,5 +1,4 @@
 import sqlite3
-import datetime
 from pathlib import Path
 
 db_path = Path("d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/multibaggers.db")

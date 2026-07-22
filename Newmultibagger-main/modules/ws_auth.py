@@ -38,7 +38,7 @@ import os
 import time
 from typing import Any
 
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket
 from core.observability.logger import get_logger
 
 _log = get_logger("sovereign.ws_auth")

@@ -1,14 +1,8 @@
-import sqlite3
 from datetime import datetime
 import pandas as pd
 from modules.db_utils import get_db_connection
 from core.observability.logger import get_logger
 _log = get_logger("modules.portfolio.execution_analyzer")
-
-try:
-    import config
-except ImportError:
-    pass
 
 DB_NAME = "stocks.db"
 

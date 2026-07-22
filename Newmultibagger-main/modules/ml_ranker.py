@@ -17,7 +17,6 @@ except Exception:
     logger = logging.getLogger("sovereign.ranker")
 
 from modules.hybrid_scoring import (
-    FEATURES,
     batch_predict,
     model_is_trained,
     predict_and_explain,

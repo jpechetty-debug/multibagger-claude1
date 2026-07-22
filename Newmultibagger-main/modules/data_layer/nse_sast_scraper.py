@@ -1,8 +1,7 @@
-import asyncio
 import logging
 from datetime import datetime, date
 import aiohttp
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 

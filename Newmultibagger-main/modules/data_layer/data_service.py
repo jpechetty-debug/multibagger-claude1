@@ -5,7 +5,6 @@ Modularized into: adapters/, normalization/, data_utils.py
 """
 
 import asyncio
-import inspect
 import math
 import os
 import re
@@ -1100,7 +1099,6 @@ def get_market_regime(self):
 
     # Factor 2: Market breadth (stocks above SMA50)
     try:
-        import pandas as pd
         nifty500 = [f"Stock_{i}" for i in range(20)] + [f"Loser_{i}" for i in range(10)]
         hist = self.get_batch_history(nifty500, period="60d")
         if hist is not None and not hist.empty:

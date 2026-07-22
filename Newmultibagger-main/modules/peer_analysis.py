@@ -9,7 +9,6 @@ The static SECTOR_MAP is kept as a fallback for symbols not yet in the DB.
 """
 
 import asyncio
-import os
 import sqlite3
 from datetime import datetime
 from typing import Any, cast

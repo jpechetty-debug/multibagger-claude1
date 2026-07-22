@@ -1,4 +1,7 @@
 .git/
+.env
+.env.local
+.env.production
 .venv/
 venv/
 node_modules/

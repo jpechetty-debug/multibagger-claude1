@@ -1,7 +1,5 @@
-import asyncio
-import os
-from fastapi import Request, HTTPException, BackgroundTasks
-from modules.auth import get_api_key, _RATE_LIMIT_CACHE
+from fastapi import HTTPException
+from modules.auth import get_api_key
 from core.observability.logger import get_logger
 
 api_logger = get_logger("test")

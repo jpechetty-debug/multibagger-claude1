@@ -13,7 +13,7 @@ import hashlib
 import json
 import logging
 import os
-from datetime import datetime, timezone, UTC
+from datetime import datetime, UTC
 from typing import Any
 
 try:
