@@ -112,6 +112,9 @@ class FundamentalsPIT(Base):
     debt_equity = Column(Float)
     market_cap_cr = Column(Float)
     cfo_pat_ratio = Column(Float)
+    promoter_holding = Column(Float)
+    fii_holding = Column(Float)
+    dii_holding = Column(Float)
 
     # Phase 1: New Alpha Data
     ocf_yield = Column(Float)
