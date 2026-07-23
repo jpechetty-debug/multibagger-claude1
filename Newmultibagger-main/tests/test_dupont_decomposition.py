@@ -82,9 +82,9 @@ def test_dupont_decomposition_neither_dict_nor_ticker_returns_empty():
     assert all(v is None for v in result.values())
 
 
-def test_dupont_leverage_flag_passes_when_data_missing():
+def test_dupont_leverage_flag_is_not_applicable_when_data_missing():
     # Rollout-gap case: Financial_Leverage/ROA% not backfilled yet anywhere.
-    assert _dupont_leverage_flag({}) is True
+    assert _dupont_leverage_flag({}) is None
 
 
 def test_dupont_leverage_flag_fails_on_high_leverage_and_weak_roa():
@@ -126,18 +126,19 @@ def _checklist_stock(**overrides):
     return stock
 
 
-def test_checklist_total_is_now_thirteen():
-    assert CHECKLIST_TOTAL == 13
+def test_default_checklist_total_is_twelve():
+    assert CHECKLIST_TOTAL == 12
 
 
-def test_checklist_new_item_present_and_defaults_pass_without_dupont_data():
+def test_checklist_new_item_does_not_count_without_dupont_data():
     data = _checklist_stock()
     state = _build_factor_state(data, score_sentiment=50.0, scoring_mode="balanced")
     status = build_checklist_status(data, state)
 
     assert "ROE Not Purely Leverage-Driven" in status["items"]
-    assert status["items"]["ROE Not Purely Leverage-Driven"] is True
-    assert status["total"] == 13
+    assert status["items"]["ROE Not Purely Leverage-Driven"] is None
+    assert status["passed"] == 12
+    assert status["total"] == 12
 
 
 def test_checklist_new_item_fails_when_dupont_data_shows_leverage_driven_roe():
@@ -147,6 +148,7 @@ def test_checklist_new_item_fails_when_dupont_data_shows_leverage_driven_roe():
 
     assert status["items"]["ROE Not Purely Leverage-Driven"] is False
     assert status["passed"] == 12
+    assert status["total"] == 13
 
 
 def test_normalize_data_keys_promotes_dupont_snake_case_fields():

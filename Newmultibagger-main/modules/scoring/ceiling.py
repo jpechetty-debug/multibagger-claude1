@@ -244,10 +244,11 @@ def _apply_score_ceiling_rules(
     return score_ceiling, disqualifiers
 
 
-CHECKLIST_TOTAL = 13
+# Baseline total; the optional DuPont item raises the runtime total to 13.
+CHECKLIST_TOTAL = 12
 
 
-def _dupont_leverage_flag(data: _StockData) -> bool:
+def _dupont_leverage_flag(data: _StockData) -> bool | None:
     """
     PASS unless ROE looks manufactured mainly by leverage rather than by
     genuine profitability and efficient asset use.
@@ -257,21 +258,17 @@ def _dupont_leverage_flag(data: _StockData) -> bool:
     business) AND the underlying ROA is weak (<5%) — i.e. the core
     business is mediocre and the headline ROE is mostly a leverage effect.
 
-    Defaults to PASS when Financial_Leverage or ROA% is missing. These are
-    newly-added fields (see calculate_dupont_decomposition); most existing
-    fundamentals_pit rows won't have them backfilled yet, and defaulting
-    to FAIL would silently drop every stock's checklist grade the moment
-    this ships, before the data even exists — the same rollout-gap shape
-    as the api_keys/promoter_holding issues from this codebase's history.
+    Returns None when Financial_Leverage or ROA% is missing, so the check is
+    excluded from the checklist rather than treated as an unearned pass.
     """
     leverage = optional_float(data.get("Financial_Leverage"))
     roa = optional_float(data.get("ROA%"))
     if leverage is None or roa is None:
-        return True
+        return None
     return not (leverage > 3.0 and roa < 5.0)
 
 
-def _build_checklist_items(data: _StockData, state: FactorState) -> dict[str, bool]:
+def _build_checklist_items(data: _StockData, state: FactorState) -> dict[str, bool | None]:
     mcap_cr = optional_float(data.get("Market_Cap_Cr"))
     de_val = optional_float(data.get("Debt_Equity"))
     cfo_pat = optional_float(data.get("CFO_PAT_Ratio"))
@@ -302,9 +299,12 @@ def _build_checklist_items(data: _StockData, state: FactorState) -> dict[str, bo
     }
 
 
-def _checklist_penalty_and_ceiling(checklist_pass: int) -> tuple[float, float]:
+def _checklist_penalty_and_ceiling(
+    checklist_pass: int,
+    checklist_total: int = CHECKLIST_TOTAL,
+) -> tuple[float, float]:
     if checklist_pass >= 9:
-        checklist_penalty = (CHECKLIST_TOTAL - checklist_pass) * 0.66
+        checklist_penalty = (checklist_total - checklist_pass) * 0.66
         current_ceiling = 80 + (checklist_pass - 9) * (20 / 3.0)
     else:
         checklist_penalty = 2.0 + ((9 - checklist_pass) / 9.0 * 18.0)
@@ -314,13 +314,14 @@ def _checklist_penalty_and_ceiling(checklist_pass: int) -> tuple[float, float]:
 
 def build_checklist_status(data: _StockData, state: FactorState) -> dict[str, Any]:
     checks = _build_checklist_items(data, state)
-    passed = sum(1 for value in checks.values() if value)
-    _, current_ceiling = _checklist_penalty_and_ceiling(passed)
+    passed = sum(1 for value in checks.values() if value is True)
+    total = sum(1 for value in checks.values() if value is not None)
+    _, current_ceiling = _checklist_penalty_and_ceiling(passed, total)
 
     return {
         "items": checks,
         "passed": passed,
-        "total": len(checks),
+        "total": total,
         "grade": "A" if passed >= 7 else "B" if passed >= 5 else "C" if passed >= 3 else "D",
         "ceiling": round(current_ceiling, 1),
     }
@@ -364,7 +365,10 @@ def _apply_checklist_gate(
     if checklist_pass >= 11:
         base_score += 5
 
-    checklist_penalty, current_ceiling = _checklist_penalty_and_ceiling(checklist_pass)
+    checklist_penalty, current_ceiling = _checklist_penalty_and_ceiling(
+        checklist_pass,
+        checklist_total,
+    )
     base_score -= checklist_penalty
     score_ceiling = min(score_ceiling, current_ceiling)
 

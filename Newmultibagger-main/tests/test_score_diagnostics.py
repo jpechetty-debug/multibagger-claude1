@@ -35,8 +35,8 @@ def test_score_diagnostics_uses_real_checklist_gate_thresholds():
     assert status["items"]["Market Cap > 300 Cr"] is True
     assert status["items"]["PE < 50"] is True
     assert all("1000 Cr" not in label for label in status["items"])
-    assert status["passed"] == 13
-    assert status["total"] == 13
+    assert status["passed"] == 12
+    assert status["total"] == 12
 
 
 def test_score_diagnostics_reports_real_ceiling_rule_names():
@@ -65,4 +65,4 @@ def test_score_diagnostics_reports_real_ceiling_rule_names():
     assert any(name.startswith("Declining Revenue Spline") for name in names)
     assert any(name.startswith("Overvaluation Spline") for name in names)
     assert any(name.startswith("High Pledge Risk") for name in names)
-    assert any(name == "Institutional Quality Gate 1/13" for name in names)
+    assert any(name == "Institutional Quality Gate 0/12" for name in names)
