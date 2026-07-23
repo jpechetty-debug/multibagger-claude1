@@ -30,6 +30,7 @@ To eliminate silent failures and scale-ambiguity errors, Sovereign implements a 
 
 ### 1. The Compounding Lens (Sprint 1)
 Deep analysis of structural growth and shareholder returns:
+- **DuPont ROE Decomposition**: Breaks down ROE into Net Margin, Asset Turnover, and Financial Leverage to ensure returns aren't purely debt-driven.
 - **CAGR Purity**: 3Y and 5Y Revenue, PAT, and EPS CAGRs with a "Consistency" score.
 - **Dividend Audit**: Yield and Payout analysis with automatic outlier capping.
 - **SEBI Cap Classification**: Real-time classification into Large, Mid, Small, and Micro Cap categories.
