@@ -185,7 +185,7 @@ class TestScoreOutputContract:
         parts = result["checklist_score"].split("/")
         assert len(parts) == 2
         passes, total = int(parts[0]), int(parts[1])
-        assert 0 <= passes <= total == 12
+        assert 0 <= passes <= total == 13
 
     def test_factor_breakdown_keys(self, perfect_stock):
         result = calculate_institutional_score(perfect_stock)

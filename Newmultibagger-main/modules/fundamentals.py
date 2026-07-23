@@ -79,6 +79,108 @@ def extract_financial_metric(df, keys, default=0, offset=0):
     return default
 
 
+_EMPTY_DUPONT_RESULT: dict[str, float | None] = {
+    "net_margin_pct": None,
+    "asset_turnover": None,
+    "financial_leverage": None,
+    "roa_pct": None,
+    "implied_roe_pct": None,
+}
+
+
+def _dupont_components(net_income, revenue, total_assets, equity) -> dict:
+    """Pure computation: combine the four raw inputs into DuPont ratios.
+
+    ROE = Net Margin x Asset Turnover x Financial Leverage
+        = (Net Income / Revenue) x (Revenue / Total Assets) x (Total Assets / Equity)
+
+    ROA (= Net Margin x Asset Turnover = Net Income / Total Assets) is
+    computed directly rather than by multiplying the two ratios back
+    together, to avoid compounding rounding error across two divisions.
+    """
+    result = _EMPTY_DUPONT_RESULT.copy()
+
+    if net_income is not None and revenue not in (0, None):
+        result["net_margin_pct"] = round(_safe_div(net_income, revenue) * 100, 2)
+
+    if revenue is not None and total_assets not in (0, None):
+        result["asset_turnover"] = round(_safe_div(revenue, total_assets), 3)
+
+    if total_assets is not None and equity not in (0, None):
+        result["financial_leverage"] = round(_safe_div(total_assets, equity), 3)
+
+    if net_income is not None and total_assets not in (0, None):
+        result["roa_pct"] = round(_safe_div(net_income, total_assets) * 100, 2)
+
+    if result["roa_pct"] is not None and result["financial_leverage"] is not None:
+        result["implied_roe_pct"] = round(result["roa_pct"] * result["financial_leverage"], 2)
+
+    return result
+
+
+def _dupont_from_dict(data: dict) -> dict:
+    net_income = data.get("Net_Income")
+    revenue = data.get("Total_Revenue")
+    total_assets = data.get("Total_Assets")
+    equity = data.get("Total_Equity") or data.get("Stockholders_Equity")
+    return _dupont_components(net_income, revenue, total_assets, equity)
+
+
+def _dupont_from_ticker(ticker_or_data) -> dict:
+    try:
+        fin = ticker_or_data.financials
+        bs = ticker_or_data.balance_sheet
+        if fin.empty or bs.empty:
+            return _EMPTY_DUPONT_RESULT.copy()
+
+        net_income = extract_financial_metric(
+            fin, ["Net Income", "Net Profit", "PAT", "Profit After Tax"], default=None
+        )
+        revenue = extract_financial_metric(
+            fin, ["Total Revenue", "Operating Revenue", "Revenue From Operations"], default=None
+        )
+        total_assets = extract_financial_metric(bs, ["Total Assets"], default=None)
+        equity = extract_financial_metric(
+            bs,
+            ["Stockholders Equity", "Common Stock Equity", "Total Equity", "Shareholders Equity"],
+            default=None,
+        )
+        return _dupont_components(net_income, revenue, total_assets, equity)
+    except Exception as e:
+        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
+        return _EMPTY_DUPONT_RESULT.copy()
+
+
+def calculate_dupont_decomposition(ticker_or_data) -> dict:
+    """
+    Decomposes ROE into its three DuPont components:
+
+        ROE = Net Margin x Asset Turnover x Financial Leverage
+
+    This exists to distinguish "quality" ROE (driven by profitability and
+    efficient asset use) from ROE that is mostly manufactured by leverage,
+    which a flat "ROE > 17%" checklist gate cannot tell apart on its own.
+
+    Accepts either:
+    - A dict with pre-computed fundamental data keys (preferred):
+      Net_Income, Total_Revenue, Total_Assets, Total_Equity
+    - A yfinance Ticker object (deprecated — logs warning)
+
+    Returns a dict with keys: net_margin_pct, asset_turnover,
+    financial_leverage, roa_pct, implied_roe_pct. Any component that
+    cannot be computed from the available data is returned as None
+    (not 0), so callers can distinguish "genuinely zero" from "missing".
+    """
+    if isinstance(ticker_or_data, dict):
+        return _dupont_from_dict(ticker_or_data)
+
+    if _has_ticker_api(ticker_or_data):
+        _log.warning("DEPRECATION: calculate_dupont_decomposition called with yfinance Ticker")
+        return _dupont_from_ticker(ticker_or_data)
+
+    return _EMPTY_DUPONT_RESULT.copy()
+
+
 def calculate_piotroski_f_score(ticker_or_data) -> int:
     """
     Calculates the 9-point Piotroski F-Score.

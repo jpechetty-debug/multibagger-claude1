@@ -244,7 +244,31 @@ def _apply_score_ceiling_rules(
     return score_ceiling, disqualifiers
 
 
-CHECKLIST_TOTAL = 12
+CHECKLIST_TOTAL = 13
+
+
+def _dupont_leverage_flag(data: _StockData) -> bool:
+    """
+    PASS unless ROE looks manufactured mainly by leverage rather than by
+    genuine profitability and efficient asset use.
+
+    FAILs only when Financial Leverage (Total Assets / Equity) is high
+    (>3.0x, well above the 1.5-2.5x typical of a healthy non-financial
+    business) AND the underlying ROA is weak (<5%) — i.e. the core
+    business is mediocre and the headline ROE is mostly a leverage effect.
+
+    Defaults to PASS when Financial_Leverage or ROA% is missing. These are
+    newly-added fields (see calculate_dupont_decomposition); most existing
+    fundamentals_pit rows won't have them backfilled yet, and defaulting
+    to FAIL would silently drop every stock's checklist grade the moment
+    this ships, before the data even exists — the same rollout-gap shape
+    as the api_keys/promoter_holding issues from this codebase's history.
+    """
+    leverage = optional_float(data.get("Financial_Leverage"))
+    roa = optional_float(data.get("ROA%"))
+    if leverage is None or roa is None:
+        return True
+    return not (leverage > 3.0 and roa < 5.0)
 
 
 def _build_checklist_items(data: _StockData, state: FactorState) -> dict[str, bool]:
@@ -274,6 +298,7 @@ def _build_checklist_items(data: _StockData, state: FactorState) -> dict[str, bo
         "F-Score >= 6": f_val_check is not None and f_val_check >= 6,
         "Sales and EPS Growth > 10%": sg > 10 and eps_g > 10,
         "Value Gap > 0 or PE < 20": value_gap > 0 or (state.pe is not None and 0 < state.pe < 20),
+        "ROE Not Purely Leverage-Driven": _dupont_leverage_flag(data),
     }
 
 

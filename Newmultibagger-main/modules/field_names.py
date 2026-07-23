@@ -95,6 +95,11 @@ FIELD_MAPPING: dict[str, str] = {
     "Earnings_Inflection_Score": "earnings_inflection_score",
     "Estimate_Score_Adj": "estimate_score_adj",
     "Backtest": "backtest",
+    # DuPont ROE decomposition
+    "Net_Margin%": "net_margin_pct",
+    "Asset_Turnover": "asset_turnover",
+    "Financial_Leverage": "financial_leverage",
+    "ROA%": "roa_pct",
 }
 
 # Reverse mapping: snake_case DB column → canonical Title-case scoring key.

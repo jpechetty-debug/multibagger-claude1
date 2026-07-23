@@ -24,6 +24,7 @@ from modules.fundamentals import (
     calculate_piotroski_f_score,
     calculate_recent_sales_growth,
     calculate_roce,
+    calculate_dupont_decomposition,
     check_earnings_inflection,
 )
 from modules.fx import to_inr_cr
@@ -949,6 +950,9 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         roce = calculate_roce(ticker)
         median_pat_growth_5y = calculate_median_pat_growth(ticker, years=5)
 
+        # --- DuPont ROE Decomposition: distinguish quality ROE from leverage-driven ROE ---
+        dupont = calculate_dupont_decomposition(ticker)
+
 
         # --- Sprint 1: Dividend Metrics ---
         div_metrics = extract_dividend_metrics(info)
@@ -1161,6 +1165,10 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             "High_52W": round(float(high_52w), 2),
             "Low_52W": round(float(low_52w), 2),
             "ROCE%": roce,
+            "Net_Margin%": dupont["net_margin_pct"],
+            "Asset_Turnover": dupont["asset_turnover"],
+            "Financial_Leverage": dupont["financial_leverage"],
+            "ROA%": dupont["roa_pct"],
             "Median_PAT_Growth_5Y%": median_pat_growth_5y,
             "Pledge_Pct": pledge_pct,
             "Ret_1M": mom_features.get("ret_1m", 0),

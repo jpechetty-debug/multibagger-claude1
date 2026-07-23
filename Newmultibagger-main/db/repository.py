@@ -142,6 +142,10 @@ def _ensure_fundamentals_pit_table(conn):
     _ensure_column(conn, "fundamentals_pit", "promoter_holding", "REAL")
     _ensure_column(conn, "fundamentals_pit", "fii_holding", "REAL")
     _ensure_column(conn, "fundamentals_pit", "dii_holding", "REAL")
+    _ensure_column(conn, "fundamentals_pit", "net_margin_pct", "REAL")
+    _ensure_column(conn, "fundamentals_pit", "asset_turnover", "REAL")
+    _ensure_column(conn, "fundamentals_pit", "financial_leverage", "REAL")
+    _ensure_column(conn, "fundamentals_pit", "roa_pct", "REAL")
     conn.execute(
         """
         CREATE INDEX IF NOT EXISTS idx_fundamentals_pit_as_of_date
@@ -229,6 +233,11 @@ def _ensure_runtime_schema():
             _ensure_column(conn, "multibaggers", "dividend_yield", "REAL")
             _ensure_column(conn, "multibaggers", "dividend_payout", "REAL")
             _ensure_column(conn, "multibaggers", "cap_category", "TEXT")
+            # DuPont ROE Decomposition
+            _ensure_column(conn, "multibaggers", "net_margin_pct", "REAL")
+            _ensure_column(conn, "multibaggers", "asset_turnover", "REAL")
+            _ensure_column(conn, "multibaggers", "financial_leverage", "REAL")
+            _ensure_column(conn, "multibaggers", "roa_pct", "REAL")
 
         _ensure_fundamentals_pit_table(conn)
         _ensure_dq_sector_limits_table(conn)
@@ -296,6 +305,10 @@ def _write_fundamentals_snapshot(df_db):
                 row.get("promoter_holding"),
                 row.get("fii_holding"),
                 row.get("dii_holding"),
+                row.get("net_margin_pct"),
+                row.get("asset_turnover"),
+                row.get("financial_leverage"),
+                row.get("roa_pct"),
                 _to_sql_timestamp(row.get("updated_at")),
             )
         )
@@ -313,9 +326,11 @@ def _write_fundamentals_snapshot(df_db):
                     market_cap_cr, cfo_pat_ratio, high_52w, low_52w,
                     roce, median_pat_growth, ret_1m, ret_3m, ret_6m,
                     vol_breakout, dist_from_52w_high, ml_rank_score,
-                    promoter_holding, fii_holding, dii_holding, source_updated_at
+                    promoter_holding, fii_holding, dii_holding,
+                    net_margin_pct, asset_turnover, financial_leverage, roa_pct,
+                    source_updated_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 records,
             )
@@ -694,6 +709,10 @@ def init_db():
             piotroski_score INTEGER,
             data_quality REAL,
             data_quality_flags TEXT,
+            net_margin_pct REAL,
+            asset_turnover REAL,
+            financial_leverage REAL,
+            roa_pct REAL,
             CHECK(pe_ratio >= -100 AND pe_ratio <= 1000),
             CHECK(roe >= -500 AND roe <= 500),
             CHECK(score >= 0 AND score <= 100)
@@ -950,6 +969,10 @@ def save_multibaggers(df, *, replace_existing: bool = False):
         "Dividend_Payout",
         "Cap_Category",
         "Data_Quality_Flags",
+        "Net_Margin%",
+        "Asset_Turnover",
+        "Financial_Leverage",
+        "ROA%",
     ]
 
     available_cols = [c for c in cols if c in df.columns]
