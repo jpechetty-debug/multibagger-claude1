@@ -4,7 +4,6 @@ import sys
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import modules.adapters.yf_patch  # noqa: F401
-
 from modules.news_gate import NewsGate
 from portfolio.allocator import PortfolioAllocator
 

@@ -6,12 +6,13 @@ from unittest.mock import MagicMock, patch
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-import pandas as pd
-import pytest
+import concurrent.futures  # noqa: E402
 
-from modules.adapters.yfinance import YFinanceProvider
+import pandas as pd  # noqa: E402
+import pytest  # noqa: E402
 
-import concurrent.futures
+from modules.adapters.yfinance import YFinanceProvider  # noqa: E402
+
 
 class DummyExecutor:
     """Synchronous executor for testing async methods."""

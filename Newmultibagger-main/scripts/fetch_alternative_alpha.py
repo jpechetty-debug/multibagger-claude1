@@ -13,9 +13,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from db.repository import get_connection
-from db.models import _utc_now
-from modules.data_layer.nse_sast_scraper import NSEScraper, parse_nse_date
+from db.models import _utc_now  # noqa: E402
+from db.repository import get_connection  # noqa: E402
+from modules.data_layer.nse_sast_scraper import NSEScraper, parse_nse_date  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)

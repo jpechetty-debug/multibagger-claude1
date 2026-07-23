@@ -6,13 +6,14 @@ import numpy as np
 import yfinance as yf
 from jinja2 import Environment, FileSystemLoader
 
+from core.observability.logger import get_logger
 from modules.fx import to_inr_cr
 from modules.price_fundamentals import get_price_vs_fundamentals
 from modules.quarterly_results import get_quarterly_timeline
 from modules.shareholding import get_shareholding_pattern
 from modules.symbol_utils import normalize_symbol
 from modules.technicals import get_technical_analysis
-from core.observability.logger import get_logger
+
 _log = get_logger("modules.reporting.html_report")
 
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "..", "templates")

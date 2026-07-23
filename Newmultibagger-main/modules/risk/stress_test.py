@@ -1,4 +1,5 @@
 from core.observability.logger import get_logger
+
 _log = get_logger("modules.risk.stress_test")
 def _build_weights(portfolio_stocks, weights=None):
     if weights:
@@ -8,7 +9,8 @@ def _build_weights(portfolio_stocks, weights=None):
     return {s["Symbol"]: 1.0 / len(portfolio_stocks) for s in portfolio_stocks}
 
 
-import pandas as pd
+import pandas as pd  # noqa: E402
+
 
 def _calculate_1yr_beta(symbol: str) -> float | None:
     try:
@@ -43,7 +45,7 @@ def _calculate_1yr_beta(symbol: str) -> float | None:
             return None
 
         return float(cov / var)
-    except Exception as e:
+    except Exception:
         return None
 
 def _estimate_portfolio_beta(portfolio_stocks, weights=None):

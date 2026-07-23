@@ -6,9 +6,12 @@ Uses NSE bulk deal data + yfinance + historical PIT snapshots.
 
 import contextlib
 from datetime import datetime, timedelta
+
 import requests
-from modules.db_utils import get_db_connection
+
 from core.observability.logger import get_logger
+from modules.db_utils import get_db_connection
+
 _log = get_logger("modules.intelligence.promoter_intel")
 
 DB_NAME = "stocks.db"

@@ -1,6 +1,8 @@
 from datetime import date
+
 import pandas as pd
 from jugaad_data.nse import stock_df
+
 from core.observability.logger import get_logger
 
 logger = get_logger("adapters.jugaad")
@@ -13,9 +15,9 @@ def get_jugaad_history(symbol: str, from_date: date, to_date: date) -> pd.DataFr
     if symbol.endswith(".BO"):
         logger.warning(f"jugaad-data does not support BSE symbols ({symbol})")
         return pd.DataFrame()
-        
+
     nse_symbol = symbol.replace(".NS", "")
-    
+
     try:
         data = stock_df(symbol=nse_symbol, from_date=from_date, to_date=to_date)
     except Exception as e:
@@ -45,7 +47,7 @@ def get_jugaad_history(symbol: str, from_date: date, to_date: date) -> pd.DataFr
 
         # Standardize columns to Title Case like yfinance
         rename_map = {
-            "OPEN": "Open", "HIGH": "High", "LOW": "Low", 
+            "OPEN": "Open", "HIGH": "High", "LOW": "Low",
             "CLOSE": "Close", "close": "Close", "PREV. CLOSE": "Prev_Close",
             "VOLUME": "Volume", "volume": "Volume"
         }

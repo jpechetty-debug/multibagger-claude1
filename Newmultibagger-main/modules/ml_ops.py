@@ -15,13 +15,13 @@ except Exception:
     import logging
     logger = logging.getLogger("sovereign.ml_ops")
 
+from modules.data_layer.db_utils import get_db_connection  # ← FIXED: was modules.db_utils
 from modules.hybrid_scoring import (
     MODEL_PATH,
     batch_predict,
     get_feature_importance,
     train_hybrid_model,
 )
-from modules.data_layer.db_utils import get_db_connection    # ← FIXED: was modules.db_utils
 
 ML_METADATA_TABLE  = "ml_metadata"
 _RETRAIN_THRESHOLD = 50   # new PIT rows since last run triggers retraining

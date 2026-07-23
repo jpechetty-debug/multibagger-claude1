@@ -3,18 +3,17 @@ import sys
 
 # Ensure root directory is in path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
-import modules.adapters.yf_patch  # noqa: F401
-
 import sqlite3
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 from scipy.stats import spearmanr
 
+import modules.adapters.yf_patch  # noqa: F401
 from modules.connections import DB_PATH
 from modules.hybrid_scoring import FEATURES
-
-
 from modules.price_utils import fetch_forward_prices
+
 
 def perform_ic_analysis():
     print("=" * 60)

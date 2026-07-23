@@ -5,7 +5,6 @@ import sys
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import modules.adapters.yf_patch  # noqa: F401
-
 from modules.html_report import generate_premium_html_report
 
 

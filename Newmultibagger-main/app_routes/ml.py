@@ -20,6 +20,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 from pydantic import BaseModel
 
+from core.observability.logger import get_logger
 from modules.auth import get_api_key
 from modules.hybrid_scoring import (
     FEATURES,
@@ -34,7 +35,6 @@ from modules.ml_ops import (
     get_last_training_info,
     ml_status,
 )
-from core.observability.logger import get_logger
 
 _log = get_logger("sovereign.ml_api")
 

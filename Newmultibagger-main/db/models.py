@@ -3,7 +3,7 @@
 SQLAlchemy 2.0 ORM Models — Sovereign AI Trading Engine v4.0
 
 WARNING: This file is for documentation and IDE type-hinting only.
-It is NOT fully synchronized with the actual database schema. 
+It is NOT fully synchronized with the actual database schema.
 DO NOT use `alembic revision --autogenerate` against these models.
 """
 

@@ -15,12 +15,12 @@ from datetime import datetime
 
 import pandas as pd
 
+from core.observability.logger import get_logger
 from db.date_utils import normalize_as_of_date, strict_normalize_date
 from db.engine import IS_SQLITE, engine
+from modules.db_utils import get_db_connection, resolve_db_path
 from modules.runtime_settings import runtime_settings
 
-from modules.db_utils import resolve_db_path, get_db_connection
-from core.observability.logger import get_logger
 _log = get_logger("db.repository")
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -327,7 +327,8 @@ def _write_fundamentals_snapshot(df_db):
 
     # --- Phase 4.2: PIT Auditor sanitize() integration ---
     try:
-        from modules.pit_auditor import PITDataStore, sanitize as pit_sanitize
+        from modules.pit_auditor import PITDataStore
+        from modules.pit_auditor import sanitize as pit_sanitize
 
         # Build a mini-DataFrame with report_date/as_of_date for PIT validation
         df_audit = df_db.copy()

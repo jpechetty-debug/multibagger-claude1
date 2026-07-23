@@ -3,12 +3,14 @@
 
 import sys
 from pathlib import Path
+
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from backtest.liquidity_filter import LiquidityFilter
-from backtest.backtest_engine import compute_round_trip_cost
+from backtest.backtest_engine import compute_round_trip_cost  # noqa: E402
+from backtest.liquidity_filter import LiquidityFilter  # noqa: E402
+
 
 def test_liquidity_filter():
     """Verify that LiquidityFilter correctly screens out illiquid stocks."""

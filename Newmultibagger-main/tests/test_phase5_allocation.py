@@ -18,10 +18,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from modules.risk.regime_hmm import RegimeHMM
-from modules.portfolio.optimizer import PortfolioOptimizer
-from modules.portfolio.capital_efficiency import YieldRedirectController
-
+from modules.portfolio.capital_efficiency import YieldRedirectController  # noqa: E402
+from modules.portfolio.optimizer import PortfolioOptimizer  # noqa: E402
+from modules.risk.regime_hmm import RegimeHMM  # noqa: E402
 
 # ── Module 5.1: Hidden Markov Model Classifier ─────────────────────────────
 

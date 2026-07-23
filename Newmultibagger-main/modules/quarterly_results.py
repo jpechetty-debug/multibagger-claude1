@@ -11,9 +11,10 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 
+from core.observability.logger import get_logger
 from modules.fx import to_inr_cr
 from modules.retry_utils import run_with_exponential_backoff
-from core.observability.logger import get_logger
+
 _log = get_logger("modules.quarterly_results")
 
 

@@ -14,7 +14,7 @@ sys.modules["modules.estimates"].get_estimate_data.return_value = {
 
 sys.path.append("d:/Tradeidesa/Multibagger")
 
-from modules.scoring import calculate_institutional_score
+from modules.scoring import calculate_institutional_score  # noqa: E402
 
 
 def test_cliffs():

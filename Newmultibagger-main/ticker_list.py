@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 
-
 # List of NSE stocks to screen
 # Expanded to include specific sectors: Renewables, Defense, EMS, Tech
 # CORRECTIONS APPLIED: Fixed outdated/incorrect symbols

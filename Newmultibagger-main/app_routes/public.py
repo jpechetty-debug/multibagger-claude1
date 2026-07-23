@@ -15,12 +15,12 @@ from app_routes.contracts import (
     SwarmReportResponse,
     SwarmStatusResponse,
 )
+from modules.auth import get_api_key
+from modules.connections import _run_blocking
 from modules.mirofish_client import MiroFishClient
 from modules.news_sentiment import engine as news_engine
 from modules.rate_limit import limiter
 from modules.symbol_utils import normalize_symbol
-from modules.auth import get_api_key
-from modules.connections import _run_blocking
 
 router = APIRouter()
 

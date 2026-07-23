@@ -5,11 +5,10 @@ import pandas as pd
 
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-import modules.adapters.yf_patch  # noqa: F401
-
 import screener
 
 import db.repository as database
+import modules.adapters.yf_patch  # noqa: F401
 
 STOCKS = [
     "INDIGOPNTS.NS",

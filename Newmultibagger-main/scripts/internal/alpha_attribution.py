@@ -1,10 +1,11 @@
-import modules.adapters.yf_patch  # noqa: F401
 import os
 import sqlite3
 
 import numpy as np
 import pandas as pd
 import yfinance as yf
+
+import modules.adapters.yf_patch  # noqa: F401
 
 
 def _extract_close_frame(data: pd.DataFrame, tickers: list) -> pd.DataFrame:

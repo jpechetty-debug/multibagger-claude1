@@ -1,8 +1,9 @@
 import os
-import sys
-import pandas as pd
 import sqlite3
-from datetime import datetime, date
+import sys
+from datetime import date, datetime
+
+import pandas as pd
 
 # UTF-8 wrapping for Windows stdout/stderr to support emojis
 if sys.platform == "win32":

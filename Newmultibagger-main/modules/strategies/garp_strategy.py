@@ -12,19 +12,21 @@ import os
 import sys
 
 import pandas as pd
+
 from core.observability.logger import get_logger
+
 _log = get_logger("modules.strategies.garp_strategy")
 
 # Add project root
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import asyncio
+import asyncio  # noqa: E402
 
-import db.repository as database
-from modules.fundamental_filters import validate_garp_criteria
-from modules.news import get_stock_news
+import db.repository as database  # noqa: E402
+from modules.fundamental_filters import validate_garp_criteria  # noqa: E402
+from modules.news import get_stock_news  # noqa: E402
+from modules.strategies.base import BaseStrategy  # noqa: E402
 
-from modules.strategies.base import BaseStrategy
 
 class GarpStrategy(BaseStrategy):
     def __init__(self, db_path="stocks.db"):

@@ -9,9 +9,8 @@ import pandas as pd
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
-import modules.adapters.yf_patch  # noqa: F401
-
-from db.repository import save_multibaggers
+import modules.adapters.yf_patch  # noqa: E402, F401
+from db.repository import save_multibaggers  # noqa: E402
 
 DEFAULT_CSV_PATH = PROJECT_ROOT / "tmp_rs_data.csv"
 

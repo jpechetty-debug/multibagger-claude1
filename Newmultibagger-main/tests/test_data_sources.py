@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from modules.data_service import DataManager
+from modules.data_service import DataManager  # noqa: E402
 
 
 class FakeCache:

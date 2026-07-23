@@ -34,6 +34,9 @@ RUN mkdir -p runtime/models runtime/reports runtime/cache
 # runtime safety net for that case.
 RUN python scripts/train_hybrid_model.py --bootstrap || true
 
+RUN groupadd -r appuser && useradd -r -g appuser appuser && chown -R appuser:appuser /app
+USER appuser
+
 EXPOSE 9005
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "9005"]

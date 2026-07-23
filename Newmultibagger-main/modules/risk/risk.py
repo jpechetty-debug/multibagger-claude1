@@ -7,6 +7,7 @@ import pandas as pd
 
 import config
 from core.observability.logger import get_logger
+
 _log = get_logger("modules.risk.risk")
 
 REJECTED_TRADES_LOG = os.path.join("logs", "rejected_trades.csv")
@@ -98,7 +99,7 @@ class RiskGovernor:
             sector_weights = df.groupby("Sector")["Target_Weight%"].sum() / 100
         else:
             # Assume equal weight if not specified
-            equal_weight = 1.0 / len(df)  # use if needed, or remove entirely
+            1.0 / len(df)  # use if needed, or remove entirely
             sector_weights = df["Sector"].value_counts(normalize=True)
 
         # Check Limits

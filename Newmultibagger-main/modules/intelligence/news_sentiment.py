@@ -1,10 +1,11 @@
-from core.observability.logger import get_logger
 from datetime import datetime
 from typing import Any
 
 import nltk
 import yfinance as yf
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
+
+from core.observability.logger import get_logger
 
 # Initialize VADER (Download lexicont on first run)
 try:

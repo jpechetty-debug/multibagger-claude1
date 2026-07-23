@@ -20,8 +20,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from modules import hybrid_scoring
-from modules.hybrid_scoring import (
+from modules import hybrid_scoring  # noqa: E402
+from modules.hybrid_scoring import (  # noqa: E402
     FEATURE_BOUNDS,
     FEATURES,
     HOLDOUT_END,
@@ -33,7 +33,6 @@ from modules.hybrid_scoring import (
     _top_quantile_sharpe,
     walk_forward_validate,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures & helpers

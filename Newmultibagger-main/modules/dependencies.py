@@ -10,35 +10,41 @@ from typing import Any
 import pandas as pd
 
 from modules.cache import (
+    CACHE_AUDIT_TTL,
+    MOVERS_CACHE_TTL_SECONDS,
+    REGIME_CACHE_TTL_SECONDS,
     _cache_invalidate,
     _cache_is_fresh,
     _cache_set,
-    CACHE_AUDIT_TTL,
-    CACHE_QUARTERLY as CACHE_QUARTERLY_VAL,
-    CACHE_FUNDAMENTALS as CACHE_FUNDAMENTALS_VAL,
-    MOVERS_CACHE_TTL_SECONDS,
-    REGIME_CACHE_TTL_SECONDS,
     movers_cache,
     movers_cache_lock,
     regime_cache,
     regime_cache_lock,
 )
+from modules.cache import (
+    CACHE_FUNDAMENTALS as CACHE_FUNDAMENTALS_VAL,
+)
+from modules.cache import (
+    CACHE_QUARTERLY as CACHE_QUARTERLY_VAL,
+)
+
 CACHE_QUARTERLY = CACHE_QUARTERLY_VAL
 CACHE_FUNDAMENTALS = CACHE_FUNDAMENTALS_VAL
 # -- Re-exporting from Modular Components --
-from db.db_core import db_engine, get_db_connection as get_sqla_connection
-from modules.connections import (
+from core.observability.logger import get_logger  # noqa: E402
+from db.db_core import db_engine  # noqa: E402
+from db.db_core import get_db_connection as get_sqla_connection  # noqa: E402
+from modules.auth import get_api_key  # noqa: E402
+from modules.connections import (  # noqa: E402
     _run_blocking,
     _run_sqlite_write_with_retry,
     _run_sqlite_write_with_retry_sync,
     _run_ticker_blocking,
     get_connection,
 )
-from core.observability.logger import get_logger
-from modules.auth import get_api_key
-from modules.models import OrderRequest
-from modules.runtime_settings import runtime_settings
-from worker.background_jobs import run_price_update_loop
+from modules.models import OrderRequest  # noqa: E402
+from modules.runtime_settings import runtime_settings  # noqa: E402
+from worker.background_jobs import run_price_update_loop  # noqa: E402
 
 __all__ = [
     "_cache_invalidate",
@@ -71,8 +77,8 @@ api_logger = get_logger("sovereign.api")
 app_logger = get_logger("sovereign.app")
 
 # Remaining Domain Instances
-from modules.risk import RiskGovernor
-from modules.tracker import PortfolioTracker
+from modules.risk import RiskGovernor  # noqa: E402
+from modules.tracker import PortfolioTracker  # noqa: E402
 
 portfolio_tracker = PortfolioTracker()
 risk_governor = RiskGovernor()
@@ -87,15 +93,15 @@ def _read_records(query: str, params: dict[Any, Any] | None = None):
         return json.loads(df.to_json(orient="records", double_precision=2))
 
 
-from modules.data_layer.data_utils import _json_safe_clean
+import asyncio  # noqa: E402
+import os  # noqa: E402
 
+import redis.asyncio as aioredis  # noqa: E402
+from fastapi import WebSocket  # noqa: E402
 
-from fastapi import WebSocket
-import os
-import asyncio
-import redis.asyncio as aioredis
-from core.observability.logger import get_logger
-from core.observability.logger import get_logger
+from core.observability.logger import get_logger  # noqa: E402
+from modules.data_layer.data_utils import _json_safe_clean  # noqa: E402
+
 _log = get_logger(__name__)
 
 

@@ -1,6 +1,7 @@
-import modules.adapters.yf_patch  # noqa: F401
 import pandas as pd
 import yfinance as yf
+
+import modules.adapters.yf_patch  # noqa: F401
 
 
 def backtest_picks():

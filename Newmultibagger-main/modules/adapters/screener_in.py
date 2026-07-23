@@ -40,6 +40,7 @@ from datetime import date, datetime
 from typing import Any
 
 from core.observability.logger import get_logger
+
 from .base import DataProvider
 
 logger = get_logger("adapters.screener_in")
@@ -64,7 +65,7 @@ except ImportError:
     logger.warning("beautifulsoup4 not installed — ScreenerInProvider will not be available")
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-import os
+import os  # noqa: E402
 
 SCREENER_BASE_URL   = os.getenv("SCREENER_BASE_URL",    "https://www.screener.in")
 SCREENER_MIN_DELAY  = float(os.getenv("SCREENER_MIN_DELAY_S", "2.0"))   # seconds between requests

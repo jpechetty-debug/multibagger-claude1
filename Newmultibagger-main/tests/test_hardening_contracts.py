@@ -125,6 +125,7 @@ class TestPydanticModelContracts:
     def test_extra_fields_are_ignored(self, caplog):
         """Verify that extra fields log a warning but do not crash."""
         import logging
+
         from modules.models import StockDataPayload
 
         with caplog.at_level(logging.WARNING):

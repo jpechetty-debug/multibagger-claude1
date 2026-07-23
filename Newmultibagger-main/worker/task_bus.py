@@ -18,8 +18,8 @@ Environment:
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
 import os
+from collections.abc import Callable
 from typing import Any
 
 from core.observability.logger import get_logger

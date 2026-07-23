@@ -1,8 +1,9 @@
-import modules.adapters.yf_patch  # noqa: F401
 import os
 import sqlite3
 
 import pandas as pd
+
+import modules.adapters.yf_patch  # noqa: F401
 
 
 def run_turnover_analysis():

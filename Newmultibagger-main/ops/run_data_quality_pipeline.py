@@ -1,10 +1,11 @@
-import modules.adapters.yf_patch  # noqa: F401
 import argparse
 import json
 import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
+
+import modules.adapters.yf_patch  # noqa: F401
 
 
 def _latest_summary_in_runs(runs_dir: Path, exclude_run_id: str) -> Path | None:

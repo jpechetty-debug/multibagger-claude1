@@ -3,7 +3,6 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import modules.adapters.yf_patch  # noqa: F401
-
 from modules.fundamental_filters import validate_garp_criteria
 
 mock_data = {

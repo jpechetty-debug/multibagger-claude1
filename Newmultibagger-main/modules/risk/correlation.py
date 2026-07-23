@@ -4,7 +4,9 @@ import sqlite3
 
 import pandas as pd
 import yfinance as yf
+
 from core.observability.logger import get_logger
+
 _log = get_logger("modules.risk.correlation")
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "runtime", "stocks.db")

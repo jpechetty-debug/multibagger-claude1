@@ -1,23 +1,19 @@
 # modules/auth.py
-import os
-import time
 import hashlib
+import os
 import secrets
 
-from fastapi import Depends, HTTPException, status, Request, BackgroundTasks
+from fastapi import BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.security import APIKeyHeader
-from cachetools import TTLCache
 
 from core.observability.logger import get_logger
 from db.db_core import execute_sql
+from modules.rate_limit import check_api_key_rate_limit
 
 api_logger = get_logger("sovereign.api")
 
 API_KEY_NAME = "X-API-Key"
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
-
-# Track requests per minute for rate limiting (sliding window up to 60s)
-_RATE_LIMIT_CACHE = TTLCache(maxsize=1000, ttl=60)
 
 def _increment_usage_in_bg(key_hash: str):
     """Background task to increment the usage counter."""
@@ -61,21 +57,10 @@ def get_api_key(request: Request, background_tasks: BackgroundTasks, api_key: st
 
     # Rate limiting
     rate_limit = record["rate_limit_rpm"]
-    now = time.time()
 
-    if key_hash not in _RATE_LIMIT_CACHE:
-        _RATE_LIMIT_CACHE[key_hash] = []
-
-    # Clean up old timestamps (sliding window)
-    timestamps = _RATE_LIMIT_CACHE[key_hash]
-    timestamps = [ts for ts in timestamps if now - ts < 60]
-
-    if len(timestamps) >= rate_limit:
+    if check_api_key_rate_limit(key_hash, rate_limit):
         api_logger.warning("Rate limit exceeded for API key.")
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Rate limit exceeded")
-
-    timestamps.append(now)
-    _RATE_LIMIT_CACHE[key_hash] = timestamps
 
     # Increment usage counter asynchronously
     background_tasks.add_task(_increment_usage_in_bg, key_hash)

@@ -12,9 +12,8 @@ from datetime import date
 from typing import Any
 
 from config import MAX_FUNDAMENTAL_AGE_DAYS, STALE_DATA_WARNING_DAYS
-
-from modules.data_utils import safe_float
 from modules.data_layer.dq_gates import validate_record
+from modules.data_utils import safe_float
 from modules.field_names import normalize_data_keys
 from modules.pit_auditor import enforce_pit_gate
 from research.conviction_engine import calculate_conviction_score
@@ -284,7 +283,7 @@ def calculate_institutional_score(
     }
 
     try:
-        from modules.ic_monitor import load_regime_ic_cache, get_current_regime
+        from modules.ic_monitor import get_current_regime, load_regime_ic_cache
         current_regime = get_current_regime()
         regime_ic_data = load_regime_ic_cache().get(current_regime, {})
         if regime_ic_data and not regime_ic_data.get("valid", True):

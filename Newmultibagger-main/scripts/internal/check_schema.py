@@ -1,6 +1,7 @@
-import modules.adapters.yf_patch  # noqa: F401
 import os
 import sqlite3
+
+import modules.adapters.yf_patch  # noqa: F401
 
 conn = sqlite3.connect("runtime/stocks.db" if os.path.exists("runtime/stocks.db") else "stocks.db")
 cur = conn.cursor()

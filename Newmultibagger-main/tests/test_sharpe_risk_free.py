@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
+
 plotly = pytest.importorskip("plotly", reason="plotly not installed")
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -68,6 +69,7 @@ class TestSharpeRiskFreeRate:
 
         # Re-import to pick up env change
         import importlib
+
         import backtest.backtest_engine as be_module
         importlib.reload(be_module)
 

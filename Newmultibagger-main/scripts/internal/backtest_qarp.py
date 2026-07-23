@@ -14,13 +14,12 @@ from rich.table import Table
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
-import modules.adapters.yf_patch  # noqa: F401
-
-from backtest.survivorship_adjusted_loader import SurvivorshipAdjustedLoader
-from modules.fundamentals import calculate_piotroski_f_score
-from modules.regime_hmm import RegimeHMM
-from modules.scoring import calculate_institutional_score
-from ticker_list import TICKERS
+import modules.adapters.yf_patch  # noqa: E402, F401
+from backtest.survivorship_adjusted_loader import SurvivorshipAdjustedLoader  # noqa: E402
+from modules.fundamentals import calculate_piotroski_f_score  # noqa: E402
+from modules.regime_hmm import RegimeHMM  # noqa: E402
+from modules.scoring import calculate_institutional_score  # noqa: E402
+from ticker_list import TICKERS  # noqa: E402
 
 # Disable emojis for Windows terminal stability
 console = Console(force_terminal=True, emoji=False)
@@ -229,7 +228,7 @@ def run_backtest(years=3, universe_size=50, stress_mode=False, rebal_freq="MS"):
                         period_returns.append(net_ret)
                     else:
                         period_returns.append(-0.5)
-                except:
+                except Exception:
                     period_returns.append(-1.0)
             avg_ret = float(np.mean(period_returns)) if period_returns else 0.0
             try:
@@ -237,7 +236,7 @@ def run_backtest(years=3, universe_size=50, stress_mode=False, rebal_freq="MS"):
                 bnch_ret = (
                     float(bnch_data["Close"].iloc[-1]) - float(bnch_data["Close"].iloc[0])
                 ) / float(bnch_data["Close"].iloc[0])
-            except:
+            except Exception:
                 bnch_ret = 0.0
 
             # --- Regime-Aware Position Sizing (v5.0 Stress Test Support) ---

@@ -1,13 +1,14 @@
 import argparse
 import hashlib
+import os
 import secrets
 import sys
-import os
 
 # Add parent directory to path so we can import app modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from db.db_core import execute_sql
+
 
 def generate_api_key():
     """Generates a new secure API key with 'sov_' prefix."""

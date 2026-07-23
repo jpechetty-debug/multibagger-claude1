@@ -14,8 +14,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from db.models import Base
 from core.observability.logger import get_logger
+from db.models import Base
+
 _log = get_logger("db.engine")
 
 # --- Configuration ---
@@ -53,7 +54,8 @@ def _build_engine():
 
 engine = _build_engine()
 
-from sqlalchemy import event
+from sqlalchemy import event  # noqa: E402
+
 
 @event.listens_for(engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):

@@ -52,8 +52,8 @@ from typing import Any
 
 import httpx
 
-from db.db_core import execute_sql
 from core.observability.logger import get_logger
+from db.db_core import execute_sql
 
 _log = get_logger("sovereign.webhooks")
 

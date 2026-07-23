@@ -3,8 +3,6 @@ import sys
 
 # Ensure root directory is in path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
-import modules.adapters.yf_patch  # noqa: F401
-
 import asyncio
 import json
 from dataclasses import dataclass, field
@@ -15,10 +13,11 @@ import numpy as np
 import pandas as pd
 import yfinance as yf  # Kept for Nifty benchmark index only (^NSEI)
 
+import modules.adapters.yf_patch  # noqa: F401
 from modules.cagr_engine import calculate_all_cagrs, classify_market_cap, extract_dividend_metrics
 from modules.data_service import DataManager, get_data_manager
 from modules.estimates import get_estimate_data
-from modules.fx import to_inr_cr
+from modules.fundamental_filters import classify_multibagger_tier, get_tier_label
 from modules.fundamentals import (
     calculate_current_roe,
     calculate_median_pat_growth,
@@ -27,10 +26,11 @@ from modules.fundamentals import (
     calculate_roce,
     check_earnings_inflection,
 )
-from modules.fundamental_filters import classify_multibagger_tier, get_tier_label
+from modules.fx import to_inr_cr
 from modules.logger import ScanLogger
 from modules.ml_ranker import LightGBMRanker
 from modules.models import StockDataPayload
+from modules.risk.slippage import liquidity_gate
 from modules.scoring import (
     calculate_institutional_score,
     calculate_sector_medians,
@@ -43,7 +43,6 @@ from modules.technicals import (
     calculate_momentum_features,
     calculate_rsi,
 )
-from modules.risk.slippage import liquidity_gate
 from ticker_list import TICKERS
 
 

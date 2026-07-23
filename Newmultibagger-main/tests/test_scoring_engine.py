@@ -46,7 +46,7 @@ _conv_stub.calculate_conviction_score.return_value = {
 sys.modules.setdefault("research.conviction_engine", _conv_stub)
 
 # Now import the module under test
-from modules.scoring import calculate_institutional_score, normalize_metric
+from modules.scoring import calculate_institutional_score, normalize_metric  # noqa: E402
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Fixtures

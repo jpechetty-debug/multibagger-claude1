@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-import modules.data_service as data_service_module
+import modules.data_service as data_service_module  # noqa: E402
 
 
 def test_pnsea_provider_initializes_client_lazily(monkeypatch):

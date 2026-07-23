@@ -21,16 +21,16 @@ end     ISO date, e.g. 2024-12-31   – restrict factor window (optional)
 """
 from __future__ import annotations
 
-from datetime import datetime, date
+from datetime import date, datetime
 from typing import Any
 
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query
 
+from core.observability.logger import get_logger
 from modules.connections import _run_blocking
 from modules.factor_exposure import check_factor_alerts, compute_factor_betas
 from modules.india_factor_loader import factor_metadata, load_factor_returns
-from core.observability.logger import get_logger
 
 _log = get_logger("api.factor_exposure")
 

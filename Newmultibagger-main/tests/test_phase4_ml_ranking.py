@@ -22,17 +22,16 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from modules.hybrid_scoring import (
+import xgboost as xgb  # noqa: E402
+
+from modules.hybrid_scoring import (  # noqa: E402
     FEATURES,
+    SHAP_DOMINANCE_THRESHOLD,
     _make_xgb_regressor,
     _sanitize_features,
     check_shap_dominance,
     optuna_optimize,
-    SHAP_DOMINANCE_THRESHOLD,
 )
-
-import xgboost as xgb
-
 
 # ---------------------------------------------------------------------------
 # Helpers

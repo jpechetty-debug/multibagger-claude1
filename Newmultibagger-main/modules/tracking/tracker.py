@@ -1,7 +1,10 @@
 import datetime
+
 import pandas as pd
-from modules.db_utils import get_db_connection
+
 from core.observability.logger import get_logger
+from modules.db_utils import get_db_connection
+
 _log = get_logger("modules.tracking.tracker")
 
 DB_NAME = "portfolio_history.db"

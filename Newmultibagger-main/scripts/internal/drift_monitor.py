@@ -12,9 +12,8 @@ import yfinance as yf
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
-import modules.adapters.yf_patch  # noqa: F401
-
-from modules.connections import DB_PATH
+import modules.adapters.yf_patch  # noqa: E402, F401
+from modules.connections import DB_PATH  # noqa: E402
 
 
 def run_drift_monitor() -> None:

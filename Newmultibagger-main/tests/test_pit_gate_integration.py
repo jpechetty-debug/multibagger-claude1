@@ -15,8 +15,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from modules.pit_auditor import PITViolationError
-from modules.scoring import calculate_institutional_score
+from modules.pit_auditor import PITViolationError  # noqa: E402
+from modules.scoring import calculate_institutional_score  # noqa: E402
 
 
 def _stock_with_pit_dates(as_of: str, quarter_end: str) -> dict:

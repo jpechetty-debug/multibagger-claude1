@@ -7,7 +7,6 @@ import sys
 # Add root directory to python path so we can import from ticker_list
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 import modules.adapters.yf_patch  # noqa: F401
-
 from ticker_list import TICKERS
 
 MASTER_PICKS = TICKERS.copy()

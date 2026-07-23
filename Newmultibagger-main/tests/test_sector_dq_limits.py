@@ -303,7 +303,7 @@ class TestSectorCacheBehavior:
         dq_gates._sector_limits_cache = {"TestSector": {}}
 
         # Should not modify cache since it's already loaded
-        with patch("modules.data_layer.dq_gates.logger") as mock_logger:
+        with patch("modules.data_layer.dq_gates.logger"):
             dq_gates.load_sector_limits()
 
         assert "TestSector" in dq_gates._sector_limits_cache

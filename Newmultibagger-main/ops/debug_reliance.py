@@ -7,10 +7,9 @@ import pandas as pd
 # Add base dir to path
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_DIR)
-import modules.adapters.yf_patch  # noqa: F401
-
-from modules.data_service import get_data_manager
-from modules.fundamentals import (
+import modules.adapters.yf_patch  # noqa: E402, F401
+from modules.data_service import get_data_manager  # noqa: E402
+from modules.fundamentals import (  # noqa: E402
     calculate_current_roe,
     calculate_recent_sales_growth,
     extract_financial_metric,

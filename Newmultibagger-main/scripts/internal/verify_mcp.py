@@ -1,7 +1,8 @@
-import modules.adapters.yf_patch  # noqa: F401
 import asyncio
 
 from sovereign_mcp import analyze_ticker, get_market_regime
+
+import modules.adapters.yf_patch  # noqa: F401
 
 
 async def test():

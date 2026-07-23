@@ -12,10 +12,10 @@ with lazy caching. Falls back to flat METRIC_LIMITS for unknown sectors.
 
 from __future__ import annotations
 
-from core.observability.logger import get_logger
-
 import math
 from dataclasses import dataclass
+
+from core.observability.logger import get_logger
 
 logger = get_logger("dq_gates")
 
@@ -119,7 +119,7 @@ def load_sector_limits() -> None:
         return
 
     try:
-        from db.repository import get_connection, _table_exists
+        from db.repository import _table_exists, get_connection
 
         conn = get_connection()
         try:

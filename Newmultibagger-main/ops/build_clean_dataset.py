@@ -1,16 +1,16 @@
-import modules.adapters.yf_patch  # noqa: F401
 import argparse
 import json
 import re
 import sqlite3
 from datetime import UTC, date, datetime
 from pathlib import Path
-
 from typing import Any, cast
 
 import numpy as np
 import pandas as pd
 import yaml  # type: ignore[import-untyped]
+
+import modules.adapters.yf_patch  # noqa: F401
 
 SECTOR_MAP = {
     "BASIC MATERIALS": "Basic Materials",

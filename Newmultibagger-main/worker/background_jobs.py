@@ -11,9 +11,9 @@ from typing import Any
 import pandas as pd
 import yfinance as yf
 
+from core.observability.logger import SovereignLogger, get_logger
 from modules.retry_utils import run_with_exponential_backoff
 from modules.runtime_settings import runtime_settings
-from core.observability.logger import get_logger, SovereignLogger
 
 AsyncCallable = Callable[..., Awaitable[Any]]
 OHLCV_COLUMNS = ("Open", "High", "Low", "Close", "Volume")

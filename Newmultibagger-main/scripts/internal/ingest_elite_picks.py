@@ -1,7 +1,8 @@
-import modules.adapters.yf_patch  # noqa: F401
 import os
 import sqlite3
 from datetime import datetime
+
+import modules.adapters.yf_patch  # noqa: F401
 
 # Raw data from user
 raw_data = """
@@ -757,7 +758,7 @@ def clean_val(val):
     val = val.replace("%", "").replace(",", "").strip()
     try:
         return float(val)
-    except:
+    except (ValueError, TypeError):
         return val
 
 

@@ -149,6 +149,7 @@ Examples
             sys.exit(1)
 
         import pandas as pd
+
         from modules.data_layer.db_utils import get_db_connection
 
         try:
@@ -187,6 +188,7 @@ Examples
         logger.info("Running Optuna hyperparameter optimization…")
         try:
             import pandas as pd
+
             from modules.data_layer.db_utils import get_db_connection
             from modules.hybrid_scoring import optuna_optimize
 

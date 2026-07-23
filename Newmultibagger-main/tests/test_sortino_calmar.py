@@ -139,7 +139,7 @@ class TestSortinoRatio:
         rets_clean = pd.Series([0.05, -0.02, 0.03, -0.01, 0.04, -0.03] * 4)
         rets_with_nan = rets_clean.copy()
         rets_with_nan.iloc[3] = float("nan")
-        clean_result = mod._sortino_ratio(rets_clean)
+        mod._sortino_ratio(rets_clean)
         nan_result = mod._sortino_ratio(rets_with_nan)
         # Results differ (NaN removed changes the series) but neither is NaN
         assert np.isfinite(nan_result)

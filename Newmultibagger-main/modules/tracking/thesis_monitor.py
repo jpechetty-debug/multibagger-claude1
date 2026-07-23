@@ -11,9 +11,10 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from typing import Any, cast
 
-from modules.connections import DB_PATH, DB_BUSY_TIMEOUT_MS
-from modules.data_utils import safe_float
 from core.observability.logger import get_logger
+from modules.connections import DB_BUSY_TIMEOUT_MS, DB_PATH
+from modules.data_utils import safe_float
+
 _log = get_logger("modules.tracking.thesis_monitor")
 
 

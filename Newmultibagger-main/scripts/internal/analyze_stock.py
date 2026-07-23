@@ -1,15 +1,16 @@
 import modules.adapters.yf_patch  # noqa: F401
+
 """
 analyze_stock.py - Institutional Grade Stock Analyzer
 Provides a robust, parameterized CLI interface for the Sovereign AI Trading Engine.
 """
 
-import argparse
-import asyncio
-import sys
-from typing import Any
+import argparse  # noqa: E402
+import asyncio  # noqa: E402
+import sys  # noqa: E402
+from typing import Any  # noqa: E402
 
-from screener import calculate_institutional_score, get_stock_data
+from screener import calculate_institutional_score, get_stock_data  # noqa: E402
 
 
 class Colors:

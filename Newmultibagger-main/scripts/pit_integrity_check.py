@@ -1,16 +1,16 @@
 # scripts/pit_integrity_check.py
+import logging
 import sys
 from pathlib import Path
+
 import pandas as pd
-import logging
 
 # Add project root to path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-import db.repository as repository
-from modules.data_layer.temporal_realignment import TemporalRealignmentEngine
-
+import db.repository as repository  # noqa: E402
+from modules.data_layer.temporal_realignment import TemporalRealignmentEngine  # noqa: E402
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)

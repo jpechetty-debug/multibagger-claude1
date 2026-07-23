@@ -16,8 +16,9 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.observability.logger import get_logger
+
 _log = get_logger("portfolio.allocator")
-from modules.news_gate import NewsGate
+from modules.news_gate import NewsGate  # noqa: E402
 
 # We need to fetch news for the gate. Assuming we have a way or will mock it for now.
 # Realistically, we need `modules.news.get_stock_news` but that's async.

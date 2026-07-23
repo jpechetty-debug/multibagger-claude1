@@ -1,5 +1,7 @@
 import hashlib
+
 from db.db_core import execute_sql
+
 
 def run_migration():
     commands = [

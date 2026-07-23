@@ -1,15 +1,17 @@
 """Tests for Phase 6.1: Survivorship Bias Adjustment Rig."""
 
-import pandas as pd
-from unittest.mock import MagicMock, patch
-
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pandas as pd
+
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from backtest.backtest_engine import VectorBTEngine
+from backtest.backtest_engine import VectorBTEngine  # noqa: E402
+
 
 def test_survivorship_splicing_delisted_stock():
     """Verify that the engine splices delisted stock data when yfinance fails."""
@@ -41,7 +43,7 @@ def test_survivorship_splicing_delisted_stock():
             # Actually, `run_walk_forward_strategy_backtest` requires > min_train_periods.
             # Let's just test that the splicing loop works by triggering it.
 
-            result = engine.run_walk_forward_strategy_backtest(
+            engine.run_walk_forward_strategy_backtest(
                 symbols=["DELISTED"],
                 min_train_periods=1
             )

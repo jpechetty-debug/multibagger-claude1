@@ -6,7 +6,6 @@ import pandas as pd
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import modules.adapters.yf_patch  # noqa: F401
-
 from modules.strategies.garp_strategy import GarpStrategy
 from portfolio.allocator import PortfolioAllocator
 

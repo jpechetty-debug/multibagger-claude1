@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 
+from core.observability.logger import get_logger
 from modules.connections import (
     _run_blocking,
     _run_sqlite_write_with_retry,
@@ -12,7 +13,6 @@ from modules.connections import (
 )
 from modules.data_layer.data_utils import _json_safe_clean
 from modules.dependencies import manager
-from core.observability.logger import get_logger
 from worker.background_jobs import run_price_update_loop, start_weekly_audit_thread
 
 logger = get_logger("sovereign.runtime.worker")

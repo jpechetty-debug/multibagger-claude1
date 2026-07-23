@@ -35,7 +35,7 @@ if str(ROOT) not in sys.path:
 
 # ── Minimal stub so the module imports without curl_cffi / bs4 in CI ─────────
 
-import types as _types
+import types as _types  # noqa: E402
 
 _curl_stub = _types.ModuleType("curl_cffi")
 _curl_requests_stub = _types.ModuleType("curl_cffi.requests")
@@ -46,14 +46,13 @@ sys.modules.setdefault("curl_cffi", _curl_stub)
 sys.modules.setdefault("curl_cffi.requests", _curl_requests_stub)
 
 
-from modules.adapters.screener_in import (
+from modules.adapters.screener_in import (  # noqa: E402
     ScreenerInProvider,
     ScreenerParser,
     _parse_date,
     _parse_indian_number,
     _parse_percent,
 )
-
 
 # ── Synthetic HTML ────────────────────────────────────────────────────────────
 

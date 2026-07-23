@@ -13,10 +13,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from core.observability.logger import logger
 from modules.data_utils import optional_float, safe_float
 from modules.estimates import get_estimate_data
 from modules.promoter_intel import calculate_promoter_score
-from core.observability.logger import logger
 
 from .normalization import FactorState, _Number, _SectorMedians, _StockData
 

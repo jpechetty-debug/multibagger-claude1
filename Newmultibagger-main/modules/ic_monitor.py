@@ -9,7 +9,6 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 
-
 # ---------------------------------------------------------------------------
 # IC helpers
 # ---------------------------------------------------------------------------
@@ -187,8 +186,8 @@ def detect_ic_drift(
 # Runtime helpers used by the scoring engine
 # ---------------------------------------------------------------------------
 
-import json as _json
-from pathlib import Path as _Path
+import json as _json  # noqa: E402
+from pathlib import Path as _Path  # noqa: E402
 
 _IC_CACHE_PATH = _Path(__file__).resolve().parents[1] / "runtime" / "regime_ic_cache.json"
 

@@ -4,10 +4,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-from fastapi.testclient import TestClient
+from fastapi.testclient import TestClient  # noqa: E402
 
-import main
-import modules.price_fundamentals as price_fundamentals
+import main  # noqa: E402
+import modules.price_fundamentals as price_fundamentals  # noqa: E402
 
 
 def test_price_fundamentals_endpoint_returns_payload(monkeypatch):

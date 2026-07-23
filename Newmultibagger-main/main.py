@@ -31,9 +31,9 @@ from core.observability.logger import get_logger
 
 app_logger = get_logger("sovereign.app")
 runtime_logger = get_logger("sovereign.runtime")
-from modules.rate_limit import RateLimitExceeded, limiter, rate_limit_exceeded_handler
-from modules.runtime_settings import runtime_settings
-from worker.background_jobs import start_weekly_audit_thread
+from modules.rate_limit import RateLimitExceeded, limiter, rate_limit_exceeded_handler  # noqa: E402
+from modules.runtime_settings import runtime_settings  # noqa: E402
+from worker.background_jobs import start_weekly_audit_thread  # noqa: E402
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 WEB_UI_DIR = PROJECT_ROOT / "web-ui"
@@ -207,8 +207,8 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 # ── Gate 1: Non-blocking async endpoint patterns ───────────────────────────────────
 
-from modules.risk.risk import RiskGovernor as _RiskGovernor
-from modules.tracking.tracker import PortfolioTracker as _PortfolioTracker
+from modules.risk.risk import RiskGovernor as _RiskGovernor  # noqa: E402
+from modules.tracking.tracker import PortfolioTracker as _PortfolioTracker  # noqa: E402
 
 _risk_governor = _RiskGovernor()
 _tracker       = _PortfolioTracker()

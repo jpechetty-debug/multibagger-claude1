@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import importlib.util
+
+# Skip DuckDB sqlite_scanner download in CI/sandboxed environments.
+# Must be set before db.db_core is imported (which happens when main.py is imported).
+import os as _os
 import sys
 from pathlib import Path
 
 import pytest
 
-# Skip DuckDB sqlite_scanner download in CI/sandboxed environments.
-# Must be set before db.db_core is imported (which happens when main.py is imported).
-import os as _os
 _os.environ.setdefault("DUCKDB_SKIP_SQLITE_EXT", "1")
 _os.environ.setdefault("SOVEREIGN_TESTING", "1")  # skip lifespan background tasks (ML bootstrap, pub/sub, webhook retry)
 
@@ -82,6 +83,7 @@ def patch_duckdb_for_tests(monkeypatch):
     """
     try:
         import duckdb
+
         import db.db_core as _db_core
 
         # Reset any leftover connection from a prior test

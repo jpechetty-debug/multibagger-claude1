@@ -1,7 +1,9 @@
-import yfinance as yf
-from core.observability.logger import get_logger
-import time
 import threading
+import time
+
+import yfinance as yf
+
+from core.observability.logger import get_logger
 
 logger = get_logger("adapters.yf_patch")
 
@@ -18,7 +20,7 @@ def _rate_limited_make_request(self, *args, **kwargs):
         if elapsed < 0.5:
             time.sleep(0.5 - elapsed)
         _last_yf_call_time = time.time()
-        
+
     return _original_make_request(self, *args, **kwargs)
 
 if _original_make_request and not getattr(yf, "_is_patched", False):

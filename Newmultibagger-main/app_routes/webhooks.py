@@ -19,10 +19,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 from pydantic import BaseModel, Field, HttpUrl
 
+from core.observability.logger import get_logger
 from db.db_core import execute_sql
 from modules.auth import get_api_key
 from modules.webhook_dispatcher import dispatch_alerts, generate_webhook_secret
-from core.observability.logger import get_logger
 
 _log = get_logger("sovereign.webhooks_api")
 

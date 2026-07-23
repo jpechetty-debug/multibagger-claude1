@@ -2,7 +2,9 @@ import os
 from datetime import datetime
 
 import pandas as pd
+
 from core.observability.logger import get_logger
+
 _log = get_logger("modules.tracking.alpha_tracker")
 
 LOG_FILE = "alpha_log.csv"

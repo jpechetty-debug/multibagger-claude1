@@ -8,9 +8,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-import main
-import modules.data_service as data_manager_module
-from app_routes import public as public_routes
+import main  # noqa: E402
+import modules.data_service as data_manager_module  # noqa: E402
+from app_routes import public as public_routes  # noqa: E402
 
 
 def test_openapi_exposes_15_core_endpoints():

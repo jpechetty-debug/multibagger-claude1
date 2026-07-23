@@ -1,12 +1,13 @@
-import modules.adapters.yf_patch  # noqa: F401
 import json
 import os
 import sqlite3
+from datetime import date, timedelta
 
 import numpy as np
 import pandas as pd
 import yfinance as yf
-from datetime import date, timedelta
+
+import modules.adapters.yf_patch  # noqa: F401
 from modules.adapters.jugaad import get_jugaad_history
 
 

@@ -1,12 +1,13 @@
-import modules.adapters.yf_patch  # noqa: F401
 import json
+import os
 import sqlite3
 from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
 
-import os
+import modules.adapters.yf_patch  # noqa: F401
+
 DB_PATH = Path("runtime/stocks.db") if os.path.exists("runtime/stocks.db") else Path("stocks.db")
 
 

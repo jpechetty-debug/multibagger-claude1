@@ -14,8 +14,8 @@ Hit Rate, Avg Win/Loss, Profit Factor, Monte Carlo paths.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
 from collections.abc import Sequence
+from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd

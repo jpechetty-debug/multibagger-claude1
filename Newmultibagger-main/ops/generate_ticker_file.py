@@ -3,8 +3,8 @@ import sys
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_DIR)
-import modules.adapters.yf_patch  # noqa: F401
-import ticker_list
+import modules.adapters.yf_patch  # noqa: E402, F401
+import ticker_list  # noqa: E402
 
 
 def clean_symbol(sym):

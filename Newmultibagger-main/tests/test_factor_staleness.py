@@ -235,8 +235,9 @@ class TestFactorExposureMetaEndpoint:
         ldr._load_raw.cache_clear()
 
         # Import the meta function directly (not via HTTP)
-        from app_routes.factor_exposure import factor_exposure_meta
         import asyncio
+
+        from app_routes.factor_exposure import factor_exposure_meta
 
         result = asyncio.run(factor_exposure_meta())
 
@@ -251,8 +252,9 @@ class TestFactorExposureMetaEndpoint:
         monkeypatch.setenv("FACTOR_STALENESS_DAYS", "45")
         ldr._load_raw.cache_clear()
 
-        from app_routes.factor_exposure import factor_exposure_meta
         import asyncio
+
+        from app_routes.factor_exposure import factor_exposure_meta
 
         result = asyncio.run(factor_exposure_meta())
 
@@ -264,8 +266,9 @@ class TestFactorExposureMetaEndpoint:
         monkeypatch.setattr(ldr, "FACTOR_CSV_PATH", tmp_path / "missing.csv")
         ldr._load_raw.cache_clear()
 
-        from app_routes.factor_exposure import factor_exposure_meta
         import asyncio
+
+        from app_routes.factor_exposure import factor_exposure_meta
 
         result = asyncio.run(factor_exposure_meta())
 
@@ -279,8 +282,9 @@ class TestFactorExposureMetaEndpoint:
         monkeypatch.setattr(ldr, "FACTOR_CSV_PATH", csv)
         ldr._load_raw.cache_clear()
 
-        from app_routes.factor_exposure import factor_exposure_meta
         import asyncio
+
+        from app_routes.factor_exposure import factor_exposure_meta
 
         result = asyncio.run(factor_exposure_meta())
 

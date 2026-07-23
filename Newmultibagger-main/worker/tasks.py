@@ -18,8 +18,8 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from worker.celery_app import app
-from worker.redis_cache import cache
+from worker.celery_app import app  # noqa: E402
+from worker.redis_cache import cache  # noqa: E402
 
 try:
     from monitoring.metrics import (
@@ -197,8 +197,8 @@ def retrain_xgboost():
       3. Walk-forward metrics are captured in the return value.
     """
     try:
-        from modules.ml_ops import run_automated_training
         from modules.hybrid_scoring import load_walk_forward_report
+        from modules.ml_ops import run_automated_training
 
         success = run_automated_training()
         wf = load_walk_forward_report() or {}
@@ -306,9 +306,10 @@ def check_all_thesis_breaks_task():
 
     Scheduled: weekday mornings before market open (08:00 IST).
     """
-    from modules.tracking.thesis_monitor import check_all_thesis_breaks
     import json
     from pathlib import Path
+
+    from modules.tracking.thesis_monitor import check_all_thesis_breaks
 
     breaks = check_all_thesis_breaks()
     payload = {"items": breaks, "count": len(breaks)}
@@ -427,14 +428,15 @@ def check_factor_data_freshness():
     Also logs a _log.critical() so the structured log triggers PagerDuty /
     Slack alerting via the ops log pipeline.
     """
-    from modules.india_factor_loader import (
-        factor_returns_are_stale,
-        FACTOR_CSV_PATH,
-        FACTOR_COLUMNS,
-    )
     import asyncio
     import os
     from datetime import date
+
+    from modules.india_factor_loader import (
+        FACTOR_COLUMNS,
+        FACTOR_CSV_PATH,
+        factor_returns_are_stale,
+    )
 
     max_age = int(os.getenv("FACTOR_STALENESS_DAYS", "45"))
     stale = factor_returns_are_stale(max_age_days=max_age)

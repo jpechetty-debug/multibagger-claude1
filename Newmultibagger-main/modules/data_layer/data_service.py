@@ -21,6 +21,7 @@ import yfinance as yf
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
+from core.observability.logger import get_logger
 from modules.adapters.nse import NSEPythonProvider, PNSEAProvider
 from modules.adapters.screener_in import ScreenerInProvider
 from modules.data_utils import get_valid_trading_days, run_coroutine_sync
@@ -28,7 +29,7 @@ from modules.db_utils import get_db_connection
 from modules.field_names import FIELD_MAPPING
 from modules.financial_adapter import create_fundamentals_provider
 from modules.normalization.cleaner import is_payload_skeletal
-from core.observability.logger import get_logger
+
 logger = get_logger(__name__)
 
 _TRANSIENT_ERROR_HINTS = (
@@ -598,7 +599,8 @@ async def fetch_screener_rows(limit: int | None = None) -> list[ScreenerRow]:
     return await get_screener_repository().fetch_rows(limit=limit)
 
 
-import json
+import json  # noqa: E402
+
 
 class PersistentCache:
     def __init__(self, db_name="data_cache.db", ttl_seconds=86400):
@@ -877,6 +879,7 @@ class DataManager:
     def _generate_mock_history(self, symbol: str) -> pd.DataFrame:
         try:
             import hashlib
+
             import numpy as np
             # Try to get cached price
             cache_key = f"fund_{symbol}"

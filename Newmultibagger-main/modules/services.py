@@ -7,9 +7,10 @@ import asyncio
 from abc import ABC
 from typing import cast
 
-from modules.models import ScoringResult, StockDataPayload
-from modules.fx import to_inr_cr
 from core.observability.logger import get_logger
+from modules.fx import to_inr_cr
+from modules.models import ScoringResult, StockDataPayload
+
 _log = get_logger(__name__)
 
 

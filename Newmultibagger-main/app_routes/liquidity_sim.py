@@ -36,7 +36,8 @@ router = APIRouter()
 
 # ── Symbol validation ──────────────────────────────────────────────────────
 
-import re
+import re  # noqa: E402
+
 _SYMBOL_RE = re.compile(r"^[A-Z0-9&]{1,20}(\.(NS|BO|BSE))?$", re.IGNORECASE)
 
 

@@ -1,5 +1,6 @@
-import modules.adapters.yf_patch  # noqa: F401
 import yfinance as yf
+
+import modules.adapters.yf_patch  # noqa: F401
 
 candidates = ["ITDCEM.NS", "HBLPOWER.NS", "REC.NS", "TATAMOTORS.NS"]
 

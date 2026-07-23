@@ -11,10 +11,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Union
 
-from alembic import op
 import sqlalchemy as sa
-from db.date_utils import normalize_date
 
+from alembic import op
+from db.date_utils import normalize_date
 
 revision: str = "b7c1d2e3f4a5"
 down_revision: Union[str, Sequence[str], None] = "c9ef2c6838ab"

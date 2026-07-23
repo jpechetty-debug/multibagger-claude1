@@ -12,11 +12,10 @@ import pandas as pd
 # Add root project and Newmultibagger-main to sys.path
 root = os.getcwd()
 sys.path.insert(0, root)
-import modules.adapters.yf_patch  # noqa: F401
+import screener  # noqa: E402
 
-import screener
-
-import db.repository as repository
+import db.repository as repository  # noqa: E402
+import modules.adapters.yf_patch  # noqa: E402, F401
 
 # High-Conviction Indian Bluechips & Midcaps
 TICKERS = [

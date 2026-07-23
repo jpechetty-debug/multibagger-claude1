@@ -40,7 +40,9 @@ from pathlib import Path
 from typing import cast
 
 import pandas as pd
+
 from core.observability.logger import get_logger
+
 _log = get_logger("backtest.survivorship_adjusted_loader")
 
 logger = logging.getLogger(__name__)

@@ -1,11 +1,13 @@
 # Init for modules
 # Programmatically maps and registers sub-packages to preserve backward compatibility
 
-import sys
 import importlib
 import importlib.abc
 import importlib.util
+import sys
+
 from core.observability.logger import get_logger
+
 _log = get_logger(__name__)
 
 

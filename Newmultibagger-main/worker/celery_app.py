@@ -1,4 +1,5 @@
 import modules.adapters.yf_patch  # noqa: F401
+
 # worker/celery_app.py
 """
 Sovereign AI Trading Engine v4.0 — Celery Application Configuration
@@ -10,10 +11,10 @@ Usage:
     Monitor:        celery -A worker.celery_app flower
 """
 
-import os
+import os  # noqa: E402
 
-from celery import Celery
-from celery.schedules import crontab
+from celery import Celery  # noqa: E402
+from celery.schedules import crontab  # noqa: E402
 
 # --- Redis Configuration ---
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")

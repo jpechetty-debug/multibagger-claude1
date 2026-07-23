@@ -10,9 +10,11 @@ import inspect
 from collections.abc import Callable
 from typing import Any
 
-from modules.runtime_settings import runtime_settings
-from worker.redis_cache import cache as redis_cache, DEFAULT_TTL
 from core.observability.logger import get_logger
+from modules.runtime_settings import runtime_settings
+from worker.redis_cache import DEFAULT_TTL
+from worker.redis_cache import cache as redis_cache
+
 _log = get_logger(__name__)
 
 

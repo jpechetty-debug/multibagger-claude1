@@ -10,9 +10,10 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from core.observability.logger import get_logger
 from modules.data_service import get_data_manager
 from modules.retry_utils import run_with_exponential_backoff
-from core.observability.logger import get_logger
+
 _log = get_logger(__name__)
 
 

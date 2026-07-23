@@ -13,26 +13,27 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-import config
-import db.repository as database_module
-import main
-import modules.data_service as market_data_module
-import modules.financials as financials_module
-import modules.peer_analysis as peer_analysis_module
-import modules.quarterly_results as quarterly_results_module
-import modules.shareholding as shareholding_module
-import modules.technicals as technicals_module
-import modules.tracker as tracker_module
-import modules.valuation as valuation_module
-import report_generator
+import config  # noqa: E402
+import db.repository as database_module  # noqa: E402
+import main  # noqa: E402
+import modules.data_service as market_data_module  # noqa: E402
+import modules.financials as financials_module  # noqa: E402
+import modules.peer_analysis as peer_analysis_module  # noqa: E402
+import modules.quarterly_results as quarterly_results_module  # noqa: E402
+import modules.shareholding as shareholding_module  # noqa: E402
+import modules.technicals as technicals_module  # noqa: E402
+import modules.tracker as tracker_module  # noqa: E402
+import modules.valuation as valuation_module  # noqa: E402
+import report_generator  # noqa: E402
 
 
 def patch_sqlalchemy_db(monkeypatch, db_path: Path):
     from contextlib import contextmanager
-    import modules.dependencies as deps
-    import db.db_core
+
     import app_routes.stocks
     import app_routes.trading
+    import db.db_core
+    import modules.dependencies as deps
 
     engine = create_engine(f"sqlite:///{db_path.as_posix()}")
     monkeypatch.setattr(deps, "db_engine", engine, raising=False)
@@ -426,8 +427,8 @@ def test_valuation_endpoint_cached_payload_shape(tmp_path, monkeypatch):
 
 def test_order_lifecycle_endpoints(tmp_path, monkeypatch):
     tracker_db = tmp_path / "portfolio_history_test.db"
-    import modules.dependencies as deps
     import app_routes.trading as trading_routes
+    import modules.dependencies as deps
 
     tracker = tracker_module.PortfolioTracker(str(tracker_db))
     monkeypatch.setattr(deps, "portfolio_tracker", tracker, raising=False)

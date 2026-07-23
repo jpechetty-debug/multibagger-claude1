@@ -9,11 +9,11 @@ import pandas as pd
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
+from core.observability.logger import get_logger
 from db.db_core import execute_sql
 from modules.alerts import AlertEngine
 from modules.auth import get_api_key
 from modules.webhook_dispatcher import dispatch_alerts
-from core.observability.logger import get_logger
 
 router = APIRouter(prefix="/swarm", tags=["swarm"])
 _log = get_logger("sovereign.swarm")

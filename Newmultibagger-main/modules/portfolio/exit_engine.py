@@ -1,5 +1,6 @@
 from modules.thesis_monitor import check_thesis
 
+
 def check_exit_conditions(stock_data):
     """
     Phase 34: Thesis Break Monitor (Exit Engine).

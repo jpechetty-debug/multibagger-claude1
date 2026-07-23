@@ -258,9 +258,10 @@ class Test2025RateBounds:
 
     def test_component_costs_are_env_overridable(self, monkeypatch):
         """All TC_ constants must read from environment variables."""
-        import config
         # Verify they read from env by checking they use os.getenv
         import inspect
+
+        import config
         src = inspect.getsource(config)
         for var in ["TC_STT_SELL", "TC_EXCHANGE", "TC_SEBI_FEE",
                     "TC_STAMP_BUY", "TC_BROKERAGE_PER_SIDE",

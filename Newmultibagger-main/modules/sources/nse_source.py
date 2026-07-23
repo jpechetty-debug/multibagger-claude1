@@ -1,8 +1,10 @@
 import pandas as pd
 import requests
 
-from .base import DataSource
 from core.observability.logger import get_logger
+
+from .base import DataSource
+
 _log = get_logger(__name__)
 
 

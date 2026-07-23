@@ -7,11 +7,10 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parents[1]
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
-import modules.adapters.yf_patch  # noqa: F401
+from screener import load_universe_flags, refresh_and_get_blocked_symbols, save_universe_flags  # noqa: E402
 
-from screener import load_universe_flags, refresh_and_get_blocked_symbols, save_universe_flags
-
-import config
+import config  # noqa: E402
+import modules.adapters.yf_patch  # noqa: E402, F401
 
 DELISTED_RE = re.compile(r"\$([A-Z0-9&.\-]+):\s+possibly delisted; no price data found")
 NO_FUND_RE = re.compile(r"No fundamentals data found for symbol:\s*([A-Z0-9&.\-]+)")

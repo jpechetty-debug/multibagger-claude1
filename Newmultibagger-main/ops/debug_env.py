@@ -1,6 +1,7 @@
-import modules.adapters.yf_patch  # noqa: F401
 import os
 import sys
+
+import modules.adapters.yf_patch  # noqa: F401
 
 print(f"Python Executable: {sys.executable}")
 print(f"Python Version: {sys.version}")

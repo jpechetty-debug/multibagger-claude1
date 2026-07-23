@@ -1,15 +1,16 @@
 # tests/test_mock_history_correctness.py
 import sys
 from pathlib import Path
-import pytest
+
 import pandas as pd
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from modules.data_layer.data_service import DataManager
-from modules.data_layer.dq_gates import validate_dataframe
+from modules.data_layer.data_service import DataManager  # noqa: E402
+from modules.data_layer.dq_gates import validate_dataframe  # noqa: E402
 
 
 def test_mock_history_gating_behavior(monkeypatch):

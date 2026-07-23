@@ -1,19 +1,18 @@
 import os
 
 """Quick population script — fetches a few tickers via yfinance and inserts into multibaggers."""
-import sys
+import sys  # noqa: E402
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import modules.adapters.yf_patch  # noqa: F401
+import sqlite3  # noqa: E402
+from datetime import datetime  # noqa: E402
 
-import sqlite3
-from datetime import datetime
+import yfinance as yf  # noqa: E402
 
-import yfinance as yf
-
-from modules.fundamentals import calculate_piotroski_f_score
-from modules.fx import to_inr_cr
-from modules.scoring import calculate_institutional_score
+import modules.adapters.yf_patch  # noqa: E402, F401
+from modules.fundamentals import calculate_piotroski_f_score  # noqa: E402
+from modules.fx import to_inr_cr  # noqa: E402
+from modules.scoring import calculate_institutional_score  # noqa: E402
 
 TICKERS = [
     "RELIANCE.NS",

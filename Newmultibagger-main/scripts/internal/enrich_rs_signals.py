@@ -14,8 +14,9 @@ from modules.fx import to_inr_cr
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
-import modules.adapters.yf_patch  # noqa: F401
-from typing import Any
+from typing import Any  # noqa: E402
+
+import modules.adapters.yf_patch  # noqa: E402, F401
 
 try:
     from modules.fundamentals import calculate_piotroski_f_score

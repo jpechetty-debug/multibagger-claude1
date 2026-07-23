@@ -2,8 +2,9 @@ import numpy as np
 import pandas as pd
 
 import config
-from modules.allocation_hrp import HRPAllocator
 from core.observability.logger import get_logger
+from modules.allocation_hrp import HRPAllocator
+
 _log = get_logger("modules.portfolio.optimizer")
 
 

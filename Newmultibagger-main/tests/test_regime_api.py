@@ -9,10 +9,10 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-import config
-import main
-import modules.data_service as market_data_module
-import modules.dependencies as deps
+import config  # noqa: E402
+import main  # noqa: E402
+import modules.data_service as market_data_module  # noqa: E402
+import modules.dependencies as deps  # noqa: E402
 
 
 def test_regime_status_normalizes_provider_payload(monkeypatch):

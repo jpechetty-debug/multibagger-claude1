@@ -3,8 +3,9 @@ import asyncio
 import numpy as np
 import yfinance as yf
 
-from modules.retry_utils import run_with_exponential_backoff
 from core.observability.logger import get_logger
+from modules.retry_utils import run_with_exponential_backoff
+
 _log = get_logger(__name__)
 
 

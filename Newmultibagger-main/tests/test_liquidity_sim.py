@@ -10,18 +10,18 @@ Run with:
 from __future__ import annotations
 
 import math
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import pytest
+
 from modules.liquidity import (
+    LiquiditySimResult,
     analyze_liquidity,
     simulate_liquidity,
-    LiquiditySimResult,
 )
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────
 

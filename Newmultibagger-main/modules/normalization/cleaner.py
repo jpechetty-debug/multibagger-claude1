@@ -1,8 +1,10 @@
 # modules/normalization/cleaner.py
-from core.observability.logger import get_logger
 from typing import Any
 
 import numpy as np
+
+from core.observability.logger import get_logger
+
 _log = get_logger(__name__)
 
 

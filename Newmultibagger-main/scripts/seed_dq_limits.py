@@ -13,8 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from db.repository import get_connection, _ensure_dq_sector_limits_table
-
+from db.repository import _ensure_dq_sector_limits_table, get_connection  # noqa: E402
 
 # ── Sector-Specific Limit Definitions ─────────────────────────────────────────
 # Only metrics whose reasonable range differs materially from METRIC_LIMITS

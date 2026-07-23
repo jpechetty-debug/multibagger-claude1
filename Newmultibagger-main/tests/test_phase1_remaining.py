@@ -43,8 +43,9 @@ class TestAsOfDateRejection:
         assert strict_normalize_date("2024-06-15") == "2024-06-15"
 
     def test_strict_normalize_accepts_datetime(self):
-        from db.date_utils import strict_normalize_date
         from datetime import datetime
+
+        from db.date_utils import strict_normalize_date
 
         assert strict_normalize_date(datetime(2024, 6, 15, 10, 30)) == "2024-06-15"
 
@@ -238,6 +239,7 @@ class TestPriceAdjustmentVerification:
     def test_auto_adjust_kwarg_is_set_in_engine(self):
         """Verify the backtest engine code documents auto_adjust=True."""
         import inspect
+
         from backtest.backtest_engine import VectorBTEngine
 
         source = inspect.getsource(VectorBTEngine.run_walk_forward_strategy_backtest)

@@ -6,9 +6,9 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from core.observability.logger import get_logger
 from db.db_core import db_engine
 from modules.runtime_settings import runtime_settings
-from core.observability.logger import get_logger
 
 runtime_logger = get_logger("sovereign.runtime")
 

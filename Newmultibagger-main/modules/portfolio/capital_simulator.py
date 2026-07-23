@@ -1,4 +1,5 @@
 from core.observability.logger import get_logger
+
 _log = get_logger("modules.portfolio.capital_simulator")
 def simulate_capital_deployment(portfolio):
     """

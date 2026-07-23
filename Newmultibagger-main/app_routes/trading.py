@@ -7,7 +7,9 @@ import yfinance as yf
 from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import text
 
+from core.observability.logger import get_logger
 from db.db_core import get_db_connection as get_sqla_connection
+from modules.cache import regime_cache
 from modules.connections import (
     _run_blocking,
     _run_ticker_blocking,
@@ -19,15 +21,13 @@ from modules.dependencies import (
     portfolio_tracker,
     risk_governor,
 )
-from modules.cache import regime_cache
-from core.observability.logger import get_logger
 
 api_logger = get_logger("sovereign.api")
-from modules.allocation_hrp import HRPAllocator
-from modules.models import OrderRequest
-from modules.rate_limit import limiter
-from modules.retry_utils import run_with_exponential_backoff
-from modules.symbol_utils import canonical_symbol
+from modules.allocation_hrp import HRPAllocator  # noqa: E402
+from modules.models import OrderRequest  # noqa: E402
+from modules.rate_limit import limiter  # noqa: E402
+from modules.retry_utils import run_with_exponential_backoff  # noqa: E402
+from modules.symbol_utils import canonical_symbol  # noqa: E402
 
 router = APIRouter()
 

@@ -1,14 +1,16 @@
 """Tests for Phase 6.2: Temporal Realignment Engine."""
 
-import pandas as pd
-
 import sys
 from pathlib import Path
+
+import pandas as pd
+
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from modules.data_layer.temporal_realignment import TemporalRealignmentEngine
+from modules.data_layer.temporal_realignment import TemporalRealignmentEngine  # noqa: E402
+
 
 def test_temporal_realignment_engine_applies_lag():
     """Verify that the engine applies the strict publishing lag correctly."""

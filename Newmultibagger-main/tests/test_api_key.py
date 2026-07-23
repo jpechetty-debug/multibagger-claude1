@@ -1,6 +1,7 @@
 from fastapi import HTTPException
-from modules.auth import get_api_key
+
 from core.observability.logger import get_logger
+from modules.auth import get_api_key
 
 api_logger = get_logger("test")
 

@@ -1,10 +1,11 @@
-import modules.adapters.yf_patch  # noqa: F401
 import os
 import sqlite3
 
 import numpy as np
 import pandas as pd
 from statsmodels.stats.outliers_influence import variance_inflation_factor
+
+import modules.adapters.yf_patch  # noqa: F401
 
 
 def analyze_vif():

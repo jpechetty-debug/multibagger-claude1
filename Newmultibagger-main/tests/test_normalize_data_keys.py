@@ -40,9 +40,8 @@ _conv_stub.calculate_conviction_score.return_value = {
 }
 sys.modules.setdefault("research.conviction_engine", _conv_stub)
 
-from modules.field_names import normalize_data_keys, FIELD_MAPPING, REVERSE_FIELD_MAPPING
-from modules.scoring import calculate_institutional_score
-
+from modules.field_names import FIELD_MAPPING, REVERSE_FIELD_MAPPING, normalize_data_keys  # noqa: E402
+from modules.scoring import calculate_institutional_score  # noqa: E402
 
 # ─────────────────────────────────────────────────────────────────────────────
 # normalize_data_keys unit tests

@@ -26,7 +26,6 @@ import logging
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -211,7 +210,7 @@ class TestAliasPrecedence:
 
     def test_all_alias_values_are_tuples_not_lists(self):
         """Alias maps must use tuples so resolve_key receives the correct type."""
-        from modules.adapters.nse import _PNSEA_INFO_ALIASES, _NSEPYTHON_INFO_ALIASES
+        from modules.adapters.nse import _NSEPYTHON_INFO_ALIASES, _PNSEA_INFO_ALIASES
         for name, alias_map in [
             ("PNSEA", _PNSEA_INFO_ALIASES),
             ("NSEPython", _NSEPYTHON_INFO_ALIASES),
@@ -223,7 +222,7 @@ class TestAliasPrecedence:
 
     def test_no_duplicate_candidates_in_alias_map(self):
         """Duplicate candidates in a tuple silently waste a lookup — prevent it."""
-        from modules.adapters.nse import _PNSEA_INFO_ALIASES, _NSEPYTHON_INFO_ALIASES
+        from modules.adapters.nse import _NSEPYTHON_INFO_ALIASES, _PNSEA_INFO_ALIASES
         for name, alias_map in [
             ("PNSEA", _PNSEA_INFO_ALIASES),
             ("NSEPython", _NSEPYTHON_INFO_ALIASES),
@@ -287,6 +286,7 @@ class TestYFinanceAdapterUnchanged:
         # We can't run async without an event loop in plain pytest easily,
         # but we can verify the return dict structure via inspection.
         import inspect
+
         from modules.adapters.yfinance import YFinanceProvider
         src = inspect.getsource(YFinanceProvider.fetch_fundamentals)
         for key in ["PE_Ratio", "ROE%", "Debt_Equity", "Sales_Growth_TTM%", "source"]:

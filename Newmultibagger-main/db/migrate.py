@@ -14,8 +14,9 @@ import sqlite3
 
 import pandas as pd
 
-from db.engine import IS_SQLITE, engine, init_tables
 from core.observability.logger import get_logger
+from db.engine import IS_SQLITE, engine, init_tables
+
 _log = get_logger("db.migrate")
 
 SQLITE_SOURCE = os.getenv("SQLITE_SOURCE", "stocks.db")

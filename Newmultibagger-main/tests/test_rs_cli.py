@@ -8,8 +8,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-import sovereign_cli
-from scripts.internal import cleanup_signals, ingest_rs_signals
+import sovereign_cli  # noqa: E402
+from scripts.internal import cleanup_signals, ingest_rs_signals  # noqa: E402
 
 
 def test_ingest_reads_csv_once_and_saves_dataframe(tmp_path, monkeypatch):

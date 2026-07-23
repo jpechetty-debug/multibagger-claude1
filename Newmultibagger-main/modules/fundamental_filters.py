@@ -218,7 +218,7 @@ def _tier3_early_stage(stock_data: dict) -> tuple[bool, str]:
     pat_5y = _safe_float(_get_val(stock_data, "PAT_CAGR_5Y"))
 
     best_revenue_growth = max(sg_5y, sg_ttm)
-    best_pat_growth = max(pat_3y, pat_5y)
+    max(pat_3y, pat_5y)
 
     if best_revenue_growth < 25:
         return False, f"T3: Revenue growth too low ({best_revenue_growth:.0f}%)"

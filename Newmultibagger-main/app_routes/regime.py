@@ -8,19 +8,19 @@ from fastapi import APIRouter, HTTPException
 
 import config
 import modules.data_service as market_data_module
+from core.observability.logger import get_logger
 from modules.cache import (
+    REGIME_CACHE_TTL_SECONDS,
     _cache_invalidate,
     _cache_is_fresh,
     _cache_set,
-    REGIME_CACHE_TTL_SECONDS,
     regime_cache,
     regime_cache_lock,
 )
 from modules.connections import _run_blocking
-from core.observability.logger import get_logger
 
 runtime_logger = get_logger("sovereign.runtime")
-from app_routes.contracts import RegimeStatusResponse
+from app_routes.contracts import RegimeStatusResponse  # noqa: E402
 
 router = APIRouter()
 _REGIME_IO_TIMEOUT_SECONDS = 5.0

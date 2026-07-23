@@ -6,7 +6,8 @@ from pathlib import Path
 import structlog
 from sqlalchemy import text
 
-from db.engine import DATABASE_URL, DEFAULT_SQLITE_PATH, engine as db_engine
+from db.engine import DATABASE_URL, DEFAULT_SQLITE_PATH
+from db.engine import engine as db_engine
 
 logger = structlog.get_logger("db_core")
 
@@ -60,7 +61,7 @@ def execute_sql(query: str, params: dict | None = None, fetch_all: bool = False)
 
 
 # -- DuckDB Analytical Engine (Thread-Safe) --
-import duckdb
+import duckdb  # noqa: E402
 
 # Thread-local storage ensures each thread gets its own DuckDB connection
 _duck_local = threading.local()

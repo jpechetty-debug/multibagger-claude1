@@ -1,4 +1,3 @@
-import modules.adapters.yf_patch  # noqa: F401
 import argparse
 import json
 import re
@@ -8,6 +7,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import cast
+
+import modules.adapters.yf_patch  # noqa: F401
 
 ROOT = Path(__file__).resolve().parents[1]
 OPS_DIR = ROOT / "ops"

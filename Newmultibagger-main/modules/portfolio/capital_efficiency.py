@@ -1,4 +1,5 @@
 from core.observability.logger import get_logger
+
 _log = get_logger(__name__)
 
 def analyze_capital_efficiency(stock_data):

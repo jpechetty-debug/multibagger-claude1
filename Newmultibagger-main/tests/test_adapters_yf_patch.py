@@ -1,6 +1,7 @@
-import yfinance as yf
-from unittest.mock import patch, MagicMock
 import time
+from unittest.mock import MagicMock, patch
+
+import yfinance as yf
 
 
 def test_yf_is_patched():

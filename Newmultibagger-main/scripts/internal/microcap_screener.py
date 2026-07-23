@@ -1,9 +1,9 @@
-import modules.adapters.yf_patch  # noqa: F401
 import pandas as pd
 import yfinance as yf
 
-from ticker_list import TICKERS
+import modules.adapters.yf_patch  # noqa: F401
 from modules.fx import to_inr_cr
+from ticker_list import TICKERS
 
 
 def get_microcap_data(ticker_symbol):

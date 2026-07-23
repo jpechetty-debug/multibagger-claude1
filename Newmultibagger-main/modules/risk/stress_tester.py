@@ -2,7 +2,9 @@
 import math
 from dataclasses import dataclass
 from enum import Enum
+
 from core.observability.logger import get_logger
+
 _log = get_logger("modules.risk.stress_tester")
 
 

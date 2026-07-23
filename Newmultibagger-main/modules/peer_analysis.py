@@ -15,10 +15,11 @@ from typing import Any, cast
 
 import pandas as pd
 
+from core.observability.logger import get_logger
 from modules.db_utils import get_db_connection
 from modules.fx import to_inr_cr
 from modules.retry_utils import run_with_exponential_backoff
-from core.observability.logger import get_logger
+
 _log = get_logger("modules.peer_analysis")
 
 

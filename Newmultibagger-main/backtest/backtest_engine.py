@@ -1,7 +1,9 @@
-from pathlib import Path
 import logging
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
+
 # vectorbt applies a plotly template that includes 'heatmapgl' which was
 # removed in plotly 5.x. Silence the validation error so the import succeeds.
 try:
@@ -21,26 +23,26 @@ try:
     import vectorbt as vbt
 except Exception:
     vbt = None  # type: ignore[assignment]
-import yfinance as yf
 import os
 
-from backtest.survivorship_adjusted_loader import SurvivorshipAdjustedLoader
+import yfinance as yf
+
 from backtest.liquidity_filter import LiquidityFilter
-
-
+from backtest.survivorship_adjusted_loader import SurvivorshipAdjustedLoader
 from config import (
-    TC_STT_SELL,
-    TC_EXCHANGE,
-    TC_SEBI_FEE,
-    TC_STAMP_BUY,
-    TC_BROKERAGE_PER_SIDE,
-    TC_GST_RATE,
-    TC_IMPACT_ALPHA,
     TC_ADV_FRAC_LARGE,
     TC_ADV_FRAC_MID,
     TC_ADV_FRAC_SMALL,
+    TC_BROKERAGE_PER_SIDE,
+    TC_EXCHANGE,
+    TC_GST_RATE,
+    TC_IMPACT_ALPHA,
+    TC_SEBI_FEE,
+    TC_STAMP_BUY,
+    TC_STT_SELL,
 )
 from core.observability.logger import get_logger
+
 _log = get_logger("backtest.backtest_engine")
 RF_ANNUAL = float(os.getenv("RISK_FREE_RATE_ANNUAL", "0.065"))
 DEFAULT_BENCHMARK_SYMBOL = "^CNX500"
@@ -549,8 +551,9 @@ class VectorBTEngine:
             feature_cols = _walk_forward_feature_columns()
             columns = ["symbol", "as_of_date", *feature_cols]
             try:
-                from db.db_core import get_db_connection
                 from sqlalchemy import text
+
+                from db.db_core import get_db_connection
                 seq_placeholders = ", ".join([f":s{idx}" for idx in range(len(clean_symbols))])
                 query = "SELECT {cols} FROM fundamentals_pit WHERE symbol IN ({seq})".format(
                     cols=", ".join(columns),
@@ -864,8 +867,9 @@ class VectorBTEngine:
 
             # 1. Fetch historical PIT scores from DB
             try:
-                from db.db_core import get_db_connection
                 from sqlalchemy import text
+
+                from db.db_core import get_db_connection
                 seq_placeholders = ", ".join([f":s{idx}" for idx in range(len(clean_symbols))])
                 query = f"SELECT symbol, as_of_date, score FROM fundamentals_pit WHERE symbol IN ({seq_placeholders})"
                 params = {f"s{idx}": s for idx, s in enumerate(clean_symbols)}
@@ -1046,7 +1050,7 @@ class VectorBTEngine:
                 if sym not in filtered_scores.columns:
                     continue
 
-                sym_scores = filtered_scores[sym].reindex(common_dates)
+                filtered_scores[sym].reindex(common_dates)
                 sym_returns = returns[sym].reindex(common_dates)
 
                 row_scores = filtered_scores.reindex(common_dates)

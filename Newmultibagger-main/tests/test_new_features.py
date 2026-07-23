@@ -8,12 +8,12 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-import unittest
-from unittest.mock import patch
+import unittest  # noqa: E402
+from unittest.mock import patch  # noqa: E402
 
-from modules.estimates import analyze_estimate_momentum, compute_own_estimate
-from modules.promoter_intel import calculate_promoter_score
-from modules.thesis_monitor import check_thesis, record_buy_thesis
+from modules.estimates import analyze_estimate_momentum, compute_own_estimate  # noqa: E402
+from modules.promoter_intel import calculate_promoter_score  # noqa: E402
+from modules.thesis_monitor import check_thesis, record_buy_thesis  # noqa: E402
 
 
 class TestNewFeatures(unittest.TestCase):

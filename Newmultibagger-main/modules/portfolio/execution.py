@@ -1,7 +1,9 @@
 import math
 
 import pandas as pd
+
 from core.observability.logger import get_logger
+
 _log = get_logger("modules.portfolio.execution")
 
 

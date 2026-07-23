@@ -12,8 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from modules.holdout import compare_performance, evaluate_holdout, split_holdout
-from modules.hybrid_scoring import FEATURES
+from modules.holdout import compare_performance, evaluate_holdout, split_holdout  # noqa: E402
+from modules.hybrid_scoring import FEATURES  # noqa: E402
 
 
 def _make_pit_df(start="2016-01-01", periods=24, freq="QS", n_symbols=3, seed=42):

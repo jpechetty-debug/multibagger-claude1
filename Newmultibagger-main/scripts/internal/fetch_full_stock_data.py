@@ -1,7 +1,8 @@
-import modules.adapters.yf_patch  # noqa: F401
 import json
 import os
 import sqlite3
+
+import modules.adapters.yf_patch  # noqa: F401
 
 
 def get_stock_details(symbol):

@@ -2,13 +2,12 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import modules.adapters.yf_patch  # noqa: F401
-
 import asyncio
 
 import pandas as pd
 from screener import SovereignScreener
 
+import modules.adapters.yf_patch  # noqa: F401
 from db.repository import save_multibaggers
 
 

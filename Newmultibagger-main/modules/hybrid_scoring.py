@@ -19,11 +19,13 @@ import shap
 import xgboost as xgb
 
 from modules.feature_factory import (
-    EXTENDED_FEATURES,
     EXTENDED_FEATURE_BOUNDS,
-    sanitize_features as _sanitize_extended,
+    EXTENDED_FEATURES,
     compute_all_features,
     compute_features_batch,
+)
+from modules.feature_factory import (
+    sanitize_features as _sanitize_extended,
 )
 
 warnings.filterwarnings("ignore")
@@ -792,7 +794,7 @@ def train_hybrid_model() -> bool:
 
     # ── 4. Holdout split ──
     try:
-        from modules.holdout import split_holdout, evaluate_holdout, compare_performance
+        from modules.holdout import compare_performance, evaluate_holdout, split_holdout
 
         train_only, holdout_only = split_holdout(train_df)
         _log.info("Holdout split", train=len(train_only), holdout=len(holdout_only))

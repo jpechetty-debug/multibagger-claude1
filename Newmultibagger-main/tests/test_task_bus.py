@@ -1,8 +1,10 @@
 import asyncio
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from worker.task_bus import dispatch, run_dev_worker, get_mode
+import pytest
+
+from worker.task_bus import dispatch, get_mode, run_dev_worker
+
 
 @pytest.fixture(autouse=True)
 def reset_task_bus_queue():

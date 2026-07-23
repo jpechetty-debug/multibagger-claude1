@@ -2,7 +2,9 @@ import asyncio
 import inspect
 from collections.abc import Callable, Sequence
 from typing import Any
+
 from core.observability.logger import get_logger
+
 _log = get_logger("modules.retry_utils")
 
 DEFAULT_BACKOFF_SECONDS: Sequence[float] = (2.0, 4.0, 8.0)
@@ -54,9 +56,9 @@ async def run_with_exponential_backoff(
 
 # ── Circuit Breaker ────────────────────────────────────────────────────────────
 
-import threading
-import time
-from enum import Enum
+import threading  # noqa: E402
+import time  # noqa: E402
+from enum import Enum  # noqa: E402
 
 
 class CircuitState(Enum):

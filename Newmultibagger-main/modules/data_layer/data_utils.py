@@ -7,8 +7,9 @@ import threading
 import pandas as pd
 import pandas_market_calendars as mcal
 
-from modules.symbol_utils import canonical_symbol
 from core.observability.logger import get_logger
+from modules.symbol_utils import canonical_symbol
+
 _log = get_logger(__name__)
 
 

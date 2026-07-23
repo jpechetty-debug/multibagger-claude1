@@ -1,7 +1,10 @@
-import pandas as pd
 from datetime import date
 from unittest.mock import patch
+
+import pandas as pd
+
 from modules.adapters.jugaad import get_jugaad_history
+
 
 def test_jugaad_rejects_bse_symbols():
     # .BO symbols should return empty dataframe immediately
@@ -12,7 +15,7 @@ def test_jugaad_rejects_bse_symbols():
 def test_jugaad_strips_ns_suffix(mock_stock_df):
     mock_stock_df.return_value = []
     get_jugaad_history("TCS.NS", date(2023, 1, 1), date(2023, 1, 5))
-    
+
     # Verify stock_df was called with just "TCS"
     mock_stock_df.assert_called_once()
     assert mock_stock_df.call_args[1]["symbol"] == "TCS"
@@ -38,20 +41,20 @@ def test_jugaad_standardizes_schema(mock_stock_df):
             "No of trades": 50000
         }
     ]
-    
+
     df = get_jugaad_history("INFY", date(2023, 1, 2), date(2023, 1, 2))
-    
+
     assert not df.empty
-    
+
     # Assert standard columns exist
     assert list(df.columns) == ["Open", "High", "Low", "Close", "Volume"]
-    
+
     # Assert values mapped correctly
     assert df.iloc[0]["Open"] == 2500.0
     assert df.iloc[0]["High"] == 2550.0
     assert df.iloc[0]["Low"] == 2490.0
     assert df.iloc[0]["Close"] == 2545.0
     assert df.iloc[0]["Volume"] == 1000000
-    
+
     # Assert index is a DatetimeIndex
     assert isinstance(df.index, pd.DatetimeIndex)

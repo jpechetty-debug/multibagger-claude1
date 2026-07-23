@@ -6,8 +6,8 @@ import pandas as pd
 # Define Paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_DIR)
-import modules.adapters.yf_patch  # noqa: F401
-import ticker_list
+import modules.adapters.yf_patch  # noqa: E402, F401
+import ticker_list  # noqa: E402
 
 NIFTY_500_CSV = os.path.join(BASE_DIR, "MW-NIFTY-500-12-Feb-2026.csv")
 MICROCAP_250_CSV = os.path.join(BASE_DIR, "MW-NIFTY-MICROCAP-250-12-Feb-2026.csv")

@@ -134,7 +134,7 @@ def _detect_margin_inflection(data: dict) -> tuple[bool, int, list[str]]:
 
     opm = _get(data, "Operating_Margin%", "opm")
     avg_opm = _get(data, "Avg_OPM_5Y%", "avg_opm_5y")
-    profit_margin = _get(data, "Profit_Margin%")
+    _get(data, "Profit_Margin%")
     roce = _get(data, "ROCE%", "roce")
 
     # Signal 1: Current OPM > 5Y average OPM (margin expansion)

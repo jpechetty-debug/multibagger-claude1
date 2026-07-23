@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from modules.data_layer.data_service import (
+from modules.data_layer.data_service import (  # noqa: E402
     ScreenerRepository,
     ScreenerRow,
     _postgres_dsn_for_asyncpg,

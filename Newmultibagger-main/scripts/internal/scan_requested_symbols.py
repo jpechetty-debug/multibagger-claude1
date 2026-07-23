@@ -1,6 +1,7 @@
-import modules.adapters.yf_patch  # noqa: F401
 import pandas as pd
 import screener
+
+import modules.adapters.yf_patch  # noqa: F401
 
 
 def scan_specific_symbols():

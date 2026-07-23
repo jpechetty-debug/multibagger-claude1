@@ -15,11 +15,14 @@ from datetime import datetime
 from typing import Any
 
 import numpy as np
+
 from core.observability.logger import get_logger
 from modules.db_utils import get_db_connection
 from modules.field_names import normalize_data_keys
 from modules.scoring.ceiling import (
     build_ceiling_diagnostics as _build_ceiling_diagnostics,
+)
+from modules.scoring.ceiling import (
     build_checklist_status as _build_scoring_checklist_status,
 )
 from modules.scoring.factors import _build_factor_state

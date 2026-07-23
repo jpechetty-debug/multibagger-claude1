@@ -20,8 +20,8 @@ Changes
 from __future__ import annotations
 
 import sqlalchemy as sa
-from alembic import op
 
+from alembic import op
 
 revision = "f1a2b3c4d5e6"
 down_revision = "e1f2a3b4c5d6"

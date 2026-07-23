@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-22T08:31:01.773Z",
+  "timestamp": "2026-07-22T10:46:01.886Z",
   "projectRoot": "D:\\Tradeidesa\\Multibagger-claude\\services\\ruflo-orchestrator",
   "structure": {
     "hasPackageJson": false,
@@ -7,5 +7,5 @@
     "hasClaudeConfig": true,
     "hasClaudeFlow": true
   },
-  "scannedAt": 1784709061773
+  "scannedAt": 1784717161887
 }

@@ -16,7 +16,6 @@ from __future__ import annotations
 import os
 import sys
 
-
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
@@ -106,6 +105,7 @@ class TestStockDataPayloadValidation:
     def test_extra_fields_ignored(self, caplog):
         """Unknown fields should be logged as a warning but allowed (extra='allow')."""
         import logging
+
         from modules.models import StockDataPayload
 
         with caplog.at_level(logging.WARNING):

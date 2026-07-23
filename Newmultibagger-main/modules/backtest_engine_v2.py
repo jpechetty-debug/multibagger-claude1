@@ -4,10 +4,11 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 
+from core.observability.logger import get_logger
 from modules.recovery import calculate_recovery_metrics
 from modules.risk.slippage import calculate_slippage
 from modules.tax_efficiency import calculate_tax_efficiency
-from core.observability.logger import get_logger
+
 _log = get_logger("modules.backtest_engine_v2")
 
 RF_ANNUAL = float(os.getenv("RISK_FREE_RATE_ANNUAL", "0.065"))

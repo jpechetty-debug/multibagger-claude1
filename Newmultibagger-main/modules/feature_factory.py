@@ -382,7 +382,7 @@ def compute_features_batch(df: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame(columns=EXTENDED_FEATURES)
 
     rows: list[dict[str, float]] = []
-    symbols = df["symbol"].tolist() if "symbol" in df.columns else []
+    df["symbol"].tolist() if "symbol" in df.columns else []
 
     # Compute sector RS ranks in batch
     sector_ranks = _compute_sector_rs_ranks(df)

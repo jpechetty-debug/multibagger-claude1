@@ -3,10 +3,11 @@ import os
 import sys
 from pathlib import Path
 
-from modules.auth import get_api_key
-from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect, Depends
+from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse
 
+from core.observability.logger import get_logger
+from modules.auth import get_api_key
 from modules.cache import (
     _cache_is_fresh,
     _cache_set,
@@ -14,9 +15,8 @@ from modules.cache import (
     movers_cache_lock,
 )
 from modules.dependencies import refresh_prices_once
-from modules.ws_auth import issue_ws_token, verify_ws_token, ws_reject
-from core.observability.logger import get_logger
 from modules.rate_limit import limiter
+from modules.ws_auth import issue_ws_token, verify_ws_token, ws_reject
 
 api_logger = get_logger("sovereign.api")
 

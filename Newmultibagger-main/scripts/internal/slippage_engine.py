@@ -1,10 +1,10 @@
-import modules.adapters.yf_patch  # noqa: F401
 import os
 import sqlite3
 
 import pandas as pd
 import yfinance as yf
 
+import modules.adapters.yf_patch  # noqa: F401
 from modules.fx import to_inr_cr
 
 
@@ -53,7 +53,7 @@ def run_slippage_analysis():
                 # US-listed tickers report marketCap in USD; convert via FX before Crore division.
                 mc = to_inr_cr(info.get("marketCap"), info.get("currency")) or 0
                 caps.append(mc)
-            except:
+            except Exception:
                 caps.append(0)
         portfolio["market_cap_cr"] = caps
 

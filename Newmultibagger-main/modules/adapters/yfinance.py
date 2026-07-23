@@ -1,11 +1,11 @@
 # modules/adapters/yfinance.py
 import asyncio
-from core.observability.logger import get_logger
 from typing import Any
 
 import pandas as pd
 import yfinance as yf
 
+from core.observability.logger import get_logger
 from modules.normalization.cleaner import _has_value, is_payload_skeletal
 
 from .base import DataProvider

@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from modules.hybrid_scoring import FEATURES, _make_xgb_regressor, _sanitize_features
+from modules.hybrid_scoring import FEATURES, _make_xgb_regressor, _sanitize_features  # noqa: E402
 
 
 def _deterministic_dataset(n_symbols=10, n_periods=6, seed=42):
@@ -73,7 +73,7 @@ def test_sanitize_is_stateless():
 
     # Create a different DataFrame
     df_c = pd.DataFrame({"score": [10.0, 20.0, np.nan], "pe_ratio": [150.0, np.nan, 200.0]})
-    res_c = _sanitize_features(df_c)
+    _sanitize_features(df_c)
 
     # Calling it on df_c should not change the result of calling it on df_a again
     res_a3 = _sanitize_features(df_a)

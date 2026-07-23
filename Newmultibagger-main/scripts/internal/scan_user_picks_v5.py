@@ -3,12 +3,11 @@ import sys
 
 # Add current dir to path to import screener
 sys.path.append(os.getcwd())
-import modules.adapters.yf_patch  # noqa: F401
-
-
 import pandas as pd
 import screener
 from user_picks_v5 import USER_PICKS_V5
+
+import modules.adapters.yf_patch  # noqa: F401
 
 
 def scan_user_picks_v5():

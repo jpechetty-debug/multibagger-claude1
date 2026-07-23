@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from modules.ic_monitor import compute_ic_by_regime
+from modules.ic_monitor import compute_ic_by_regime  # noqa: E402
 
 
 def test_perfect_correlation_high_ic():

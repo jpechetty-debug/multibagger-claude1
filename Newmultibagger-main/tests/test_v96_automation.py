@@ -11,10 +11,10 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-import pytest
+import pytest  # noqa: E402
 
-import sovereign_cli
-from sovereign_cli import _run_paper_trade_scan, cmd_db_dups, cmd_paper_trade
+import sovereign_cli  # noqa: E402
+from sovereign_cli import _run_paper_trade_scan, cmd_db_dups, cmd_paper_trade  # noqa: E402
 
 # ══════════════════════════════════════════════════════════════════════════════
 # FIXTURES

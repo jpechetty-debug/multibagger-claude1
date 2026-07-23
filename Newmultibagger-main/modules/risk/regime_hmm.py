@@ -6,7 +6,9 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 from hmmlearn.hmm import GaussianHMM
+
 from core.observability.logger import get_logger
+
 _log = get_logger("modules.risk.regime_hmm")
 
 MODEL_PATH = os.path.join("runtime", "models", "market_regime_hmm.pkl")

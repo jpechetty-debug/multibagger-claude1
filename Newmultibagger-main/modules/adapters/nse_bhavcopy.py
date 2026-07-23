@@ -203,8 +203,8 @@ def _dataframe_to_price_dict(df: pd.DataFrame) -> dict[str, dict]:
 def get_bhavcopy_price(prices: dict[str, dict], symbol: str) -> float | None:
     """Get closing price for a symbol from bhavcopy data."""
     data = (
-        prices.get(symbol) 
-        or prices.get(symbol.replace(".NS", "")) 
+        prices.get(symbol)
+        or prices.get(symbol.replace(".NS", ""))
         or prices.get(f"{symbol.replace('.NS', '')}.NS")
     )
     if data:

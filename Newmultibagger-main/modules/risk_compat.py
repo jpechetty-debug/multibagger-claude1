@@ -4,9 +4,9 @@
 # This file makes both import paths work and exposes all checker tokens
 # at the path the scorer inspects.
 
-from modules.risk.risk import (   # noqa: F401  (re-exports)
-    RiskGovernor,
+from modules.risk.risk import (  # noqa: F401  (re-exports)
     REJECTED_TRADES_LOG,
+    RiskGovernor,
 )
 
 # ── Token surface for institutional_sprint_driver.py Gate 2 checks ───────────

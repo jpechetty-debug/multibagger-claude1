@@ -5,7 +5,7 @@
 
 import yfinance as yf  # noqa: F401 — re-exported so patch targets resolve
 
-from modules.data_layer.data_service import (   # noqa: F401
+from modules.data_layer.data_service import (  # noqa: F401
     MarketDataProvider,
     get_data_manager,
 )

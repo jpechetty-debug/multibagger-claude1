@@ -1,7 +1,8 @@
 # modules/adapters/nse.py
 import asyncio
-from core.observability.logger import get_logger
 from typing import Any
+
+from core.observability.logger import get_logger
 
 try:
     import curl_cffi.requests as requests

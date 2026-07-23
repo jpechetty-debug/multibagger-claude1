@@ -80,8 +80,9 @@ async def fetch_factor_returns_with_retry(symbol: str, period: str = "1y") -> di
     Wraps the yfinance fetch in the project-standard retry harness so
     transient 429 / connection errors are handled uniformly.
     """
-    from modules.retry_utils import run_with_exponential_backoff
     import yfinance as yf
+
+    from modules.retry_utils import run_with_exponential_backoff
 
     async def _fetch():
         ticker = yf.Ticker(symbol)

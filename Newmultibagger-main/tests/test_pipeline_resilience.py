@@ -6,8 +6,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-import config
-from modules.retry_utils import run_with_exponential_backoff
+import config  # noqa: E402
+from modules.retry_utils import run_with_exponential_backoff  # noqa: E402
 
 
 class TestPipelineResilience(unittest.IsolatedAsyncioTestCase):

@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from modules.scoring import calculate_institutional_score
+from modules.scoring import calculate_institutional_score  # noqa: E402
 
 
 def _stock_with_age(days_old: int) -> dict:

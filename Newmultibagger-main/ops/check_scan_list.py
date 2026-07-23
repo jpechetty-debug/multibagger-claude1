@@ -1,6 +1,7 @@
-import modules.adapters.yf_patch  # noqa: F401
 import csv
 import re
+
+import modules.adapters.yf_patch  # noqa: F401
 
 
 def get_csv_tickers(file_path):

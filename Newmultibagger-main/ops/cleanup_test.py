@@ -1,6 +1,7 @@
-import modules.adapters.yf_patch  # noqa: F401
 import os
 import sqlite3
+
+import modules.adapters.yf_patch  # noqa: F401
 
 
 def cleanup():

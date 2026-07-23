@@ -13,9 +13,8 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-import modules.adapters.yf_patch  # noqa: F401
-
-from backtest.backtest_engine import VectorBTEngine
+import modules.adapters.yf_patch  # noqa: E402, F401
+from backtest.backtest_engine import VectorBTEngine  # noqa: E402
 
 VALID_IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 

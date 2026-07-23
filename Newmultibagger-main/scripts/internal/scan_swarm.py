@@ -16,7 +16,7 @@ from rich.table import Table
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
-import modules.adapters.yf_patch  # noqa: F401
+import modules.adapters.yf_patch  # noqa: E402, F401
 
 # Configure logging
 logging.basicConfig(
@@ -24,10 +24,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger("scan_swarm")
 
-import os
+import os  # noqa: E402
 
-from modules.mirofish_client import MiroFishClient
-from modules.news_sentiment import engine as news_engine
+from modules.mirofish_client import MiroFishClient  # noqa: E402
+from modules.news_sentiment import engine as news_engine  # noqa: E402
 
 
 def get_real_context(ticker: str) -> str:

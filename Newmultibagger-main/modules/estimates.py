@@ -7,8 +7,9 @@ Uses Alpha Vantage earnings calendar + self-computed CAGR estimates.
 import json
 import os
 
-from modules.cache import cached
 from core.observability.logger import get_logger
+from modules.cache import cached
+
 _log = get_logger("modules.estimates")
 
 

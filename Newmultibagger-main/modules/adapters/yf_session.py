@@ -1,8 +1,10 @@
 import os
+
+from pyrate_limiter import Duration, Limiter, Rate
 from requests import Session
 from requests_cache import CacheMixin, SQLiteCache
 from requests_ratelimiter import LimiterMixin
-from pyrate_limiter import Duration, Rate, Limiter
+
 from core.observability.logger import get_logger
 
 logger = get_logger("adapters.yf_session")

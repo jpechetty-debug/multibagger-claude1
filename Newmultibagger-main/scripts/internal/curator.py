@@ -1,8 +1,8 @@
-import modules.adapters.yf_patch  # noqa: F401
 import random
 
 from nsepython import nse_eq_symbols
 
+import modules.adapters.yf_patch  # noqa: F401
 import ticker_list
 
 

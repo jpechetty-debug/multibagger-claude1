@@ -38,9 +38,9 @@ import numpy as np
 import pandas as pd
 
 import modules.hybrid_scoring as hs
+from core.observability.logger import get_logger
 from modules.data_layer.db_utils import get_db_connection
 from modules.pit_auditor import sanitize
-from core.observability.logger import get_logger
 
 logger = get_logger("ops.ablation_score_feature")
 

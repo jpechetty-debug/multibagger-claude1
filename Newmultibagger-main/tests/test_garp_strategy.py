@@ -9,8 +9,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-import modules.strategies.garp_strategy as garp_module
-from modules.strategies.garp_strategy import GarpStrategy
+import modules.strategies.garp_strategy as garp_module  # noqa: E402
+from modules.strategies.garp_strategy import GarpStrategy  # noqa: E402
 
 
 async def _noop_news_fetch(self, proposals):

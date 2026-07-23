@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from modules.retry_utils import run_with_exponential_backoff
+from modules.retry_utils import run_with_exponential_backoff  # noqa: E402
 
 
 def test_concurrency_failure_injection_backoff_harness():

@@ -11,11 +11,11 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-import app_routes.stocks as stocks_route_module
-import main
-import modules.dependencies as deps
-from modules.runtime_settings import load_runtime_settings
-from worker.background_jobs import run_price_update_loop, run_weekly_audit_loop
+import app_routes.stocks as stocks_route_module  # noqa: E402
+import main  # noqa: E402
+import modules.dependencies as deps  # noqa: E402
+from modules.runtime_settings import load_runtime_settings  # noqa: E402
+from worker.background_jobs import run_price_update_loop, run_weekly_audit_loop  # noqa: E402
 
 
 def test_db_core_reuses_canonical_sqlalchemy_engine():

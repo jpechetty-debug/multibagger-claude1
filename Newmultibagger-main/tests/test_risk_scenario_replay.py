@@ -5,7 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from modules.stress_test import run_adversarial_scenario_replay
+from modules.stress_test import run_adversarial_scenario_replay  # noqa: E402
 
 
 def _sample_portfolio():

@@ -1,7 +1,8 @@
 import datetime
 
-from modules.backtest import run_performance_analysis
 from core.observability.logger import get_logger
+from modules.backtest import run_performance_analysis
+
 _log = get_logger("modules.validation")
 
 logger = get_logger("sovereign.validation")

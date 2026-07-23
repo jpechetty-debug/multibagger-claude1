@@ -1,7 +1,10 @@
 from datetime import datetime
+
 import pandas as pd
-from modules.db_utils import get_db_connection
+
 from core.observability.logger import get_logger
+from modules.db_utils import get_db_connection
+
 _log = get_logger("modules.portfolio.execution_analyzer")
 
 DB_NAME = "stocks.db"

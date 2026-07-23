@@ -3,7 +3,9 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import scipy.cluster.hierarchy as sch
+
 from core.observability.logger import get_logger
+
 _log = get_logger("modules.portfolio.allocation_hrp")
 
 

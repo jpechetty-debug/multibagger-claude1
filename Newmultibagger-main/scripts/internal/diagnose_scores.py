@@ -1,10 +1,11 @@
-import modules.adapters.yf_patch  # noqa: F401
 import os
 
-"""Quick diagnostic of current scores in DB."""
-import sqlite3
+import modules.adapters.yf_patch  # noqa: F401
 
-import pandas as pd
+"""Quick diagnostic of current scores in DB."""
+import sqlite3  # noqa: E402
+
+import pandas as pd  # noqa: E402
 
 conn = sqlite3.connect("runtime/stocks.db" if os.path.exists("runtime/stocks.db") else "stocks.db")
 

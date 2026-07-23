@@ -11,12 +11,12 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from modules.feature_leakage_audit import (
+from modules.feature_leakage_audit import (  # noqa: E402
     SPEARMAN_LEAK_THRESHOLD,
     audit_features,
     validate_momentum_returns,
 )
-from modules.hybrid_scoring import FEATURES
+from modules.hybrid_scoring import FEATURES  # noqa: E402
 
 
 def _make_df(n: int = 100, seed: int = 42) -> pd.DataFrame:

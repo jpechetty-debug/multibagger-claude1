@@ -5,29 +5,30 @@ import pandas as pd
 import yfinance as yf
 from fastapi import APIRouter, HTTPException, Request
 
-from db.db_core import db_engine, get_db_connection as get_sqla_connection
+from app_routes.contracts import MultibaggerOut
+from core.observability.logger import get_logger
+from db.db_core import db_engine
+from db.db_core import get_db_connection as get_sqla_connection
+from modules.cache import (
+    CACHE_AUDIT_TTL,
+    CACHE_FUNDAMENTALS,
+    CACHE_QUARTERLY,
+    _cache_is_fresh,
+    _cache_set,
+)
 from modules.connections import (
     _run_blocking,
     _run_sqlite_write_with_retry,
 )
 from modules.data_layer.data_utils import _json_safe_clean
 from modules.dependencies import _read_records
-from modules.cache import (
-    _cache_is_fresh,
-    _cache_set,
-    CACHE_QUARTERLY,
-    CACHE_FUNDAMENTALS,
-    CACHE_AUDIT_TTL,
-)
-from core.observability.logger import get_logger
-from app_routes.contracts import MultibaggerOut
 from modules.rate_limit import limiter
 from modules.retry_utils import run_with_exponential_backoff
 
 api_logger = get_logger("sovereign.api")
 
 
-import re
+import re  # noqa: E402
 
 _SYMBOL_RE = re.compile(r"^[A-Z0-9&]{1,20}(\.(NS|BO|BSE))?$", re.IGNORECASE)
 HUNT_MIN_SCORE = 70.0
@@ -190,7 +191,9 @@ async def get_multibaggers(request: Request, as_of_date: str | None = None):
             except Exception:
                 # DuckDB sqlite extension unavailable (CI / sandboxed) — fall back to plain SQLite
                 import sqlite3
+
                 import pandas as _pd
+
                 from db.db_core import DB_PATH
                 conn = sqlite3.connect(DB_PATH)
                 df = _pd.read_sql(f"SELECT * FROM multibaggers ORDER BY score DESC LIMIT {_TOP_N}", conn)
@@ -265,6 +268,7 @@ async def get_llm_thesis(request: Request, symbol: str):
     try:
         symbol = _validate_symbol(symbol)
         from sqlalchemy import text
+
         from modules.llm_engine import generate_thesis
 
         # DB read must run in a thread — pd.read_sql blocks the event loop
@@ -379,7 +383,7 @@ async def get_valuation(request: Request, symbol: str, as_of_date: str | None = 
             def _component_or_none(value):
                 try:
                     parsed = float(value)
-                except:
+                except (ValueError, TypeError):
                     return None
                 if not np.isfinite(parsed) or parsed <= 0:
                     return None
@@ -792,7 +796,9 @@ def _duck_query(sql: str, params: list | None = None):
         return duck_conn.execute(sql).df()
     except Exception:
         import sqlite3
+
         import pandas as _pd
+
         from db.db_core import DB_PATH
         fallback_sql = sql.replace("sqlite_db.", "")
         conn = sqlite3.connect(DB_PATH)

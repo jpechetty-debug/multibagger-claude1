@@ -1,5 +1,7 @@
 import datetime
+
 from core.observability.logger import get_logger
+
 _log = get_logger("modules.reporting.reporting")
 
 

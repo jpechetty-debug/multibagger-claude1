@@ -1,6 +1,6 @@
-import modules.adapters.yf_patch  # noqa: F401
 import os
 
+import modules.adapters.yf_patch  # noqa: F401
 from ticker_list import NIFTY_500_CSV_PATH, TICKER_LIST_PATH
 
 

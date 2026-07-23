@@ -18,7 +18,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -48,8 +47,9 @@ def _make_test_app(router):
       - auth dependency overridden (no DB / env key needed in unit tests)
     """
     from fastapi import FastAPI
-    from modules.rate_limit import limiter as _limiter
+
     import modules.auth as _auth
+    from modules.rate_limit import limiter as _limiter
 
     app = FastAPI()
     app.state.limiter = _limiter                                  # FIX BUG 2
@@ -154,7 +154,7 @@ async def test_pdf_cache_hit_skips_render(tmp_path, monkeypatch):
     _patch_paths(monkeypatch, tmp_path, ts)
 
     # Write HTML
-    html_file = _make_dummy_html(tmp_path, "RELIANCE")
+    _make_dummy_html(tmp_path, "RELIANCE")
     # Write PDF with mtime newer than HTML
     pdf_dir = tmp_path / "web-ui" / "reports" / "pdf"
     pdf_dir.mkdir(parents=True, exist_ok=True)
@@ -185,8 +185,8 @@ async def test_stale_pdf_triggers_render(tmp_path, monkeypatch):
     """
     When the HTML is newer than the existing PDF, WeasyPrint must re-render.
     """
-    import time
     import os
+    import time
 
     fake_wp = MagicMock()
     fake_doc = MagicMock()
@@ -238,7 +238,8 @@ async def test_pdf_route_returns_503_when_weasyprint_missing():
     The GET /api/reports/pdf/{symbol} route must return 503 when
     generate_pdf_tearsheet raises RuntimeError (WeasyPrint not installed).
     """
-    from httpx import AsyncClient, ASGITransport
+    from httpx import ASGITransport, AsyncClient
+
     from app_routes.public import router
 
     app = _make_test_app(router)
@@ -278,7 +279,8 @@ async def test_pdf_route_returns_200_with_file(tmp_path):
     A successful PDF generation must return 200 with application/pdf and
     the correct Content-Disposition attachment filename.
     """
-    from httpx import AsyncClient, ASGITransport
+    from httpx import ASGITransport, AsyncClient
+
     from app_routes.public import router
 
     # Create a real dummy PDF file

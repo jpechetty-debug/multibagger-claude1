@@ -1,4 +1,3 @@
-import modules.adapters.yf_patch  # noqa: F401
 # Suppress warnings
 import warnings
 
@@ -6,6 +5,7 @@ import pandas as pd
 from screener import calculate_institutional_score, get_stock_data
 
 import db.repository as database
+import modules.adapters.yf_patch  # noqa: F401
 
 warnings.filterwarnings("ignore")
 

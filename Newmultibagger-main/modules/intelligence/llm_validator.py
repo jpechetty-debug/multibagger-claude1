@@ -13,7 +13,9 @@ import math
 import re
 from dataclasses import dataclass, field
 from typing import Any
+
 from core.observability.logger import get_logger
+
 _log = get_logger("modules.intelligence.llm_validator")
 
 

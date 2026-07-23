@@ -1,6 +1,7 @@
-import modules.adapters.yf_patch  # noqa: F401
 import os
 import sqlite3
+
+import modules.adapters.yf_patch  # noqa: F401
 
 # Safe list to NEVER delete automatically
 WHITELIST = ["TATAMOTORS.NS", "REC.NS", "RECLTD.NS", "RELIANCE.NS", "SBIN.NS", "HDFCBANK.NS"]

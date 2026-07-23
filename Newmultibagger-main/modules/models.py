@@ -12,6 +12,7 @@ from __future__ import annotations
 import math
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
 from core.observability.logger import get_logger
 
 _log = get_logger("modules.models")
