@@ -1,0 +1,411 @@
+diff --git a/modules/field_names.py b/modules/field_names.py
+index 7eb19ac..b5b8a65 100644
+--- a/modules/field_names.py
++++ b/modules/field_names.py
+@@ -95,6 +95,11 @@ FIELD_MAPPING: dict[str, str] = {
+     "Earnings_Inflection_Score": "earnings_inflection_score",
+     "Estimate_Score_Adj": "estimate_score_adj",
+     "Backtest": "backtest",
++    # DuPont ROE decomposition
++    "Net_Margin%": "net_margin_pct",
++    "Asset_Turnover": "asset_turnover",
++    "Financial_Leverage": "financial_leverage",
++    "ROA%": "roa_pct",
+ }
+ 
+ # Reverse mapping: snake_case DB column → canonical Title-case scoring key.
+diff --git a/modules/fundamentals.py b/modules/fundamentals.py
+index 5e40911..2ce89b7 100644
+--- a/modules/fundamentals.py
++++ b/modules/fundamentals.py
+@@ -79,6 +79,108 @@ def extract_financial_metric(df, keys, default=0, offset=0):
+     return default
+ 
+ 
++_EMPTY_DUPONT_RESULT: dict[str, float | None] = {
++    "net_margin_pct": None,
++    "asset_turnover": None,
++    "financial_leverage": None,
++    "roa_pct": None,
++    "implied_roe_pct": None,
++}
++
++
++def _dupont_components(net_income, revenue, total_assets, equity) -> dict:
++    """Pure computation: combine the four raw inputs into DuPont ratios.
++
++    ROE = Net Margin x Asset Turnover x Financial Leverage
++        = (Net Income / Revenue) x (Revenue / Total Assets) x (Total Assets / Equity)
++
++    ROA (= Net Margin x Asset Turnover = Net Income / Total Assets) is
++    computed directly rather than by multiplying the two ratios back
++    together, to avoid compounding rounding error across two divisions.
++    """
++    result = _EMPTY_DUPONT_RESULT.copy()
++
++    if net_income is not None and revenue not in (0, None):
++        result["net_margin_pct"] = round(_safe_div(net_income, revenue) * 100, 2)
++
++    if revenue is not None and total_assets not in (0, None):
++        result["asset_turnover"] = round(_safe_div(revenue, total_assets), 3)
++
++    if total_assets is not None and equity not in (0, None):
++        result["financial_leverage"] = round(_safe_div(total_assets, equity), 3)
++
++    if net_income is not None and total_assets not in (0, None):
++        result["roa_pct"] = round(_safe_div(net_income, total_assets) * 100, 2)
++
++    if result["roa_pct"] is not None and result["financial_leverage"] is not None:
++        result["implied_roe_pct"] = round(result["roa_pct"] * result["financial_leverage"], 2)
++
++    return result
++
++
++def _dupont_from_dict(data: dict) -> dict:
++    net_income = data.get("Net_Income")
++    revenue = data.get("Total_Revenue")
++    total_assets = data.get("Total_Assets")
++    equity = data.get("Total_Equity") or data.get("Stockholders_Equity")
++    return _dupont_components(net_income, revenue, total_assets, equity)
++
++
++def _dupont_from_ticker(ticker_or_data) -> dict:
++    try:
++        fin = ticker_or_data.financials
++        bs = ticker_or_data.balance_sheet
++        if fin.empty or bs.empty:
++            return _EMPTY_DUPONT_RESULT.copy()
++
++        net_income = extract_financial_metric(
++            fin, ["Net Income", "Net Profit", "PAT", "Profit After Tax"], default=None
++        )
++        revenue = extract_financial_metric(
++            fin, ["Total Revenue", "Operating Revenue", "Revenue From Operations"], default=None
++        )
++        total_assets = extract_financial_metric(bs, ["Total Assets"], default=None)
++        equity = extract_financial_metric(
++            bs,
++            ["Stockholders Equity", "Common Stock Equity", "Total Equity", "Shareholders Equity"],
++            default=None,
++        )
++        return _dupont_components(net_income, revenue, total_assets, equity)
++    except Exception as e:
++        _log.error(f"Caught unhandled exception: {e}", exc_info=True)
++        return _EMPTY_DUPONT_RESULT.copy()
++
++
++def calculate_dupont_decomposition(ticker_or_data) -> dict:
++    """
++    Decomposes ROE into its three DuPont components:
++
++        ROE = Net Margin x Asset Turnover x Financial Leverage
++
++    This exists to distinguish "quality" ROE (driven by profitability and
++    efficient asset use) from ROE that is mostly manufactured by leverage,
++    which a flat "ROE > 17%" checklist gate cannot tell apart on its own.
++
++    Accepts either:
++    - A dict with pre-computed fundamental data keys (preferred):
++      Net_Income, Total_Revenue, Total_Assets, Total_Equity
++    - A yfinance Ticker object (deprecated — logs warning)
++
++    Returns a dict with keys: net_margin_pct, asset_turnover,
++    financial_leverage, roa_pct, implied_roe_pct. Any component that
++    cannot be computed from the available data is returned as None
++    (not 0), so callers can distinguish "genuinely zero" from "missing".
++    """
++    if isinstance(ticker_or_data, dict):
++        return _dupont_from_dict(ticker_or_data)
++
++    if _has_ticker_api(ticker_or_data):
++        _log.warning("DEPRECATION: calculate_dupont_decomposition called with yfinance Ticker")
++        return _dupont_from_ticker(ticker_or_data)
++
++    return _EMPTY_DUPONT_RESULT.copy()
++
++
+ def calculate_piotroski_f_score(ticker_or_data) -> int:
+     """
+     Calculates the 9-point Piotroski F-Score.
+diff --git a/modules/scoring/ceiling.py b/modules/scoring/ceiling.py
+index d769825..f527b70 100644
+--- a/modules/scoring/ceiling.py
++++ b/modules/scoring/ceiling.py
+@@ -244,7 +244,31 @@ def _apply_score_ceiling_rules(
+     return score_ceiling, disqualifiers
+ 
+ 
+-CHECKLIST_TOTAL = 12
++CHECKLIST_TOTAL = 13
++
++
++def _dupont_leverage_flag(data: _StockData) -> bool:
++    """
++    PASS unless ROE looks manufactured mainly by leverage rather than by
++    genuine profitability and efficient asset use.
++
++    FAILs only when Financial Leverage (Total Assets / Equity) is high
++    (>3.0x, well above the 1.5-2.5x typical of a healthy non-financial
++    business) AND the underlying ROA is weak (<5%) — i.e. the core
++    business is mediocre and the headline ROE is mostly a leverage effect.
++
++    Defaults to PASS when Financial_Leverage or ROA% is missing. These are
++    newly-added fields (see calculate_dupont_decomposition); most existing
++    fundamentals_pit rows won't have them backfilled yet, and defaulting
++    to FAIL would silently drop every stock's checklist grade the moment
++    this ships, before the data even exists — the same rollout-gap shape
++    as the api_keys/promoter_holding issues from this codebase's history.
++    """
++    leverage = optional_float(data.get("Financial_Leverage"))
++    roa = optional_float(data.get("ROA%"))
++    if leverage is None or roa is None:
++        return True
++    return not (leverage > 3.0 and roa < 5.0)
+ 
+ 
+ def _build_checklist_items(data: _StockData, state: FactorState) -> dict[str, bool]:
+@@ -274,6 +298,7 @@ def _build_checklist_items(data: _StockData, state: FactorState) -> dict[str, bo
+         "F-Score >= 6": f_val_check is not None and f_val_check >= 6,
+         "Sales and EPS Growth > 10%": sg > 10 and eps_g > 10,
+         "Value Gap > 0 or PE < 20": value_gap > 0 or (state.pe is not None and 0 < state.pe < 20),
++        "ROE Not Purely Leverage-Driven": _dupont_leverage_flag(data),
+     }
+ 
+ 
+diff --git a/scripts/internal/screener.py b/scripts/internal/screener.py
+index eaee3e3..493f1bb 100644
+--- a/scripts/internal/screener.py
++++ b/scripts/internal/screener.py
+@@ -24,6 +24,7 @@ from modules.fundamentals import (
+     calculate_piotroski_f_score,
+     calculate_recent_sales_growth,
+     calculate_roce,
++    calculate_dupont_decomposition,
+     check_earnings_inflection,
+ )
+ from modules.fx import to_inr_cr
+@@ -949,6 +950,9 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
+         roce = calculate_roce(ticker)
+         median_pat_growth_5y = calculate_median_pat_growth(ticker, years=5)
+ 
++        # --- DuPont ROE Decomposition: distinguish quality ROE from leverage-driven ROE ---
++        dupont = calculate_dupont_decomposition(ticker)
++
+ 
+         # --- Sprint 1: Dividend Metrics ---
+         div_metrics = extract_dividend_metrics(info)
+@@ -1161,6 +1165,10 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
+             "High_52W": round(float(high_52w), 2),
+             "Low_52W": round(float(low_52w), 2),
+             "ROCE%": roce,
++            "Net_Margin%": dupont["net_margin_pct"],
++            "Asset_Turnover": dupont["asset_turnover"],
++            "Financial_Leverage": dupont["financial_leverage"],
++            "ROA%": dupont["roa_pct"],
+             "Median_PAT_Growth_5Y%": median_pat_growth_5y,
+             "Pledge_Pct": pledge_pct,
+             "Ret_1M": mom_features.get("ret_1m", 0),
+diff --git a/tests/test_dupont_decomposition.py b/tests/test_dupont_decomposition.py
+new file mode 100644
+index 0000000..5d05d4d
+--- /dev/null
++++ b/tests/test_dupont_decomposition.py
+@@ -0,0 +1,164 @@
++from __future__ import annotations
++
++from types import SimpleNamespace
++
++import pandas as pd
++
++from modules.fundamentals import calculate_dupont_decomposition
++from modules.scoring.ceiling import CHECKLIST_TOTAL, _dupont_leverage_flag, build_checklist_status
++from modules.scoring.factors import _build_factor_state
++from modules.field_names import normalize_data_keys
++
++
++def test_dupont_decomposition_dict_path_reconstructs_roe():
++    # Net Margin 10%, Asset Turnover 1.5x, Financial Leverage 2x -> ROE = 30%
++    data = {
++        "Net_Income": 150.0,
++        "Total_Revenue": 1500.0,
++        "Total_Assets": 1000.0,
++        "Total_Equity": 500.0,
++    }
++    result = calculate_dupont_decomposition(data)
++
++    assert result["net_margin_pct"] == 10.0
++    assert result["asset_turnover"] == 1.5
++    assert result["financial_leverage"] == 2.0
++    assert result["roa_pct"] == 15.0
++    assert result["implied_roe_pct"] == 30.0
++
++
++def test_dupont_decomposition_accepts_stockholders_equity_alias():
++    data = {
++        "Net_Income": 100.0,
++        "Total_Revenue": 1000.0,
++        "Total_Assets": 800.0,
++        "Stockholders_Equity": 400.0,
++    }
++    result = calculate_dupont_decomposition(data)
++    assert result["financial_leverage"] == 2.0
++
++
++def test_dupont_decomposition_missing_inputs_returns_none_not_zero():
++    result = calculate_dupont_decomposition({"Net_Income": 100.0})
++
++    assert result["net_margin_pct"] is None
++    assert result["asset_turnover"] is None
++    assert result["financial_leverage"] is None
++    assert result["roa_pct"] is None
++    assert result["implied_roe_pct"] is None
++
++
++def test_dupont_decomposition_zero_denominator_returns_none_not_crash():
++    data = {
++        "Net_Income": 100.0,
++        "Total_Revenue": 0.0,
++        "Total_Assets": 500.0,
++        "Total_Equity": 0.0,
++    }
++    result = calculate_dupont_decomposition(data)
++
++    assert result["net_margin_pct"] is None
++    assert result["financial_leverage"] is None
++    # ROA only needs net_income and total_assets, both present and nonzero
++    assert result["roa_pct"] == 20.0
++
++
++def test_dupont_decomposition_legacy_ticker_path():
++    ticker = SimpleNamespace(
++        financials=pd.DataFrame({"2024": [150.0]}, index=["Net Income"]),
++        balance_sheet=pd.DataFrame(
++            {"2024": [1000.0]}, index=["Total Assets"]
++        ),
++    )
++    # Revenue isn't on this minimal financials frame, so margin/turnover/
++    # implied_roe stay None, but roa needs total_assets+net_income only.
++    result = calculate_dupont_decomposition(ticker)
++    assert result["roa_pct"] == 15.0
++    assert result["net_margin_pct"] is None
++
++
++def test_dupont_decomposition_neither_dict_nor_ticker_returns_empty():
++    result = calculate_dupont_decomposition(object())
++    assert all(v is None for v in result.values())
++
++
++def test_dupont_leverage_flag_passes_when_data_missing():
++    # Rollout-gap case: Financial_Leverage/ROA% not backfilled yet anywhere.
++    assert _dupont_leverage_flag({}) is True
++
++
++def test_dupont_leverage_flag_fails_on_high_leverage_and_weak_roa():
++    data = {"Financial_Leverage": 4.0, "ROA%": 3.0}
++    assert _dupont_leverage_flag(data) is False
++
++
++def test_dupont_leverage_flag_passes_on_high_leverage_with_healthy_roa():
++    # High leverage alone isn't disqualifying if the core business is efficient.
++    data = {"Financial_Leverage": 4.0, "ROA%": 8.0}
++    assert _dupont_leverage_flag(data) is True
++
++
++def test_dupont_leverage_flag_passes_on_low_leverage_even_with_weak_roa():
++    data = {"Financial_Leverage": 1.5, "ROA%": 2.0}
++    assert _dupont_leverage_flag(data) is True
++
++
++def _checklist_stock(**overrides):
++    stock = {
++        "Market_Cap_Cr": 301.0,
++        "PE_Ratio": 30.0,
++        "Avg_ROE_5Y%": 22.0,
++        "ROE%": 20.0,
++        "Debt_Equity": 0.4,
++        "CFO_PAT_Ratio": 1.3,
++        "Down_From_52W_High%": 8.0,
++        "Sales_Growth_5Y%": 18.0,
++        "Sales_Growth_TTM%": 16.0,
++        "EPS_Growth%": 12.0,
++        "Promoter_Holding%": 55.0,
++        "Inst_Holding%": 20.0,
++        "F_Score": 7,
++        "Sector": "Technology",
++        "Value_Gap%": 10.0,
++        "Price": 1000.0,
++    }
++    stock.update(overrides)
++    return stock
++
++
++def test_checklist_total_is_now_thirteen():
++    assert CHECKLIST_TOTAL == 13
++
++
++def test_checklist_new_item_present_and_defaults_pass_without_dupont_data():
++    data = _checklist_stock()
++    state = _build_factor_state(data, score_sentiment=50.0, scoring_mode="balanced")
++    status = build_checklist_status(data, state)
++
++    assert "ROE Not Purely Leverage-Driven" in status["items"]
++    assert status["items"]["ROE Not Purely Leverage-Driven"] is True
++    assert status["total"] == 13
++
++
++def test_checklist_new_item_fails_when_dupont_data_shows_leverage_driven_roe():
++    data = _checklist_stock(**{"Financial_Leverage": 4.5, "ROA%": 2.0})
++    state = _build_factor_state(data, score_sentiment=50.0, scoring_mode="balanced")
++    status = build_checklist_status(data, state)
++
++    assert status["items"]["ROE Not Purely Leverage-Driven"] is False
++    assert status["passed"] == 12
++
++
++def test_normalize_data_keys_promotes_dupont_snake_case_fields():
++    raw = {
++        "net_margin_pct": 10.0,
++        "asset_turnover": 1.5,
++        "financial_leverage": 2.0,
++        "roa_pct": 15.0,
++    }
++    canonical = normalize_data_keys(raw)
++
++    assert canonical["Net_Margin%"] == 10.0
++    assert canonical["Asset_Turnover"] == 1.5
++    assert canonical["Financial_Leverage"] == 2.0
++    assert canonical["ROA%"] == 15.0
+diff --git a/tests/test_score_diagnostics.py b/tests/test_score_diagnostics.py
+index 8f2be53..7fd7dc4 100644
+--- a/tests/test_score_diagnostics.py
++++ b/tests/test_score_diagnostics.py
+@@ -35,8 +35,8 @@ def test_score_diagnostics_uses_real_checklist_gate_thresholds():
+     assert status["items"]["Market Cap > 300 Cr"] is True
+     assert status["items"]["PE < 50"] is True
+     assert all("1000 Cr" not in label for label in status["items"])
+-    assert status["passed"] == 12
+-    assert status["total"] == 12
++    assert status["passed"] == 13
++    assert status["total"] == 13
+ 
+ 
+ def test_score_diagnostics_reports_real_ceiling_rule_names():
+@@ -65,4 +65,4 @@ def test_score_diagnostics_reports_real_ceiling_rule_names():
+     assert any(name.startswith("Declining Revenue Spline") for name in names)
+     assert any(name.startswith("Overvaluation Spline") for name in names)
+     assert any(name.startswith("High Pledge Risk") for name in names)
+-    assert any(name == "Institutional Quality Gate 0/12" for name in names)
++    assert any(name == "Institutional Quality Gate 1/13" for name in names)
+diff --git a/tests/test_scoring_engine.py b/tests/test_scoring_engine.py
+index c1d5ff2..7e3f844 100644
+--- a/tests/test_scoring_engine.py
++++ b/tests/test_scoring_engine.py
+@@ -185,7 +185,7 @@ class TestScoreOutputContract:
+         parts = result["checklist_score"].split("/")
+         assert len(parts) == 2
+         passes, total = int(parts[0]), int(parts[1])
+-        assert 0 <= passes <= total == 12
++        assert 0 <= passes <= total == 13
+ 
+     def test_factor_breakdown_keys(self, perfect_stock):
+         result = calculate_institutional_score(perfect_stock)

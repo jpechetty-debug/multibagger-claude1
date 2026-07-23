@@ -9,3 +9,5 @@ xgboost_walk_forward.json
 *.bm25.pkl
 graphify-out/
 temp_extract/
+scratch/
+

@@ -21,19 +21,6 @@ COPY . .
 # and bootstrap has somewhere to write xgboost_meta_model.pkl.
 RUN mkdir -p runtime/models runtime/reports runtime/cache
 
-# ── ML cold-start bootstrap ───────────────────────────────────────────────────
-# Train a lightweight proxy model on whatever data is available at build time.
-# This means every container image ships with a working model — the screener
-# never silently falls back to rule-based scoring from the very first request.
-# The model will be replaced automatically by the weekly Celery retrain once
-# real PIT data accumulates (POST /api/ml/train --force or beat schedule).
-#
-# Exit 0 is forced because bootstrap may legitimately have no data yet
-# (e.g. a fresh image with an empty DB) — we never want a missing model
-# to fail the Docker build. The lifespan bootstrap in main.py is the
-# runtime safety net for that case.
-RUN python scripts/train_hybrid_model.py --bootstrap || true
-
 RUN groupadd -r appuser && useradd -r -g appuser appuser && chown -R appuser:appuser /app
 USER appuser
 

@@ -42,7 +42,7 @@ def get_api_key(request: Request, background_tasks: BackgroundTasks, api_key: st
         return api_key
 
     # Check against database
-    key_hash = hashlib.sha256(api_key.encode(), usedforsecurity=False).hexdigest()
+    key_hash = hashlib.sha256(api_key.encode()).hexdigest()
     query = "SELECT is_active, rate_limit_rpm FROM api_keys WHERE key_hash = :key_hash"
     results = execute_sql(query, {"key_hash": key_hash}, fetch_all=True)
 

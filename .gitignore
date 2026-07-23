@@ -175,3 +175,7 @@ graphify-out/
 *.db
 *.log
 graphify-out/
+
+# Agent Memory files
+*.rvf
+*.rvf.lock
