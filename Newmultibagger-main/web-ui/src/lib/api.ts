@@ -268,9 +268,10 @@ export const api = {
 
   triggerRescan: async (): Promise<{ status: string; message: string }> => {
     const apiKey = import.meta.env.VITE_SOVEREIGN_API_KEY?.trim()
+    const headers: Record<string, string> = apiKey ? { [API_KEY_HEADER]: apiKey } : {}
     const requestInit = {
       method: 'POST',
-      headers: apiKey ? { [API_KEY_HEADER]: apiKey } : {},
+      headers,
     }
     const response = await fetch(`${BASE_URL}/api/rescan-universe`, requestInit)
     if (!response.ok) {

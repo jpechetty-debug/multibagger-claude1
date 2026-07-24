@@ -31,3 +31,19 @@ class ResizeObserverMock {
 }
 
 vi.stubGlobal('ResizeObserver', ResizeObserverMock)
+
+class IntersectionObserverMock {
+  constructor(private callback: IntersectionObserverCallback) {}
+
+  observe() {}
+
+  unobserve() {}
+
+  disconnect() {}
+
+  takeRecords(): IntersectionObserverEntry[] {
+    return []
+  }
+}
+
+vi.stubGlobal('IntersectionObserver', IntersectionObserverMock)
