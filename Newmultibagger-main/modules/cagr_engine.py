@@ -38,11 +38,13 @@ def _extract_series(df: pd.DataFrame, keys: list[str]) -> pd.Series | None:
     for key in keys:
         if key in df.index:
             return df.loc[key]
-    # Fuzzy match fallback
+    # Fuzzy match fallback. Prefer the shortest matching row label rather
+    # than the first one encountered — see financial_adapter._extract_series
+    # for why first-match-in-row-order is unsafe here.
     for key in keys:
-        for idx_name in df.index:
-            if key.lower() in idx_name.lower():
-                return df.loc[idx_name]
+        candidates = [idx_name for idx_name in df.index if key.lower() in idx_name.lower()]
+        if candidates:
+            return df.loc[min(candidates, key=len)]
     return None
 
 
@@ -360,10 +362,12 @@ def extract_dividend_metrics(info: dict) -> dict[str, float | None]:
     if div_yield is not None and div_yield > 0:
         # yfinance returns as decimal (0.025 for 2.5%)
         div_yield = round(div_yield * 100, 2) if div_yield < 1.0 else round(div_yield, 2)
-        # Sanity cap: no Indian stock yields > 25% realistically
-        # If above 25%, likely a data error (e.g., special dividend or wrong format)
-        if div_yield > 25.0:
-            div_yield = round(div_yield / 100, 2)  # Likely was already in pct
+        # Cap rather than re-guess the scale a second time. A blind second
+        # /100 here would wrongly mangle a genuine special-dividend year
+        # (e.g. a real 30% yield becomes 0.3%) instead of just capping it.
+        # dq_gates.py applies the final 0-25% business cap downstream; this
+        # is only a guard against a runaway/nonsensical raw value.
+        div_yield = min(div_yield, 100.0)
     else:
         div_yield = 0.0
 
