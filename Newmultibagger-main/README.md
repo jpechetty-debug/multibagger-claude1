@@ -22,8 +22,9 @@ To eliminate silent failures and scale-ambiguity errors, Sovereign implements a 
 1. **Ingestion Boundary**: Pydantic v2 models (`modules/models.py`) with `extra="ignore"` and auto-scaling validators that detect and correct fraction-to-percent ambiguity (e.g., ROE 0.15 → 15.0%).
 2. **Circuit Breakers**: Thread-safe `CLOSED → OPEN → HALF_OPEN` state machines (`modules/retry_utils.py`) for resilient data ingestion from `yfinance` and `nse`.
 3. **Data Quality (DQ) Gates**: Proactive physical-limit validators (`modules/dq_gates.py`) that clamp metrics to realistic ranges (e.g., PE capped at 1000) and generate DQ flags.
-4. **Financial Adapter**: Decoupled extraction layer (`modules/financial_adapter.py`) that maps messy upstream DataFrames into typed `NormalizedFinancials`.
+4. **Financial Adapter & Modular Data Layer**: Multi-provider fallback chain (`ScreenerInProvider` → `NSEXBRLProvider` → `PNSEAProvider` → `NSEPythonProvider`) for robust fundamentals ingestion. `NSEXBRLProvider` parses official audited filing XBRL for precise Debt/Equity, Book Value, ROE%, and TTM growth metrics.
 5. **Pure Math Engines**: Calculation modules (CAGR, ROE, F-Score) are now pure functions, making the core math 100% unit-testable without network dependencies.
+
 
 ---
 
@@ -47,6 +48,8 @@ Dynamically weighted factors based on **Market Regime** (Bull/Bear/Sideways dete
 - **Sector-Relative Filtering**: Evaluates ROE/Growth/PE against sector medians.
 - **Sector-Wise RS Ingestion**: Automated ingestion of high-conviction signals from Relative Strength (RS) screens into the database.
 - **HRP Portfolio Allocation**: Hierarchical Risk Parity portfolio construction based on signal conviction.
+- **Sovereign QARP Institutional Validation**: Backtesting framework with reproducible random universe sampling (`--sample-seed`), ticker deduplication, and minimum portfolio position floors (`--min-positions`).
+
 
 ---
 
@@ -114,6 +117,8 @@ python sovereign_cli.py backtest run
 | `SOVEREIGN_ENV` | Environment Context | `local` |
 | `DATABASE_URL` | SQLAlchemy Connection URL | `sqlite:///multibaggers.db` |
 | `REDIS_URL` | Redis cache/Celery broker | `redis://localhost:6379/0` |
+| `NSE_COOKIE` | Cookie for `NSEXBRLProvider` (browser session) | None (Optional) |
+
 
 ---
 
