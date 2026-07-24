@@ -164,3 +164,73 @@ def test_normalize_data_keys_promotes_dupont_snake_case_fields():
     assert canonical["Asset_Turnover"] == 1.5
     assert canonical["Financial_Leverage"] == 2.0
     assert canonical["ROA%"] == 15.0
+
+
+def _gate_stock(**overrides):
+    d = {
+        "Market_Cap_Cr": 301.0, "PE_Ratio": 15.0, "Avg_ROE_5Y%": 22.0, "ROE%": 20.0,
+        "Debt_Equity": 0.4, "CFO_PAT_Ratio": 1.3, "Down_From_52W_High%": 8.0,
+        "Sales_Growth_5Y%": 18.0, "Sales_Growth_TTM%": 16.0, "EPS_Growth%": 12.0,
+        "Promoter_Holding%": 55.0, "Inst_Holding%": 20.0, "F_Score": 7, "Sector": "Technology",
+        "Value_Gap%": 10.0, "Price": 1000.0,
+        "Financial_Leverage": 2.0, "ROA%": 8.0,  # healthy -> DuPont item genuinely PASSES
+    }
+    d.update(overrides)
+    return d
+
+
+def test_bonus_not_awarded_for_two_failures_once_total_is_thirteen():
+    # Two genuine failures among 13 evaluated items (DuPont data present and
+    # counted). Before the threshold fix, the literal ">= 11" check awarded
+    # the bonus here, because 11 was calibrated for "at most 1 failure out
+    # of 12" and silently became "at most 2 failures out of 13".
+    from modules.scoring.ceiling import _apply_checklist_gate
+    from modules.scoring.engine import _build_factor_state
+
+    data = _gate_stock(**{"F_Score": 3, "EPS_Growth%": 5.0})
+    state = _build_factor_state(data, score_sentiment=50.0, scoring_mode="balanced")
+    disqualifiers = []
+    checklist_pass, checklist_total, base_score, _ = _apply_checklist_gate(
+        data, state, base_score=70.0, score_ceiling=100.0, disqualifiers=disqualifiers
+    )
+
+    assert (checklist_pass, checklist_total) == (11, 13)
+    # No bonus: penalty = (13-11)*0.66 = 1.32, base_score = 70 - 1.32 = 68.68
+    assert abs(base_score - 68.68) < 0.01
+
+
+def test_bonus_still_awarded_for_at_most_one_failure_out_of_thirteen():
+    from modules.scoring.ceiling import _apply_checklist_gate
+    from modules.scoring.engine import _build_factor_state
+
+    data = _gate_stock(**{"F_Score": 3})  # exactly one real failure
+    state = _build_factor_state(data, score_sentiment=50.0, scoring_mode="balanced")
+    disqualifiers = []
+    checklist_pass, checklist_total, base_score, _ = _apply_checklist_gate(
+        data, state, base_score=70.0, score_ceiling=100.0, disqualifiers=disqualifiers
+    )
+
+    assert (checklist_pass, checklist_total) == (12, 13)
+    # Bonus applied: penalty = (13-12)*0.66 = 0.66, base_score = 70 + 5 - 0.66 = 74.34
+    assert abs(base_score - 74.34) < 0.01
+
+
+def test_missing_dupont_data_gate_thresholds_unchanged_from_original_calibration():
+    # total=12 (DuPont item excluded) must reproduce the exact original
+    # 9/12 disqualify, 11/12 bonus behavior, unaffected by the fix.
+    from modules.scoring.ceiling import _apply_checklist_gate
+    from modules.scoring.engine import _build_factor_state
+    from tests.test_dupont_decomposition import _checklist_stock
+
+    data = _checklist_stock(**{"F_Score": 3})  # one failure, no Financial_Leverage/ROA%
+    state = _build_factor_state(data, score_sentiment=50.0, scoring_mode="balanced")
+    disqualifiers = []
+    checklist_pass, checklist_total, base_score, _ = _apply_checklist_gate(
+        data, state, base_score=70.0, score_ceiling=100.0, disqualifiers=disqualifiers
+    )
+
+    assert (checklist_pass, checklist_total) == (11, 12)
+    # Same shape as the total=13/pass=12 case: penalty = (12-11)*0.66 = 0.66,
+    # base_score = 70 + 5 - 0.66 = 74.34 — reproduces the original calibration exactly.
+    assert abs(base_score - 74.34) < 0.01
+
