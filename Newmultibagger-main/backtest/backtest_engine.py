@@ -393,6 +393,32 @@ def _extract_close_series(df: pd.DataFrame, symbol: str, *, single_symbol: bool 
     return pd.Series(dtype=float)
 
 
+def _extract_volume_series(df: pd.DataFrame, symbol: str, *, single_symbol: bool = False) -> pd.Series:
+    """
+    Extract traded volume from a yfinance download.
+
+    Mirrors ``_extract_close_series`` exactly, but for the "Volume" field.
+    Used to compute real average-daily-turnover for the liquidity filter
+    instead of a fabricated placeholder that always clears the minimum.
+    """
+    if df is None or df.empty:
+        return pd.Series(dtype=float)
+    if isinstance(df.columns, pd.MultiIndex):
+        if (symbol, "Volume") in df.columns:
+            return pd.to_numeric(df[(symbol, "Volume")], errors="coerce")
+        if ("Volume", symbol) in df.columns:
+            return pd.to_numeric(df[("Volume", symbol)], errors="coerce")
+        if symbol in df.columns.get_level_values(0):
+            candidate = df[symbol]
+            if isinstance(candidate, pd.DataFrame) and "Volume" in candidate.columns:
+                return pd.to_numeric(candidate["Volume"], errors="coerce")
+    elif single_symbol and "Volume" in df.columns:
+        return pd.to_numeric(df["Volume"], errors="coerce")
+    elif "Volume" in df:
+        return pd.to_numeric(df["Volume"], errors="coerce")
+    return pd.Series(dtype=float)
+
+
 def _normalise_rebalance_frequency(rebalance_frequency: str) -> str:
     text = str(rebalance_frequency or "Q").strip().upper()
     if text in {"M", "MS", "ME", "MONTH", "MONTHLY"}:
@@ -590,9 +616,11 @@ class VectorBTEngine:
                 _log.warning("[VectorBT] yfinance returned empty dataframe. Relying entirely on delisted spliced data.")
 
             close_prices = {}
+            volume_prices = {}
             is_single = len(download_symbols) == 1
             for sym in clean_symbols:
                 close = _extract_close_series(raw_prices, sym, single_symbol=is_single).dropna()
+                volume = _extract_volume_series(raw_prices, sym, single_symbol=is_single)
 
                 # Module 6.1 Survivorship Bias Adjustment Rig
                 # If yfinance returned no data (likely delisted or symbol changed)
@@ -609,17 +637,23 @@ class VectorBTEngine:
                         close = _extract_close_series(delisted_df, sym, single_symbol=True).dropna()
                         if close.empty and 'Close' in delisted_df.columns:
                             close = pd.to_numeric(delisted_df['Close'], errors="coerce").dropna()
+                        # Delisted/spliced history has no reliable volume field.
+                        # Leave `volume` empty rather than guessing — the liquidity
+                        # filter treats missing volume as "unverified" (fails closed).
+                        volume = pd.Series(dtype=float)
 
                         if not close.empty:
                             _log.info(f"Spliced delisted data for {sym} ({len(close)} periods)")
 
                 if not close.empty:
                     close_prices[sym] = close
+                    volume_prices[sym] = volume.reindex(close.index)
 
             if not close_prices:
                 return {"status": "INSUFFICIENT_PRICE_DATA", "folds": 0}
 
             price_matrix = pd.DataFrame(close_prices).sort_index()
+            volume_matrix = pd.DataFrame(volume_prices).sort_index()
             period_returns = _forward_period_returns(price_matrix, frequency)
             if period_returns.empty:
                 return {"status": "NO_FORWARD_RETURNS", "folds": 0}
@@ -703,15 +737,23 @@ class VectorBTEngine:
 
                 # Module 6.3 Friction Replay Simulator
                 # Apply liquidity filter to ensure we don't buy illiquid stocks
-                # Use the daily price matrix to obtain the latest close and each
-                # symbol's trading-session coverage for the liquidity filter.
+                # Use the daily price matrix to obtain the latest close, the
+                # period's real average daily volume, and each symbol's
+                # trading-session coverage for the liquidity filter.
                 try:
                     period_history = price_matrix.loc[str(test_period)]
                 except KeyError:
                     period_history = pd.DataFrame()
 
+                try:
+                    period_volume_history = volume_matrix.loc[str(test_period)]
+                except KeyError:
+                    period_volume_history = pd.DataFrame()
+
                 if isinstance(period_history, pd.Series):
                     period_history = period_history.to_frame().T
+                if isinstance(period_volume_history, pd.Series):
+                    period_volume_history = period_volume_history.to_frame().T
 
                 if not period_history.empty:
                     period_prices = period_history.iloc[-1]
@@ -719,9 +761,17 @@ class VectorBTEngine:
                     universe_data = []
                     for s in test_df['symbol'].unique():
                         p = period_prices.get(s, np.nan)
-                        # Mock volume = min_turnover / p if we don't have volume to avoid dropping large caps.
-                        # Real implementation would use actual volume, but we bypass for now if volume is missing
-                        v = (5_000_000 / p) + 100 if pd.notna(p) and p > 0 else 0
+                        # Real average daily volume for this symbol over this
+                        # rebalance period, from the same yfinance download
+                        # used for prices. Missing/zero volume fails closed
+                        # (Volume=0) rather than assuming the stock is liquid —
+                        # the liquidity filter is only a safety check if it can
+                        # actually reject illiquid names.
+                        if s in period_volume_history.columns:
+                            avg_vol = period_volume_history[s].dropna().mean()
+                            v = float(avg_vol) if pd.notna(avg_vol) else 0.0
+                        else:
+                            v = 0.0
                         trading_days = (
                             int(period_history[s].notna().sum())
                             if s in period_history.columns

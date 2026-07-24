@@ -684,12 +684,46 @@ def bootstrap_synthetic_model() -> bool:
     model = _make_xgb_regressor()
     model.fit(X, y)
 
+    # SHAP dominance check — run for visibility even on the bootstrap model.
+    # We do NOT hard-reject here: the proxy target is deliberately built
+    # 50% from `score` (see _bootstrap_proxy_return), so *some* dominance by
+    # that feature is expected and not itself a bug. What we want to catch
+    # is dominance far beyond that, which would mean the model has collapsed
+    # onto a single signal and is adding ~zero information beyond the rule
+    # score it was supposed to augment. That case gets logged loudly and
+    # recorded on the report so API consumers (and `is_bootstrap` checks)
+    # can see exactly how concentrated the bootstrap model's logic is.
+    shap_dominance: dict[str, Any] = {"checked": False}
+    try:
+        passes, reason, shap_imp = check_shap_dominance(
+            model, X, threshold=SHAP_DOMINANCE_THRESHOLD
+        )
+        top_feat = max(shap_imp, key=shap_imp.get) if shap_imp else None
+        shap_dominance = {
+            "checked": True,
+            "passes_threshold": passes,
+            "top_feature": top_feat,
+            "top_feature_share": shap_imp.get(top_feat) if top_feat else None,
+            "threshold": SHAP_DOMINANCE_THRESHOLD,
+        }
+        if not passes:
+            _log.warning(
+                "Bootstrap model SHAP dominance exceeds threshold — "
+                "predictions may be little more than a rescaled rule score",
+                reason=reason,
+                top_feature=top_feat,
+                top_feature_share=shap_imp.get(top_feat),
+            )
+    except Exception as exc:
+        _log.warning("Bootstrap: SHAP dominance check failed", error=str(exc))
+
     # WF report: mark as bootstrap so consumers can distinguish
     wf_report = {
         "status":     "BOOTSTRAP",
         "reason":     "trained on multi-signal proxy targets; replace via POST /api/ml/train",
         "is_bootstrap": True,
         "proxy_features": ["score", "avg_roe_5y", "debt_equity", "sales_cagr_5y"],
+        "shap_dominance": shap_dominance,
         "folds":      0,
         "rows":       int(len(df)),
         "spearman_ic": None,
