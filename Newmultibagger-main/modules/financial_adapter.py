@@ -217,11 +217,24 @@ def _extract_series(
     for key in exact_hits:
         return df.loc[key]
 
-    # Fuzzy fallback
+    # Fuzzy fallback. Yahoo Finance statements often carry several close
+    # variants of the same line item (e.g. "Net Income", "Net Income
+    # Continuing Operations", "Net Income Applicable To Common Shares").
+    # Returning the first substring match in DataFrame row order is
+    # order-dependent and can silently select a derived/adjusted figure
+    # instead of the headline one — exactly when data is messiest and a
+    # wrong pick is least likely to be noticed. Prefer the shortest
+    # matching label instead, which is closest to the canonical name.
     for key in keys:
-        for idx_name in df.index:
-            if key.lower() in idx_name.lower():
-                return df.loc[idx_name]
+        candidates = [idx_name for idx_name in df.index if key.lower() in idx_name.lower()]
+        if candidates:
+            best = min(candidates, key=len)
+            if len(candidates) > 1:
+                logger.debug(
+                    "financial_key_fuzzy_match | field=%s key=%s candidates=%s using=%s",
+                    field or "unknown", key, candidates, best,
+                )
+            return df.loc[best]
 
     return None
 
