@@ -303,12 +303,13 @@ def _checklist_penalty_and_ceiling(
     checklist_pass: int,
     checklist_total: int = CHECKLIST_TOTAL,
 ) -> tuple[float, float]:
-    if checklist_pass >= 9:
+    disqualify_at = checklist_total - 3
+    if checklist_pass >= disqualify_at:
         checklist_penalty = (checklist_total - checklist_pass) * 0.66
-        current_ceiling = 80 + (checklist_pass - 9) * (20 / 3.0)
+        current_ceiling = 80 + (checklist_pass - disqualify_at) * (20 / 3.0)
     else:
-        checklist_penalty = 2.0 + ((9 - checklist_pass) / 9.0 * 18.0)
-        current_ceiling = 40 + (checklist_pass / 9.0 * 40.0)
+        checklist_penalty = 2.0 + ((disqualify_at - checklist_pass) / disqualify_at * 18.0)
+        current_ceiling = 40 + (checklist_pass / disqualify_at * 40.0)
     return checklist_penalty, current_ceiling
 
 
@@ -362,7 +363,7 @@ def _apply_checklist_gate(
     checklist_pass = int(checklist_status["passed"])
     checklist_total = int(checklist_status["total"])
 
-    if checklist_pass >= 11:
+    if checklist_pass >= checklist_total - 1:
         base_score += 5
 
     checklist_penalty, current_ceiling = _checklist_penalty_and_ceiling(
@@ -372,7 +373,7 @@ def _apply_checklist_gate(
     base_score -= checklist_penalty
     score_ceiling = min(score_ceiling, current_ceiling)
 
-    if checklist_pass < 9:
+    if checklist_pass < checklist_total - 3:
         disqualifiers.append((f"Institutional Quality Gate {checklist_pass}/{checklist_total}", current_ceiling))
 
     return checklist_pass, checklist_total, base_score, score_ceiling
