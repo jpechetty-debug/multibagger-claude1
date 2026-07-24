@@ -37,7 +37,13 @@ METRIC_LIMITS: list[MetricLimit] = [
     MetricLimit("debt_equity", 0, 50),
     MetricLimit("market_cap_cr", 0, 5_000_000),
     MetricLimit("cfo_pat_ratio", -10, 20),
-    MetricLimit("dividend_yield", 0, 25, auto_scale_threshold=25),
+    # auto_scale_threshold is deliberately far above max_val: it exists to
+    # catch genuine 100x scale errors (e.g. a value of 250 meaning 2.5%,
+    # from a feed that double-applies a percentage conversion), not to catch
+    # legitimately high yields. A real special-dividend year can push yield
+    # above 25% without being a data error, so values in (25, 100] should be
+    # clamped to the cap below, not silently divided by 100 into near-zero.
+    MetricLimit("dividend_yield", 0, 25, auto_scale_threshold=100),
     MetricLimit("dividend_payout", 0, 200),
     MetricLimit("avg_roe_5y", -500, 500),
     MetricLimit("sales_cagr_5y", -100, 500),
@@ -238,6 +244,14 @@ def validate_record(row: dict, sector: str | None = None) -> tuple[dict, list[st
     return sanitized, flags
 
 
+def _penalty_per_flag(total_fields: int) -> float:
+    """Points deducted per DQ flag. Shared by the single-record and
+    DataFrame-level scoring paths so the two can never drift apart —
+    see ``compute_data_quality_score`` and ``validate_dataframe``.
+    """
+    return 100.0 / max(total_fields, 1)
+
+
 def compute_data_quality_score(flags: list[str], total_fields: int) -> float:
     """Compute a 0-100 data quality score.
 
@@ -246,7 +260,7 @@ def compute_data_quality_score(flags: list[str], total_fields: int) -> float:
     """
     if total_fields <= 0:
         return 0.0
-    penalty_per_flag = 100.0 / max(total_fields, 1)
+    penalty_per_flag = _penalty_per_flag(total_fields)
     score = max(0.0, 100.0 - len(flags) * penalty_per_flag)
     return round(score, 1)
 
@@ -359,7 +373,7 @@ def validate_dataframe(df):
     if penalties.sum() > 0:
         logger.debug(f"DQ gates applied. Total flags: {int(penalties.sum())}")
 
-    penalty_per_flag = 100.0 / max(total_fields, 1)
+    penalty_per_flag = _penalty_per_flag(total_fields)
     df["data_quality"] = (100.0 - penalties * penalty_per_flag).clip(lower=0.0).round(1)
 
     # Penalize mock history by 50 points if present
