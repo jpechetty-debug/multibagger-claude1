@@ -185,7 +185,6 @@ def test_bonus_not_awarded_for_two_failures_once_total_is_thirteen():
     # the bonus here, because 11 was calibrated for "at most 1 failure out
     # of 12" and silently became "at most 2 failures out of 13".
     from modules.scoring.ceiling import _apply_checklist_gate
-    from modules.scoring.engine import _build_factor_state
 
     data = _gate_stock(**{"F_Score": 3, "EPS_Growth%": 5.0})
     state = _build_factor_state(data, score_sentiment=50.0, scoring_mode="balanced")
@@ -201,7 +200,6 @@ def test_bonus_not_awarded_for_two_failures_once_total_is_thirteen():
 
 def test_bonus_still_awarded_for_at_most_one_failure_out_of_thirteen():
     from modules.scoring.ceiling import _apply_checklist_gate
-    from modules.scoring.engine import _build_factor_state
 
     data = _gate_stock(**{"F_Score": 3})  # exactly one real failure
     state = _build_factor_state(data, score_sentiment=50.0, scoring_mode="balanced")
@@ -219,8 +217,6 @@ def test_missing_dupont_data_gate_thresholds_unchanged_from_original_calibration
     # total=12 (DuPont item excluded) must reproduce the exact original
     # 9/12 disqualify, 11/12 bonus behavior, unaffected by the fix.
     from modules.scoring.ceiling import _apply_checklist_gate
-    from modules.scoring.engine import _build_factor_state
-    from tests.test_dupont_decomposition import _checklist_stock
 
     data = _checklist_stock(**{"F_Score": 3})  # one failure, no Financial_Leverage/ROA%
     state = _build_factor_state(data, score_sentiment=50.0, scoring_mode="balanced")
