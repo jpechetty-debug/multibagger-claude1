@@ -1,5 +1,6 @@
 # backtest_qarp.py
 import os
+import random
 import sys
 from datetime import datetime, timedelta
 
@@ -23,6 +24,9 @@ from ticker_list import TICKERS  # noqa: E402
 
 # Disable emojis for Windows terminal stability
 console = Console(force_terminal=True, emoji=False)
+MAX_POSITIONS = 10
+DEFAULT_MIN_POSITIONS = 10
+DEFAULT_SAMPLE_SEED = 42
 
 
 def print_header(text):
@@ -41,6 +45,40 @@ def _filter_symbols_for_date(loader, symbols, target_date):
     if not valid:
         return list(symbols)
     return [symbol for symbol in symbols if _base_symbol(symbol) in valid]
+
+
+def _dedupe_symbols(symbols):
+    """Preserve ticker spelling while removing duplicate NSE/BSE base symbols."""
+    unique_symbols = []
+    seen = set()
+    for symbol in symbols:
+        base_symbol = _base_symbol(symbol)
+        if base_symbol and base_symbol not in seen:
+            seen.add(base_symbol)
+            unique_symbols.append(symbol)
+    return unique_symbols
+
+
+def _build_test_universe(universe_size=None, sample_seed=DEFAULT_SAMPLE_SEED):
+    """Return the full unique universe, or a reproducible non-file-order sample.
+
+    ``universe_size`` is intentionally opt-in.  A capped run uses a seeded
+    random sample rather than the first entries from ticker_list.py, avoiding
+    a persistent large-cap/sector bias caused by that file's ordering.
+    """
+    universe = _dedupe_symbols(TICKERS)
+    if universe_size is None or universe_size == 0 or universe_size >= len(universe):
+        return universe
+    if universe_size < 0:
+        raise ValueError("universe_size must be zero, positive, or None")
+    return random.Random(sample_seed).sample(universe, universe_size)
+
+
+def _select_top_picks(df_snapshot, min_positions, max_positions=MAX_POSITIONS):
+    """Select a diversified portfolio or return no picks when the floor fails."""
+    if len(df_snapshot) < min_positions:
+        return df_snapshot.iloc[0:0]
+    return df_snapshot.nlargest(min(max_positions, len(df_snapshot)), "total_score")
 
 
 def get_pit_factors(symbol, target_date, cache=None):
@@ -143,7 +181,17 @@ def calculate_risk_metrics(rets, bench_rets=None):
     return metrics
 
 
-def run_backtest(years=3, universe_size=50, stress_mode=False, rebal_freq="MS"):
+def run_backtest(
+    years=3,
+    universe_size=None,
+    stress_mode=False,
+    rebal_freq="MS",
+    min_positions=DEFAULT_MIN_POSITIONS,
+    sample_seed=DEFAULT_SAMPLE_SEED,
+):
+    if not 1 <= min_positions <= MAX_POSITIONS:
+        raise ValueError(f"min_positions must be between 1 and {MAX_POSITIONS}")
+
     print_header(
         f"Sovereign QARP Institutional Validation ({'STRESS ' if stress_mode else ''}{years}Y)"
     )
@@ -155,11 +203,25 @@ def run_backtest(years=3, universe_size=50, stress_mode=False, rebal_freq="MS"):
     ticker_cache = {}  # type: ignore
     hmm = RegimeHMM()
     survivorship_loader = SurvivorshipAdjustedLoader(data_dir="data")
-    test_universe = list(TICKERS[:universe_size])
+    core_universe = _build_test_universe(universe_size, sample_seed)
+    full_universe_size = len(_dedupe_symbols(TICKERS))
+    if universe_size is None or universe_size == 0 or universe_size >= full_universe_size:
+        universe_description = f"full unique ticker universe ({len(core_universe)} names)"
+    else:
+        universe_description = (
+            f"seeded random sample of {len(core_universe)} unique tickers "
+            f"(seed={sample_seed})"
+        )
+    test_universe = list(core_universe)
     if os.path.exists("delisted_candidates.txt"):
         with open("delisted_candidates.txt") as f:
             delisted = [line.strip() for line in f if line.strip()]
             test_universe.extend(delisted[:10])
+    test_universe = _dedupe_symbols(test_universe)
+    console.print(
+        f"[cyan]Universe: {universe_description}; "
+        f"{len(test_universe)} names after delisted-candidate additions.[/cyan]"
+    )
 
     with Progress(
         TextColumn("[progress.description]{task.description}"),
@@ -197,7 +259,15 @@ def run_backtest(years=3, universe_size=50, stress_mode=False, rebal_freq="MS"):
 
             # Hard filter for zero-score data failures (v9.6)
             df_snapshot = df_snapshot[df_snapshot["total_score"] > 5]
-            top_picks = df_snapshot.nlargest(10, "total_score")
+            top_picks = _select_top_picks(df_snapshot, min_positions)
+            if top_picks.empty:
+                console.print(
+                    "[yellow]Warning: Skipping rebalance date "
+                    f"{reb_date.date()} - only {len(df_snapshot)} eligible names remain "
+                    f"after filtering (minimum portfolio size: {min_positions}).[/yellow]"
+                )
+                progress.advance(main_task)
+                continue
 
             # 2. Performance Phase (Forward Return + Slippage)
             next_date = reb_dates[i + 1] if i + 1 < len(reb_dates) else end_date
@@ -291,6 +361,8 @@ def run_backtest(years=3, universe_size=50, stress_mode=False, rebal_freq="MS"):
                     "benchmark_ret": float(bnch_ret) * 100,
                     "regime": regime,
                     "exposure": exposure,
+                    "eligible_names": len(df_snapshot),
+                    "holding_count": len(top_picks),
                     "picks": ", ".join(top_picks["Symbol"].head(3).tolist()),
                 }
             )
@@ -323,6 +395,8 @@ def run_backtest(years=3, universe_size=50, stress_mode=False, rebal_freq="MS"):
             "> Therefore, the backtest results below only reflect the most recent ~1 year of history, NOT the full stated period, and should not be used as representative of long-term performance.\n\n"
         )
         f.write(f"- Backtest Period: {start_date.date()} to {end_date.date()}\n")
+        f.write(f"- Universe: {universe_description}\n")
+        f.write(f"- Minimum positions: {min_positions} (rebalance skipped below this floor)\n")
         f.write(f"- Rebalance Frequency: {rebal_freq}\n")
         f.write(
             f"- Mode: {'STRESS (High Risk/Aggressive)' if stress_mode else 'Normal (Institutional/Conservative)'}\n"
@@ -344,7 +418,17 @@ def run_backtest(years=3, universe_size=50, stress_mode=False, rebal_freq="MS"):
         f.write("## Equity Curve Breakdown\n")
         f.write(
             df_results[
-                ["date", "regime", "exposure", "portfolio_value", "period_ret", "benchmark_ret", "picks"]
+                [
+                    "date",
+                    "regime",
+                    "exposure",
+                    "eligible_names",
+                    "holding_count",
+                    "portfolio_value",
+                    "period_ret",
+                    "benchmark_ret",
+                    "picks",
+                ]
             ].to_markdown(index=False)
         )
         f.write("\n\n*Note: yfinance free API limits historical quarterly statement downloads to the most recent 4-5 quarters. Rebalance periods prior to this window were skipped during the backtest because fundamental metrics (like Piotroski F-Score) could not be calculated dynamically without look-ahead bias.*")
@@ -355,7 +439,24 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--years", type=int, default=5)
-    parser.add_argument("--universe", type=int, default=60)
+    parser.add_argument(
+        "--universe",
+        type=int,
+        default=0,
+        help="Unique tickers to sample; 0 (default) uses the full ticker universe",
+    )
+    parser.add_argument(
+        "--min-positions",
+        type=int,
+        default=DEFAULT_MIN_POSITIONS,
+        help="Skip a rebalance unless at least this many eligible names remain",
+    )
+    parser.add_argument(
+        "--sample-seed",
+        type=int,
+        default=DEFAULT_SAMPLE_SEED,
+        help="Seed for capped-universe random sampling",
+    )
     parser.add_argument(
         "--stress", action="store_true", help="Enable Stress Test Mode (higher BEAR exposure)"
     )
@@ -368,4 +469,6 @@ if __name__ == "__main__":
         universe_size=args.universe,
         stress_mode=args.stress,
         rebal_freq=args.rebal,
+        min_positions=args.min_positions,
+        sample_seed=args.sample_seed,
     )
