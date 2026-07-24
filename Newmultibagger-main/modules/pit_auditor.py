@@ -126,8 +126,15 @@ class PITDataStore:
         pass  # Connections are managed via context manager in get_conn
 
 
-def _get_lag_for_metric(metric_name: str) -> pd.Timedelta:
+def _get_lag_for_metric(metric_name: str, report_date: Any = None) -> pd.Timedelta:
     """Helper method to organically route string metric names to their expected lag."""
+    if report_date is not None:
+        try:
+            dt = pd.to_datetime(report_date)
+            if pd.notna(dt) and dt.month == 3:
+                return pd.Timedelta(days=60)
+        except Exception:
+            pass
     metric_lower = str(metric_name).lower()
     if "eps" in metric_lower or "revenue" in metric_lower or "earnings" in metric_lower:
         return release_lag_map["earnings"]
@@ -170,9 +177,10 @@ def audit_dataset(df: pd.DataFrame, feature_cols: list[str] | None = None) -> PI
 
     for _idx, row in df_copy.iterrows():
         metric = row.get("metric_name", "default")
-        lag = _get_lag_for_metric(metric)
+        lag = _get_lag_for_metric(metric, row["report_date"])
 
         expected_public_date = row["report_date"] + lag
+
 
         violation_type = None
 

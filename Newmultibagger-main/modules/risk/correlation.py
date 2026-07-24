@@ -44,8 +44,12 @@ def calculate_portfolio_correlation(limit=20, threshold=0.75):
         else:
             close_prices = pd.DataFrame(data) if len(symbols) == 1 else data
 
-        # Calculate Pearson Correlation Matrix
-        corr_matrix = close_prices.corr(method="pearson").round(2)
+        # Calculate Pearson Correlation Matrix on daily returns to avoid non-stationary price level distortion
+        returns = close_prices.pct_change().dropna(how="all")
+        if returns.empty:
+            return {"error": "Insufficient price data to compute return correlations"}
+        corr_matrix = returns.corr(method="pearson").round(2)
+
 
         # Analyze clusters
         high_corr_pairs = []

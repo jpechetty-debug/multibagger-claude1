@@ -81,6 +81,15 @@ def _compute_multi_period_cagr(
     return result
 
 
+def _turnaround_growth(start_val: float, end_val: float, years: int) -> float | None:
+    """Computes turnaround annualized growth percentage for negative/zero base values."""
+    if end_val <= 0 or years <= 0:
+        return None
+    denom = abs(start_val) if abs(start_val) > 0 else 1.0
+    annualized_pct = (((end_val - start_val) / denom) * 100.0) / years
+    return cast(float, round(min(500.0, max(-100.0, annualized_pct)), 2))
+
+
 def _cagr_from_series(
     series: dict[str, float],
     periods: dict[str, int],
@@ -100,13 +109,17 @@ def _cagr_from_series(
         idx = total_points - 1 - years
         if idx >= 0:
             start_val = values[idx]
-            if start_val is not None and start_val > 0:
-                result[name] = _safe_cagr(start_val, end_val, years)
+            if start_val is not None:
+                if start_val > 0:
+                    result[name] = _safe_cagr(start_val, end_val, years)
+                else:
+                    result[name] = _turnaround_growth(start_val, end_val, years)
             else:
                 result[name] = None
         else:
             result[name] = None
     return result
+
 
 
 def calculate_all_cagrs_from_normalized(fin) -> dict[str, float | str | None]:

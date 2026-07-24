@@ -11,7 +11,7 @@ import modules.adapters.yf_patch  # noqa: F401
 from modules.adapters.jugaad import get_jugaad_history
 
 
-def _fetch_recent_volume_and_price(symbol: str) -> tuple:
+def _fetch_recent_volume_and_price(symbol: str) -> tuple[float, float, bool]:
     try:
         to_date = date.today()
         from_date = to_date - timedelta(days=30)
@@ -25,14 +25,15 @@ def _fetch_recent_volume_and_price(symbol: str) -> tuple:
             avg_vol = float(pd.to_numeric(hist["Volume"], errors="coerce").dropna().mean())
             last_price_series = pd.to_numeric(hist["Close"], errors="coerce").dropna()
             last_price = float(last_price_series.iloc[-1]) if not last_price_series.empty else 0.0
-            if not np.isfinite(avg_vol) or avg_vol <= 0:
+            is_verified = np.isfinite(avg_vol) and avg_vol > 0
+            if not is_verified:
                 avg_vol = 100000.0
             if not np.isfinite(last_price) or last_price <= 0:
                 last_price = 0.0
-            return avg_vol, last_price
+            return avg_vol, last_price, is_verified
     except Exception:
         pass
-    return 100000.0, 0.0
+    return 100000.0, 0.0, False
 
 
 def run_liquidity_check():
@@ -84,15 +85,19 @@ def run_liquidity_check():
 
     volumes = []
     prices = []
+    verified_flags = []
     for sym in portfolio["symbol"]:
-        avg_vol, curr_price = _fetch_recent_volume_and_price(str(sym))
+        avg_vol, curr_price, is_verified = _fetch_recent_volume_and_price(str(sym))
         volumes.append(avg_vol)
         prices.append(curr_price)
+        verified_flags.append(is_verified)
 
     portfolio["avg_volume"] = volumes
     portfolio["price"] = prices
+    portfolio["volume_verified"] = verified_flags
 
     aum_levels = [1_000_000, 10_000_000, 100_000_000]  # 10L, 1Cr, 10Cr
+
     scenario_results = []
 
     with open("liquidity_report.md", "w", encoding="utf-8") as f:

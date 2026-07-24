@@ -207,16 +207,24 @@ class NSEXBRLProvider(DataProvider):
         # NOT latest.ytd_pat, since ytd_pat alone would understate annualised
         # ROE whenever the latest filing happens to be a Q1 (only 1 quarter
         # of profit against a full year of equity in the denominator).
+        # Requires bs_equity > 0 to avoid division by zero or nonsensical
+        # spikes for distressed/negative-equity companies.
         ttm_pat = _ttm_sum(chosen, "q_pat")
         roe_pct = None
-        if ttm_pat is not None and latest.bs_equity:
-            roe_pct = round((ttm_pat / latest.bs_equity) * 100.0, 2)
+        if ttm_pat is not None and latest.bs_equity and latest.bs_equity > 0:
+            raw_roe = (ttm_pat / latest.bs_equity) * 100.0
+            roe_pct = round(max(-100.0, min(200.0, raw_roe)), 2)
 
         quarter_end = latest.period_end.isoformat() if latest.period_end else None
+
+        # SEBI requires quarterly filings within 45 days, but grants 60 days
+        # for Q4 (March annual audited results). Apply 60 days for March quarter end.
+        pit_lag_days = 60 if (latest.period_end and latest.period_end.month == 3) else NSE_XBRL_PIT_LAG_DAYS
         as_of_date = (
-            (latest.period_end + timedelta(days=NSE_XBRL_PIT_LAG_DAYS)).isoformat()
+            (latest.period_end + timedelta(days=pit_lag_days)).isoformat()
             if latest.period_end else None
         )
+
 
         debt_equity = latest.debt_equity_ratio
         book_value = latest.book_value_per_share
