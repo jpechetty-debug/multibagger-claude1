@@ -250,19 +250,20 @@ def test_walk_forward_strategy_backtest_trains_past_only_and_reports_portfolio_m
     pit_df = pd.DataFrame(rows)
     monkeypatch.setattr(pd, "read_sql_query", lambda *args, **kwargs: pit_df)
 
+    ample_volume = [200_000.0] * 9  # well above the 5M-turnover liquidity floor at these prices
     fake_download = pd.concat(
         {
             "AAA.NS": pd.DataFrame(
-                {"Close": _prices_from_returns([0.03] * 8)}, index=price_dates
+                {"Close": _prices_from_returns([0.03] * 8), "Volume": ample_volume}, index=price_dates
             ),
             "BBB.NS": pd.DataFrame(
-                {"Close": _prices_from_returns([0.01] * 8)}, index=price_dates
+                {"Close": _prices_from_returns([0.01] * 8), "Volume": ample_volume}, index=price_dates
             ),
             "CCC.NS": pd.DataFrame(
-                {"Close": _prices_from_returns([-0.01] * 8)}, index=price_dates
+                {"Close": _prices_from_returns([-0.01] * 8), "Volume": ample_volume}, index=price_dates
             ),
             "^CNX500": pd.DataFrame(
-                {"Close": _prices_from_returns([0.005] * 8)}, index=price_dates
+                {"Close": _prices_from_returns([0.005] * 8), "Volume": ample_volume}, index=price_dates
             ),
         },
         axis=1,
@@ -337,12 +338,13 @@ def test_walk_forward_min_positions_prevents_single_stock_concentration(monkeypa
     pit_df = pd.DataFrame(rows)
     monkeypatch.setattr(pd, "read_sql_query", lambda *args, **kwargs: pit_df)
 
+    ample_volume = [200_000.0] * 9  # well above the 5M-turnover liquidity floor at these prices
     fake_download = pd.concat(
         {
-            "AAA.NS": pd.DataFrame({"Close": _prices_from_returns([0.03] * 8)}, index=price_dates),
-            "BBB.NS": pd.DataFrame({"Close": _prices_from_returns([0.01] * 8)}, index=price_dates),
-            "CCC.NS": pd.DataFrame({"Close": _prices_from_returns([-0.01] * 8)}, index=price_dates),
-            "^CNX500": pd.DataFrame({"Close": _prices_from_returns([0.005] * 8)}, index=price_dates),
+            "AAA.NS": pd.DataFrame({"Close": _prices_from_returns([0.03] * 8), "Volume": ample_volume}, index=price_dates),
+            "BBB.NS": pd.DataFrame({"Close": _prices_from_returns([0.01] * 8), "Volume": ample_volume}, index=price_dates),
+            "CCC.NS": pd.DataFrame({"Close": _prices_from_returns([-0.01] * 8), "Volume": ample_volume}, index=price_dates),
+            "^CNX500": pd.DataFrame({"Close": _prices_from_returns([0.005] * 8), "Volume": ample_volume}, index=price_dates),
         },
         axis=1,
     )
