@@ -3,6 +3,8 @@ nsepython>=2.97,<3.0
 pnsea>=1.0.1,<2.0
 yfinance>=0.2.54
 jugaad-data>=0.31.0
+nse-xbrl>=0.1.1  # Official NSE Integrated Filing XBRL parser — see modules/adapters/nse_xbrl_provider.py
+
 
 # ── Web framework ─────────────────────────────────────────────────────────────
 fastapi==0.115.5

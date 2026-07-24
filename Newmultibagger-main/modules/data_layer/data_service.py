@@ -23,6 +23,7 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_ex
 
 from core.observability.logger import get_logger
 from modules.adapters.nse import NSEPythonProvider, PNSEAProvider
+from modules.adapters.nse_xbrl_provider import NSEXBRLProvider
 from modules.adapters.screener_in import ScreenerInProvider
 from modules.data_utils import get_valid_trading_days, run_coroutine_sync
 from modules.db_utils import get_db_connection
@@ -692,6 +693,7 @@ class DataManager:
         providers: list[Any] = [primary]
         fallback_factories = (
             lambda: ScreenerInProvider(self.executor),
+            lambda: NSEXBRLProvider(self.executor),
             lambda: PNSEAProvider(self.executor),
             lambda: NSEPythonProvider(self.executor),
         )
