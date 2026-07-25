@@ -136,4 +136,4 @@ def test_provider_fetch_sync_success():
         assert res["Sales_Growth_TTM%"] == 25.0  # (400 - 320)/320 * 100 = 25%
         assert res["EPS_Growth%"] == 25.0
         assert res["Quarter_End"] == "2024-03-31"
-        assert res["As_Of_Date"] == "2024-05-15"  # 2024-03-31 + 45 days
+        assert res["As_Of_Date"] == "2024-05-30"  # 2024-03-31 + 60 days (March quarter-end -> annual-results lag)
