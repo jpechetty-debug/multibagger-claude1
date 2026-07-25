@@ -15,6 +15,7 @@ import yfinance as yf  # Kept for Nifty benchmark index only (^NSEI)
 
 import modules.adapters.yf_patch  # noqa: F401
 from modules.cagr_engine import calculate_all_cagrs, classify_market_cap, extract_dividend_metrics
+from modules.data_layer.dq_gates import _append_flag
 from modules.data_service import DataManager, get_data_manager
 from modules.estimates import get_estimate_data
 from modules.fundamental_filters import classify_multibagger_tier, get_tier_label
@@ -253,6 +254,73 @@ def _finite_or_default(value, default=0.0):
     if not _is_finite_number(value):
         return default
     return float(value)
+
+
+def _resolve_debt_equity(raw: dict, info: dict) -> float:
+    """Resolve Debt/Equity as a clean ratio (e.g. 0.35 for D/E of 35%).
+
+    Prefers a canonical source's ``Debt_Equity`` (Screener.in, NSE XBRL —
+    both already report a clean ratio) over yfinance's ``debtToEquity``.
+    yfinance reports NSE/BSE debtToEquity on a 0-100+ percentage-like scale
+    (e.g. 35.0 for a 0.35 ratio), which is why the legacy path divides by
+    100 once the value exceeds 10. That /100 normalization is intentionally
+    scoped to the yfinance-only fallback branch: applying it to an
+    already-clean canonical ratio would silently mis-scale any real,
+    if unusually high, ratio a canonical source reports (e.g. treating a
+    genuine 12.0 ratio as 0.12).
+
+    0.0 is a legitimate value here (debt-free company), so presence is
+    checked with ``_is_finite_number`` rather than ``_is_present_metric``,
+    which would incorrectly treat a real zero as "missing".
+    """
+    canonical = raw.get("Debt_Equity")
+    if _is_finite_number(canonical):
+        return float(canonical)
+    raw_de = info.get("debtToEquity", 0) or 0
+    if raw_de > 10:
+        raw_de = raw_de / 100.0
+    return float(raw_de)
+
+
+def _resolve_book_value(raw: dict, info: dict) -> float:
+    """Resolve Book Value per share, preferring a canonical source
+    (Screener.in / NSE XBRL) over yfinance's ``bookValue`` when present.
+
+    Both sources report book value per share in the same unit (local
+    currency per share), so no scale conversion is needed here — unlike
+    ``_resolve_debt_equity``. A value of exactly 0.0 is treated as absent
+    (``_is_present_metric``), matching how this field's presence is judged
+    elsewhere in this module (e.g. the ``dq_flags`` presence checks).
+    """
+    canonical = raw.get("Book_Value")
+    if _is_present_metric(canonical):
+        return float(canonical)
+    return info.get("bookValue", 0) or 0
+
+
+def _merge_data_quality_flags(existing_flags: str, raw_flags) -> str:
+    """Merge a provider-supplied ``data_quality_flags`` value into the
+    existing comma-separated ``Data_Quality_Flags`` string.
+
+    Providers are free to return their flags as a list (e.g.
+    ``NSEXBRLProvider`` returns ``["nse_xbrl_as_of_date_estimated"]``) or,
+    in principle, an already-comma-separated string. Either shape is
+    normalized to individual tokens and appended one at a time via
+    ``modules.data_layer.dq_gates._append_flag`` — the same dedup,
+    order-preserving, comma-separated convention ``dq_gates`` uses when it
+    manages this column later in the pipeline, so the two never disagree
+    on format.
+    """
+    if not raw_flags:
+        return existing_flags or ""
+    if isinstance(raw_flags, (list, tuple, set)):
+        tokens = [str(f).strip() for f in raw_flags if str(f).strip()]
+    else:
+        tokens = [p.strip() for p in str(raw_flags).split(",") if p.strip()]
+    merged = existing_flags or ""
+    for token in tokens:
+        merged = _append_flag(merged, token)
+    return merged
 
 
 def _freshness_score(price_age_days):
@@ -835,9 +903,7 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             if sales_growth_derived > 0:
                 sales_growth = sales_growth_derived / 100.0
 
-        debt_equity = info.get("debtToEquity", 0) or 0
-        if debt_equity > 10:
-            debt_equity = debt_equity / 100  # type: ignore
+        debt_equity = _resolve_debt_equity(raw, info)
 
         peg_ratio = info.get("pegRatio")
         if peg_ratio is not None:
@@ -1016,7 +1082,7 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             down_from_high_pct = round(((high_52w - current_price) / high_52w) * 100, 2)
 
         # --- Phase 2: Valuation Rigidity Fixes & Cyclical EPS Normalization ---
-        book_value = info.get("bookValue", 0)
+        book_value = _resolve_book_value(raw, info)
         eps_ttm = info.get("trailingEps", 0)
         graham_num = 0
         value_gap = 0
@@ -1105,7 +1171,8 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             "ROE%": _is_finite_number(info.get("returnOnEquity"))
             or _is_present_metric(round(roe * 100, 2)),
             "Avg_ROE_5Y%": _is_present_metric(avg_roe_5y),
-            "Debt_Equity": _is_finite_number(info.get("debtToEquity")),
+            "Debt_Equity": _is_finite_number(raw.get("Debt_Equity"))
+            or _is_finite_number(info.get("debtToEquity")),
             "EPS_Growth%": _is_finite_number(info.get("earningsGrowth")),
             "Sales_Growth_5Y%": _is_present_metric(revenue_cagr_5y)
             or _is_finite_number(info.get("revenueGrowth")),
@@ -1192,7 +1259,10 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             "Slippage_Pct": round(liq_slippage, 2),
             "Slippage_Reason": liq_reason,
             "_dq_flags": dq_flags,
-            "Data_Quality_Flags": "mock_history" if is_mock_history else "",
+            "Data_Quality_Flags": _merge_data_quality_flags(
+                "mock_history" if is_mock_history else "",
+                raw.get("data_quality_flags"),
+            ),
         }
 
         # --- Phase 3.1 & 3.2: Tier classification + Earnings velocity ---
