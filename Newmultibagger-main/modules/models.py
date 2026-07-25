@@ -66,6 +66,8 @@ class StockDataPayload(BaseModel):
     ROE_pct: float | None = Field(alias="ROE%", default=None)
     Debt_Equity: float | None = None
     Sales_Growth_TTM_pct: float | None = Field(alias="Sales_Growth_TTM%", default=None)
+    Sales_Growth_5Y_pct: float | None = Field(alias="Sales_Growth_5Y%", default=None)
+    EPS_Growth_pct: float | None = Field(alias="EPS_Growth%", default=None)
     CFO_PAT_Ratio: float | None = None
     F_Score: int | None = None
     F_Score_Max: int | None = None
@@ -125,6 +127,16 @@ class StockDataPayload(BaseModel):
     @classmethod
     def _normalize_sales_growth(cls, v: float | None) -> float | None:
         return _normalize_fraction_to_pct(v, "Sales_Growth_TTM%")
+
+    @field_validator("Sales_Growth_5Y_pct", mode="before")
+    @classmethod
+    def _normalize_sales_growth_5y(cls, v: float | None) -> float | None:
+        return _normalize_fraction_to_pct(v, "Sales_Growth_5Y%")
+
+    @field_validator("EPS_Growth_pct", mode="before")
+    @classmethod
+    def _normalize_eps_growth(cls, v: float | None) -> float | None:
+        return _normalize_fraction_to_pct(v, "EPS_Growth%")
 
     @field_validator("Dividend_Yield", mode="before")
     @classmethod

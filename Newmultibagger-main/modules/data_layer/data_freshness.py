@@ -14,6 +14,7 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 from datetime import date, datetime
+from zoneinfo import ZoneInfo
 from enum import StrEnum
 from typing import Any
 
@@ -194,7 +195,8 @@ def _date_age_days(date_str: str | None) -> int:
         return 999
     try:
         as_of = datetime.fromisoformat(date_str[:10]).date()
-        return (date.today() - as_of).days
+        today_ist = datetime.now(ZoneInfo("Asia/Kolkata")).date()
+        return (today_ist - as_of).days
     except (ValueError, TypeError):
         return 999
 

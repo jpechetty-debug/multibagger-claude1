@@ -74,6 +74,27 @@ class TestStockDataPayloadValidation:
         payload = StockDataPayload(Symbol="TEST.NS", Dividend_Yield=250)
         assert payload.Dividend_Yield <= 25.0
 
+    def test_sales_growth_5y_fraction_auto_scaled(self):
+        """Sales_Growth_5Y% of 0.25 (fraction) should become 25.0 (percent)."""
+        from modules.models import StockDataPayload
+
+        payload = StockDataPayload(Symbol="TEST.NS", **{"Sales_Growth_5Y%": 0.25})
+        assert payload.Sales_Growth_5Y_pct == 25.0
+
+    def test_eps_growth_fraction_auto_scaled(self):
+        """EPS_Growth% of 0.18 (fraction) should become 18.0 (percent)."""
+        from modules.models import StockDataPayload
+
+        payload = StockDataPayload(Symbol="TEST.NS", **{"EPS_Growth%": 0.18})
+        assert payload.EPS_Growth_pct == 18.0
+
+    def test_promoter_holding_preserves_none(self):
+        """Promoter_Holding% when missing (None) should stay None."""
+        from modules.models import StockDataPayload
+
+        payload = StockDataPayload(Symbol="TEST.NS", **{"Promoter_Holding%": None})
+        assert payload.Promoter_Holding_pct is None
+
     def test_pe_ratio_clamped(self):
         """PE ratio of 5000 should be clamped to 1000."""
         from modules.models import StockDataPayload

@@ -7,6 +7,7 @@ import asyncio
 import json
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 import numpy as np
@@ -801,7 +802,8 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         try:
             last_price_ts = pd.to_datetime(hist.index[-1]).to_pydatetime()
             last_price_date = last_price_ts.date()
-            price_age_days = max((date.today() - last_price_date).days, 0)
+            today_ist = datetime.now(ZoneInfo("Asia/Kolkata")).date()
+            price_age_days = max((today_ist - last_price_date).days, 0)
             last_price_date_iso = last_price_date.isoformat()
         except Exception:
             price_age_days = None
@@ -930,8 +932,8 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
                 inst_holding = round(_raw_inst * 100, 2)
             # else: leave as None — sentinel check
 
-        promoter_holding = float(promoter_holding) if promoter_holding is not None else 0.0
-        inst_holding = float(inst_holding) if inst_holding is not None else 0.0
+        promoter_holding = float(promoter_holding) if promoter_holding is not None else None
+        inst_holding = float(inst_holding) if inst_holding is not None else None
 
         # Pledge Percentage (NSE specific often found in 'pledge_percent' or 'Pledge_Pct')
         pledge_pct = raw.get("Pledge_Pct")
@@ -1222,8 +1224,8 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             "Target_Mean_Price": target_mean,
             "Analyst_Upside%": analyst_upside,
             "Analyst_Count": analyst_count,
-            "Promoter_Holding%": round(promoter_holding, 2),
-            "Inst_Holding%": round(inst_holding, 2),
+            "Promoter_Holding%": round(promoter_holding, 2) if promoter_holding is not None else None,
+            "Inst_Holding%": round(inst_holding, 2) if inst_holding is not None else None,
             "ATR": round(atr_current, 2),
             "Stop_Loss_ATR": stop_loss,
             "Max_Qty_1L": max_qty,
