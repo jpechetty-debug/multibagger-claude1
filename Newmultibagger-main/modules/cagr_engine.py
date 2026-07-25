@@ -72,8 +72,11 @@ def _compute_multi_period_cagr(
         idx = total_points - 1 - years
         if idx >= 0:
             start_val = series.iloc[idx]
-            if pd.notna(start_val) and start_val > 0:
-                result[name] = _safe_cagr(float(start_val), float(end_val), years)
+            if pd.notna(start_val):
+                if start_val > 0:
+                    result[name] = _safe_cagr(float(start_val), float(end_val), years)
+                else:
+                    result[name] = _turnaround_growth(float(start_val), float(end_val), years)
             else:
                 result[name] = None
         else:

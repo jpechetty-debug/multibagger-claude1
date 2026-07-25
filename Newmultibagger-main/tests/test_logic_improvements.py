@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 from modules.adapters.nse_xbrl_provider import NSEXBRLProvider
-from modules.cagr_engine import _cagr_from_series, _turnaround_growth
+from modules.cagr_engine import _cagr_from_series, _compute_multi_period_cagr, _turnaround_growth
 from modules.pit_auditor import _get_lag_for_metric
 from modules.risk.correlation import calculate_portfolio_correlation
 from scripts.internal.liquidity_simulator import _fetch_recent_volume_and_price
@@ -99,3 +99,24 @@ def test_liquidity_verified_volume():
         assert avg_vol == 100000.0
         assert price == 0.0
         assert is_verified is False
+
+
+def test_pit_q4_lag_never_shortens_a_stricter_baseline():
+    # Earnings base (45d) -> Q4 override raises to 60d
+    assert _get_lag_for_metric("earnings", report_date="2024-03-31").days == 60
+    # Balance sheet base (60d) -> Q4 override keeps 60d
+    assert _get_lag_for_metric("balance_sheet", report_date="2024-03-31").days == 60
+    # Cashflow base (75d) -> Q4 override MUST NOT shorten to 60d; must remain 75d
+    assert _get_lag_for_metric("cashflow", report_date="2024-03-31").days == 75
+    # Default base (45d) -> Q4 override raises to 60d
+    assert _get_lag_for_metric("custom_metric", report_date="2024-03-31").days == 60
+    # Non-March filing retains base lag
+    assert _get_lag_for_metric("cashflow", report_date="2024-09-30").days == 75
+
+
+def test_turnaround_growth_reaches_yfinance_production_path():
+    # Time-series with negative start_val (-50 -> 100 over 3 periods)
+    s = pd.Series([-50.0, 10.0, 50.0, 100.0], index=pd.date_range("2021", periods=4, freq="YE"))
+    res = _compute_multi_period_cagr(s, {"3Y": 3})
+    assert res["3Y"] is not None
+    assert res["3Y"] > 0.0

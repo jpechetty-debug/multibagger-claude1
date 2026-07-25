@@ -128,21 +128,25 @@ class PITDataStore:
 
 def _get_lag_for_metric(metric_name: str, report_date: Any = None) -> pd.Timedelta:
     """Helper method to organically route string metric names to their expected lag."""
+    metric_lower = str(metric_name).lower()
+    if "eps" in metric_lower or "revenue" in metric_lower or "earnings" in metric_lower:
+        base_lag = release_lag_map["earnings"]
+    elif "debt" in metric_lower or "equity" in metric_lower or "assets" in metric_lower:
+        base_lag = release_lag_map["balance_sheet"]
+    elif "cash" in metric_lower or "cfo" in metric_lower:
+        base_lag = release_lag_map["cashflow"]
+    else:
+        base_lag = release_lag_map["default"]
+
     if report_date is not None:
         try:
             dt = pd.to_datetime(report_date)
             if pd.notna(dt) and dt.month == 3:
-                return pd.Timedelta(days=60)
+                return max(base_lag, pd.Timedelta(days=60))
         except Exception:
             pass
-    metric_lower = str(metric_name).lower()
-    if "eps" in metric_lower or "revenue" in metric_lower or "earnings" in metric_lower:
-        return release_lag_map["earnings"]
-    elif "debt" in metric_lower or "equity" in metric_lower or "assets" in metric_lower:
-        return release_lag_map["balance_sheet"]
-    elif "cash" in metric_lower or "cfo" in metric_lower:
-        return release_lag_map["cashflow"]
-    return release_lag_map["default"]
+
+    return base_lag
 
 
 def audit_dataset(df: pd.DataFrame, feature_cols: list[str] | None = None) -> PITAuditReport:
