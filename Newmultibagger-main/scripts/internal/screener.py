@@ -324,6 +324,20 @@ def _merge_data_quality_flags(existing_flags: str, raw_flags) -> str:
     return merged
 
 
+def _compute_smart_money_pct(promoter_holding, inst_holding) -> float:
+    """Sum promoter + institutional holding into a single Smart_Money% figure.
+
+    ``promoter_holding``/``inst_holding`` may each independently be ``None``
+    (unknown) rather than 0.0 (confirmed zero) — that distinction matters for
+    the individual ``Promoter_Holding%``/``Inst_Holding%`` output fields, but
+    Smart_Money% is a derived aggregate that downstream scoring treats as a
+    guaranteed float, so an unknown component contributes 0 to the sum here
+    rather than propagating None (which would crash this line — a plain
+    ``+`` between two possibly-None values with no other guard).
+    """
+    return (promoter_holding or 0.0) + (inst_holding or 0.0)
+
+
 def _freshness_score(price_age_days):
     if price_age_days is None:
         return 20.0
@@ -948,7 +962,7 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         else:
             pledge_pct = float(pledge_pct)
 
-        total_smart_money = promoter_holding + inst_holding
+        total_smart_money = _compute_smart_money_pct(promoter_holding, inst_holding)
 
         # Cashflow
         free_cashflow = info.get("freeCashflow", 0)

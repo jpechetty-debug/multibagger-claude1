@@ -130,3 +130,33 @@ def test_merge_data_quality_flags_output_is_parseable_by_dq_gates_convention():
         "nse_xbrl_as_of_date_estimated",
         "extra_flag",
     }
+
+
+# ── _compute_smart_money_pct ─────────────────────────────────────────────
+
+
+def test_compute_smart_money_pct_both_present():
+    assert screener._compute_smart_money_pct(30.0, 15.0) == 45.0
+
+
+def test_compute_smart_money_pct_one_missing():
+    assert screener._compute_smart_money_pct(30.0, None) == 30.0
+    assert screener._compute_smart_money_pct(None, 15.0) == 15.0
+
+
+def test_compute_smart_money_pct_both_missing_does_not_raise():
+    # Regression test: promoter_holding/inst_holding were changed to
+    # preserve None (instead of defaulting to 0.0) so DQ signaling can tell
+    # "confirmed zero" apart from "unknown". The un-guarded
+    # `promoter_holding + inst_holding` this replaced raised
+    # `TypeError: unsupported operand type(s) for +: 'NoneType' and 'NoneType'`
+    # whenever a stock had no promoter/institutional data from any source —
+    # not caught by the suite because tests/e2e_scoring_pipeline.py isn't
+    # matched by pytest.ini's `test_*.py` discovery pattern.
+    assert screener._compute_smart_money_pct(None, None) == 0.0
+
+
+def test_compute_smart_money_pct_confirmed_zero_still_sums_correctly():
+    # A confirmed 0.0 (not None) must still contribute, distinguishing this
+    # from the "unknown" case above.
+    assert screener._compute_smart_money_pct(0.0, 15.0) == 15.0

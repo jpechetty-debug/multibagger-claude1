@@ -1,8 +1,18 @@
-# tests/e2e_scoring_pipeline.py
+# tests/test_e2e_scoring_pipeline.py
 """
 Sovereign Terminal — End-to-End Integration Test
 Verifies the full pipeline: Data Fetch -> Scoring -> Result Construction.
 Uses a mock DataManager to avoid live API calls during CI.
+
+NOTE: despite the mocked DataManager, get_stock_data() still makes real
+network calls this test doesn't mock — quarterly-financials backfill via
+yfinance when the mocked `info` dict looks incomplete, and a live Nifty
+benchmark fetch for RS_Rating. Marked `live` so it's excluded from the
+default `pytest -m "not live"` sandbox run rather than silently skipped:
+this file was previously named without a `test_` prefix and so wasn't
+collected by pytest.ini's `python_files = test_*.py` at all, which is how
+a real `TypeError` crash in scripts/internal/screener.py's smart-money
+aggregation (fixed alongside this rename) went uncaught.
 """
 
 import asyncio
@@ -53,6 +63,7 @@ class MockDataManager(DataManager):
         return df
 
 
+@pytest.mark.live
 @pytest.mark.asyncio
 async def test_full_scoring_pipeline_e2e():
     """Verify that a symbol can pass through the entire fetch-and-score pipe."""
