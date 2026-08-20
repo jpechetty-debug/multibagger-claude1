@@ -453,102 +453,30 @@ def validate_screener_schema(columns: tuple[str, ...]) -> tuple[str, ...]:
     return canonical_columns
 
 
-def _postgres_dsn_for_asyncpg(database_url: str | None) -> str:
-    if not database_url:
-        raise ValueError(
-            "DATABASE_URL or NEON_DATABASE_URL is required unless USE_CSV_FALLBACK=1"
-        )
-    dsn = database_url.strip()
-    if dsn.startswith("postgresql+psycopg://"):
-        return dsn.replace("postgresql+psycopg://", "postgresql://", 1)
-    if dsn.startswith("postgres+psycopg://"):
-        return dsn.replace("postgres+psycopg://", "postgresql://", 1)
-    if dsn.startswith("postgres://"):
-        return dsn.replace("postgres://", "postgresql://", 1)
-    if dsn.startswith("sqlite"):
-        raise ValueError("ScreenerRepository production mode requires Neon PostgreSQL, not SQLite")
-
-    parsed = urlsplit(dsn)
-    if parsed.scheme and parsed.scheme not in {"postgresql", "postgres"}:
-        raise ValueError(f"Unsupported ScreenerRepository DATABASE_URL scheme: {parsed.scheme}")
-    if parsed.scheme == "postgres":
-        return urlunsplit(("postgresql", parsed.netloc, parsed.path, parsed.query, parsed.fragment))
-    return dsn
-
-
-def _quote_pg_identifier_path(identifier_path: str) -> str:
-    if not _IDENTIFIER_RE.match(identifier_path):
-        raise ValueError(f"Unsafe PostgreSQL identifier: {identifier_path!r}")
-    return ".".join(f'"{part}"' for part in identifier_path.split("."))
-
-
 class ScreenerRepository:
-    """Thin repository for the FastAPI screener universe data source."""
-
-    _pool_init_lock: asyncio.Lock | None = None
-    _neon_pool = None
-
-    @classmethod
-    async def _get_pool(cls, dsn: str):
-        if cls._pool_init_lock is None:
-            cls._pool_init_lock = asyncio.Lock()
-        async with cls._pool_init_lock:
-            if cls._neon_pool is None:
-                try:
-                    import asyncpg
-                except ImportError as exc:
-                    raise RuntimeError("asyncpg is required for Neon screener reads") from exc
-
-                cls._neon_pool = await asyncpg.create_pool(
-                    dsn=dsn,
-                    min_size=1,
-                    max_size=5,
-                    command_timeout=10.0,
-                    max_inactive_connection_lifetime=300.0,
-                )
-        return cls._neon_pool
+    """Thin repository for the FastAPI screener universe data source (Local/CSV/Parquet)."""
 
     def __init__(
         self,
         *,
-        database_url: str | None = None,
         csv_path: str | Path | None = None,
         table_name: str | None = None,
     ):
-        self.database_url = (
-            database_url
-            or os.getenv("NEON_DATABASE_URL")
-            or os.getenv("DATABASE_URL")
-            or os.getenv("POSTGRES_URL")
-        )
         self.csv_path = Path(csv_path or os.getenv("SCREENER_CSV_PATH") or DEFAULT_SCREENER_CSV_PATH)
         self.table_name = table_name or os.getenv("SCREENER_TABLE", DEFAULT_SCREENER_TABLE)
-        self.use_csv_fallback = _is_truthy_env(os.getenv("USE_CSV_FALLBACK"))
+        self.use_csv_fallback = _is_truthy_env(os.getenv("USE_CSV_FALLBACK", "1"))
 
     async def fetch_rows(self, limit: int | None = None) -> list[ScreenerRow]:
-        if self.use_csv_fallback:
-            return self._fetch_csv_rows(limit=limit)
-        return await self._fetch_neon_rows(limit=limit)
-
-
+        # Always use local CSV/Parquet path for Sovereign Terminal
+        return self._fetch_csv_rows(limit=limit)
 
     async def fetch_symbol(self, symbol: str) -> ScreenerRow | None:
-        if self.use_csv_fallback:
-            rows = await self.fetch_rows()
-            normalized = symbol.strip().upper()
-            for row in rows:
-                if row.symbol.strip().upper() == normalized:
-                    return row
-            return None
-
-        pool = await self._get_pool(_postgres_dsn_for_asyncpg(self.database_url))
-
-        # Neon path: push the filter to Postgres
-        table = _quote_pg_identifier_path(self.table_name)
-        async with pool.acquire() as conn:
-            row = await conn.fetchrow(
-                f"SELECT * FROM {table} WHERE symbol = $1", symbol.upper())
-        return ScreenerRow.model_validate(dict(row)) if row else None
+        rows = await self.fetch_rows()
+        normalized = symbol.strip().upper()
+        for row in rows:
+            if row.symbol.strip().upper() == normalized:
+                return row
+        return None
 
     def fetch_rows_sync(self, limit: int | None = None) -> list[ScreenerRow]:
         return cast(list[ScreenerRow], run_coroutine_sync(self.fetch_rows(limit=limit)))
@@ -565,31 +493,6 @@ class ScreenerRepository:
             read_kwargs["nrows"] = int(limit)
         frame = pd.read_csv(self.csv_path, **read_kwargs)
         return [ScreenerRow.model_validate(record) for record in frame.to_dict(orient="records")]
-
-    async def _fetch_neon_rows(self, limit: int | None = None) -> list[ScreenerRow]:
-        pool = await self._get_pool(_postgres_dsn_for_asyncpg(self.database_url))
-
-        async with pool.acquire() as connection:
-            table = _quote_pg_identifier_path(self.table_name)  # type: ignore
-            if hasattr(connection, "prepare"):
-                prepared = await connection.prepare(f"SELECT * FROM {table} LIMIT 0")
-                columns = tuple(attribute.name for attribute in prepared.get_attributes())
-            else:
-                preview = await connection.fetch(f"SELECT * FROM {table} LIMIT 1")
-                if not preview:
-                    raise ValueError(
-                        "ScreenerRepository cannot validate Neon schema on an empty result "
-                        "without asyncpg prepare() support"
-                    )
-                columns = tuple(dict(preview[0]).keys())
-            validate_screener_schema(columns)
-
-            query = f"SELECT * FROM {table}"
-            if limit is None:
-                records = await connection.fetch(query)
-            else:
-                records = await connection.fetch(f"{query} LIMIT $1", int(limit))
-            return [ScreenerRow.model_validate(dict(record)) for record in records]
 
 
 def get_screener_repository() -> ScreenerRepository:

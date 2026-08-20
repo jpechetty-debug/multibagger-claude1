@@ -30,8 +30,8 @@ from research.dataset_utils import load_evaluation_dataset
 
 def load_holdout_dataset() -> pd.DataFrame:
     """Load the out-of-sample data."""
-    # Since lake data is 2026, we use a slice of it for holdout
-    return load_evaluation_dataset(start_date="2026-06-01", end_date="2026-12-31")
+    # Holdout period matching roadmap (2018-2020)
+    return load_evaluation_dataset(start_date="2018-01-01", end_date="2020-12-31")
 
 def _calc_stats(ret_series, periods_per_year=4):
     """Calculates investment statistics for a series of periodic returns."""

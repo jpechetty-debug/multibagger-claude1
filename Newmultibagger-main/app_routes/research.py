@@ -135,3 +135,11 @@ def get_portfolio():
 def generate_memo(ticker: str, template: str = "Compounder", use_llm: bool = False):
     memo = MemoGenerator.generate_memo(ticker, template, use_llm)
     return {"memo": memo}
+
+
+# --- Trust Score ---
+from research.trust_score import compute_trust_score
+
+@router.get("/trust-score")
+def get_trust_score():
+    return compute_trust_score()

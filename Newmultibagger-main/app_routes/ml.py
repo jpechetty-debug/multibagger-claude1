@@ -25,10 +25,10 @@ from modules.auth import get_api_key
 from modules.scoring.ml_score import (
     FEATURES,
     get_feature_importance,
-    load_walk_forward_report,
     model_is_trained,
     predict_and_explain,
 )
+from modules.scoring.walk_forward import load_walk_forward_report
 from modules.ml_ops import (
     batch_update_multibaggers_ml,
     check_retraining_trigger,

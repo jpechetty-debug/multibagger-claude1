@@ -1,6 +1,6 @@
 import json
 from datetime import date
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from pydantic import BaseModel
 
 from db.engine import get_session
