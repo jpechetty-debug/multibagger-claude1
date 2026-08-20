@@ -1204,6 +1204,8 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             "History_Bars_1Y": history_bars,
             "Last_Price_Date": last_price_date_iso,
             "Price_Age_Days": price_age_days,
+            "Quarter_End": raw.get("Quarter_End"),
+            "As_Of_Date": raw.get("As_Of_Date"),
             "Avg_Volume_10D": avg_vol_10d,  # Added for Phase 22
             "Sector": sector,
             "Industry": industry,

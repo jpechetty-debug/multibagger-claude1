@@ -15,8 +15,30 @@ import joblib
 import numpy as np
 import optuna
 import pandas as pd
-import shap
 import xgboost as xgb
+import shap
+from shap.explainers import _tree
+import re
+
+# --- Monkey-patch for SHAP XGBoost Tree Loader ---
+# XGBoost models sometimes serialize base_score as a string array like '[-1.4016804E-1]'
+# which crashes shap's TreeExplainer when it tries to cast it to a float.
+# We intercept the UBJ decode step to normalize this string into a standard float string.
+_original_decode = getattr(_tree, "decode_ubjson_buffer", None)
+if _original_decode:
+    def _patched_decode(fd):
+        jmodel = _original_decode(fd)
+        try:
+            bs = jmodel.get("learner", {}).get("learner_model_param", {}).get("base_score")
+            if isinstance(bs, str) and bs.startswith("["):
+                match = re.search(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", bs)
+                if match:
+                    jmodel["learner"]["learner_model_param"]["base_score"] = match.group(0)
+        except Exception:
+            pass
+        return jmodel
+    _tree.decode_ubjson_buffer = _patched_decode
+# -------------------------------------------------
 
 from modules.feature_factory import (
     EXTENDED_FEATURE_BOUNDS,
@@ -945,6 +967,14 @@ def train_hybrid_model() -> bool:
 # Inference: predict + SHAP explain
 # ---------------------------------------------------------------------------
 
+def safe_float(val) -> float:
+    try:
+        if isinstance(val, str) and val.startswith("[") and val.endswith("]"):
+            val = val[1:-1]
+        return float(val)
+    except (ValueError, TypeError):
+        return 0.0
+
 @dataclass
 class PredictionResult:
     ml_prediction:      float | None
@@ -1001,7 +1031,22 @@ def predict_and_explain(
         X_pred = _sanitize_features(X_pred)
 
         # Regressor prediction
-        raw_return = float(regressor.predict(X_pred)[0])
+        pred = regressor.predict(X_pred)
+        try:
+            if hasattr(pred, "item"):
+                raw_return = float(pred.item())
+            else:
+                raw_return = float(np.ravel(pred)[0])
+        except Exception:
+            # Fallback if it's somehow a string representation of a list
+            val = np.ravel(pred)[0]
+            if isinstance(val, str):
+                import re
+                match = re.search(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", val)
+                raw_return = float(match.group(0)) if match else 0.0
+            else:
+                raw_return = float(val)
+
         regressor_return = raw_return * 100.0 if np.isfinite(raw_return) else None
 
         # Classifier prediction (if available)
@@ -1010,7 +1055,7 @@ def predict_and_explain(
             try:
                 classifier: xgb.XGBClassifier = joblib.load(CLASSIFIER_PATH)
                 proba = classifier.predict_proba(X_pred)[0]
-                classifier_prob = float(proba[1]) * 100.0 if len(proba) > 1 else None
+                classifier_prob = safe_float(proba[1]) * 100.0 if len(proba) > 1 else None
             except Exception:
                 pass
 
@@ -1034,13 +1079,13 @@ def predict_and_explain(
         expected_value: float | None = None
         try:
             ev_raw = explainer.expected_value
-            expected_value = float(ev_raw) if np.isfinite(float(ev_raw)) else None
+            expected_value = safe_float(ev_raw) if np.isfinite(safe_float(ev_raw)) else None
         except Exception:
             pass
 
         breakdown: dict[str, float] = {}
         for i, feat in enumerate(FEATURES):
-            val = float(shap_row[i])
+            val = safe_float(shap_row[i])
             breakdown[feat] = val if np.isfinite(val) else 0.0
 
         sorted_breakdown = dict(
@@ -1052,7 +1097,7 @@ def predict_and_explain(
                 "feature":       feat,
                 "shap_value":    shap_val,
                 "direction":     "bullish" if shap_val > 0 else "bearish",
-                "feature_value": float(X_pred[feat].iloc[0]),
+                "feature_value": safe_float(X_pred[feat].iloc[0]),
             }
             for feat, shap_val in list(sorted_breakdown.items())[:top_n_drivers]
         ]
@@ -1061,7 +1106,7 @@ def predict_and_explain(
         is_bootstrap = report.get("is_bootstrap", False) if report else False
 
         return PredictionResult(
-            ml_prediction=float(ml_prediction),
+            ml_prediction=safe_float(ml_prediction),
             classifier_prob=classifier_prob,
             regressor_return=regressor_return,
             shap_values=sorted_breakdown,
@@ -1071,7 +1116,8 @@ def predict_and_explain(
         ).to_dict()
 
     except Exception as exc:
-        _log.error("ML prediction error", error=str(exc))
+        import traceback
+        _log.error("ML prediction error", error=str(exc), tb=traceback.format_exc())
         return _FALLBACK
 
 

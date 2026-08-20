@@ -84,6 +84,8 @@ class StockDataPayload(BaseModel):
     History_Bars_1Y: int | None = None
     Price_Age_Days: int | None = None
     Last_Price_Date: str | None = None
+    Quarter_End: str | None = None
+    As_Of_Date: str | None = None
 
     # Sprint 1: Compounding Lens fields
     Revenue_CAGR_3Y: float | None = None

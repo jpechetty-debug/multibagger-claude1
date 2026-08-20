@@ -1104,8 +1104,9 @@ def get_market_regime(self):
 
     # Factor 2: Market breadth (stocks above SMA50)
     try:
-        nifty500 = [f"Stock_{i}" for i in range(20)] + [f"Loser_{i}" for i in range(10)]
-        hist = self.get_batch_history(nifty500, period="60d")
+        # Use real proxy symbols instead of fake Stock_X test symbols to prevent yfinance timeouts
+        breadth_proxies = ["RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS"]
+        hist = self.get_batch_history(breadth_proxies, period="60d")
         if hist is not None and not hist.empty:
             above = 0
             for col in hist.columns:
