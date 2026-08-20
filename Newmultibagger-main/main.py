@@ -23,6 +23,7 @@ from app_routes.ml import router as ml_router
 from app_routes.factor_exposure import router as factor_exposure_router
 from app_routes.liquidity_sim import router as liquidity_sim_router
 from app_routes.validation import router as validation_router
+from app_routes.research import router as research_router
 from modules.connections import (
     _run_sqlite_write_with_retry_sync,
     get_connection,
@@ -194,9 +195,10 @@ app.include_router(score_report_router)
 app.include_router(swarm_router)
 app.include_router(webhooks_router)
 app.include_router(ml_router)
-app.include_router(factor_exposure_router)
+app.include_router(factor_exposure_router, dependencies=[Depends(get_api_key)])
 app.include_router(liquidity_sim_router)
-app.include_router(validation_router)
+app.include_router(validation_router, dependencies=[Depends(get_api_key)])
+app.include_router(research_router, dependencies=[Depends(get_api_key)])
 
 static_dir = WEB_UI_DIR / "dist" if (WEB_UI_DIR / "dist").exists() else WEB_UI_DIR
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")

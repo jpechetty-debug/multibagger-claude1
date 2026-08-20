@@ -13,7 +13,7 @@ import { SignalGrid } from './components/signals/SignalGrid'
 import { ScreenerGrid } from './components/signals/ScreenerGrid'
 import { SwingTradeGrid } from './components/signals/SwingTradeGrid'
 import { StrategyIntelligence } from './components/signals/StrategyIntelligence'
-import { ValidationDashboard } from './components/signals/ValidationDashboard'
+import ResearchDashboard from './components/research/ResearchDashboard'
 import { FloorDock } from './components/layout/FloorDock'
 import { api, getApiErrorMessage } from './lib/api'
 import type { MarketRegimeData, SignalData } from './lib/contracts'
@@ -164,8 +164,8 @@ export default function App() {
                 <SwingTradeGrid />
               </>
             )}
-            {activeTab === 'Validation' && (
-              <ValidationDashboard />
+            {activeTab === 'Research' && (
+              <ResearchDashboard />
             )}
             <FloorDock
               activeTab={activeTab}

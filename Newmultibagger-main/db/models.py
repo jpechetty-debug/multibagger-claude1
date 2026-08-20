@@ -300,6 +300,80 @@ class WebhookSubscription(Base):
     updated_at = Column(DateTime, default=_utc_now, onupdate=_utc_now, nullable=False)
 
 
+# --- Month 5: Thesis Intelligence & Investment Decision System ---
+
+class InvestmentThesis(Base):
+    __tablename__ = "thesis"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ticker = Column(String(50), index=True, nullable=False)
+    thesis_summary = Column(Text, nullable=False)
+    expected_cagr = Column(Float, nullable=False)
+    horizon_years = Column(Float, nullable=False)
+    health_score = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=_utc_now, nullable=False)
+    updated_at = Column(DateTime, default=_utc_now, onupdate=_utc_now, nullable=False)
+
+
+class ResearchJournal(Base):
+    __tablename__ = "journal"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ticker = Column(String(50), index=True, nullable=False)
+    entry_date = Column(Date, nullable=False)
+    observation = Column(Text, nullable=False)
+    decision = Column(String(200), nullable=True)
+    outcome = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=_utc_now, nullable=False)
+
+
+class QuarterlyReview(Base):
+    __tablename__ = "reviews"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ticker = Column(String(50), index=True, nullable=False)
+    review_date = Column(Date, nullable=False)
+    original_assumptions = Column(Text, nullable=False)
+    current_reality = Column(Text, nullable=False)
+    health_status = Column(String(50), nullable=False) # e.g., 'Warning', 'Intact'
+    health_score = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=_utc_now, nullable=False)
+
+
+class KnowledgeEntry(Base):
+    __tablename__ = "knowledge_entries"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ticker = Column(String(50), index=True, nullable=False)
+    source_type = Column(String(100), nullable=False) # e.g., 'Concall', 'Annual Report'
+    source_date = Column(Date, nullable=False)
+    summary = Column(Text, nullable=False)
+    tags = Column(String(200), nullable=True) # comma separated
+    created_at = Column(DateTime, default=_utc_now, nullable=False)
+
+
+class DecisionLog(Base):
+    __tablename__ = "decision_log"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ticker = Column(String(50), index=True, nullable=False)
+    decision_date = Column(Date, nullable=False)
+    action = Column(String(50), nullable=False) # BUY, SELL, ADD, TRIM, HOLD
+    reason = Column(Text, nullable=False)
+    expected_cagr = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=_utc_now, nullable=False)
+
+
+class Watchlist(Base):
+    __tablename__ = "watchlists"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ticker = Column(String(50), index=True, nullable=False)
+    state = Column(String(50), nullable=False) # Research, Watchlist, Accumulation, Core Holding, Review, Exit Candidate, Archived
+    entered_state_at = Column(DateTime, default=_utc_now, nullable=False)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=_utc_now, nullable=False)
+    updated_at = Column(DateTime, default=_utc_now, onupdate=_utc_now, nullable=False)
 class AlertDispatchLog(Base):
     """Append-only delivery log — every dispatch attempt writes a row."""
 

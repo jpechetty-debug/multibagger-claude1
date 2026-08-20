@@ -10,7 +10,7 @@ export function FloorDock({ activeTab, onTabChange }: FloorDockProps) {
     { name: 'Signals', icon: LayoutGrid },
     { name: 'Screener', icon: Database },
     { name: 'Swing Trades', icon: Activity },
-    { name: 'Validation', icon: Activity },
+    { name: 'Research', icon: Activity },
   ]
 
   return (
