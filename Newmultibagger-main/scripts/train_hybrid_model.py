@@ -72,7 +72,7 @@ Examples
     model_dir = PROJECT_ROOT / "runtime" / "models"
     model_dir.mkdir(parents=True, exist_ok=True)
 
-    from modules.hybrid_scoring import (
+    from modules.scoring.ml_score import (
         bootstrap_synthetic_model,
         get_feature_importance,
         load_walk_forward_report,
@@ -190,7 +190,7 @@ Examples
             import pandas as pd
 
             from modules.data_layer.db_utils import get_db_connection
-            from modules.hybrid_scoring import optuna_optimize
+            from modules.scoring.ml_score import optuna_optimize
 
             with get_db_connection("stocks.db") as conn:
                 df = pd.read_sql(

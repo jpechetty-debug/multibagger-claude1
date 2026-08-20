@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
-from modules.hybrid_scoring import FEATURES
+from modules.scoring.ml_score import FEATURES
 
 # ---------------------------------------------------------------------------
 # Feature classification metadata

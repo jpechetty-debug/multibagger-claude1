@@ -7,7 +7,7 @@ dii_change_3m, pe_ratio, roce, etc.) materially change model behavior
 versus training on raw primitives only?
 
 This does NOT modify modules/hybrid_scoring.py or feature_factory.py.
-It monkeypatches modules.hybrid_scoring.FEATURES for the duration of each
+It monkeypatches modules.scoring.ml_score.FEATURES for the duration of each
 variant's run (walk_forward_validate and check_shap_dominance both read
 that module-level global directly), then restores it. Nothing here
 retrains or overwrites the production model artifact.
@@ -17,12 +17,12 @@ Usage:
     python ops/ablation_score_feature.py --top-n 20 50 --out ablation_report.json
 
 Reuses (does not reimplement):
-    - modules.hybrid_scoring._build_training_frame   (PIT -> forward-return labels)
-    - modules.hybrid_scoring.walk_forward_validate    (expanding quarterly windows,
+    - modules.scoring.ml_score._build_training_frame   (PIT -> forward-return labels)
+    - modules.scoring.ml_score.walk_forward_validate    (expanding quarterly windows,
       same HOLDOUT_START/HOLDOUT_END exclusion as production training)
-    - modules.hybrid_scoring._make_xgb_regressor      (same _XGB_PARAMS)
-    - modules.hybrid_scoring._sanitize_features
-    - modules.hybrid_scoring.check_shap_dominance
+    - modules.scoring.ml_score._make_xgb_regressor      (same _XGB_PARAMS)
+    - modules.scoring.ml_score._sanitize_features
+    - modules.scoring.ml_score.check_shap_dominance
     - modules.holdout.split_holdout
     - modules.pit_auditor.sanitize
 """
@@ -37,7 +37,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
-import modules.hybrid_scoring as hs
+import modules.scoring.ml_score as hs
 from core.observability.logger import get_logger
 from modules.data_layer.db_utils import get_db_connection
 from modules.pit_auditor import sanitize
@@ -54,7 +54,7 @@ VARIANT_NAME_ABLATED = "ablated_without_score"
 
 @contextmanager
 def _feature_set(features: list[str]):
-    """Temporarily point modules.hybrid_scoring.FEATURES at `features`.
+    """Temporarily point modules.scoring.ml_score.FEATURES at `features`.
 
     walk_forward_validate() and check_shap_dominance() both read the
     module-level FEATURES global directly rather than accepting a

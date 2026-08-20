@@ -455,7 +455,7 @@ def _portfolio_turnover(previous_symbols: set[str], current_symbols: set[str]) -
 
 def _walk_forward_feature_columns() -> list[str]:
     try:
-        from modules.hybrid_scoring import FEATURES
+        from modules.scoring.ml_score import FEATURES
 
         return list(FEATURES)
     except Exception:
@@ -464,7 +464,7 @@ def _walk_forward_feature_columns() -> list[str]:
 
 def _sanitize_walk_forward_features(df: pd.DataFrame) -> pd.DataFrame:
     try:
-        from modules.hybrid_scoring import _sanitize_features
+        from modules.scoring.ml_score import _sanitize_features
 
         return _sanitize_features(df)
     except Exception:
@@ -477,7 +477,7 @@ def _sanitize_walk_forward_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _make_walk_forward_model():
-    from modules.hybrid_scoring import _make_xgb_regressor
+    from modules.scoring.ml_score import _make_xgb_regressor
 
     return _make_xgb_regressor()
 

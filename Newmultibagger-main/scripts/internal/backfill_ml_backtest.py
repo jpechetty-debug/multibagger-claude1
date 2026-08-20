@@ -66,7 +66,7 @@ def backfill_ml_predictions():
         return
 
     try:
-        from modules.hybrid_scoring import predict_and_explain
+        from modules.scoring.ml_score import predict_and_explain
     except ImportError as e:
         print(f"❌ Cannot import hybrid_scoring: {e}")
         return

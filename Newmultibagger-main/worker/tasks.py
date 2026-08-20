@@ -197,7 +197,7 @@ def retrain_xgboost():
       3. Walk-forward metrics are captured in the return value.
     """
     try:
-        from modules.hybrid_scoring import load_walk_forward_report
+        from modules.scoring.walk_forward import load_walk_forward_report
         from modules.ml_ops import run_automated_training
 
         success = run_automated_training()
@@ -397,7 +397,7 @@ def batch_ml_inference():
     No-ops gracefully when the model has not been trained yet.
     """
     try:
-        from modules.hybrid_scoring import model_is_trained
+        from modules.scoring.ml_score import model_is_trained
 
         if not model_is_trained():
             logger.info(

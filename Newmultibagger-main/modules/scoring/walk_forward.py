@@ -96,3 +96,127 @@ def load_walk_forward_report() -> dict | None:
         return None
     with open(WALK_FORWARD_REPORT_PATH, encoding="utf-8") as fh:
         return json.load(fh)
+
+def walk_forward_validate(
+    train_df: pd.DataFrame,
+    min_train_rows: int = 10,
+    min_train_periods: int = 4,
+) -> dict:
+    """Expanding-window walk-forward validation for the hybrid XGBoost scorer."""
+    required = {"symbol", "as_of_date", "forward_return", *FEATURES}
+    missing = required - set(train_df.columns)
+    if missing:
+        return WalkForwardResult(
+            status="SKIPPED",
+            reason=f"missing columns: {sorted(missing)}",
+        ).to_dict()
+
+    df = train_df.copy()
+    df["as_of_date"]    = pd.to_datetime(df["as_of_date"], errors="coerce")
+    df["forward_return"]= pd.to_numeric(df["forward_return"], errors="coerce")
+    df = df.dropna(subset=["as_of_date", "forward_return"]).sort_values("as_of_date")
+
+    holdout_mask         = df["as_of_date"].between(HOLDOUT_START, HOLDOUT_END)
+    holdout_rows_excluded= int(holdout_mask.sum())
+    df = df[~holdout_mask]
+
+    if len(df) < min_train_rows:
+        return WalkForwardResult(
+            status="SKIPPED",
+            reason="not enough valid rows",
+            holdout_rows_excluded=holdout_rows_excluded,
+        ).to_dict()
+
+    df["test_period"] = df["as_of_date"].dt.to_period("Q")
+    periods = sorted(df["test_period"].dropna().unique())
+    if len(periods) <= min_train_periods:
+        return WalkForwardResult(
+            status="SKIPPED",
+            reason="not enough quarterly periods",
+            holdout_rows_excluded=holdout_rows_excluded,
+        ).to_dict()
+
+    all_predictions: list[pd.DataFrame] = []
+    windows: list[WalkForwardWindow]    = []
+
+    for test_period in periods[min_train_periods:]:
+        test_start = test_period.start_time
+        train_fold = df[df["as_of_date"] < test_start]
+        test_fold  = df[df["test_period"] == test_period]
+
+        if len(train_fold) < min_train_rows or test_fold.empty:
+            continue
+
+        model   = _make_xgb_regressor()
+        X_train = _sanitize_features(train_fold[FEATURES])
+        y_train = train_fold["forward_return"]
+        X_test  = _sanitize_features(test_fold[FEATURES])
+
+        model.fit(X_train, y_train, eval_set=[(X_train, y_train)], verbose=False)
+
+        fold_preds = test_fold[["symbol", "as_of_date", "forward_return"]].copy()
+        fold_preds["prediction"] = model.predict(X_test)
+        fold_preds["test_period"]= str(test_period)
+        all_predictions.append(fold_preds)
+
+        ft = pd.to_numeric(fold_preds["forward_return"], errors="coerce")
+        fp = pd.to_numeric(fold_preds["prediction"],     errors="coerce")
+        fold_ic       = _spearman_ic(ft, fp)
+        fold_hit_rate = _finite_or_none(((ft > 0) == (fp > 0)).mean())
+        fold_sharpe   = _top_quantile_sharpe(
+            ft[fp.nlargest(max(1, int(len(fp) * 0.2))).index],
+        )
+        windows.append(WalkForwardWindow(
+            test_period=str(test_period),
+            train_rows=int(len(train_fold)),
+            test_rows=int(len(test_fold)),
+            fold_ic=fold_ic,
+            fold_hit_rate=fold_hit_rate,
+            fold_top_sharpe=fold_sharpe,
+        ))
+
+    if not all_predictions:
+        return WalkForwardResult(
+            status="SKIPPED",
+            reason="no valid walk-forward folds",
+            holdout_rows_excluded=holdout_rows_excluded,
+        ).to_dict()
+
+    pred_df = pd.concat(all_predictions, ignore_index=True)
+    y_true  = pd.to_numeric(pred_df["forward_return"], errors="coerce")
+    y_pred  = pd.to_numeric(pred_df["prediction"],     errors="coerce")
+    valid   = y_true.notna() & y_pred.notna()
+    y_true, y_pred = y_true[valid], y_pred[valid]
+
+    if y_true.empty:
+        return WalkForwardResult(
+            status="SKIPPED",
+            reason="all predictions invalid",
+            holdout_rows_excluded=holdout_rows_excluded,
+        ).to_dict()
+
+    residual = y_true - y_pred
+    ss_res = float(np.square(residual).sum())
+    ss_tot = float(np.square(y_true - y_true.mean()).sum())
+
+    return WalkForwardResult(
+        status="OK",
+        folds=len(windows),
+        rows=int(len(y_true)),
+        oos_r2=_finite_or_none(1 - ss_res / ss_tot if ss_tot > 0 else np.nan),
+        mae=_finite_or_none(np.abs(residual).mean()),
+        rmse=_finite_or_none(np.sqrt(np.square(residual).mean())),
+        spearman_ic=_spearman_ic(y_true, y_pred),
+        hit_rate=_finite_or_none(((y_true > 0) == (y_pred > 0)).mean()),
+        top_quantile_sharpe=_top_quantile_sharpe(
+            y_true[y_pred.nlargest(max(1, int(len(y_pred) * 0.2))).index]
+        ),
+        holdout_rows_excluded=holdout_rows_excluded,
+        windows=windows,
+    ).to_dict()
+
+
+# ---------------------------------------------------------------------------
+# Report persistence
+# ---------------------------------------------------------------------------
+

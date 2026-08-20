@@ -198,7 +198,7 @@ async def cmd_ml_train(args):
     bootstrap = getattr(args, "bootstrap", False)
 
     if bootstrap:
-        from modules.hybrid_scoring import bootstrap_synthetic_model
+        from modules.scoring.ml_score import bootstrap_synthetic_model
         ok = bootstrap_synthetic_model()
         if ok:
             print("✓ Bootstrap model saved to runtime/models/xgboost_meta_model.pkl")
@@ -208,7 +208,7 @@ async def cmd_ml_train(args):
         return
 
     from modules.ml_ops import run_automated_training
-    from modules.hybrid_scoring import load_walk_forward_report
+    from modules.scoring.walk_forward import load_walk_forward_report
 
     success = run_automated_training()
     if success:

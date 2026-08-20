@@ -4,21 +4,29 @@ Market regime analysis, sector rotation, and benchmark returns.
 Extracted from scripts/internal/screener.py.
 """
 
-import yfinance as yf
-
+import polars as pl
+from db.db_core import duck_conn
 
 def analyze_market_regime(symbol="^NSEI"):
-    """Determines Market Regime: Bull, Bear, Correction, Sideways."""
+    """Determines Market Regime using DuckDB against the local database."""
     try:
-        ticker = yf.Ticker(symbol)
-        hist = ticker.history(period="2y")
-
-        if len(hist) < 200:
+        # Since we migrated away from yfinance, we use local data.
+        # Note: If benchmark indices aren't in fundamentals_pit, this would need a dedicated index table.
+        # For now, we query the lake using DuckDB.
+        query = f"""
+            SELECT as_of_date, price as Close
+            FROM read_parquet('data/lake/daily/{symbol}.parquet')
+            ORDER BY as_of_date DESC
+            LIMIT 200
+        """
+        df = duck_conn.execute(query).df()
+        
+        if len(df) < 200:
             return "Unknown"
 
-        sma_50 = hist["Close"].tail(50).mean()
-        sma_200 = hist["Close"].tail(200).mean()
-        current_price = hist["Close"].iloc[-1]
+        sma_50 = df["Close"].head(50).mean()
+        sma_200 = df["Close"].mean()
+        current_price = df["Close"].iloc[0]
 
         if current_price > sma_50 > sma_200:
             return "BULL"
@@ -33,29 +41,49 @@ def analyze_market_regime(symbol="^NSEI"):
 
 
 def analyze_sector_rotation(sector_stocks, period="3mo"):
-    """Analyze relative sector performance for rotation signals."""
+    """Analyze relative sector performance for rotation signals using DuckDB."""
     results = {}
+    
+    # Define period mapping to available columns in Parquet
+    ret_col = "ret_3m" if period == "3mo" else "ret_1m"
+    
     for sector, symbols in sector_stocks.items():
-        returns = []
+        sector_returns = []
         for sym in symbols[:5]:
             try:
-                hist = yf.Ticker(sym).history(period=period)
-                if len(hist) >= 2:
-                    ret = (hist["Close"].iloc[-1] / hist["Close"].iloc[0] - 1) * 100
-                    returns.append(ret)
+                query = f"""
+                    SELECT {ret_col}
+                    FROM read_parquet('data/lake/daily/{sym}.parquet')
+                    ORDER BY as_of_date DESC
+                    LIMIT 1
+                """
+                ret = duck_conn.execute(query).fetchone()
+                if ret and ret[0] is not None:
+                    # ret_3m is typically stored as a percentage or fraction. 
+                    sector_returns.append(ret[0])
+
             except Exception:
                 continue
-        if returns:
-            results[sector] = round(sum(returns) / len(returns), 2)
+        if sector_returns:
+            results[sector] = sum(sector_returns) / len(sector_returns)
     return dict(sorted(results.items(), key=lambda x: x[1], reverse=True))
 
 
 def get_benchmark_return(symbol="^NSEI", period="1y"):
-    """Fetch benchmark index return for the given period."""
+    """Fetch benchmark index return for the given period using DuckDB."""
     try:
-        hist = yf.Ticker(symbol).history(period=period)
-        if len(hist) >= 2:
-            return round((hist["Close"].iloc[-1] / hist["Close"].iloc[0] - 1) * 100, 2)
+        # Assuming ret_1y is not explicitly in parquet, we could calculate it or use existing returns.
+        # But for now, we map '1y' to retrieving the oldest vs newest price within 252 trading days.
+        query = f"""
+            SELECT price as Close
+            FROM read_parquet('data/lake/daily/{symbol}.parquet')
+            ORDER BY as_of_date DESC
+            LIMIT 252
+        """
+        df = duck_conn.execute(query).df()
+        
+        if len(df) >= 2:
+            return round((df["Close"].iloc[0] / df["Close"].iloc[-1] - 1) * 100, 2)
     except Exception:
         pass
     return 0.0

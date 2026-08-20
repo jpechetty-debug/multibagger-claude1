@@ -75,7 +75,7 @@ async def lifespan(app):
     # run_automated_training() tries PIT data first, falls back to bootstrap.
     def _bootstrap_ml_if_needed():
         try:
-            from modules.hybrid_scoring import model_is_trained
+            from modules.scoring.ml_score import model_is_trained
             if model_is_trained():
                 return  # nothing to do — model already on disk
             runtime_logger.info(
@@ -85,7 +85,7 @@ async def lifespan(app):
             from modules.ml_ops import run_automated_training
             success = run_automated_training()
             if success:
-                from modules.hybrid_scoring import load_walk_forward_report
+                from modules.scoring.walk_forward import load_walk_forward_report
                 wf = load_walk_forward_report() or {}
                 runtime_logger.info(
                     "ML startup bootstrap complete",

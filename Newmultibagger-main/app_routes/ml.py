@@ -22,7 +22,7 @@ from pydantic import BaseModel
 
 from core.observability.logger import get_logger
 from modules.auth import get_api_key
-from modules.hybrid_scoring import (
+from modules.scoring.ml_score import (
     FEATURES,
     get_feature_importance,
     load_walk_forward_report,
