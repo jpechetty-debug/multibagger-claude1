@@ -75,8 +75,10 @@ Examples
     from modules.scoring.ml_score import (
         bootstrap_synthetic_model,
         get_feature_importance,
-        load_walk_forward_report,
         model_is_trained,
+    )
+    from modules.scoring.walk_forward import (
+        load_walk_forward_report,
         walk_forward_validate,
     )
     from modules.ml_ops import (

@@ -54,7 +54,7 @@ def scan_master_picks():
 
             # --- Phase 88: Hybrid Scoring (ML) ---
             try:
-                from modules.hybrid_scoring import predict_and_explain
+                from modules.scoring.ml_score import predict_and_explain
 
                 factors = {
                     "score": score,

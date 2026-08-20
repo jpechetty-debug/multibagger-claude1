@@ -1,0 +1,13 @@
+{
+    "run_id": "0d6fba90-0024-4d6f-b295-5b7003857465",
+    "model_version": "xgboost_meta_v1",
+    "validation_type": "Explainability Audit",
+    "passed": false,
+    "metrics": {
+        "global_importance": {},
+        "local_explanations": {},
+        "base_value": -0.13683702
+    },
+    "charts": {},
+    "generated_at": "2026-08-20T14:51:53.766196Z"
+}

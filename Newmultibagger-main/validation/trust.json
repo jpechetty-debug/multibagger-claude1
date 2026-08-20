@@ -1,0 +1,19 @@
+{
+    "trust_score": 0.0,
+    "passed": false,
+    "components": {
+        "holdout": 0.0,
+        "stability": 0.0,
+        "ablation": 0.0,
+        "compounder": 0.0,
+        "shap": 0.0
+    },
+    "run_status": {
+        "holdout": false,
+        "regime": false,
+        "ablation": false,
+        "stability": false,
+        "compounder": false,
+        "shap": true
+    }
+}

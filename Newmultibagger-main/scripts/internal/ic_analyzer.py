@@ -11,7 +11,7 @@ from scipy.stats import spearmanr
 
 import modules.adapters.yf_patch  # noqa: F401
 from modules.connections import DB_PATH
-from modules.hybrid_scoring import FEATURES
+from modules.scoring.ml_score import FEATURES
 from modules.price_utils import fetch_forward_prices
 
 

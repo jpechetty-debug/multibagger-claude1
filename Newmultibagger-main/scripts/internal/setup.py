@@ -114,7 +114,7 @@ def initialize_ml():
         print("Attempting ML initialisation (PIT training → bootstrap fallback)…")
         success = run_automated_training()
         if success:
-            from modules.hybrid_scoring import load_walk_forward_report
+            from modules.scoring.walk_forward import load_walk_forward_report
             wf = load_walk_forward_report() or {}
             if wf.get("status") == "BOOTSTRAP":
                 print("✅ Bootstrap model saved (proxy target — will improve as PIT data accumulates).")

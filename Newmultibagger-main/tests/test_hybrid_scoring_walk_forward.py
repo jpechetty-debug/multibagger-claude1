@@ -21,7 +21,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from modules import hybrid_scoring  # noqa: E402
-from modules.hybrid_scoring import (  # noqa: E402
+from modules.scoring.ml_score import (  # noqa: E402
     FEATURE_BOUNDS,
     FEATURES,
     HOLDOUT_END,

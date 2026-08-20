@@ -594,3 +594,233 @@ def bootstrap_synthetic_model() -> bool:
 # ---------------------------------------------------------------------------
 # Main training entry-point
 # ---------------------------------------------------------------------------
+
+
+def safe_float(val) -> float:
+    try:
+        if isinstance(val, str) and val.startswith("[") and val.endswith("]"):
+            val = val[1:-1]
+        return float(val)
+    except (ValueError, TypeError):
+        return 0.0
+
+def predict_and_explain(
+    factors_dict: dict,
+    top_n_drivers: int = 5,
+) -> dict:
+    """Given a live stock's factor dict, predict multibagger probability
+    (blended classifier + regressor) and generate SHAP values."""
+    _FALLBACK = PredictionResult(
+        ml_prediction=None,
+        classifier_prob=None,
+        regressor_return=None,
+        shap_values={},
+        shap_expected_value=None,
+        top_drivers=[],
+        is_bootstrap=False,
+    ).to_dict()
+
+    if not os.path.exists(MODEL_PATH):
+        _log.warning(
+            "ML model not found — falling back to rule-based score",
+            model_path=MODEL_PATH,
+            hint="run: python scripts/train_hybrid_model.py --force",
+        )
+        return _FALLBACK
+
+    try:
+        regressor: xgb.XGBRegressor = joblib.load(MODEL_PATH)
+
+        mapped = _alias_factors(factors_dict)
+        X_pred = pd.DataFrame(
+            [{f: mapped.get(f, np.nan) for f in FEATURES}], columns=FEATURES
+        )
+        X_pred = _sanitize_features(X_pred)
+
+        # Regressor prediction
+        pred = regressor.predict(X_pred)
+        try:
+            if hasattr(pred, "item"):
+                raw_return = float(pred.item())
+            else:
+                raw_return = float(np.ravel(pred)[0])
+        except Exception:
+            # Fallback if it's somehow a string representation of a list
+            val = np.ravel(pred)[0]
+            if isinstance(val, str):
+                import re
+                match = re.search(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", val)
+                raw_return = float(match.group(0)) if match else 0.0
+            else:
+                raw_return = float(val)
+
+        regressor_return = raw_return * 100.0 if np.isfinite(raw_return) else None
+
+        # Classifier prediction (if available)
+        classifier_prob = None
+        if os.path.exists(CLASSIFIER_PATH):
+            try:
+                classifier: xgb.XGBClassifier = joblib.load(CLASSIFIER_PATH)
+                proba = classifier.predict_proba(X_pred)[0]
+                classifier_prob = safe_float(proba[1]) * 100.0 if len(proba) > 1 else None
+            except Exception:
+                pass
+
+        # Blended score
+        if classifier_prob is not None and regressor_return is not None:
+            # Normalize regressor return to 0-100 scale for blending
+            reg_norm = min(max(regressor_return, 0), 100)
+            ml_prediction = CLASSIFIER_WEIGHT * classifier_prob + REGRESSOR_WEIGHT * reg_norm
+        elif classifier_prob is not None:
+            ml_prediction = classifier_prob
+        elif regressor_return is not None:
+            ml_prediction = regressor_return
+        else:
+            return _FALLBACK
+
+        # SHAP from regressor
+        explainer = shap.TreeExplainer(regressor)
+        shap_array = explainer.shap_values(X_pred)
+        shap_row = shap_array[0]
+
+        expected_value: float | None = None
+        try:
+            ev_raw = explainer.expected_value
+            expected_value = safe_float(ev_raw) if np.isfinite(safe_float(ev_raw)) else None
+        except Exception:
+            pass
+
+        breakdown: dict[str, float] = {}
+        for i, feat in enumerate(FEATURES):
+            val = safe_float(shap_row[i])
+            breakdown[feat] = val if np.isfinite(val) else 0.0
+
+        sorted_breakdown = dict(
+            sorted(breakdown.items(), key=lambda kv: abs(kv[1]), reverse=True)
+        )
+
+        top_drivers = [
+            {
+                "feature":       feat,
+                "shap_value":    shap_val,
+                "direction":     "bullish" if shap_val > 0 else "bearish",
+                "feature_value": safe_float(X_pred[feat].iloc[0]),
+            }
+            for feat, shap_val in list(sorted_breakdown.items())[:top_n_drivers]
+        ]
+
+        report = load_walk_forward_report()
+        is_bootstrap = report.get("is_bootstrap", False) if report else False
+
+        return PredictionResult(
+            ml_prediction=safe_float(ml_prediction),
+            classifier_prob=classifier_prob,
+            regressor_return=regressor_return,
+            shap_values=sorted_breakdown,
+            shap_expected_value=expected_value,
+            top_drivers=top_drivers,
+            is_bootstrap=is_bootstrap,
+        ).to_dict()
+
+    except Exception as exc:
+        import traceback
+        _log.error("ML prediction error", error=str(exc), tb=traceback.format_exc())
+        return _FALLBACK
+
+def batch_predict(
+    stocks: list[dict],
+    factors_map: dict[str, list[str]] | None = None,
+) -> list[dict]:
+    """Vectorised predict_and_explain for a list of stock dicts.
+
+    Uses two-model blended scoring when classifier is available.
+    """
+    if not os.path.exists(MODEL_PATH):
+        _log.warning("Model not found — batch_predict returning empty predictions")
+        return [
+            {**s, "ml_prediction": None, "classifier_prob": None, "regressor_return": None,
+             "shap_values": {}, "top_drivers": [], "is_bootstrap": False}
+            for s in stocks
+        ]
+
+    regressor: xgb.XGBRegressor = joblib.load(MODEL_PATH)
+    explainer = shap.TreeExplainer(regressor)
+
+    # Load classifier if available
+    classifier = None
+    if os.path.exists(CLASSIFIER_PATH):
+        try:
+            classifier = joblib.load(CLASSIFIER_PATH)
+        except Exception:
+            pass
+
+    rows = [_alias_factors(s) for s in stocks]
+    X_all = _sanitize_features(pd.DataFrame(rows, columns=FEATURES))
+    raw_returns = regressor.predict(X_all)
+    shap_all = explainer.shap_values(X_all)
+
+    # Classifier probabilities
+    class_probs = None
+    if classifier is not None:
+        try:
+            class_probs = classifier.predict_proba(X_all)[:, 1]
+        except Exception:
+            pass
+
+    ev: float | None = None
+    try:
+        ev_raw = explainer.expected_value
+        ev = float(ev_raw) if np.isfinite(float(ev_raw)) else None
+    except Exception:
+        pass
+
+    report = load_walk_forward_report()
+    is_bootstrap = report.get("is_bootstrap", False) if report else False
+
+    results = []
+    for i, stock in enumerate(stocks):
+        raw_ret = float(raw_returns[i])
+        reg_return = float(raw_ret * 100.0) if np.isfinite(raw_ret) else None
+
+        cls_prob = None
+        if class_probs is not None:
+            cls_prob = float(class_probs[i]) * 100.0 if np.isfinite(class_probs[i]) else None
+
+        # Blended score
+        if cls_prob is not None and reg_return is not None:
+            reg_norm = min(max(reg_return, 0), 100)
+            ml_pred = CLASSIFIER_WEIGHT * cls_prob + REGRESSOR_WEIGHT * reg_norm
+        elif cls_prob is not None:
+            ml_pred = cls_prob
+        elif reg_return is not None:
+            ml_pred = reg_return
+        else:
+            ml_pred = None
+
+        breakdown = {
+            feat: float(shap_all[i][j]) if np.isfinite(shap_all[i][j]) else 0.0
+            for j, feat in enumerate(FEATURES)
+        }
+        sorted_bd = dict(sorted(breakdown.items(), key=lambda kv: abs(kv[1]), reverse=True))
+        top_drivers = [
+            {
+                "feature":       feat,
+                "shap_value":    sv,
+                "direction":     "bullish" if sv > 0 else "bearish",
+                "feature_value": float(X_all[feat].iloc[i]),
+            }
+            for feat, sv in list(sorted_bd.items())[:5]
+        ]
+
+        results.append({
+            **stock,
+            "ml_prediction":       ml_pred,
+            "classifier_prob":     cls_prob,
+            "regressor_return":    reg_return,
+            "shap_values":         sorted_bd,
+            "shap_expected_value": ev,
+            "top_drivers":         top_drivers,
+            "is_bootstrap":        is_bootstrap,
+        })
+
+    return results

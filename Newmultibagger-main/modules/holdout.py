@@ -7,7 +7,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from modules.hybrid_scoring import (
+from modules.scoring.ml_score import (
     FEATURES,
     HOLDOUT_END,
     HOLDOUT_START,

@@ -24,7 +24,7 @@ if str(ROOT) not in sys.path:
 
 import xgboost as xgb  # noqa: E402
 
-from modules.hybrid_scoring import (  # noqa: E402
+from modules.scoring.ml_score import (  # noqa: E402
     FEATURES,
     SHAP_DOMINANCE_THRESHOLD,
     _make_xgb_regressor,

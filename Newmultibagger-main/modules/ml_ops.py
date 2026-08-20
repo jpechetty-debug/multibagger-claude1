@@ -16,7 +16,7 @@ except Exception:
     logger = logging.getLogger("sovereign.ml_ops")
 
 from modules.data_layer.db_utils import get_db_connection  # ← FIXED: was modules.db_utils
-from modules.hybrid_scoring import (
+from modules.scoring.ml_score import (
     MODEL_PATH,
     batch_predict,
     get_feature_importance,
@@ -131,7 +131,7 @@ def log_bootstrap_upgrade_availability(
 ) -> int | None:
     """Log when a bootstrap model can be replaced by PIT-trained ML."""
     try:
-        from modules.hybrid_scoring import load_walk_forward_report
+        from modules.scoring.walk_forward import load_walk_forward_report
 
         wf = load_walk_forward_report() or {}
         if not wf.get("is_bootstrap"):
@@ -175,14 +175,14 @@ def run_automated_training() -> bool:
             "train_hybrid_model() skipped — insufficient PIT data. "
             "Attempting bootstrap from multibaggers…"
         )
-        from modules.hybrid_scoring import bootstrap_synthetic_model
+        from modules.scoring.ml_score import bootstrap_synthetic_model
         success = bootstrap_synthetic_model()
         if not success:
             logger.error("Bootstrap also failed — no model produced.")
             return False
         logger.info("Bootstrap model written. Will be replaced by PIT-trained model on next retrain.")
 
-    from modules.hybrid_scoring import load_walk_forward_report
+    from modules.scoring.walk_forward import load_walk_forward_report
 
     wf = load_walk_forward_report() or {}
     spearman_ic = wf.get("spearman_ic")
@@ -281,7 +281,8 @@ async def batch_update_multibaggers_ml() -> None:
 
 def ml_status() -> dict[str, Any]:
     """Return a summary dict suitable for the /api/ml/status endpoint."""
-    from modules.hybrid_scoring import load_walk_forward_report, model_is_trained
+    from modules.scoring.ml_score import model_is_trained
+    from modules.scoring.walk_forward import load_walk_forward_report
 
     return {
         "model_trained":     model_is_trained(),

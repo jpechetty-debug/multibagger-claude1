@@ -16,7 +16,7 @@ from modules.feature_leakage_audit import (  # noqa: E402
     audit_features,
     validate_momentum_returns,
 )
-from modules.hybrid_scoring import FEATURES  # noqa: E402
+from modules.scoring.ml_score import FEATURES  # noqa: E402
 
 
 def _make_df(n: int = 100, seed: int = 42) -> pd.DataFrame:

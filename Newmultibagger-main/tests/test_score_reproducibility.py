@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from modules.hybrid_scoring import FEATURES, _make_xgb_regressor, _sanitize_features  # noqa: E402
+from modules.scoring.ml_score import FEATURES, _make_xgb_regressor, _sanitize_features  # noqa: E402
 
 
 def _deterministic_dataset(n_symbols=10, n_periods=6, seed=42):
@@ -58,7 +58,7 @@ def test_features_list_is_deterministic():
 
 
 def test_sanitize_is_stateless():
-    from modules.hybrid_scoring import _sanitize_features
+    from modules.scoring.ml_score import _sanitize_features
     # Create two identical DataFrames
     df_a = pd.DataFrame({"score": [1.0, 2.0, np.nan], "pe_ratio": [15.0, np.nan, 20.0]})
     df_b = df_a.copy()
