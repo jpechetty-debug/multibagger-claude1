@@ -507,38 +507,14 @@ def load_fundamentals_universe_as_of(as_of_date=None):
 def prune_fundamentals_pit_retention(keep_days=PIT_RETENTION_DAYS):
     """
     Retention policy for PIT snapshots.
-    Keeps snapshots for `keep_days` and deletes older rows.
-    Returns number of deleted rows.
+    Issue #1 Fix: Never prune fundamentals_pit to preserve historical replay.
+    Returns 0 deleted rows.
     """
-    if keep_days is None:
-        return 0
+    from core.observability.logger import get_logger
+    _log = get_logger("repository")
+    _log.info("PIT retention is infinite. Bypassing fundamentals_pit prune to preserve historical replay.")
+    return 0
 
-    try:
-        keep_days_int = int(keep_days)
-    except (TypeError, ValueError):
-        keep_days_int = PIT_RETENTION_DAYS
-
-    if keep_days_int <= 0:
-        return 0
-
-    cutoff_date = (datetime.now().date() - pd.Timedelta(days=keep_days_int)).isoformat()
-
-    def _prune():
-        conn = get_connection()
-        try:
-            _ensure_fundamentals_pit_table(conn)
-            cursor = conn.cursor()
-            cursor.execute(
-                "DELETE FROM fundamentals_pit WHERE as_of_date < ?",
-                (cutoff_date,),
-            )
-            deleted = cursor.rowcount if cursor.rowcount is not None else 0
-            conn.commit()
-            return deleted
-        finally:
-            conn.close()
-
-    return _run_sqlite_write_with_retry(_prune, "fundamentals_pit retention prune")
 
 
 # ── Phase 4.1: Score Drift Detection ─────────────────────────────────────────

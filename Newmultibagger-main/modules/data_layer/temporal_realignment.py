@@ -1,6 +1,7 @@
 import pandas as pd
 
 from core.observability.logger import get_logger
+from modules.pit_auditor import release_lag_map
 
 _log = get_logger("data_layer.temporal_realignment")
 
@@ -12,13 +13,18 @@ class TemporalRealignmentEngine:
     published weeks after the actual quarter-end date.
     """
 
-    def __init__(self, publishing_lag_days: int = 45):
+    def __init__(self, publishing_lag_days: int = None, metric_type: str = "default"):
         """
         Args:
-            publishing_lag_days: The number of days to lag the fundamental data
-                                 from the actual end of the reporting period.
+            publishing_lag_days: (Deprecated) explicit int lag.
+            metric_type: The metric type to pull from release_lag_map 
+                         (e.g., 'earnings', 'balance_sheet', 'cashflow', 'default').
         """
-        self.publishing_lag_days = publishing_lag_days
+        if publishing_lag_days is not None:
+            self.publishing_lag_days = publishing_lag_days
+        else:
+            lag_td = release_lag_map.get(metric_type, release_lag_map["default"])
+            self.publishing_lag_days = lag_td.days
 
     def align_fundamentals(self, df: pd.DataFrame, date_column: str = "as_of_date") -> pd.DataFrame:
         """
@@ -49,3 +55,4 @@ class TemporalRealignmentEngine:
         _log.info(f"Temporal Realignment Engine: Applied {self.publishing_lag_days}-day publishing lag to {len(aligned_df)} rows.")
 
         return aligned_df
+

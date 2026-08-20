@@ -39,11 +39,12 @@ def run_pit_audit():
         df['source_dt'] = pd.to_datetime(df['source_updated_at'])
 
         # Realignment engine check (simulate applying lag to publication date)
-        realignment_engine = TemporalRealignmentEngine(publishing_lag_days=45)
-        # Theoretically, a signal date should not be before the published date + 45 days
-        # To test the logic, we simulate pushing the source_dt forward by 45 days.
+        # Issue #4 Fix: Consume release_lag_map dynamically instead of hardcoding 45
+        realignment_engine = TemporalRealignmentEngine(metric_type="default")
+        # Theoretically, a signal date should not be before the published date + dynamic lag
+        # To test the logic, we simulate pushing the source_dt forward by the dynamic lag.
         # But look-ahead is strictly as_of_date < source_updated_at.
-        # Realignment violation is as_of_date < (source_updated_at + 45 days)
+        # Realignment violation is as_of_date < (source_updated_at + lag days)
 
         leakage = df[df['as_of_dt'] < df['source_dt'].dt.normalize()]
 
@@ -63,7 +64,7 @@ def run_pit_audit():
         unaligned = aligned_df[aligned_df['as_of_dt'] < aligned_df['aligned_source_dt'].dt.normalize()]
 
         if not unaligned.empty:
-            logger.warning(f"DETECTED {len(unaligned)} RECORDS FAILING TEMPORAL REALIGNMENT (45-day lag not respected).")
+            logger.warning(f"DETECTED {len(unaligned)} RECORDS FAILING TEMPORAL REALIGNMENT ({realignment_engine.publishing_lag_days}-day lag not respected).")
         else:
             logger.info("Temporal Realignment looks consistent across the board.")
 

@@ -138,9 +138,63 @@ def test_pit_retention_prunes_old_snapshots(tmp_path, monkeypatch):
     finally:
         conn.close()
 
-    assert deleted == 1
-    assert len(remaining) == 1
-    assert remaining.iloc[0]["symbol"] == "NEW.NS"
+    # Issue #1 Fix: Retention should never delete fundamentals_pit
+    assert deleted == 0
+    assert len(remaining) == 2
+    assert "OLD.NS" in remaining["symbol"].values
+
+
+def test_publication_lag_lookahead():
+    """
+    Simulate a request for data before the release_lag_map allows it.
+    It should raise a PITViolationError or return no data.
+    """
+    from modules.pit_auditor import enforce_pit_gate, PITViolationError
+    import pytest
+
+    # If the quarter ended March 31, 2026, and we check April 15, 2026 (15 days), it should block (needs 45 days)
+    with pytest.raises(PITViolationError):
+        enforce_pit_gate(as_of_date="2026-04-15", quarter_end_date="2026-03-31", symbol="TEST.NS")
+
+
+def test_retroactive_revision_append(tmp_path, monkeypatch):
+    """
+    Prove that inserting a restated filing for the same report period on a new 
+    as_of_date preserves both versions in PITDataStore.
+    """
+    from modules.pit_auditor import PITDataStore
+    db_path = tmp_path / "pit_store_revisions.db"
+    
+    store = PITDataStore(db_name=str(db_path))
+    
+    # Original filing on May 15
+    store.insert_record(
+        symbol="AAA.NS",
+        metric_name="earnings",
+        value=100.0,
+        report_date="2026-03-31",
+        as_of_date="2026-05-15",
+        source="vendor"
+    )
+    
+    # Restated filing on June 10
+    store.insert_record(
+        symbol="AAA.NS",
+        metric_name="earnings",
+        value=80.0,
+        report_date="2026-03-31", # Same report date
+        as_of_date="2026-06-10",  # New observed date
+        source="vendor"
+    )
+
+    import sqlite3
+    conn = sqlite3.connect(str(db_path))
+    df = pd.read_sql("SELECT * FROM pit_data WHERE symbol='AAA.NS' ORDER BY as_of_date", conn)
+    conn.close()
+    
+    assert len(df) == 2, "Both revisions should be preserved in the store"
+    assert df.iloc[0]["value"] == 100.0
+    assert df.iloc[1]["value"] == 80.0
 
 
 def test_get_fundamentals_snapshot_as_of_returns_latest_prior_snapshot(tmp_path, monkeypatch):
