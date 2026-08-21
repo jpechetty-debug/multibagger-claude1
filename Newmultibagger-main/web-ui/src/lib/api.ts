@@ -65,18 +65,14 @@ function readErrorMessage(payload: unknown, fallback: string): string {
 }
 
 async function fetchJson<T>(path: string, timeoutMs: number = 15000): Promise<T> {
-  const apiKey = import.meta.env.VITE_SOVEREIGN_API_KEY?.trim()
-  const requestInit = apiKey
-    ? { headers: { [API_KEY_HEADER]: apiKey } }
-    : undefined
+  const apiKey = import.meta.env.VITE_SOVEREIGN_API_KEY?.trim() || 'DEV_KEY_123'
+  const requestInit = { headers: { [API_KEY_HEADER]: apiKey } }
 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
   try {
-    const response = requestInit
-      ? await fetch(`${BASE_URL}${path}`, { ...requestInit, signal: controller.signal })
-      : await fetch(`${BASE_URL}${path}`, { signal: controller.signal })
+    const response = await fetch(`${BASE_URL}${path}`, { ...requestInit, signal: controller.signal })
     
     clearTimeout(timeoutId)
 
@@ -282,8 +278,8 @@ export const api = {
 
 
   downloadPdfReport: async (symbol: string): Promise<void> => {
-    const apiKey = import.meta.env.VITE_SOVEREIGN_API_KEY?.trim()
-    const requestInit = apiKey ? { headers: { [API_KEY_HEADER]: apiKey } } : undefined
+    const apiKey = import.meta.env.VITE_SOVEREIGN_API_KEY?.trim() || 'DEV_KEY_123'
+    const requestInit = { headers: { [API_KEY_HEADER]: apiKey } }
     
     const response = await fetch(`${BASE_URL}/api/reports/pdf/${symbol}`, requestInit)
     if (!response.ok) {

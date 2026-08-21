@@ -12,7 +12,9 @@ const ResearchDashboard: React.FC = () => {
   const [trustScore, setTrustScore] = useState<{ trust_score: number; grade: string; passed: boolean } | null>(null);
 
   useEffect(() => {
-    fetch('/api/v1/research/trust-score')
+    fetch('/api/v1/research/trust-score', {
+      headers: { 'X-API-Key': 'DEV_KEY_123' }
+    })
       .then(res => res.json())
       .then(data => setTrustScore(data))
       .catch(console.error);
