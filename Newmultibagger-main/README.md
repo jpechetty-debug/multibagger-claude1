@@ -1,174 +1,196 @@
-# Sovereign Research Terminal v4.3.0
-## // Institutional-Grade Quantitative Research & Data Integrity //
+# Sovereign Research Terminal v4.4.0
+## // Institutional-Grade Quantitative Research, Alpha Modeling & Data Integrity //
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![SQLite + DuckDB](https://img.shields.io/badge/Database-SQLite%20%2B%20DuckDB-orange.svg)]()
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg)]()
 [![React Vite](https://img.shields.io/badge/Frontend-React%20Vite-61dafb.svg)]()
+[![XGBoost + SHAP](https://img.shields.io/badge/ML-XGBoost%20%2B%20SHAP-darkgreen.svg)]()
+[![Celery + Redis](https://img.shields.io/badge/Workers-Celery%20%2B%20Redis-red.svg)]()
 [![Pydantic v2](https://img.shields.io/badge/Validation-Pydantic%20v2-red.svg)]()
 [![Nexus Alpha](https://img.shields.io/badge/Nexus%20Alpha-v12.5-gold.svg)]()
 
-Sovereign v4.3.0 is an advanced equity research platform designed for structural reliability, point-in-time (PIT) auditing, and high-conviction quantitative signaling across 2,000+ Indian equity tickers. It features a **hardened data quality pipeline**, **multi-provider fundamental fallback chain**, **sigmoid-normalized factor scoring**, and **XGBoost-powered alpha signals**.
-
-> [!IMPORTANT]
-> **Data Integrity First.** v4.3.0 enforces proactive Data Quality (DQ) gates, Circuit Breakers, return-based risk correlation, and SEBI filing lag rules, ensuring low-quality upstream data or look-ahead bias never corrupts backtests or live trade signals.
+**Sovereign v4.4.0** is an enterprise-grade equity research and algorithmic alpha platform engineered for structural data correctness, rigorous Point-in-Time (PIT) backtesting, explainable machine learning, and high-conviction quantitative signaling across 2,000+ Indian equity tickers (NSE & BSE).
 
 ---
 
-## 🏗️ The Data Correctness Pipeline (Hardened)
+## 🌟 Key Capabilities & Architectural Highlights
 
-To eliminate silent failures, scale ambiguity, and look-ahead bias, Sovereign implements a **6-Layer Hardening Architecture**:
-
-1. **Ingestion Boundary**: Pydantic v2 models (`modules/models.py`) with `extra="ignore"` and auto-scaling validators that detect and correct fraction-to-percent ambiguity (e.g., ROE 0.15 → 15.0%).
-2. **Circuit Breakers**: Thread-safe `CLOSED → OPEN → HALF_OPEN` state machines (`modules/retry_utils.py`) for resilient data ingestion from `yfinance` and `nse`.
-3. **Data Quality (DQ) Gates**: Proactive physical-limit validators (`modules/dq_gates.py`) that clamp metrics to realistic ranges (e.g., PE capped at 1000) and generate DQ flags.
-4. **Multi-Provider Fundamental Fallback Layer**: Priority fallback chain (`ScreenerInProvider` → `NSEXBRLProvider` → `PNSEAProvider` → `NSEPythonProvider`) for robust fundamental retrieval. `NSEXBRLProvider` parses official audited filing XBRL for precise Debt/Equity, Book Value, ROE%, and TTM growth metrics.
-5. **Quarter-Sensitive SEBI PIT Lag Rules**: SEBI mandates quarterly results within 45 days, but grants **60 days for Q4 (March annual audited results)**. `NSEXBRLProvider` and `pit_auditor.py` dynamically apply 60 days lag for March quarter-end filings and 45 days for Q1–Q3, eliminating Q4 look-ahead bias in backtests.
-6. **Pure Math & Turnaround Recovery Engines**: Calculation modules (CAGR, ROE, F-Score) are pure functions. `cagr_engine.py` supports turnaround recovery growth computation (`_turnaround_growth`) for candidates recovering from negative base earnings.
-
----
-
-## 🔍 Core Analytical Modules
-
-### 1. The Compounding Lens
-Deep analysis of structural growth and shareholder returns:
-- **DuPont ROE Decomposition**: Breaks down ROE into Net Margin, Asset Turnover, and Financial Leverage.
-- **CAGR Purity & Turnaround Recovery**: 3Y and 5Y Revenue, PAT, and EPS CAGRs with turnaround recovery metrics for negative base PAT.
-- **Earnings Velocity**: Linear regression of net margins across quarters.
-- **Friction-Aware Liquidity Gate**: Pre-trade slippage rejection and volume verification (`volume_verified` tracking).
-
-### 2. Nexus Alpha v12.5 Scoring Engine
-Dynamically weighted factors based on **Market Regime** (Bull/Bear/Sideways detected via HMM classifier):
-- **Growth (15%)**: Sigmoid-normalized Sales and EPS expansion.
-- **Quality (15%)**: Average ROE (5Y) + Cashflow validation (CFO/PAT).
-- **Risk (10%)**: Institutional-grade F-Score floor + Debt/Equity constraints.
-- **ML Meta-Model**: Meta-scoring layer using XGBoost and SHAP for explainable AI alpha.
-
-### 3. Portfolio Risk & Quantitative Backtesting
-- **Return-Based Portfolio Risk Correlation**: Pearson correlation matrix computed on **daily percentage returns** (`close_prices.pct_change()`) in `modules/risk/correlation.py` to prevent false cluster alerts caused by non-stationary price level trends.
-- **Sector-Relative Filtering**: Evaluates ROE/Growth/PE against sector medians.
-- **Sector-Wise RS Ingestion**: Automated ingestion of high-conviction signals from Relative Strength (RS) screens into the database.
-- **HRP Portfolio Allocation**: Hierarchical Risk Parity portfolio construction based on signal conviction.
-- **Sovereign QARP Institutional Validation**: Backtesting framework with reproducible random universe sampling (`--sample-seed`), ticker deduplication, and minimum portfolio position floors (`--min-positions`).
-
----
-
-## ⚡ Architecture & Infrastructure
-
-Sovereign leverages a **SQLite + DuckDB + PostgreSQL** approach:
-- **Canonical DB Layer**: `db/engine.py` supports local SQLite testing and production PostgreSQL/TimescaleDB via `DATABASE_URL`.
-- **Lightning Queries**: Analytical sorting and filtering across 2,000+ records via DuckDB in <5ms.
-- **Point-In-Time (PIT) Auditing**: Fundamentals snapshots stored systematically in `pit_store.db` to prevent forward-looking bias.
-- **Technical Brutalist UI**: High-performance, Vite-powered React/TypeScript terminal interface in `web-ui/`.
-- **FastMCP Agentic AI**: Built-in FastMCP server for LLM integration with persistent Research Memory and Swarm Intelligence.
-
----
-
-## 🚀 Getting Started
-
-### 1. Installation & Setup
-```bash
-# Clone and install backend
-git clone https://github.com/your-repo/sovereign-terminal.git
-cd sovereign-terminal/Newmultibagger-main
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-
-# Initialize System via CLI
-python sovereign_cli.py sys setup
-python sovereign_cli.py db init
+```
+                      ┌──────────────────────────────────────────────┐
+                      │          SOVEREIGN TERMINAL v4.4.0           │
+                      └──────────────────────┬───────────────────────┘
+                                             │
+      ┌────────────────────────┬─────────────┴────────────┬────────────────────────┐
+      ▼                        ▼                          ▼                        ▼
+┌──────────────┐      ┌─────────────────┐      ┌──────────────────────┐   ┌────────────────┐
+│ Data Layer   │      │ Scoring Engine  │      │ ML Alpha & Explain   │   │ Execution & UI │
+├──────────────┤      ├─────────────────┤      ├──────────────────────┤   ├────────────────┤
+│ • 6-L Hardening│     │ • Nexus Alpha   │      │ • XGBoost Regressor  │   │ • FastAPI (9005)│
+│ • SEBI PIT 60d │    │ • Regime HMM    │      │ • Binary Classifier  │   │ • React/Vite   │
+│ • Multi-Provider│   │ • Sector Weights│      │ • SHAP TreeExplainer │   │ • CLI Suite    │
+│ • Circuit Brkr│     │ • Pure Turnaround│     │ • Optuna Bayes Tuning│   │ • FastMCP Swarm│
+└──────────────┘      └─────────────────┘      └──────────────────────┘   └────────────────┘
 ```
 
-### 2. Start the Backend API
-The FastAPI server is the primary web backend entry point.
-```bash
+### 1. Hardened Data Correctness & PIT Integrity
+- **SEBI Filing Lag Rules**: Enforces mandatory 45-day reporting lag for Q1–Q3 and **60-day lag for Q4 (March annual audited results)** via `pit_auditor.py` and `NSEXBRLProvider` to eliminate look-ahead bias.
+- **PIT Hard Gate (`PITViolationError`)**: Real-time hard assertion preventing premature data usage before official dissemination, coupled with per-stock isolation in batch screeners.
+- **Circuit Breakers**: Thread-safe `CLOSED → OPEN → HALF_OPEN` states (`modules/retry_utils.py`) protecting data ingestion from upstream rate limits and outages.
+- **Sector-Aware Data Confidence**: Dynamic confidence scoring (e.g. Banking & Financial Services zeroing D/E weight `weights["w_de"] = 0.0` with exact 77.8% confidence calculation).
+- **Multi-Provider Fallback**: Priority waterfall (`ScreenerInProvider` → `NSEXBRLProvider` → `PNSEAProvider` → `NSEPythonProvider` → `YFinanceProvider`).
+
+### 2. Multi-Vector Scoring & Quantitative Research
+- **Nexus Alpha (v12.5)**: Dynamic factor engine adjusting weights across Market Regimes (Bull / Bear / Sideways detected via Hidden Markov Models):
+  - **Growth (15%)**: Sigmoid-normalized Sales & EPS expansion.
+  - **Quality (15%)**: 5-Year Average ROE + Cash Flow Validation (CFO/PAT).
+  - **Risk & Capital Structure (10%)**: Institutional-grade Piotroski F-Score + Debt/Equity bounds.
+  - **Valuation & Value Gap**: Normalized PE, PEG, and Sector-Relative Median discounting.
+- **Turnaround CAGR Engine**: Mathematical recovery metrics (`_turnaround_growth`) for candidates rebounding from negative base earnings.
+- **Return-Based Portfolio Risk**: Pearson correlation matrix computed on **daily percentage returns** (`close_prices.pct_change()`) in `modules/risk/correlation.py` to eliminate non-stationary price-level trend distortions.
+- **Hierarchical Risk Parity (HRP)**: Conviction-weighted portfolio allocation and liquidity-gated slippage checks.
+
+### 3. Explainable ML Alpha & Walk-Forward Validation
+- **Two-Model ML Architecture**: Blended XGBoost Regressor (predicting forward alpha) + XGBoost Classifier (predicting multibagger probability) in `modules/scoring/ml_score.py`.
+- **SHAP Dominance Guard**: `check_shap_dominance` ensures no single feature disproportionately dominates model decisions (>90% threshold), preventing signal collapse.
+- **Optuna Hyperparameter Optimization**: Bayesian parameter exploration over learning rate, tree depth, subsample ratios, and L1/L2 regularization (`_OPTUNA_SEARCH_SPACE`).
+- **Expanding-Window Walk-Forward Validation**: Out-of-sample validation framework with locked 2018–2020 holdout exclusion (`modules/scoring/walk_forward.py`).
+
+### 4. Distributed Workers & Task Bus
+- **Dual-Mode Task Bus**: Transparent switching between local `asyncio` dev worker and distributed `celery` broker in `worker/task_bus.py`.
+- **Celery Beat Schedule**: Automated maintenance tasks including factor data freshness audits (`check_factor_data_freshness`) scheduled on dedicated queues.
+- **Redis Cache Singleton**: High-throughput distributed caching for stock scores and market regimes with automatic memory fallback (`worker/redis_cache.py`).
+
+---
+
+## 🗂️ Project Structure
+
+```
+Newmultibagger-main/
+├── app_routes/            # FastAPI route controllers (public, trading, ml, portfolio)
+├── backtest/              # Historical backtesting engines & walk-forward evaluators
+├── core/                  # Observability, structured logging, and system telemetry
+├── db/                    # SQLAlchemy 2.0 models, repository layer, and migration scripts
+├── legacy/                # Preserved legacy CLI & backtest utilities (isolated package)
+├── modules/               # Core analytical & financial domain modules
+│   ├── adapters/          # Source fetchers (Bhavcopy, NSE XBRL, Jugaad, YFinance)
+│   ├── data_layer/        # DataService orchestrator, DQ gates, and connections
+│   ├── intelligence/      # LLM engines, news sentiment, promoter & insider tracking
+│   ├── portfolio/         # HRP allocation, capital simulator, exit engine, tax efficiency
+│   ├── risk/              # Slippage, correlation matrix, regime HMM, stress testing
+│   ├── scoring/           # Modular scoring package:
+│   │   ├── engine.py      # calculate_institutional_score orchestrator & PIT gate
+│   │   ├── factors.py     # Base score, factor breakdown, and sector confidence
+│   │   ├── ml_score.py    # XGBoost meta-model, SHAP explainers, Optuna tuning
+│   │   ├── utils.py       # Safe conversions, Spearman IC, and Sharpe metrics
+│   │   ├── walk_forward.py# Expanding-window validation & holdout evaluations
+│   │   └── weights.py     # Regime & sector weight configurations
+│   ├── hybrid_scoring.py  # Self-replacing compatibility shim for ml_score
+│   ├── models.py          # Pydantic v2 contract boundary
+│   └── pit_auditor.py     # Point-in-time auditor & SEBI lag enforcement
+├── ops/                   # Institutional ablation engines & sprint drivers
+├── research/              # Quantitative research notebooks and super investor registry
+├── scripts/               # Automation scripts (universe scanner, paper trade, setup)
+├── tests/                 # 500+ comprehensive automated unit & regression tests
+├── web-ui/                # High-performance Vite/React/TypeScript analytical terminal
+├── worker/                # Celery application, Redis cache, and background task bus
+├── sovereign_cli.py       # Authoritative command-line interface shim
+├── report_generator.py    # Analyst report generation shim
+└── main.py                # FastAPI web backend application
+```
+
+---
+
+## 🚀 Quick Start Guide
+
+### 1. Prerequisites & Environment Setup
+
+```powershell
+# Navigate into the core application directory
+cd d:\Tradeidesa\Multibagger-claude\Newmultibagger-main
+
+# Create and activate Python virtual environment
+python -m venv .venv
+.venv\Scripts\Activate.ps1  # On Linux/macOS: source .venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### 2. Initialize Database & Run Diagnostics
+
+```powershell
+# Set up initial database tables and seed data
+python sovereign_cli.py db init
+
+# Run system health check
+python sovereign_cli.py health
+```
+
+### 3. Launch Backend API Server
+
+```powershell
 uvicorn main:app --reload --port 9005
 ```
+- **API Documentation**: [http://localhost:9005/docs](http://localhost:9005/docs)
+- **Health Check**: [http://localhost:9005/api/health](http://localhost:9005/api/health)
 
-### 3. Start the Web UI Terminal
-```bash
-# In a new terminal tab
+### 4. Launch Web UI Terminal
+
+```powershell
+# Open a new terminal tab
 cd web-ui
 npm install
 npm run dev
 ```
-
-### 4. Operational CLI Workflow
-The `sovereign_cli.py` is the unified, authoritative entry point for all research tasks:
-```bash
-# Run a full universe scan (NSE stocks)
-python sovereign_cli.py scan quick
-
-# Train the ML Meta-Model
-python sovereign_cli.py ml train
-
-# Ingest Relative Strength signals
-python sovereign_cli.py rs ingest
-
-# Run strategy backtests
-python sovereign_cli.py backtest run
-```
+- **Web Terminal**: [http://localhost:5173](http://localhost:5173)
 
 ---
 
-## 🛠️ Environment Configuration
+## 💻 Operational CLI Workflows
 
-| Variable | Purpose | Default |
-|----------|---------|---------|
-| `SOVEREIGN_API_KEY` | Production API Security | None (Required in Prod) |
-| `SOVEREIGN_ENV` | Environment Context | `local` |
-| `DATABASE_URL` | SQLAlchemy Connection URL | `sqlite:///multibaggers.db` |
-| `REDIS_URL` | Redis cache/Celery broker | `redis://localhost:6379/0` |
-| `NSE_COOKIE` | Browser cookie for `NSEXBRLProvider` | None (Optional) |
-| `NSE_XBRL_MAX_FILINGS` | Filing depth for XBRL adapter | `8` |
-| `NSE_XBRL_PIT_LAG_DAYS` | Standard quarterly filing lag (days) | `45` |
+The `sovereign_cli.py` is the unified command center for operational research:
+
+| Command | Action |
+|---------|--------|
+| `python sovereign_cli.py scan quick` | Runs a rapid fundamental & technical scan over top liquid tickers |
+| `python sovereign_cli.py scan full` | Executes complete universe scan across 2,000+ NSE/BSE stocks |
+| `python sovereign_cli.py ml train` | Trains XGBoost classifier + regressor with walk-forward validation |
+| `python sovereign_cli.py ml optuna` | Runs Bayesian hyperparameter optimization for ML meta-model |
+| `python sovereign_cli.py rs ingest` | Ingests Relative Strength sector and momentum signals |
+| `python sovereign_cli.py paper-trade` | Generates live paper trading recommendation signals |
+| `python sovereign_cli.py backtest run` | Executes QARP institutional backtest strategy |
 
 ---
 
 ## 🧪 Testing & Verification
 
-Sovereign enforces a strict **Data Correctness Suite** with CI gates for syntax, types, and math purity:
+Sovereign maintains an exhaustive test suite with **100% pass rate** (~500+ tests) covering financial math, ML stability, data correctness, and API contracts:
 
-```bash
+```powershell
 # Run the entire test suite
-pytest tests/ -v
+python -m pytest --tb=short -q
 
-# Run logic & data integrity tests
-pytest tests/test_logic_improvements.py -v
-
-# Run type-checking on critical modules
-mypy modules/scoring/ modules/retry_utils.py db/
-
-# Run linter and formatting checks
-ruff check .
-```
-
-The testing pyramid ensures:
-- **Unit**: Logic and math purity (`test_logic_improvements.py`, `test_adapters_nse_xbrl.py`).
-- **Contract**: Pydantic model validity and field normalization.
-- **PIT & Regression**: Point-in-time non-leakage verification and structural alpha consistency.
-
----
-
-## 🗂️ Project Structure
-```
-├── modules/               # Core domain logic, scoring, and data ingestion
-│   ├── adapters/          # Source-specific fetchers (ScreenerIn, NSEXBRL, PNSEA, NSEPython, yFinance)
-│   ├── data_layer/        # DataService orchestrator and provider fallback chain
-│   ├── normalization/     # Data cleaning and DQ Gates
-│   ├── risk/              # Return-based correlation & HRP allocation
-│   ├── strategies/        # Quantitative strategies and factor models
-│   └── models.py          # Pydantic v2 Contract Boundary
-├── db/                    # SQLAlchemy 2.0 Persistence Layer & PIT Store
-├── web-ui/                # Vite/React/TS Frontend Terminal
-├── worker/                # Async background jobs and distributed workers
-├── runtime/               # Local DB files and dynamic states (Git Ignored)
-├── tests/                 # Unit, Contract, PIT, and Regression Tests
-├── scripts/internal/      # QARP backtest engine, liquidity simulator, and debug scripts
-├── sovereign_cli.py       # AUTHORITATIVE CLI ENTRY POINT
-└── main.py                # FastAPI Web Application Entry Point
+# Run specific domain test suites
+python -m pytest tests/test_scoring_engine.py -v
+python -m pytest tests/test_hybrid_scoring_walk_forward.py -v
+python -m pytest tests/test_phase67_pit.py -v
+python -m pytest tests/test_task_bus.py -v
 ```
 
 ---
-*Sovereign Terminal v4.3.0 — Precision Quantitative Equity Research & Data Integrity.*
+
+## ⚙️ Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `SOVEREIGN_ENV` | Runtime environment (`local`, `staging`, `production`) | `local` |
+| `DATABASE_URL` | SQLAlchemy connection string | `sqlite:///multibaggers.db` |
+| `REDIS_URL` | Redis URL for caching and Celery broker | `redis://localhost:6379/0` |
+| `TASK_BUS_MODE` | Dispatch mode for background tasks (`asyncio` or `celery`) | `asyncio` |
+| `NSE_XBRL_PIT_LAG_DAYS` | Standard quarterly filing lag (days) | `45` |
+| `FACTOR_STALENESS_DAYS` | Threshold for stale macro/factor exposure data | `45` |
+
+---
+
+*Sovereign Research Terminal v4.4.0 — Engineered for Institutional Quantitative Excellence.*

@@ -1,67 +1,74 @@
-# Sovereign Research Terminal
+# Sovereign Research Terminal v4.4.0
 
-> **Institutional Alpha Architecture: Quantitative Equity Research & Agentic Intelligence**
+> **Institutional Alpha Architecture: Quantitative Equity Research, Explainable Machine Learning & Agentic Intelligence**
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![SQLite + DuckDB](https://img.shields.io/badge/Database-SQLite%20%2B%20DuckDB-orange.svg)]()
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg)]()
 [![React Vite](https://img.shields.io/badge/Frontend-React%20Vite-61dafb.svg)]()
+[![XGBoost + SHAP](https://img.shields.io/badge/ML-XGBoost%20%2B%20SHAP-darkgreen.svg)]()
+[![Celery + Redis](https://img.shields.io/badge/Workers-Celery%20%2B%20Redis-red.svg)]()
 [![Nexus Alpha](https://img.shields.io/badge/Nexus%20Alpha-v12.5-gold.svg)]()
 
-The **Sovereign Research Terminal** is a high-performance quantitative research platform designed for systematic equity scoring, point-in-time (PIT) auditing, portfolio optimization, and machine learning alpha discovery across 2,000+ Indian equity tickers.
+The **Sovereign Research Terminal** is an enterprise-grade quantitative equity research platform built for systematic stock screening, Point-in-Time (PIT) backtesting, explainable AI alpha discovery, and portfolio risk management across 2,000+ Indian equity tickers (NSE & BSE).
 
 ---
 
-## 🚀 Navigation
+## 🚀 Navigation & Application Codebase
 
-The core application codebase, API backend, web UI, and scoring engines are located in:
+The core application codebase, API backend, web UI, analytical engines, and worker infrastructure are located in:
 
 👉 **[Newmultibagger-main/](./Newmultibagger-main/)** *(See [Newmultibagger-main/README.md](./Newmultibagger-main/README.md) for full technical documentation).*
 
 ---
 
-## 🏗️ Key Architecture & Features
+## 🏗️ Core Architecture & System Modules
 
-- **9-Vector Nexus Alpha (v12.5)**: Dynamic factor scoring adjusting to HMM-detected market regimes (Bull / Bear / Sideways).
-- **Multi-Provider Data Adapter Layer**: Redundant fallback chain (`ScreenerInProvider` → `NSEXBRLProvider` → `PNSEAProvider` → `NSEPythonProvider` → `YFinanceProvider`).
-- **Official NSE Integrated Filing (XBRL) Parser**: Audited balance sheet figures, TTM Sales/EPS growth, Debt/Equity, Book Value, and ROE%.
-- **Hardened PIT & Data Integrity Engine**: SEBI quarter-sensitive filing lag rules (60 days for Q4 March annual results, 45 days for Q1–Q3) to prevent look-ahead bias in backtests.
-- **Return-Based Portfolio Risk Correlation**: Pearson correlation computed on daily percentage returns to eliminate non-stationary price level distortions.
-- **Turnaround CAGR Recovery Engine**: Mathematical recovery scoring for turnaround candidates recovering from negative base earnings.
-- **Agentic AI & FastMCP**: Integrated FastMCP server with persistent Research Memory and Swarm Intelligence.
-- **Unified Operational CLI**: `sovereign_cli.py` for universe scanning, ML training, RS signal ingestion, and strategy backtesting.
-
----
-
-## 📊 Knowledge Graph & Codebase Structure
-
-- **Graphify Knowledge Graph**: AST-indexed graph containing **20,134 nodes, 38,650 edges, and 1,052 communities** in `graphify-out/`.
-- **System Architecture**: Detailed in [.agent/ARCHITECTURE.md](./.agent/ARCHITECTURE.md).
+- **9-Vector Nexus Alpha (v12.5)**: Dynamic factor engine adjusting weights across Market Regimes (Bull / Bear / Sideways detected via Hidden Markov Models).
+- **Explainable ML Meta-Model (XGBoost + SHAP)**: Two-model architecture (Classifier + Regressor) with Optuna Bayesian hyperparameter optimization, SHAP TreeExplainer feature dominance checks, and Expanding-Window Walk-Forward Validation.
+- **Hardened PIT & Data Integrity Engine**: Dynamic SEBI filing lag rules (60 days for Q4 March annual results, 45 days for Q1–Q3) with `PITViolationError` hard gates preventing look-ahead bias in backtests.
+- **Sector-Specific Factor Normalization**: Sector-aware weighting (e.g. Banking & Financial Services zeroing D/E `weights["w_de"] = 0.0` with exact 77.8% confidence calculation).
+- **Multi-Provider Data Waterfall**: Redundant fallback chain (`ScreenerInProvider` → `NSEXBRLProvider` → `PNSEAProvider` → `NSEPythonProvider` → `YFinanceProvider`).
+- **Return-Based Risk Correlation**: Pearson correlation computed on daily percentage returns to eliminate non-stationary price level distortions.
+- **Distributed Worker Bus**: Unified task bus supporting local `asyncio` loop and distributed `celery` broker with Redis caching and automated Celery Beat maintenance schedules.
+- **Unified Operational CLI**: `sovereign_cli.py` for universe scanning, ML training, RS signal ingestion, and backtesting.
 
 ---
 
 ## ⚡ Quick Start
 
-```bash
-# Navigate to core app directory
+```powershell
+# 1. Navigate to core app directory
 cd Newmultibagger-main
 
-# Setup environment & dependencies
+# 2. Setup environment & dependencies
 python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+.venv\Scripts\Activate.ps1  # On Linux/macOS: source .venv/bin/activate
 pip install -r requirements.txt
 
-# Run full test suite
-pytest tests/ -v
+# 3. Initialize database & run diagnostics
+python sovereign_cli.py db init
+python sovereign_cli.py health
 
-# Start FastAPI API server
+# 4. Run test suite (100% pass rate)
+python -m pytest --tb=short -q
+
+# 5. Start FastAPI Backend Server
 uvicorn main:app --reload --port 9005
 
-# In a separate terminal tab: Start Vite React UI
+# 6. In a separate terminal tab: Start Vite React UI
 cd web-ui
 npm install
 npm run dev
 ```
 
 ---
-*For in-depth module documentation, operational workflows, and environment configurations, read [Newmultibagger-main/README.md](./Newmultibagger-main/README.md).*
+
+## 📊 Knowledge Graph & Architectural Blueprint
+
+- **Graphify Knowledge Graph**: AST-indexed knowledge graph containing **20,134 nodes, 38,650 edges, and 1,052 communities** in `graphify-out/`.
+- **System Blueprint**: Detailed module maps, data flows, and design rules documented in [.agent/ARCHITECTURE.md](./.agent/ARCHITECTURE.md).
+
+---
+
+*Sovereign Research Terminal v4.4.0 — Precision Quantitative Equity Research & Data Integrity.*
