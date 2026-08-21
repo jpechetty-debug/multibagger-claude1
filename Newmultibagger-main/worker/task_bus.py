@@ -1,5 +1,5 @@
 """
-Unified task dispatcher — asyncio only.
+Unified task dispatcher — supports asyncio and celery modes.
 
 Usage:
     from worker.task_bus import dispatch
@@ -19,7 +19,7 @@ from core.observability.logger import get_logger
 
 logger = get_logger("sovereign.task_bus")
 
-_MODE: str = "asyncio"
+_MODE: str = os.getenv("TASK_BUS_MODE", "asyncio")
 
 # ---------------------------------------------------------------------------
 # Asyncio dispatcher
@@ -40,8 +40,18 @@ async def _dispatch_async(fn: Callable, *args: Any, _task_options: dict | None =
     q = _get_queue()
     await q.put((fn, args, kwargs))
     task_id = f"async-{id(fn)}-{len(args)}"
-    logger.info("task.enqueued", mode="asyncio", task=fn.__name__, task_id=task_id)
+    logger.info("task.enqueued", mode="asyncio", task=getattr(fn, "__name__", str(fn)), task_id=task_id)
     return task_id
+
+
+def _dispatch_celery(fn: Callable, *args: Any, _task_options: dict | None = None, **kwargs: Any) -> str:
+    """Dispatch task to Celery."""
+    from worker.celery_app import app
+    task_name = getattr(fn, "name", None) or getattr(fn, "__name__", str(fn))
+    opts = _task_options or {}
+    res = app.send_task(task_name, args=args, kwargs=kwargs, **opts)
+    logger.info("task.enqueued", mode="celery", task=task_name, task_id=str(res.id))
+    return str(res.id)
 
 
 async def run_dev_worker(*, max_tasks: int = 0) -> None:
@@ -60,9 +70,9 @@ async def run_dev_worker(*, max_tasks: int = 0) -> None:
             result = fn(*args, **kwargs)
             if asyncio.iscoroutine(result):
                 result = await result
-            logger.info("task.completed", task=fn.__name__, result_type=type(result).__name__)
+            logger.info("task.completed", task=getattr(fn, "__name__", str(fn)), result_type=type(result).__name__)
         except Exception as exc:
-            logger.error("task.failed", task=fn.__name__, error=str(exc))
+            logger.error("task.failed", task=getattr(fn, "__name__", str(fn)), error=str(exc))
         finally:
             q.task_done()
         processed += 1
@@ -76,15 +86,17 @@ async def run_dev_worker(*, max_tasks: int = 0) -> None:
 
 async def dispatch(fn: Callable, *args: Any, _task_options: dict | None = None, **kwargs: Any) -> str:
     """
-    Dispatch a task using asyncio.
+    Dispatch a task using asyncio or Celery.
 
     Returns the task ID. Must be awaited.
     """
+    if _MODE == "celery":
+        return _dispatch_celery(fn, *args, _task_options=_task_options, **kwargs)
     return await _dispatch_async(fn, *args, _task_options=_task_options, **kwargs)
 
 
 def get_mode() -> str:
-    """Return current dispatch mode: 'asyncio'."""
+    """Return current dispatch mode: 'asyncio' or 'celery'."""
     return _MODE
 
 

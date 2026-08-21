@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 import re
 import warnings
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import joblib
@@ -43,7 +43,18 @@ from modules.feature_factory import (
     compute_all_features,
     sanitize_features as _sanitize_extended,
 )
-from modules.scoring.utils import safe_float, _finite_or_none
+from modules.scoring.utils import (
+    safe_float,
+    _finite_or_none,
+    _spearman_ic,
+    _top_quantile_sharpe,
+)
+from modules.scoring.walk_forward import (
+    HOLDOUT_START,
+    HOLDOUT_END,
+    walk_forward_validate,
+    load_walk_forward_report,
+)
 
 warnings.filterwarnings("ignore")
 
@@ -77,6 +88,17 @@ _XGB_PARAMS: dict[str, Any] = {
     "reg_lambda": 1.0,
     "random_state": 42,
     "eval_metric": "rmse",
+}
+
+_OPTUNA_SEARCH_SPACE: dict[str, dict[str, Any]] = {
+    "n_estimators":     {"low": 50,   "high": 500},
+    "learning_rate":    {"low": 0.01, "high": 0.3, "log": True},
+    "max_depth":        {"low": 3,    "high": 8},
+    "subsample":        {"low": 0.6,  "high": 1.0},
+    "colsample_bytree": {"low": 0.5,  "high": 1.0},
+    "min_child_weight": {"low": 1,    "high": 10},
+    "reg_alpha":        {"low": 1e-3, "high": 10.0, "log": True},
+    "reg_lambda":       {"low": 1e-3, "high": 10.0, "log": True},
 }
 
 SHAP_DOMINANCE_THRESHOLD = 0.90
@@ -125,10 +147,10 @@ def _alias_factors(factors_dict: dict) -> dict:
 
 # --- Model factory ---
 
-def _make_xgb_regressor(**overrides) -> xgb.XGBRegressor:
-    params = {**_XGB_PARAMS, **overrides}
-    params.pop("eval_metric", None)
-    return xgb.XGBRegressor(**params)
+def _make_xgb_regressor(params: dict | None = None, **overrides) -> xgb.XGBRegressor:
+    merged = {**_XGB_PARAMS, **(params or {}), **overrides}
+    merged.pop("eval_metric", None)
+    return xgb.XGBRegressor(**merged)
 
 
 def _make_xgb_classifier(**overrides) -> xgb.XGBClassifier:
@@ -140,26 +162,47 @@ def _make_xgb_classifier(**overrides) -> xgb.XGBClassifier:
 
 # --- SHAP dominance check ---
 
-def check_shap_dominance(model, X: pd.DataFrame, threshold: float = SHAP_DOMINANCE_THRESHOLD) -> dict:
-    """Reject model if any single feature dominates SHAP importance."""
+def check_shap_dominance(
+    model,
+    X: pd.DataFrame,
+    threshold: float = SHAP_DOMINANCE_THRESHOLD,
+    *,
+    sample_size: int | None = None,
+) -> tuple[bool, str, dict[str, float]]:
+    """Reject model if any single feature dominates SHAP importance.
+
+    Returns:
+        (passes: bool, reason: str, importance: dict[str, float])
+    """
     try:
+        if sample_size is not None and len(X) > sample_size:
+            X_eval = X.sample(n=sample_size, random_state=42)
+        else:
+            X_eval = X
+
         explainer = shap.TreeExplainer(model)
-        shap_values = explainer.shap_values(X)
+        shap_values = explainer.shap_values(X_eval)
         abs_mean = np.abs(shap_values).mean(axis=0)
         total = abs_mean.sum()
-        if total == 0:
-            return {"dominant": False, "max_share": 0.0}
+        if total == 0 or np.isnan(total):
+            equal_share = 1.0 / len(X.columns) if len(X.columns) > 0 else 0.0
+            imp = {col: equal_share for col in X.columns}
+            return True, "OK", imp
+
         shares = abs_mean / total
+        imp = {col: round(float(shares[i]), 4) for i, col in enumerate(X.columns)}
         max_idx = int(np.argmax(shares))
         max_share = float(shares[max_idx])
-        return {
-            "dominant": max_share > threshold,
-            "max_share": round(max_share, 4),
-            "max_feature": X.columns[max_idx] if max_idx < len(X.columns) else "unknown",
-        }
+        max_feat = str(X.columns[max_idx]) if max_idx < len(X.columns) else "unknown"
+
+        if max_share > threshold:
+            reason = f"REJECTED: Feature '{max_feat}' dominates SHAP importance with {max_share:.1%} share (threshold {threshold:.1%})"
+            return False, reason, imp
+
+        return True, "OK", imp
     except Exception as e:
         _log.warning("SHAP dominance check failed", error=str(e))
-        return {"dominant": False, "max_share": 0.0, "error": str(e)}
+        return False, f"ERROR: {e}", {}
 
 
 # --- Public API ---
@@ -182,11 +225,27 @@ def get_feature_importance() -> dict:
 
 @dataclass
 class PredictionResult:
-    score: float
-    factors: dict
-    shap_values: dict
-    confidence: float
+    ml_prediction: float | None = None
     classifier_prob: float | None = None
+    regressor_return: float | None = None
+    shap_values: dict[str, float] = field(default_factory=dict)
+    shap_expected_value: float | None = None
+    top_drivers: list[dict] = field(default_factory=list)
+    is_bootstrap: bool = False
+    score: float | None = None
+    factors: dict = field(default_factory=dict)
+    confidence: float | None = None
+
+    def to_dict(self) -> dict:
+        return {
+            "ml_prediction": self.ml_prediction,
+            "classifier_prob": self.classifier_prob,
+            "regressor_return": self.regressor_return,
+            "shap_values": self.shap_values,
+            "shap_expected_value": self.shap_expected_value,
+            "top_drivers": self.top_drivers,
+            "is_bootstrap": self.is_bootstrap,
+        }
 
 
 import optuna
@@ -387,17 +446,19 @@ def train_hybrid_model() -> bool:
     # 6. SHAP Dominance Check
     shap_dominance = {"checked": False}
     try:
-        dom_check = check_shap_dominance(regressor, X, threshold=SHAP_DOMINANCE_THRESHOLD)
-        passes = not dom_check["dominant"]
+        passes, reason, shap_imp = check_shap_dominance(
+            regressor, X, threshold=SHAP_DOMINANCE_THRESHOLD
+        )
+        top_feat = max(shap_imp, key=shap_imp.get) if shap_imp else None
         shap_dominance = {
             "checked": True,
             "passes_threshold": passes,
-            "top_feature": dom_check.get("max_feature"),
-            "top_feature_share": dom_check.get("max_share"),
+            "top_feature": top_feat,
+            "top_feature_share": shap_imp.get(top_feat) if top_feat else None,
             "threshold": SHAP_DOMINANCE_THRESHOLD,
         }
         if not passes:
-            _log.warning("Production model SHAP dominance exceeds threshold", top_feature=dom_check.get("max_feature"))
+            _log.warning("Production model SHAP dominance exceeds threshold", top_feature=top_feat, reason=reason)
     except Exception as exc:
         _log.warning("SHAP dominance check failed", error=str(exc))
 
@@ -824,3 +885,11 @@ def batch_predict(
         })
 
     return results
+
+
+# --- Legacy Compatibility Aliases ---
+train_meta_model = train_hybrid_model
+train_bootstrap_model = bootstrap_synthetic_model
+predict_hybrid_score = predict_and_explain
+batch_predict_hybrid_scores = batch_predict
+

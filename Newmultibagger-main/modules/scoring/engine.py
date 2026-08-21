@@ -118,11 +118,7 @@ def calculate_institutional_score(
 
     # ── PIT hard gate: block scoring if data is too fresh (SEBI 45-day lag) ──
     if quarter_end and as_of:
-        try:
-            from modules.pit_auditor import PITViolationError
-            enforce_pit_gate(as_of, quarter_end, symbol=data.get("Symbol", "UNKNOWN"))
-        except PITViolationError:
-            data_quality_flags.append("PIT_GATE_VIOLATION")
+        enforce_pit_gate(as_of, quarter_end, symbol=data.get("Symbol", "UNKNOWN"))
     else:
         data_quality_flags.append("PIT_GATE_SKIPPED_MISSING_DATES")
     if as_of:

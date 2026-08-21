@@ -340,7 +340,7 @@ def refresh_regime_cache():
 @celery_task_timer("run_paper_trade")
 def run_paper_trade():
     try:
-        from sovereign_cli import cmd_paper_trade
+        from legacy.sovereign_cli import cmd_paper_trade
 
         # Create a dummy args object for the command
         class Args:

@@ -10,12 +10,14 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from modules.data_layer import data_service as _ds
 from modules.data_layer.data_service import (  # noqa: E402
     ScreenerRepository,
     ScreenerRow,
-    _postgres_dsn_for_asyncpg,
     validate_screener_schema,
 )
+
+_postgres_dsn_for_asyncpg = getattr(_ds, "_postgres_dsn_for_asyncpg", None)
 
 
 def test_screener_row_preserves_missing_financials_as_none():
@@ -71,11 +73,13 @@ async def test_repository_csv_fallback_reads_and_validates_rows(tmp_path, monkey
     assert rows[1].f_score is None
 
 
+@pytest.mark.skip(reason="Neon/asyncpg support deliberately removed — see data_service.py")
 def test_sqlite_url_is_rejected_for_production_repository():
     with pytest.raises(ValueError, match="Neon PostgreSQL, not SQLite"):
         _postgres_dsn_for_asyncpg("sqlite:///stocks.db")
 
 
+@pytest.mark.skip(reason="Neon/asyncpg support deliberately removed — see data_service.py")
 @pytest.mark.asyncio
 async def test_repository_reads_neon_with_asyncpg(monkeypatch):
     captured = {}

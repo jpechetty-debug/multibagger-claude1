@@ -2075,9 +2075,15 @@ def main(argv=None):
 
             # Pass the selected mode as 'market_regime' (overriding the auto-detection for strategy purposes)
             # This is a temporary bridge until we separate Market Regime from Scoring Strategy in the function signature.
-            score_data = calculate_institutional_score(
-                stock, sector_boost=bonus, market_regime=final_mode, sector_medians=sector_medians
-            )
+            try:
+                from modules.pit_auditor import PITViolationError
+                score_data = calculate_institutional_score(
+                    stock, sector_boost=bonus, market_regime=final_mode, sector_medians=sector_medians
+                )
+            except PITViolationError as e:
+                import logging
+                logging.warning(f"PIT gate blocked {stock.get('Symbol')}: {e}")
+                continue
 
             # Pydantic Validation
             try:
