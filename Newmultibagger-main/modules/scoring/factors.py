@@ -245,10 +245,10 @@ def _get_available_factors(
     # F_Score: only count if the raw value was present (not the neutral 50.0 fallback)
     if optional_float(data.get("F_Score")) is not None:
         available.append(("fscore", state.score_fscore, weights["w_fscore"]))
-    # D/E: count toward confidence ONLY when real Debt_Equity data exists.
+    # D/E: count toward confidence ONLY when real Debt_Equity data exists and w_de > 0.
     # Financial-sector stocks still receive the hardcoded 80.0 score via
     # _build_factor_state, but that synthetic value must not inflate confidence.
-    if optional_float(data.get("Debt_Equity")) is not None:
+    if weights.get("w_de", 0) > 0 and optional_float(data.get("Debt_Equity")) is not None:
         available.append(("de", state.score_de, weights["w_de"]))
     # Momentum: count only if price > 0 and at least one momentum input is present
     if state.price > 0 and (

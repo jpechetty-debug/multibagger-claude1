@@ -399,3 +399,29 @@ class TestEdgeCases:
     def test_missing_symbol_uses_empty_string(self):
         result = calculate_institutional_score({"Avg_ROE_5Y%": 20})
         assert "total_score" in result
+
+
+class TestSectorDataConfidence:
+    def test_bank_sector_excludes_de_from_data_confidence(self):
+        """MED-1 regression test: Bank/Financial sector has w_de=0, so presence of Debt_Equity
+        must not artificially inflate data_confidence from 77.8% (7/9) to 88.9% (8/9).
+        """
+        bank_data = {
+            "Symbol": "HDFCBANK.NS",
+            "Sector": "Private Bank",
+            "Price": 1500.0,
+            "Sales_Growth_5Y%": 15.0,
+            "ROE%": 18.0,
+            "CFO_PAT_Ratio": 1.2,
+            "PE_Ratio": 18.0,
+            "EPS_Growth%": 15.0,
+            "F_Score": 7,
+            "Debt_Equity": 0.0,  # Real or dummy D/E present in raw data
+            "Down_From_52W_High%": -5.0,
+            "backtest": True,  # Disables sentiment lookup
+        }
+        result = calculate_institutional_score(bank_data)
+        # 7 factors available out of 9 total (excluding DE because w_de=0 and sentiment because backtest=True)
+        assert result["data_confidence"] == 77.8, (
+            f"Expected 77.8% data_confidence for Bank sector (7/9 factors), got {result['data_confidence']}%"
+        )
