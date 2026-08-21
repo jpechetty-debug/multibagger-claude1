@@ -102,6 +102,7 @@ def walk_forward_validate(
     min_train_rows: int = 10,
     min_train_periods: int = 4,
 ) -> dict:
+    from modules.scoring.ml_score import FEATURES, _make_xgb_regressor, _sanitize_features
     """Expanding-window walk-forward validation for the hybrid XGBoost scorer."""
     required = {"symbol", "as_of_date", "forward_return", *FEATURES}
     missing = required - set(train_df.columns)

@@ -12,7 +12,7 @@ from core.observability.logger import logger
 from modules.data_utils import optional_float, safe_float
 from modules.news_sentiment import engine as news_engine
 
-from .normalization import FactorState, _StockData, normalize_metric
+from .normalization import FactorState, TOTAL_FACTORS, _StockData, normalize_metric
 
 _REGIME_ALIASES = {
     # Multi-word forms produced by analyze_market_regime()
@@ -77,7 +77,7 @@ def _calculate_sentiment_factor(
     except Exception as e:
         logger.warning(f"Sentiment analysis failed for {data.get('Symbol')}: {e}", exc_info=True)
         # Phase 2.4: Zero weight on failure → redistributed to other factors
-        score_sentiment = 50.0
+        score_sentiment = 0.0
         w_sentiment = 0.0
 
     return score_sentiment, w_sentiment
@@ -269,7 +269,7 @@ def _calculate_base_score(
     w_sentiment: float,
 ) -> tuple[float, float]:
     available = _get_available_factors(data, state, weights, w_sentiment)
-    data_confidence = round((len(available) / 9) * 100, 1)
+    data_confidence = round((len(available) / TOTAL_FACTORS) * 100, 1)
 
     if available:
         total_available_weight = sum(weight for _, _, weight in available)

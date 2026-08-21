@@ -34,7 +34,7 @@ def get_api_key(request: Request, background_tasks: BackgroundTasks, api_key: st
         api_logger.error("API key missing in request.")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Server not configured — API key missing.",
+            detail="API key required — provide X-API-Key header.",
         )
 
     # Allow fallback master key if defined

@@ -19,6 +19,9 @@ _Number = Union[int, float]
 _StockData = dict[str, Any]
 _SectorMedians = dict[str, dict[str, float]]
 
+# Total number of scoring factors (sales, roe, cfo, val, eps, fscore, de, mom, sentiment)
+TOTAL_FACTORS = 9
+
 
 @dataclass(frozen=True)
 class FactorState:

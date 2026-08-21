@@ -89,6 +89,49 @@ class Multibagger(Base):
     shap_breakdown = Column(Text)
     shap_top_drivers = Column(Text)
 
+    # 52W Range
+    high_52w = Column(Float)
+    low_52w = Column(Float)
+
+    # Multibagger Hunt
+    pledge_pct = Column(Float)
+    piotroski_score = Column(Integer)
+
+    # Momentum Features
+    ret_1m = Column(Float)
+    ret_3m = Column(Float)
+    ret_6m = Column(Float)
+    vol_breakout = Column(Float)
+    dist_from_52w_high = Column(Float)
+
+    # Fundamental Scores
+    roce = Column(Float)
+    median_pat_growth = Column(Float)
+
+    # ML Rank
+    ml_rank_score = Column(Float)
+
+    # Sprint 1: Compounding Lens
+    revenue_cagr_3y = Column(Float)
+    revenue_cagr_5y = Column(Float)
+    pat_cagr_3y = Column(Float)
+    pat_cagr_5y = Column(Float)
+    eps_cagr_3y = Column(Float)
+    eps_cagr_5y = Column(Float)
+    cagr_consistency = Column(String)
+    dividend_yield = Column(Float)
+    dividend_payout = Column(Float)
+    cap_category = Column(String)
+
+    # DuPont ROE Decomposition
+    net_margin_pct = Column(Float)
+    asset_turnover = Column(Float)
+    financial_leverage = Column(Float)
+    roa_pct = Column(Float)
+
+    # V3.1 Data Quality
+    data_quality_flags = Column(Text)
+
     # Phase 1: New Alpha Data
     ocf_yield = Column(Float)
     earnings_velocity_qoq = Column(Float)
@@ -118,6 +161,24 @@ class FundamentalsPIT(Base):
     promoter_holding = Column(Float)
     fii_holding = Column(Float)
     dii_holding = Column(Float)
+
+    # Columns from CREATE TABLE DDL in repository.py
+    high_52w = Column(Float)
+    low_52w = Column(Float)
+    roce = Column(Float)
+    median_pat_growth = Column(Float)
+    ret_1m = Column(Float)
+    ret_3m = Column(Float)
+    ret_6m = Column(Float)
+    vol_breakout = Column(Float)
+    dist_from_52w_high = Column(Float)
+    ml_rank_score = Column(Float)
+
+    # DuPont columns (added via _ensure_column)
+    net_margin_pct = Column(Float)
+    asset_turnover = Column(Float)
+    financial_leverage = Column(Float)
+    roa_pct = Column(Float)
 
     # Phase 1: New Alpha Data
     ocf_yield = Column(Float)
