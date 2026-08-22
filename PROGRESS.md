@@ -47,3 +47,4 @@
 - Made worker/task_bus.py dispatch() uniformly async to prevent silent caller traps in development mode.
 - Added test coverage for worker/task_bus.py in 	ests/test_task_bus.py.
 
+- Resolved 500 API errors on quarterly-results and price-fundamentals endpoints caused by a missing _cache_is_fresh import in app_routes/stocks.py.
