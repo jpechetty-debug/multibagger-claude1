@@ -9,7 +9,6 @@ from fastapi.responses import FileResponse, JSONResponse
 from core.observability.logger import get_logger
 from modules.auth import get_api_key
 from modules.cache import (
-    _cache_is_fresh,
     _cache_set,
     movers_cache,
     movers_cache_lock,
@@ -217,8 +216,9 @@ def read_root():
 async def get_market_movers():
     """Placeholder for Top Gainers/Losers"""
     try:
-        if _cache_is_fresh(movers_cache, 3600):
-            return movers_cache["payload"]
+        payload = movers_cache.get_payload()
+        if payload is not None:
+            return payload
         async with movers_cache_lock:
             payload = {"gainers": [], "losers": [], "active": [], "_status": "not_implemented"}
             _cache_set(movers_cache, payload)

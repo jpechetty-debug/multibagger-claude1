@@ -12,8 +12,9 @@ from db.db_core import get_db_connection as get_sqla_connection
 from modules.cache import (
     CACHE_AUDIT_TTL,
     CACHE_FUNDAMENTALS,
+    CACHE_PEERS,
     CACHE_QUARTERLY,
-    _cache_is_fresh,
+    _cache_get,
     _cache_set,
 )
 from modules.connections import (
@@ -700,10 +701,9 @@ async def quarterly_results_endpoint(request: Request, symbol: str, quarters: in
 
         cache_key = f"{CACHE_QUARTERLY}:{symbol}"
         if _cache_is_fresh(cache_key, CACHE_AUDIT_TTL):
-            from worker.redis_cache import cache as redis_cache
-            cached_data = redis_cache.get(cache_key)
+            cached_data = _cache_get(cache_key)
             if cached_data:
-                return cached_data["payload"]
+                return cached_data
         result = await get_quarterly_timeline(symbol, quarters)
         cleaned = _json_safe_clean(result)
         _cache_set(cache_key, cleaned)
@@ -721,10 +721,9 @@ async def price_fundamentals_endpoint(request: Request, symbol: str, years: int 
         cache_key = f"{symbol}:{years}"
         full_cache_key = f"{CACHE_FUNDAMENTALS}:{cache_key}"
         if _cache_is_fresh(full_cache_key, CACHE_AUDIT_TTL):
-            from worker.redis_cache import cache as redis_cache
-            cached_data = redis_cache.get(full_cache_key)
+            cached_data = _cache_get(full_cache_key)
             if cached_data:
-                return cached_data["payload"]
+                return cached_data
         from modules.price_fundamentals import get_price_vs_fundamentals
 
         result = await get_price_vs_fundamentals(symbol, years)

@@ -40,6 +40,15 @@ class MemoryCacheProxy:
                 self.invalidate()
         return None
 
+    def get_payload(self):
+        data = _memory_store.get(self.key)
+        if isinstance(data, dict):
+            if time.time() - data.get("timestamp", 0) <= self.ttl:
+                return data.get("payload")
+            else:
+                self.invalidate()
+        return None
+
     def get(self, item, default=None):
         val = self[item]
         return val if val is not None else default
@@ -91,6 +100,14 @@ def _cache_is_fresh(cache_obj: Any, ttl_seconds: int) -> bool:
     if not data or not isinstance(data, dict):
         return False
     return (time.time() - data.get("timestamp", 0.0)) < ttl_seconds
+
+def _cache_get(cache_obj: Any) -> Any:
+    if isinstance(cache_obj, MemoryCacheProxy):
+        return cache_obj.get_payload()
+    data = _memory_store.get(str(cache_obj))
+    if data and isinstance(data, dict):
+        return data.get("payload")
+    return None
 
 def _cache_set(cache_obj: Any, payload: Any):
     if isinstance(cache_obj, MemoryCacheProxy):

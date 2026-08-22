@@ -12,7 +12,6 @@ from core.observability.logger import get_logger
 from modules.cache import (
     REGIME_CACHE_TTL_SECONDS,
     _cache_invalidate,
-    _cache_is_fresh,
     _cache_set,
     regime_cache,
     regime_cache_lock,
@@ -117,12 +116,14 @@ def _build_payload(
 @router.get("/api/regime_status", response_model=RegimeStatusResponse)
 async def get_regime_status():
     """Return the current regime using the active MarketDataProvider contract."""
-    if _cache_is_fresh(regime_cache, REGIME_CACHE_TTL_SECONDS):
-        return regime_cache["payload"]
+    payload = regime_cache.get_payload()
+    if payload is not None:
+        return payload
 
     async with regime_cache_lock:
-        if _cache_is_fresh(regime_cache, REGIME_CACHE_TTL_SECONDS):
-            return regime_cache["payload"]
+        payload = regime_cache.get_payload()
+        if payload is not None:
+            return payload
 
         forced_regime = _parse_forced_regime(config.FORCED_REGIME)
         try:
@@ -141,7 +142,7 @@ async def get_regime_status():
         except Exception as exc:
             runtime_logger.warning("Regime status fallback engaged", error=str(exc))
 
-            cached_payload = regime_cache.get("payload")
+            cached_payload = regime_cache.get_payload()
             if isinstance(cached_payload, dict):
                 return _build_payload(
                     dict(cached_payload),
