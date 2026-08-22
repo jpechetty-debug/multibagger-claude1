@@ -16,7 +16,7 @@ from types import SimpleNamespace
 from datetime import datetime
 
 # Ensure project modules are importable
-PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 import modules.adapters.yf_patch  # noqa: F401
 

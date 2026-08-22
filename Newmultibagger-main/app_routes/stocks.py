@@ -15,6 +15,7 @@ from modules.cache import (
     CACHE_PEERS,
     CACHE_QUARTERLY,
     _cache_get,
+    _cache_is_fresh,
     _cache_set,
 )
 from modules.connections import (
