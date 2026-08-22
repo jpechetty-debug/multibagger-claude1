@@ -89,7 +89,7 @@ function QuarterlyTimeline({ symbol }: QuarterlyTimelineProps) {
                 {entry.name}:
               </span>
               <span className="text-brand-text font-bold">
-                {entry.value.toLocaleString()}{entry.name.includes('%') ? '%' : ' Cr'}
+                {entry.value != null ? entry.value.toLocaleString() : '-'}{entry.name.includes('%') ? '%' : ' Cr'}
               </span>
             </div>
           ))}
@@ -312,13 +312,13 @@ function QuarterlyTimeline({ symbol }: QuarterlyTimelineProps) {
                   {quarters.map((q, idx) => (
                     <tr key={idx} className="hover:bg-white/5 transition-colors group">
                        <td className="p-3 font-bold group-hover:text-brand-accent">{q.quarter}</td>
-                       <td className="p-3 text-right">Rs {q.revenue.toLocaleString()}</td>
+                       <td className="p-3 text-right">Rs {q.revenue != null ? q.revenue.toLocaleString() : '-'}</td>
                        <td className={`p-3 text-right font-bold ${
                          (q.revenue_growth_qoq ?? 0) > 0 ? 'text-brand-accent' : (q.revenue_growth_qoq ?? 0) < 0 ? 'text-brand-rose' : 'text-brand-text-dim'
                        }`}>
                          {q.revenue_growth_qoq !== null ? `${q.revenue_growth_qoq > 0 ? '+' : ''}${q.revenue_growth_qoq}%` : '-'}
                        </td>
-                       <td className="p-3 text-right">Rs {q.profit.toLocaleString()}</td>
+                       <td className="p-3 text-right">Rs {q.profit != null ? q.profit.toLocaleString() : '-'}</td>
                        <td className="p-3 text-right font-bold">{q.margin}%</td>
                        <td className="p-3 text-right text-brand-text-dim">{q.eps ?? '-'}</td>
                     </tr>
