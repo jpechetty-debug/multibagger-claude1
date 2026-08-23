@@ -24,7 +24,8 @@ The core application codebase, API backend, web UI, analytical engines, and work
 
 ## 🏗️ Core Architecture & System Modules
 
-- **9-Vector Nexus Alpha (v12.5)**: Dynamic factor engine adjusting weights across Market Regimes (Bull / Bear / Sideways detected via Hidden Markov Models).
+- **9-Vector Nexus Alpha (v12.5)**: Dynamic factor engine adjusting weights across Market Regimes (Bull / Bear / Sideways / High Volatility detected via Hidden Markov Models).
+- **DuPont ROE 3-Stage & 5-Stage Decomposition**: Deep fundamental profitability attribution analyzing Net Margin, Asset Turnover, Financial Leverage, Tax Burden, and Interest Burden.
 - **Explainable ML Meta-Model (XGBoost + SHAP)**: Two-model architecture (Classifier + Regressor) with Optuna Bayesian hyperparameter optimization, SHAP TreeExplainer feature dominance checks, and Expanding-Window Walk-Forward Validation.
 - **Hardened PIT & Data Integrity Engine**: Dynamic SEBI filing lag rules (60 days for Q4 March annual results, 45 days for Q1–Q3) with `PITViolationError` hard gates preventing look-ahead bias in backtests.
 - **Sector-Specific Factor Normalization**: Sector-aware weighting (e.g. Banking & Financial Services zeroing D/E `weights["w_de"] = 0.0` with exact 77.8% confidence calculation).
@@ -62,11 +63,17 @@ npm install
 npm run dev
 ```
 
+- **Frontend Terminal**: `http://localhost:3000` (or `http://localhost:5173`)
+- **Backend API**: `http://localhost:9005`
+- **Swagger Docs**: `http://localhost:9005/docs`
+- **API Key Header**: `X-API-Key: DEV_KEY_123` (or query parameter `?token=DEV_KEY_123`)
+
 ---
 
 ## 📊 Knowledge Graph & Architectural Blueprint
 
-- **Graphify Knowledge Graph**: AST-indexed knowledge graph containing **20,134 nodes, 38,650 edges, and 1,052 communities** in `graphify-out/`.
+- **Graphify Knowledge Graph**: AST-indexed knowledge graph containing **20,864 nodes, 40,087 edges, and 1,119 communities** in `graphify-out/`.
+- **CodeGraph Intelligence**: Comprehensive semantic symbols and call paths index across **504 files (7,027 nodes, 15,037 edges)** in `.codegraph/`.
 - **System Blueprint**: Detailed module maps, data flows, and design rules documented in [.agent/ARCHITECTURE.md](./.agent/ARCHITECTURE.md).
 
 ---

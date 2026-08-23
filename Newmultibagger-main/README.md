@@ -27,9 +27,9 @@
 │ Data Layer   │      │ Scoring Engine  │      │ ML Alpha & Explain   │   │ Execution & UI │
 ├──────────────┤      ├─────────────────┤      ├──────────────────────┤   ├────────────────┤
 │ • 6-L Hardening│     │ • Nexus Alpha   │      │ • XGBoost Regressor  │   │ • FastAPI (9005)│
-│ • SEBI PIT 60d │    │ • Regime HMM    │      │ • Binary Classifier  │   │ • React/Vite   │
-│ • Multi-Provider│   │ • Sector Weights│      │ • SHAP TreeExplainer │   │ • CLI Suite    │
-│ • Circuit Brkr│     │ • Pure Turnaround│     │ • Optuna Bayes Tuning│   │ • FastMCP Swarm│
+│ • SEBI PIT 60d │    │ • DuPont ROE 5-S│      │ • Binary Classifier  │   │ • React Vite   │
+│ • Multi-Provider│   │ • Regime HMM    │      │ • SHAP TreeExplainer │   │ • CLI Suite    │
+│ • Circuit Brkr│     │ • Sector Weights│      │ • Optuna Bayes Tuning│   │ • FastMCP Swarm│
 └──────────────┘      └─────────────────┘      └──────────────────────┘   └────────────────┘
 ```
 
@@ -41,11 +41,12 @@
 - **Multi-Provider Fallback**: Priority waterfall (`ScreenerInProvider` → `NSEXBRLProvider` → `PNSEAProvider` → `NSEPythonProvider` → `YFinanceProvider`).
 
 ### 2. Multi-Vector Scoring & Quantitative Research
-- **Nexus Alpha (v12.5)**: Dynamic factor engine adjusting weights across Market Regimes (Bull / Bear / Sideways detected via Hidden Markov Models):
+- **Nexus Alpha (v12.5)**: Dynamic factor engine adjusting weights across Market Regimes (Bull / Bear / Sideways / High Volatility detected via Hidden Markov Models):
   - **Growth (15%)**: Sigmoid-normalized Sales & EPS expansion.
   - **Quality (15%)**: 5-Year Average ROE + Cash Flow Validation (CFO/PAT).
   - **Risk & Capital Structure (10%)**: Institutional-grade Piotroski F-Score + Debt/Equity bounds.
   - **Valuation & Value Gap**: Normalized PE, PEG, and Sector-Relative Median discounting.
+- **DuPont ROE Decomposition (3-Stage & 5-Stage)**: Deconstructs return on equity into operational margins, asset velocity, leverage multipliers, tax burden, and interest burden for diagnostic clarity.
 - **Turnaround CAGR Engine**: Mathematical recovery metrics (`_turnaround_growth`) for candidates rebounding from negative base earnings.
 - **Return-Based Portfolio Risk**: Pearson correlation matrix computed on **daily percentage returns** (`close_prices.pct_change()`) in `modules/risk/correlation.py` to eliminate non-stationary price-level trend distortions.
 - **Hierarchical Risk Parity (HRP)**: Conviction-weighted portfolio allocation and liquidity-gated slippage checks.
@@ -56,10 +57,11 @@
 - **Optuna Hyperparameter Optimization**: Bayesian parameter exploration over learning rate, tree depth, subsample ratios, and L1/L2 regularization (`_OPTUNA_SEARCH_SPACE`).
 - **Expanding-Window Walk-Forward Validation**: Out-of-sample validation framework with locked 2018–2020 holdout exclusion (`modules/scoring/walk_forward.py`).
 
-### 4. Distributed Workers & Task Bus
+### 4. Distributed Workers & Telemetry
 - **Dual-Mode Task Bus**: Transparent switching between local `asyncio` dev worker and distributed `celery` broker in `worker/task_bus.py`.
 - **Celery Beat Schedule**: Automated maintenance tasks including factor data freshness audits (`check_factor_data_freshness`) scheduled on dedicated queues.
-- **Redis Cache Singleton**: High-throughput distributed caching for stock scores and market regimes with automatic memory fallback (`worker/redis_cache.py`).
+- **Redis Pub/Sub WebSocket Engine**: Multi-worker live price streaming on `live:prices` with token/API key authentication for secure subscriber distribution.
+- **Hybrid Caching Layer**: In-memory LRU + Redis distributed cache for sub-millisecond stock score retrieval.
 
 ---
 
@@ -67,14 +69,15 @@
 
 ```
 Newmultibagger-main/
-├── app_routes/            # FastAPI route controllers (public, trading, ml, portfolio)
+├── app_routes/            # FastAPI route controllers (public, trading, ml, portfolio, regime)
 ├── backtest/              # Historical backtesting engines & walk-forward evaluators
 ├── core/                  # Observability, structured logging, and system telemetry
-├── db/                    # SQLAlchemy 2.0 models, repository layer, and migration scripts
+├── db/                    # SQLAlchemy 2.0 models, repository layer, DuckDB + SQLite pooling
 ├── legacy/                # Preserved legacy CLI & backtest utilities (isolated package)
 ├── modules/               # Core analytical & financial domain modules
 │   ├── adapters/          # Source fetchers (Bhavcopy, NSE XBRL, Jugaad, YFinance)
 │   ├── data_layer/        # DataService orchestrator, DQ gates, and connections
+│   ├── financial_analysis.py # DuPont 3/5-stage decomposition & fundamental ratios
 │   ├── intelligence/      # LLM engines, news sentiment, promoter & insider tracking
 │   ├── portfolio/         # HRP allocation, capital simulator, exit engine, tax efficiency
 │   ├── risk/              # Slippage, correlation matrix, regime HMM, stress testing
@@ -134,6 +137,7 @@ uvicorn main:app --reload --port 9005
 ```
 - **API Documentation**: [http://localhost:9005/docs](http://localhost:9005/docs)
 - **Health Check**: [http://localhost:9005/api/health](http://localhost:9005/api/health)
+- **Auth Header**: `X-API-Key: DEV_KEY_123`
 
 ### 4. Launch Web UI Terminal
 
@@ -143,7 +147,7 @@ cd web-ui
 npm install
 npm run dev
 ```
-- **Web Terminal**: [http://localhost:5173](http://localhost:5173)
+- **Web Terminal**: [http://localhost:3000](http://localhost:3000) (Proxies `/api` and `/ws` to port 9005)
 
 ---
 
@@ -174,6 +178,7 @@ python -m pytest --tb=short -q
 # Run specific domain test suites
 python -m pytest tests/test_scoring_engine.py -v
 python -m pytest tests/test_hybrid_scoring_walk_forward.py -v
+python -m pytest tests/test_dupont_decomposition.py -v
 python -m pytest tests/test_phase67_pit.py -v
 python -m pytest tests/test_task_bus.py -v
 ```
