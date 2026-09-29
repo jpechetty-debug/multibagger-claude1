@@ -15,13 +15,13 @@ class ValidationResult:
     run_id: str
     model_version: str
     validation_type: str
-    
+
     passed: bool
-    
-    metrics: Dict[str, Any] = field(default_factory=dict)
-    charts: Dict[str, Any] = field(default_factory=dict)
-    
+
+    metrics: dict[str, Any] = field(default_factory=dict)
+    charts: dict[str, Any] = field(default_factory=dict)
+
     generated_at: str = field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
-    
+
     def to_dict(self) -> dict:
         return asdict(self)

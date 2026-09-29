@@ -2,7 +2,7 @@
 import warnings
 
 import pandas as pd
-from screener import calculate_institutional_score, get_stock_data
+from screener import calculate_institutional_score, get_stock_data_sync
 
 import db.repository as database
 import modules.adapters.yf_patch  # noqa: F401
@@ -20,7 +20,7 @@ def scan_and_update():
     for symbol in TICKERS_TO_SCAN:
         print(f"Fetching data for {symbol}...")
         try:
-            stock_data = get_stock_data(symbol)
+            stock_data = get_stock_data_sync(symbol)
             if stock_data:
                 # Calculate Score
                 score_blob = calculate_institutional_score(stock_data)

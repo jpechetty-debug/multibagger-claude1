@@ -18,7 +18,7 @@ def run_all_reviews():
                 res = ReviewEngine.run_review(t.ticker)
                 if res:
                     results[t.ticker] = res
-                    
+
         _log.info(f"Quarterly Review complete. Processed {len(results)} theses.")
         return results
     except Exception as e:

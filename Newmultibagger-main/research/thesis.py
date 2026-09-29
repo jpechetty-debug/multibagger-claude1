@@ -19,7 +19,7 @@ class InvestmentThesis(BaseModel):
     thesis_summary: str
     expected_cagr: float
     horizon_years: float
-    health_score: Optional[float] = None
+    health_score: float | None = None
 
 
 class ThesisManager:
@@ -64,7 +64,7 @@ class ThesisManager:
         return True
 
     @staticmethod
-    def get_thesis(ticker: str) -> Optional[dict]:
+    def get_thesis(ticker: str) -> dict | None:
         """
         Retrieves the structured thesis from SQLite and the markdown content if available.
         """
@@ -89,7 +89,7 @@ class ThesisManager:
         file_path = ARTIFACTS_DIR / ticker / "thesis.md"
         if file_path.exists():
             try:
-                with open(file_path, "r", encoding="utf-8") as f:
+                with open(file_path, encoding="utf-8") as f:
                     result["markdown"] = f.read()
             except Exception as e:
                 _log.warning(f"Could not read markdown for {ticker}: {e}")

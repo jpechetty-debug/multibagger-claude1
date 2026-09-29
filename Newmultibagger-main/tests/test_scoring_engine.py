@@ -296,6 +296,7 @@ class TestNoCliffJumps:
         }
         return cast(float, calculate_institutional_score(data)["total_score"])
 
+    @pytest.mark.slow
     def test_no_cliff_across_checklist_passes(self):
         scores = [(n, self._score_with_n_passes(n)) for n in range(13)]
         scores.sort()

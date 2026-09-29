@@ -70,14 +70,14 @@ class ReviewEngine:
 
     @staticmethod
     def _evaluate_thesis_health(original_thesis: DBInvestmentThesis) -> float:
-        # Without an LLM to read the triggers, we rely on user-updated health_score 
+        # Without an LLM to read the triggers, we rely on user-updated health_score
         # or a default of 75 if it's currently intact.
         if original_thesis and original_thesis.health_score is not None:
             return original_thesis.health_score
         return 75.0
 
     @staticmethod
-    def run_review(ticker: str) -> Optional[dict]:
+    def run_review(ticker: str) -> dict | None:
         """
         Runs a comprehensive review comparing original thesis against current reality.
         """
@@ -117,7 +117,7 @@ class ReviewEngine:
 
                 # Update thesis health score
                 thesis.health_score = final_score
-                
+
                 # Save review
                 review = DBQuarterlyReview(
                     ticker=ticker,

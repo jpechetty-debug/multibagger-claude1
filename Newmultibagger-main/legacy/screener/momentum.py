@@ -20,7 +20,7 @@ def analyze_market_regime(symbol="^NSEI"):
             LIMIT 200
         """
         df = duck_conn.execute(query).df()
-        
+
         if len(df) < 200:
             return "Unknown"
 
@@ -43,10 +43,10 @@ def analyze_market_regime(symbol="^NSEI"):
 def analyze_sector_rotation(sector_stocks, period="3mo"):
     """Analyze relative sector performance for rotation signals using DuckDB."""
     results = {}
-    
+
     # Define period mapping to available columns in Parquet
     ret_col = "ret_3m" if period == "3mo" else "ret_1m"
-    
+
     for sector, symbols in sector_stocks.items():
         sector_returns = []
         for sym in symbols[:5]:
@@ -59,7 +59,7 @@ def analyze_sector_rotation(sector_stocks, period="3mo"):
                 """
                 ret = duck_conn.execute(query).fetchone()
                 if ret and ret[0] is not None:
-                    # ret_3m is typically stored as a percentage or fraction. 
+                    # ret_3m is typically stored as a percentage or fraction.
                     sector_returns.append(ret[0])
 
             except Exception:
@@ -81,7 +81,7 @@ def get_benchmark_return(symbol="^NSEI", period="1y"):
             LIMIT 252
         """
         df = duck_conn.execute(query).df()
-        
+
         if len(df) >= 2:
             return round((df["Close"].iloc[0] / df["Close"].iloc[-1] - 1) * 100, 2)
     except Exception:

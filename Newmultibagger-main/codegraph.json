@@ -1,0 +1,10 @@
+{
+  "exclude": [
+    "runtime/claude-mem/",
+    "runtime/claude-mem/**",
+    ".agent/",
+    ".agent/**",
+    "backups/",
+    "backups/**"
+  ]
+}

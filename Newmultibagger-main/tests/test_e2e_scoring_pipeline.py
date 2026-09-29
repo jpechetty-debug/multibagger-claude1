@@ -25,6 +25,8 @@ from modules.data_service import DataManager
 from modules.scoring import calculate_institutional_score
 from scripts.internal.screener import get_stock_data
 
+pytestmark = [pytest.mark.integration, pytest.mark.timeout(30)]
+
 
 class MockDataManager(DataManager):
     """Overrides DataManager to return deterministic mock data."""
@@ -63,16 +65,19 @@ class MockDataManager(DataManager):
         return df
 
 
-@pytest.mark.live
 @pytest.mark.asyncio
-async def test_full_scoring_pipeline_e2e():
+async def test_full_scoring_pipeline_e2e(monkeypatch):
     """Verify that a symbol can pass through the entire fetch-and-score pipe."""
     symbol = "TCS.NS"
     mock_dm = MockDataManager(max_concurrency=1)
+    monkeypatch.setattr("scripts.internal.screener._needs_info_backfill", lambda _info: False)
+    monkeypatch.setattr("scripts.internal.screener.get_benchmark_return", lambda: 0.0)
+    monkeypatch.setattr("scripts.internal.screener.get_estimate_data", lambda *_args, **_kwargs: {})
 
     # 1. Fetch
     stock_data = await get_stock_data(symbol, dm=mock_dm, include_quarterly=False)
 
+    assert "_fetch_error" not in stock_data, stock_data
     assert stock_data["Symbol"] == symbol
     assert stock_data["Price"] > 0
     assert stock_data["Data_Source"] == "mock"

@@ -1012,11 +1012,19 @@ def get_market_regime(self):
         hist = self.get_batch_history(breadth_proxies, period="60d")
         if hist is not None and not hist.empty:
             above = 0
-            for col in hist.columns:
+
+            # Find close columns to avoid analyzing Volume/Open/High/Low
+            if isinstance(hist.columns, __import__("pandas").MultiIndex):
+                close_cols = [c for c in hist.columns if c[1] == "Close" or c[0] == "Close"]
+            else:
+                close_cols = [c for c in hist.columns if "Close" in str(c)]
+
+            for col in close_cols:
                 s = hist[col].dropna()
-                if len(s) >= 50 and s.iloc[-1] > s.rolling(50).mean().iloc[-1]:
+                if len(s) >= 50 and float(s.iloc[-1]) > float(s.rolling(50).mean().iloc[-1]):
                     above += 1
-            if above / max(len(hist.columns), 1) > 0.5:
+
+            if above / max(len(close_cols), 1) > 0.5:
                 votes["BULL"] += 1
             else:
                 votes["BEAR"] += 1
@@ -1030,7 +1038,10 @@ def get_market_regime(self):
         nifty_df = _yf.download("^NSEI", period="1y", progress=False)
         if nifty_df is not None and not nifty_df.empty:
             closes = nifty_df["Close"] if "Close" in nifty_df.columns else nifty_df.iloc[:, 0]
-            if len(closes) >= 200 and closes.iloc[-1] > closes.rolling(200).mean().iloc[-1]:
+            # yfinance returns DataFrame even for a single column 'Close' if it uses MultiIndex
+            if isinstance(closes, __import__("pandas").DataFrame):
+                closes = closes.iloc[:, 0]
+            if len(closes) >= 200 and float(closes.iloc[-1]) > float(closes.rolling(200).mean().iloc[-1]):
                 votes["BULL"] += 1
             else:
                 votes["BEAR"] += 1

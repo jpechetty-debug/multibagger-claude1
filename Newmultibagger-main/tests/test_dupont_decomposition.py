@@ -201,7 +201,7 @@ def test_bonus_not_awarded_for_two_failures_once_total_is_thirteen():
 def test_bonus_still_awarded_for_at_most_one_failure_out_of_thirteen():
     from modules.scoring.ceiling import _apply_checklist_gate
 
-    data = _gate_stock(**{"F_Score": 3})  # exactly one real failure
+    data = _gate_stock(F_Score=3)  # exactly one real failure
     state = _build_factor_state(data, score_sentiment=50.0, scoring_mode="balanced")
     disqualifiers = []
     checklist_pass, checklist_total, base_score, _ = _apply_checklist_gate(
@@ -218,7 +218,7 @@ def test_missing_dupont_data_gate_thresholds_unchanged_from_original_calibration
     # 9/12 disqualify, 11/12 bonus behavior, unaffected by the fix.
     from modules.scoring.ceiling import _apply_checklist_gate
 
-    data = _checklist_stock(**{"F_Score": 3})  # one failure, no Financial_Leverage/ROA%
+    data = _checklist_stock(F_Score=3)  # one failure, no Financial_Leverage/ROA%
     state = _build_factor_state(data, score_sentiment=50.0, scoring_mode="balanced")
     disqualifiers = []
     checklist_pass, checklist_total, base_score, _ = _apply_checklist_gate(

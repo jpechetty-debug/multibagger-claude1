@@ -12,11 +12,20 @@ from datetime import date, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from modules.scoring import calculate_institutional_score  # noqa: E402
+
+pytestmark = pytest.mark.unit
+
+
+@pytest.fixture(autouse=True)
+def _mock_refresh_dispatch(monkeypatch):
+    monkeypatch.setattr("modules.scoring.engine._request_stale_refresh", lambda _symbol: None)
 
 
 def _stock_with_age(days_old: int) -> dict:

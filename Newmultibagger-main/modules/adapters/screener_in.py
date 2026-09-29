@@ -36,7 +36,7 @@ from __future__ import annotations
 import asyncio
 import re
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from core.observability.logger import get_logger
@@ -404,7 +404,17 @@ class ScreenerParser:
                     break
 
         result["Quarter_End"] = latest_quarter
-        result["As_Of_Date"]  = latest_result_date or latest_quarter
+        if latest_result_date:
+            result["As_Of_Date"] = latest_result_date
+        elif latest_quarter:
+            try:
+                q_dt = date.fromisoformat(latest_quarter)
+                lag_days = 60 if q_dt.month == 3 else 45
+                result["As_Of_Date"] = (q_dt + timedelta(days=lag_days)).isoformat()
+            except Exception:
+                result["As_Of_Date"] = latest_quarter
+        else:
+            result["As_Of_Date"] = None
 
         return result
 

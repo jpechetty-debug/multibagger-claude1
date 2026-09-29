@@ -1,6 +1,8 @@
 import sys
 from unittest.mock import MagicMock
 
+import pytest
+
 # Mock out modules that call external APIs
 sys.modules["modules.promoter_intel"] = MagicMock()
 sys.modules["modules.promoter_intel"].calculate_promoter_score.return_value = {
@@ -17,6 +19,7 @@ sys.path.append("d:/Tradeidesa/Multibagger")
 from modules.scoring import calculate_institutional_score  # noqa: E402
 
 
+@pytest.mark.slow
 def test_cliffs():
     print("Verifying Institutional Checklist Spline...")
     base_data = {

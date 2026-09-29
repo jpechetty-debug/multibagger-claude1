@@ -88,7 +88,7 @@ def _clean_symbol(symbol: str) -> str:
     return re.sub(r"\.(NS|BO|BSE)$", "", symbol.strip().upper())
 
 
-def _resolve_issuer_name(client: "NSEClient", symbol: str) -> str | None:
+def _resolve_issuer_name(client: NSEClient, symbol: str) -> str | None:
     """Resolve a trading symbol to NSE's registered company (issuer) name.
 
     `NSEClient.fetch_financials()` requires the issuer's full legal name
@@ -115,7 +115,7 @@ def _resolve_issuer_name(client: "NSEClient", symbol: str) -> str | None:
     return str(name) if name else None
 
 
-def _ttm_pair(filings: list["FilingResult"], attr: str) -> tuple[float, float] | None:
+def _ttm_pair(filings: list[FilingResult], attr: str) -> tuple[float, float] | None:
     """Sum of the most recent 4 quarters' `attr` vs. the prior 4 quarters.
 
     `filings` must already be sorted most-recent-first. Requires all 8
@@ -132,7 +132,7 @@ def _ttm_pair(filings: list["FilingResult"], attr: str) -> tuple[float, float] |
     return recent_4, prior_4
 
 
-def _ttm_growth_pct(filings: list["FilingResult"], attr: str) -> float | None:
+def _ttm_growth_pct(filings: list[FilingResult], attr: str) -> float | None:
     pair = _ttm_pair(filings, attr)
     if pair is None:
         return None
@@ -142,7 +142,7 @@ def _ttm_growth_pct(filings: list["FilingResult"], attr: str) -> float | None:
     return round(((recent_4 - prior_4) / abs(prior_4)) * 100.0, 2)
 
 
-def _ttm_sum(filings: list["FilingResult"], attr: str) -> float | None:
+def _ttm_sum(filings: list[FilingResult], attr: str) -> float | None:
     """Sum of `attr` across the most recent 4 quarters, or None if incomplete."""
     if len(filings) < 4:
         return None
@@ -162,7 +162,7 @@ class NSEXBRLProvider(DataProvider):
     def __init__(self, executor=None):
         super().__init__()
         self.executor = executor
-        self._client: "NSEClient | None" = None
+        self._client: NSEClient | None = None
 
         if not _NSE_XBRL_AVAILABLE:
             self.available = False
@@ -175,7 +175,7 @@ class NSEXBRLProvider(DataProvider):
                 "copy one from a browser session)."
             )
 
-    def _get_client(self) -> "NSEClient":
+    def _get_client(self) -> NSEClient:
         if self._client is None:
             self._client = _NSEClient()
         return self._client
@@ -184,9 +184,7 @@ class NSEXBRLProvider(DataProvider):
         clean = _clean_symbol(symbol)
         client = self._get_client()
 
-        issuer = _resolve_issuer_name(client, clean)
-        if not issuer:
-            raise ValueError(f"NSEXBRL: could not resolve issuer name for {symbol}")
+        issuer = _resolve_issuer_name(client, clean) or clean
 
         filings = client.fetch_financials(clean, issuer, max_filings=NSE_XBRL_MAX_FILINGS)
         if not filings:

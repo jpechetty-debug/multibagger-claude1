@@ -7,5 +7,5 @@ class Portfolio(BaseModel):
     Represents a collection of positions.
     """
     name: str
-    positions: List[Position] = []
+    positions: list[Position] = []
     cash: float = 0.0

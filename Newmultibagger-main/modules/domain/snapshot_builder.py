@@ -14,7 +14,7 @@ class SnapshotBuilder:
     def __init__(self, db_connection):
         self.conn = db_connection
 
-    def build(self, symbol: str, as_of_date: date) -> Optional[CompanySnapshot]:
+    def build(self, symbol: str, as_of_date: date) -> CompanySnapshot | None:
         """
         Construct a CompanySnapshot strictly avoiding lookahead bias.
         """
@@ -22,9 +22,9 @@ class SnapshotBuilder:
         financials = self._fetch_fundamentals(symbol, as_of_date)
         if not financials:
             return None
-            
+
         prices = self._fetch_prices(symbol, as_of_date)
-        
+
         # Placeholder for scoring and feature generation which will be moved here
         # in upcoming modularization.
         features = {}
@@ -50,7 +50,7 @@ class SnapshotBuilder:
             ORDER BY as_of_date DESC 
             LIMIT 1
         """)
-        
+
         try:
             df = pd.read_sql(query, self.conn, params={"symbol": symbol, "as_of_date": as_of_date.isoformat()})
             if not df.empty:

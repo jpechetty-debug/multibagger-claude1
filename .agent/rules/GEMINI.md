@@ -22,7 +22,8 @@ Before implementation, read the relevant agent file, its selected skills, and `.
 Agent activated -> check frontmatter `skills:` -> read each selected `SKILL.md` -> read only the referenced sections needed for the task.
 
 - Do not bulk-read every file in a skill folder.
-- Rule priority: `GEMINI.md` > agent file > `SKILL.md`.
+- Rule priority: `GEMINI.md` > agent file > `.agent/rules/ecc/*` > `SKILL.md`.
+- ECC rules in `.agent/rules/ecc/` (`common/`, `python/`, `react/`) provide specialized conventions for coding standards, FastAPI, and React.
 
 ---
 
@@ -124,9 +125,9 @@ Read `.agent/ARCHITECTURE.md` at session start to understand current agents, ski
 | Project Type | Primary Agent | Skills |
 | ------------ | ------------- | ------ |
 | **MOBILE**: iOS, Android, React Native, Flutter | `mobile-developer` | mobile-design |
-| **WEB**: React, Vite, Next.js | `frontend-specialist` | frontend-design, nextjs-react-expert |
-| **BACKEND**: API, server, DB | `backend-specialist` | api-patterns, database-design |
-| **FINANCIAL DATA**: Shoonya, NSE/BSE, fundamentals | `financial-data-engineer` | python-patterns, api-patterns, database-design |
+| **WEB**: React, Vite, Next.js | `frontend-specialist` | frontend-design, nextjs-react-expert, vite-patterns, react-performance |
+| **BACKEND**: API, server, DB | `backend-specialist` | api-patterns, database-design, fastapi-patterns, redis-patterns, postgres-patterns |
+| **FINANCIAL DATA**: Shoonya, NSE/BSE, fundamentals | `financial-data-engineer` | python-patterns, api-patterns, database-design, llm-trading-agent-security |
 
 Mobile tasks must route to `mobile-developer`, not `frontend-specialist`.
 
@@ -201,4 +202,4 @@ Design rules live in specialist agents:
 - Security: `security-auditor`
 - Debugging: `debugger`
 
-Key skills: `clean-code`, `brainstorming`, `plan-writing`, `intelligent-routing`, `api-patterns`, `database-design`, `python-patterns`, `nextjs-react-expert`, `frontend-design`.
+Key skills: `clean-code`, `brainstorming`, `plan-writing`, `intelligent-routing`, `api-patterns`, `database-design`, `python-patterns`, `nextjs-react-expert`, `frontend-design`, `search-first`, `security-review`, `verification-loop`.

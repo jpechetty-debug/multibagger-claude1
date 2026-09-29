@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -16,6 +18,7 @@ def _sample_portfolio():
     ]
 
 
+@pytest.mark.slow
 def test_adversarial_replay_structure():
     replay = run_adversarial_scenario_replay(_sample_portfolio(), base_vix=18.0)
 
@@ -33,6 +36,7 @@ def test_adversarial_replay_structure():
         assert "estimated_drawdown_pct" in scenario
 
 
+@pytest.mark.slow
 def test_adversarial_replay_worst_case_is_liquidity_freeze():
     replay = run_adversarial_scenario_replay(_sample_portfolio(), base_vix=20.0)
     assert replay["worst_case"]["name"] == "Liquidity Freeze"

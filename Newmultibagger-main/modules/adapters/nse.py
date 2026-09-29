@@ -102,9 +102,16 @@ class PNSEAProvider(DataProvider):
             raise ImportError("PNSEA not available")
         loop = asyncio.get_running_loop()
         nse_client = await loop.run_in_executor(self.executor, self._get_nse_client)
-        raw = await loop.run_in_executor(
-            self.executor, lambda: nse_client.equity.info(symbol.replace(".NS", ""))
-        )
+        try:
+            raw = await loop.run_in_executor(
+                self.executor, lambda: nse_client.equity.info(symbol.replace(".NS", ""))
+            )
+        except (ValueError, TypeError, AttributeError) as e:
+            logger.warning(f"[{symbol}] PNSEA returned invalid response: {e}")
+            return None
+        if raw is None or not isinstance(raw, dict):
+            logger.warning(f"[{symbol}] PNSEA returned empty/non-dict response")
+            return None
         pledged = await _run_executor_safe(
             loop,
             self.executor,

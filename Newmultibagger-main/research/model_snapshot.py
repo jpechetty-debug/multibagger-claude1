@@ -23,7 +23,7 @@ class ModelSnapshotManager:
     def __init__(self):
         self.snapshot_dir = SNAPSHOT_DIR
         self.snapshot_dir.mkdir(parents=True, exist_ok=True)
-        
+
     def _get_git_hash(self) -> str:
         try:
             result = subprocess.run(
@@ -38,11 +38,11 @@ class ModelSnapshotManager:
             logger.warning(f"Failed to get git hash: {e}")
             return "unknown_hash"
 
-    def create_snapshot(self, 
-                        run_id: str, 
-                        model_path: str, 
-                        features: List[str], 
-                        hyperparameters: Dict[str, Any],
+    def create_snapshot(self,
+                        run_id: str,
+                        model_path: str,
+                        features: list[str],
+                        hyperparameters: dict[str, Any],
                         training_window: str,
                         holdout_window: str) -> str:
         """
@@ -50,7 +50,7 @@ class ModelSnapshotManager:
         """
         run_snapshot_dir = self.snapshot_dir / run_id
         run_snapshot_dir.mkdir(exist_ok=True)
-        
+
         # 1. Copy model file
         model_src = Path(model_path)
         if model_src.exists():
@@ -70,9 +70,9 @@ class ModelSnapshotManager:
             "features": features,
             "model_file": str(model_dest.name) if model_dest else None
         }
-        
+
         meta_path = run_snapshot_dir / "snapshot_meta.json"
         meta_path.write_text(json.dumps(snapshot_meta, indent=4))
-        
+
         logger.info(f"Created model snapshot for run {run_id}")
         return str(run_snapshot_dir)

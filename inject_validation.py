@@ -1,10 +1,10 @@
 import re
 
-with open('Newmultibagger-main/app_routes/stocks.py', 'r', encoding='utf-8') as f:
+with open('Newmultibagger-main/app_routes/stocks.py', encoding='utf-8') as f:
     content = f.read()
 
 # Add validation logic
-validation_code = '''
+validation_code = r'''
 import re
 
 _SYMBOL_RE = re.compile(r"^[A-Z0-9&]{1,20}(\.(NS|BO|BSE))?$", re.IGNORECASE)

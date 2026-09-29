@@ -95,7 +95,7 @@ movers_cache_lock = DistributedAsyncLock("movers_cache")
 def _cache_is_fresh(cache_obj: Any, ttl_seconds: int) -> bool:
     if isinstance(cache_obj, MemoryCacheProxy):
         return cache_obj.is_fresh(ttl_override=ttl_seconds)
-    
+
     data = _memory_store.get(str(cache_obj))
     if not data or not isinstance(data, dict):
         return False
@@ -141,12 +141,12 @@ def cached(ttl: int | None = None, key_prefix: str = "fn"):
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs):
                 cache_key = _generate_cache_key(func, key_prefix, args, kwargs)
-                
+
                 data = _memory_store.get(cache_key)
                 ttl_val = ttl if ttl is not None else DEFAULT_TTL
                 if data and isinstance(data, dict) and (time.time() - data.get("timestamp", 0) <= ttl_val):
                     return data.get("payload")
-                    
+
                 result = await func(*args, **kwargs)
                 _memory_store[cache_key] = {"payload": result, "timestamp": time.time()}
                 return result
@@ -155,12 +155,12 @@ def cached(ttl: int | None = None, key_prefix: str = "fn"):
             @functools.wraps(func)
             def sync_wrapper(*args, **kwargs):
                 cache_key = _generate_cache_key(func, key_prefix, args, kwargs)
-                
+
                 data = _memory_store.get(cache_key)
                 ttl_val = ttl if ttl is not None else DEFAULT_TTL
                 if data and isinstance(data, dict) and (time.time() - data.get("timestamp", 0) <= ttl_val):
                     return data.get("payload")
-                    
+
                 result = func(*args, **kwargs)
                 _memory_store[cache_key] = {"payload": result, "timestamp": time.time()}
                 return result

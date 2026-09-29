@@ -47,7 +47,7 @@ What are the normalized earnings across a full cycle, and what is the current va
 What signals a turn in the cycle that would force an exit?
 """
 
-TEMPLATES: Dict[str, str] = {
+TEMPLATES: dict[str, str] = {
     "Compounder": COMPOUNDER_TEMPLATE,
     "Turnaround": TURNAROUND_TEMPLATE,
     "Cyclical": CYCLICAL_TEMPLATE

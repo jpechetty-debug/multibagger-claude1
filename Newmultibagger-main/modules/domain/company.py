@@ -15,12 +15,12 @@ class CompanySnapshot(BaseModel):
 
     symbol: str = Field(..., min_length=1, description="The ticker symbol of the company.")
     as_of_date: date = Field(..., description="The exact date this snapshot represents. All data must be known as of this date.")
-    
+
     # Raw Data Modules
     financials: dict[str, Any] = Field(default_factory=dict, description="Financial statements available exactly on or before as_of_date.")
     prices: dict[str, Any] = Field(default_factory=dict, description="Price history available on or before as_of_date.")
     features: dict[str, Any] = Field(default_factory=dict, description="Pre-computed technical/fundamental features as of as_of_date.")
-    
+
     # Computed Scores
     scores: dict[str, float] = Field(default_factory=dict, description="Domain scores (e.g. Quality, Momentum, Compounder) calculated for this snapshot.")
 

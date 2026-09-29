@@ -6,3 +6,23 @@ exclude = [
     "tools",
     "Newmultibagger-main/scratch",
 ]
+
+[lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "PIE", "T20", "SIM"]
+ignore = [
+    "E501",
+    "B008",
+    "T201",
+    "B904",
+    "E722",
+    "B015",
+    "E741",
+    "F841",
+    "SIM",
+    "N8",
+    "I001",
+    "F401",
+    "UP007",
+    "B024",
+    "E402",
+]

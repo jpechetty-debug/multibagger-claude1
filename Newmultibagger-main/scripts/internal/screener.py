@@ -727,6 +727,171 @@ def get_benchmark_return():
     return BENCHMARK_6M_RETURN
 
 
+async def _fetch_stock_inputs(ticker_symbol, dm, include_quarterly):
+    """Fetch provider data and normalize it into the screener's input contract."""
+    manager = dm if dm else get_data_manager()
+    raw = await manager.async_fetch_fundamentals(ticker_symbol)
+    if not isinstance(raw, dict):
+        return {"error": {"Symbol": ticker_symbol, "_fetch_error": "fetch_failed", "Data_Source": "unknown"}}
+    if raw.get("_fetch_error") or raw.get("error"):
+        reason = raw.get("_fetch_error") or raw.get("error") or "fetch_failed"
+        return {"error": {"Symbol": ticker_symbol, "_fetch_error": reason, "Data_Source": str(raw.get("source", "unknown"))}}
+
+    info = raw.get("info", {}) if isinstance(raw.get("info", {}), dict) else {}
+    ticker = TickerShim(
+        financials=raw.get("financials", pd.DataFrame()),
+        balance_sheet=raw.get("balance_sheet", pd.DataFrame()),
+        cashflow=raw.get("cash_flow", pd.DataFrame()),
+    )
+    info_backfill = {}
+    if include_quarterly or _needs_info_backfill(info):
+        try:
+            import yfinance as _yf
+
+            source_ticker = _yf.Ticker(ticker_symbol)
+            _ = source_ticker.info
+            ticker.quarterly_financials = (
+                getattr(source_ticker, "quarterly_financials", pd.DataFrame())
+                if include_quarterly else pd.DataFrame()
+            )
+            _backfill_financial_statements(ticker, source_ticker)
+            if _needs_info_backfill(info):
+                candidate_info = getattr(source_ticker, "info", {})
+                if isinstance(candidate_info, dict):
+                    info_backfill = candidate_info
+        except Exception:
+            ticker.quarterly_financials = pd.DataFrame()
+    else:
+        ticker.quarterly_financials = pd.DataFrame()
+
+    try:
+        hist = await manager.async_fetch_history(ticker_symbol, period="1y")
+    except Exception as exc:
+        from modules.data_service import logger as ds_logger
+
+        ds_logger.warning(f"History fetch failed for {ticker_symbol}: {exc}")
+        hist = pd.DataFrame()
+
+    return {
+        "raw": raw,
+        "info": _merge_info(info, info_backfill),
+        "ticker": ticker,
+        "hist": hist,
+        "data_source": str(raw.get("source", "unknown")),
+    }
+
+
+def _calculate_technical_snapshot(ticker_symbol, hist, data_source):
+    """Validate price history and calculate all technical/risk signals."""
+    if hist.empty or "Close" not in hist.columns:
+        return {"error": {"Symbol": ticker_symbol, "_fetch_error": "no_price_history", "Data_Source": data_source}}
+
+    history_bars = int(len(hist))
+    try:
+        last_price_date = pd.to_datetime(hist.index[-1]).to_pydatetime().date()
+        today_ist = datetime.now(ZoneInfo("Asia/Kolkata")).date()
+        price_age_days = max((today_ist - last_price_date).days, 0)
+        last_price_date_iso = last_price_date.isoformat()
+    except Exception:
+        price_age_days = None
+        last_price_date_iso = None
+
+    current_price = hist["Close"].iloc[-1]
+    if not _is_finite_number(current_price) or float(current_price) <= 0:
+        return {"error": {
+            "Symbol": ticker_symbol,
+            "_fetch_error": "invalid_price_in_history",
+            "Data_Source": data_source,
+            "History_Bars_1Y": history_bars,
+            "Last_Price_Date": last_price_date_iso,
+            "Price_Age_Days": price_age_days,
+        }}
+
+    rs_rating = 0
+    try:
+        if len(hist) > 126:
+            price_6m_ago = hist["Close"].iloc[-126]
+            stock_6m_ret = ((current_price - price_6m_ago) / price_6m_ago) * 100
+            nifty_6m_ret = get_benchmark_return()
+            if nifty_6m_ret != 0 and price_6m_ago != 0:
+                rs_rating = round(stock_6m_ret / nifty_6m_ret, 2)
+            else:
+                rs_rating = 1.0 if stock_6m_ret > 0 else 0.0
+    except Exception:
+        rs_rating = 0
+
+    dma_200 = hist["Close"].tail(200).mean() if len(hist) >= 200 else hist["Close"].mean()
+    dma_50 = hist["Close"].tail(50).mean() if len(hist) >= 50 else hist["Close"].mean()
+    rsi_current = calculate_rsi(hist["Close"]).iloc[-1]
+    mom_features = calculate_momentum_features(hist)
+    macd, signal, _ = calculate_macd(hist["Close"])
+    macd_bullish = macd.iloc[-1] > signal.iloc[-1]
+    calculate_bollinger_bands(hist["Close"])
+    atr_current = calculate_atr(hist["High"], hist["Low"], hist["Close"]).iloc[-1]
+    stop_loss, max_qty = calculate_risk_params(current_price, atr_current, capital=100000, risk_per_trade=0.02)
+    if macd_bullish and rsi_current > 50:
+        tech_signal = "Bullish"
+    elif not macd_bullish and rsi_current < 50:
+        tech_signal = "Bearish"
+    else:
+        tech_signal = "Neutral"
+
+    return {
+        "is_mock_history": hist.attrs.get("is_mock", False) if hasattr(hist, "attrs") else False,
+        "history_bars": history_bars,
+        "last_price_date_iso": last_price_date_iso,
+        "price_age_days": price_age_days,
+        "current_price": current_price,
+        "rs_rating": rs_rating,
+        "dma_200": dma_200,
+        "dma_50": dma_50,
+        "rsi_current": rsi_current,
+        "mom_features": mom_features,
+        "macd_bullish": macd_bullish,
+        "atr_current": atr_current,
+        "stop_loss": stop_loss,
+        "max_qty": max_qty,
+        "tech_signal": tech_signal,
+    }
+
+
+def _finalize_stock_payload(ticker_symbol, final_data, raw, estimates):
+    """Apply classification, analyst overrides, and schema normalization."""
+    tier_name, tier_reason = classify_multibagger_tier(final_data)
+    final_data["Multibagger_Tier"] = tier_name
+    final_data["Tier_Label"] = get_tier_label(final_data)
+    final_data["Tier_Reason"] = tier_reason
+
+    from modules.quarterly_results import _margin_expansion_slope
+
+    opm_current = _finite_or_default(final_data.get("Profit_Margin%"), 0.0)
+    avg_opm = _finite_or_default(raw.get("Avg_OPM_5Y%"), opm_current)
+    if opm_current and avg_opm and opm_current != avg_opm:
+        margin_points = [
+            {"margin": avg_opm},
+            {"margin": (avg_opm + opm_current) / 2},
+            {"margin": opm_current},
+        ]
+        final_data["Margin_Expansion_Slope"] = _margin_expansion_slope(margin_points)
+    else:
+        final_data["Margin_Expansion_Slope"] = 0.0
+    final_data["Earnings_Velocity_Positive"] = final_data["Margin_Expansion_Slope"] > 0
+
+    fundamentals_override = estimates.get("fundamentals_override") if estimates else None
+    if fundamentals_override:
+        final_data.update({key: value for key, value in fundamentals_override.items() if value is not None})
+
+    try:
+        clean_data = StockDataPayload.clean_dict(final_data)
+        payload = StockDataPayload(**clean_data)
+        final_data.update(payload.model_dump(by_alias=True))
+    except Exception as exc:
+        import logging
+
+        logging.error(f"Pydantic Validation Error for {ticker_symbol}: {exc}")
+    return final_data
+
+
 async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
     """
     Fetches comprehensive fundamental and technical data for a stock.
@@ -739,155 +904,33 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         debt_equity = 0
         eps_growth = 0
 
-        # --- Fetch data via DataManager (PNSEA -> nsepython -> yf fallback) ---
-        _dm = dm if dm else get_data_manager()
-        raw = await _dm.async_fetch_fundamentals(ticker_symbol)
+        inputs = await _fetch_stock_inputs(ticker_symbol, dm, include_quarterly)
+        if inputs.get("error"):
+            return inputs["error"]
+        raw = inputs["raw"]
+        info = inputs["info"]
+        ticker = inputs["ticker"]
+        hist = inputs["hist"]
+        data_source = inputs["data_source"]
 
-        # Critical Hardening: Check for error payloads or skeletal data immediately.
-        if not isinstance(raw, dict):
-            return {
-                "Symbol": ticker_symbol,
-                "_fetch_error": "fetch_failed",
-                "Data_Source": "unknown",
-            }
-        if raw.get("_fetch_error") or raw.get("error"):
-            reason = raw.get("_fetch_error") or raw.get("error") or "fetch_failed"
-            return {
-                "Symbol": ticker_symbol,
-                "_fetch_error": reason,
-                "Data_Source": str(raw.get("source", "unknown")),
-            }
-
-        info = raw.get("info", {}) if isinstance(raw.get("info", {}), dict) else {}
-        data_source = str(raw.get("source", "unknown"))
-
-        # Build a TickerShim so fundamentals.py functions keep working unchanged
-        ticker = TickerShim(
-            financials=raw.get("financials", pd.DataFrame()),
-            balance_sheet=raw.get("balance_sheet", pd.DataFrame()),
-            cashflow=raw.get("cash_flow", pd.DataFrame()),
-        )
-
-        # Quarterly financials: fetch separately
-        info_backfill = {}
-        if include_quarterly or _needs_info_backfill(info):
-            try:
-                import yfinance as _yf
-
-                _t = _yf.Ticker(ticker_symbol)
-                # Ensure _t is valid by checking info access
-                _ = _t.info
-                if include_quarterly:
-                    ticker.quarterly_financials = getattr(
-                        _t, "quarterly_financials", pd.DataFrame()
-                    )
-                else:
-                    ticker.quarterly_financials = pd.DataFrame()
-                _backfill_financial_statements(ticker, _t)
-                if _needs_info_backfill(info):
-                    candidate_info = getattr(_t, "info", {})
-                    if isinstance(candidate_info, dict):
-                        info_backfill = candidate_info
-            except Exception:
-                ticker.quarterly_financials = pd.DataFrame()
-        else:
-            ticker.quarterly_financials = pd.DataFrame()
-        info = _merge_info(info, info_backfill)
-
-        # --- Technicals (Price & Moving Averages) ---
-        try:
-            hist = await _dm.async_fetch_history(ticker_symbol, period="1y")
-        except Exception as e:
-            from modules.data_service import logger as ds_logger
-
-            ds_logger.warning(f"History fetch failed for {ticker_symbol}: {e}")
-            hist = pd.DataFrame()
-
-        is_mock_history = hist.attrs.get("is_mock", False) if hasattr(hist, "attrs") else False
-
-        if hist.empty or "Close" not in hist.columns:
-            return {
-                "Symbol": ticker_symbol,
-                "_fetch_error": "no_price_history",
-                "Data_Source": data_source,
-            }
-
-        history_bars = int(len(hist))
-        try:
-            last_price_ts = pd.to_datetime(hist.index[-1]).to_pydatetime()
-            last_price_date = last_price_ts.date()
-            today_ist = datetime.now(ZoneInfo("Asia/Kolkata")).date()
-            price_age_days = max((today_ist - last_price_date).days, 0)
-            last_price_date_iso = last_price_date.isoformat()
-        except Exception:
-            price_age_days = None
-            last_price_date_iso = None
-
-        current_price = hist["Close"].iloc[-1]
-        if not _is_finite_number(current_price) or float(current_price) <= 0:
-            return {
-                "Symbol": ticker_symbol,
-                "_fetch_error": "invalid_price_in_history",
-                "Data_Source": data_source,
-                "History_Bars_1Y": history_bars,
-                "Last_Price_Date": last_price_date_iso,
-                "Price_Age_Days": price_age_days,
-            }
-
-        # Relative Strength (RS)
-        # Compare 6M Stock Return vs Nifty 6M Return
-        rs_rating = 0
-        try:
-            if len(hist) > 126:
-                price_6m_ago = hist["Close"].iloc[-126]
-                stock_6m_ret = ((current_price - price_6m_ago) / price_6m_ago) * 100
-                nifty_6m_ret = get_benchmark_return()
-
-                # RS Ratio
-                if nifty_6m_ret != 0 and price_6m_ago != 0:
-                    rs_rating = round(stock_6m_ret / nifty_6m_ret, 2)
-                else:
-                    rs_rating = 1.0 if stock_6m_ret > 0 else 0.0  # type: ignore
-            else:
-                rs_rating = 0
-        except Exception:
-            rs_rating = 0
-
-        dma_200 = hist["Close"].tail(200).mean() if len(hist) >= 200 else hist["Close"].mean()
-        dma_50 = hist["Close"].tail(50).mean() if len(hist) >= 50 else hist["Close"].mean()
-
-        rsi_series = calculate_rsi(hist["Close"])
-        rsi_current = rsi_series.iloc[-1]
-
-        # --- Phase 6: Advanced Technicals ---
-        # --- Phase 12: Momentum Ranking Features ---
-        mom_features = calculate_momentum_features(hist)
-
-        # MACD
-        macd, signal, macd_hist = calculate_macd(hist["Close"])
-        macd_val = macd.iloc[-1]
-        signal_val = signal.iloc[-1]
-        macd_bullish = macd_val > signal_val
-
-        # Bollinger Bands
-        bb_upper, bb_mid, bb_lower = calculate_bollinger_bands(hist["Close"])
-        bb_upper.iloc[-1]
-        bb_lower.iloc[-1]
-
-        # --- Phase 9: Risk Management ---
-        atr_series = calculate_atr(hist["High"], hist["Low"], hist["Close"])
-        atr_current = atr_series.iloc[-1]
-        stop_loss, max_qty = calculate_risk_params(
-            current_price, atr_current, capital=100000, risk_per_trade=0.02
-        )  # 2% risk standard
-
-        # Technical Signal
-        if macd_bullish and rsi_current > 50:
-            tech_signal = "Bullish"
-        elif not macd_bullish and rsi_current < 50:
-            tech_signal = "Bearish"
-        else:
-            tech_signal = "Neutral"
+        technicals = _calculate_technical_snapshot(ticker_symbol, hist, data_source)
+        if technicals.get("error"):
+            return technicals["error"]
+        is_mock_history = technicals["is_mock_history"]
+        history_bars = technicals["history_bars"]
+        last_price_date_iso = technicals["last_price_date_iso"]
+        price_age_days = technicals["price_age_days"]
+        current_price = technicals["current_price"]
+        rs_rating = technicals["rs_rating"]
+        dma_200 = technicals["dma_200"]
+        dma_50 = technicals["dma_50"]
+        rsi_current = technicals["rsi_current"]
+        mom_features = technicals["mom_features"]
+        macd_bullish = technicals["macd_bullish"]
+        atr_current = technicals["atr_current"]
+        stop_loss = technicals["stop_loss"]
+        max_qty = technicals["max_qty"]
+        tech_signal = technicals["tech_signal"]
 
         # --- Fundamentals ---
         roe = info.get("returnOnEquity", 0)
@@ -1029,11 +1072,13 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
                 avg_roe_5y = round(roe * 100, 2)
 
         # --- Multibagger Framework: ROCE & Median PAT Growth ---
-        roce = calculate_roce(ticker)
-        median_pat_growth_5y = calculate_median_pat_growth(ticker, years=5)
+        # Pass raw dict (not TickerShim) so fundamentals.py uses pre-computed
+        # provider values instead of the slow yfinance DataFrame branch.
+        roce = calculate_roce(raw)
+        median_pat_growth_5y = calculate_median_pat_growth(raw, years=5)
 
         # --- DuPont ROE Decomposition: distinguish quality ROE from leverage-driven ROE ---
-        dupont = calculate_dupont_decomposition(ticker)
+        dupont = calculate_dupont_decomposition(raw)
 
 
         # --- Sprint 1: Dividend Metrics ---
@@ -1197,6 +1242,16 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             "Market_Cap_Cr": _is_present_metric(market_cap_crore),
         }
 
+        q_end_val = raw.get("Quarter_End")
+        as_of_val = raw.get("As_Of_Date")
+        if as_of_val and q_end_val and str(as_of_val) == str(q_end_val):
+            try:
+                q_dt = date.fromisoformat(str(q_end_val))
+                lag_days = 60 if q_dt.month == 3 else 45
+                as_of_val = (q_dt + timedelta(days=lag_days)).isoformat()
+            except Exception:
+                pass
+
         final_data = {
             "Symbol": ticker_symbol,
             "Price": current_price,
@@ -1204,8 +1259,8 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             "History_Bars_1Y": history_bars,
             "Last_Price_Date": last_price_date_iso,
             "Price_Age_Days": price_age_days,
-            "Quarter_End": raw.get("Quarter_End"),
-            "As_Of_Date": raw.get("As_Of_Date"),
+            "Quarter_End": q_end_val,
+            "As_Of_Date": as_of_val,
             "Avg_Volume_10D": avg_vol_10d,  # Added for Phase 22
             "Sector": sector,
             "Industry": industry,
@@ -1283,44 +1338,7 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             ),
         }
 
-        # --- Phase 3.1 & 3.2: Tier classification + Earnings velocity ---
-        tier_name, tier_reason = classify_multibagger_tier(final_data)
-        final_data["Multibagger_Tier"] = tier_name
-        final_data["Tier_Label"] = get_tier_label(final_data)
-        final_data["Tier_Reason"] = tier_reason
-
-        from modules.quarterly_results import _margin_expansion_slope
-        # Build lightweight margin list from available data
-        opm_current = _finite_or_default(final_data.get("Profit_Margin%"), 0.0)
-        avg_opm = _finite_or_default(raw.get("Avg_OPM_5Y%"), opm_current)
-        # Use available margin proxies for slope (at least current vs avg)
-        if opm_current and avg_opm and opm_current != avg_opm:
-            margin_points = [{"margin": avg_opm}, {"margin": (avg_opm + opm_current) / 2}, {"margin": opm_current}]
-            final_data["Margin_Expansion_Slope"] = _margin_expansion_slope(margin_points)
-        else:
-            final_data["Margin_Expansion_Slope"] = 0.0
-        final_data["Earnings_Velocity_Positive"] = final_data["Margin_Expansion_Slope"] > 0
-
-        # --- V7.1: FUNDAMENTALS OVERRIDE LAYER ---
-        # If the analyst seed provides hard fundamentals, override the dict
-        f_override = m_est.get("fundamentals_override") if m_est else None
-        if f_override:
-            for k, v in f_override.items():
-                if v is not None:
-                    final_data[k] = v
-
-        # --- Pydantic Validation ---
-        try:
-            clean_data = StockDataPayload.clean_dict(final_data)
-            payload = StockDataPayload(**clean_data)
-            validated_dump = payload.model_dump(by_alias=True)
-            final_data.update(validated_dump)
-            return final_data
-        except Exception as e:
-            import logging
-
-            logging.error(f"Pydantic Validation Error for {ticker_symbol}: {e}")
-            return final_data
+        return _finalize_stock_payload(ticker_symbol, final_data, raw, m_est)
 
     except Exception as e:
         return {

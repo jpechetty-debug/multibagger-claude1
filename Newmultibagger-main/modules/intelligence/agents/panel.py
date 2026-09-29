@@ -285,7 +285,7 @@ async def run_agent_panel(
             if cache:
                 _cache_result(cache, cache_key, result)
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             _log.warning(f"Timeout evaluating {symbol}")
             results[symbol] = ConsensusResult()
         except Exception as exc:

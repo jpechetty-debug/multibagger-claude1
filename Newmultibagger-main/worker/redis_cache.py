@@ -41,7 +41,7 @@ class RedisCache:
                 return None
             except Exception as e:
                 logger.warning("redis.get_failed", key=key, error=str(e))
-        
+
         # Memory fallback
         if key in self._memory_store:
             val, expiry = self._memory_store[key]

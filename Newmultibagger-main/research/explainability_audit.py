@@ -32,16 +32,16 @@ def load_latest_dataset() -> pd.DataFrame:
 
 def run_explainability_audit() -> dict:
     logger.info("Starting SHAP explainability audit")
-    
+
     if not os.path.exists(MODEL_PATH):
         logger.error("No trained model found.")
         return {}
-        
+
     # Load model and explainer
     model = joblib.load(MODEL_PATH)
     explainer = shap.TreeExplainer(model)
     expected_value = float(explainer.expected_value)
-    
+
     # 1. Global Audit (Use a sample of recent data to represent global importance)
     # Take last 2 years of data for global context
     global_df = load_evaluation_dataset(start_date="2026-01-01")
@@ -49,14 +49,14 @@ def run_explainability_audit() -> dict:
         # Sample up to 5000 rows for speed
         if len(global_df) > 5000:
             global_df = global_df.sample(5000, random_state=42)
-            
+
         available_features = [f for f in FEATURES if f in global_df.columns]
         X_global = _sanitize_features(global_df[available_features])
         global_shap_values = explainer.shap_values(X_global)
-        
+
         # Mean absolute SHAP values across the sample
         mean_abs_shap = np.abs(global_shap_values).mean(axis=0)
-        global_importance = {feat: float(val) for feat, val in zip(available_features, mean_abs_shap)}
+        global_importance = {feat: float(val) for feat, val in zip(available_features, mean_abs_shap, strict=False)}
         # Sort by importance descending
         global_importance = dict(sorted(global_importance.items(), key=lambda item: item[1], reverse=True))
     else:
@@ -65,42 +65,42 @@ def run_explainability_audit() -> dict:
     # 2. Local Audit (Top 50 from the latest date)
     latest_df = load_latest_dataset()
     local_explanations = {}
-    
+
     if not latest_df.empty:
         available_features = [f for f in FEATURES if f in latest_df.columns]
         X_latest = _sanitize_features(latest_df[available_features])
         latest_df["pred_return"] = model.predict(X_latest)
-        
+
         # Get Top 50
         top50 = latest_df.nlargest(50, "pred_return")
-        
+
         X_top50 = _sanitize_features(top50[available_features])
         top50_shap_values = explainer.shap_values(X_top50)
-        
+
         for i, (_, row) in enumerate(top50.iterrows()):
             symbol = str(row.get("symbol", f"unknown_{i}"))
             score = float(row["pred_return"])
             shap_array = top50_shap_values[i]
-            
+
             # Create a dictionary of features that contributed to the score
-            drivers = {feat: float(val) for feat, val in zip(available_features, shap_array)}
+            drivers = {feat: float(val) for feat, val in zip(available_features, shap_array, strict=False)}
             # Sort drivers by absolute impact descending to highlight the biggest movers
             drivers = dict(sorted(drivers.items(), key=lambda item: abs(item[1]), reverse=True))
-            
+
             local_explanations[symbol] = {
                 "score": score,
                 "drivers": drivers
             }
-            
+
     metrics = {
         "global_importance": global_importance,
         "local_explanations": local_explanations,
         "base_value": expected_value
     }
-    
+
     # 90% of scores explainable by SHAP threshold check (rough proxy: does global_importance have items)
     passed = len(global_importance) > 0
-    
+
     registry = ValidationRegistry()
     run_id = registry.register_run(
         model_version="xgboost_meta_v1",
@@ -109,7 +109,7 @@ def run_explainability_audit() -> dict:
         feature_set="extended_features",
         hyperparameters={}
     )
-    
+
     res = ValidationResult(
         run_id=run_id,
         model_version="xgboost_meta_v1",
@@ -117,11 +117,11 @@ def run_explainability_audit() -> dict:
         passed=passed,
         metrics=metrics
     )
-    
+
     out_file = VALIDATION_DIR / "shap.json"
     out_file.parent.mkdir(exist_ok=True)
     out_file.write_text(json.dumps(res.to_dict(), indent=4))
-    
+
     logger.info("Explainability audit completed. Saved to validation/shap.json")
     return res.to_dict()
 

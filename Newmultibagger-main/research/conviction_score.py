@@ -22,7 +22,7 @@ class ConvictionEngine:
     """
 
     @staticmethod
-    def calculate(ticker: str) -> Optional[ConvictionScorecard]:
+    def calculate(ticker: str) -> ConvictionScorecard | None:
         try:
             with next(get_session()) as session:
                 stock = session.query(Multibagger).filter_by(symbol=ticker).first()

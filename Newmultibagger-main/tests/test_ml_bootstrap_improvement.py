@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import pytest
 
+pytestmark = [pytest.mark.ml, pytest.mark.slow, pytest.mark.timeout(120)]
+
 pytest.importorskip("optuna")
 pytest.importorskip("shap")
 pytest.importorskip("xgboost")

@@ -9,20 +9,19 @@ class LLMProvider(ABC):
     Abstract base class for all LLM interactions.
     This keeps the Sovereign Terminal model-agnostic.
     """
-    
+
     @abstractmethod
     def generate(self, system_prompt: str, user_prompt: str, **kwargs) -> str:
         """
         Generate a response given a system and user prompt.
         """
-        pass
 
 
 class MockProvider(LLMProvider):
     """
     A mock provider for Phase 1 or testing environments where an LLM is not available.
     """
-    
+
     def generate(self, system_prompt: str, user_prompt: str, **kwargs) -> str:
         _log.info("MockProvider: generate called")
         return f"[MOCK GENERATED TEXT]\nSystem Prompt: {system_prompt[:50]}...\nUser Prompt: {user_prompt[:50]}..."

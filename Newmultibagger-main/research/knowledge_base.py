@@ -16,7 +16,7 @@ class KnowledgeEntry(BaseModel):
     source_type: str  # e.g., 'Concall', 'Annual Report', 'Management Commentary', 'Scuttlebutt'
     source_date: date
     summary: str
-    tags: Optional[str] = None
+    tags: str | None = None
 
 
 class KnowledgeBaseManager:
@@ -48,13 +48,13 @@ class KnowledgeBaseManager:
         try:
             ticker_dir = ARTIFACTS_DIR / entry.ticker
             ticker_dir.mkdir(parents=True, exist_ok=True)
-            
+
             # Format filename to be safe and unique enough
             safe_type = entry.source_type.replace(" ", "_").lower()
             date_str = entry.source_date.strftime("%Y%m%d")
             filename = f"kb_{date_str}_{safe_type}.md"
             file_path = ticker_dir / filename
-            
+
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(full_markdown_content)
             _log.info(f"Saved full markdown knowledge entry for {entry.ticker} to {file_path}")
@@ -65,7 +65,7 @@ class KnowledgeBaseManager:
         return True
 
     @staticmethod
-    def get_entries(ticker: str) -> List[dict]:
+    def get_entries(ticker: str) -> list[dict]:
         """
         Retrieves the structured knowledge entries from SQLite for a ticker.
         """

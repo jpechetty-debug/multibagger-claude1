@@ -69,6 +69,6 @@ class MemoGenerator:
         llm = get_llm_provider("mock") # Defaulting to mock for now
         system_prompt = "You are a hedge fund analyst. Write a highly institutional investment memo based on these facts and the provided template."
         user_prompt = f"Facts: {json.dumps(facts)}\n\nTemplate: {template}"
-        
+
         narrative = llm.generate(system_prompt, user_prompt)
         return narrative

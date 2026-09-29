@@ -12,8 +12,8 @@ class JournalEntry(BaseModel):
     ticker: str
     entry_date: date
     observation: str
-    decision: Optional[str] = None
-    outcome: Optional[str] = None
+    decision: str | None = None
+    outcome: str | None = None
 
 
 class JournalManager:
@@ -41,7 +41,7 @@ class JournalManager:
             return False
 
     @staticmethod
-    def get_entries(ticker: str) -> List[dict]:
+    def get_entries(ticker: str) -> list[dict]:
         """
         Retrieves the journal entries for a ticker.
         """

@@ -7,7 +7,7 @@ Stored here temporarily; will be migrated to SQLite.
 
 from typing import Dict, Any
 
-COMPOUNDERS: Dict[str, Dict[str, Any]] = {
+COMPOUNDERS: dict[str, dict[str, Any]] = {
     "BAJFINANCE": {
         "start_date": "2014-01-01",
         "compounder_window": "2014-2021",
@@ -52,14 +52,14 @@ COMPOUNDERS: Dict[str, Dict[str, Any]] = {
     }
 }
 
-def get_compounders() -> Dict[str, Dict[str, Any]]:
+def get_compounders() -> dict[str, dict[str, Any]]:
     return COMPOUNDERS
 
 def is_compounder_in_window(ticker: str, check_date: str) -> bool:
     """Check if the ticker is considered a compounder on the given date (YYYY-MM-DD format)."""
     if ticker not in COMPOUNDERS:
         return False
-        
+
     c = COMPOUNDERS[ticker]
     # We parse out the year from check_date and compare against compounder_window
     try:

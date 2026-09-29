@@ -79,7 +79,7 @@ class KnowledgePayload(BaseModel):
     source_type: str
     source_date: date
     summary: str
-    tags: Optional[str] = None
+    tags: str | None = None
     full_markdown: str
 
 
@@ -115,7 +115,7 @@ def run_review(ticker: str):
 # --- Watchlist ---
 class WatchlistUpdate(BaseModel):
     state: str
-    notes: Optional[str] = None
+    notes: str | None = None
 
 @router.put("/watchlist/{ticker}")
 def update_watchlist(ticker: str, payload: WatchlistUpdate):

@@ -1,6 +1,11 @@
 import os
 import sys
 
+if sys.platform == "win32":
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
 # Add current dir to path to import screener
 sys.path.append(os.getcwd())
 import pandas as pd
@@ -18,7 +23,7 @@ def scan_picks():
 
     for symbol in picks:
         print(f"Analyzing {symbol}...")
-        data = screener.get_stock_data(symbol)
+        data = screener.get_stock_data_sync(symbol)
         if data:
             score_data = screener.calculate_institutional_score(data, market_regime=market_regime)
             data["score"] = score_data["total_score"]

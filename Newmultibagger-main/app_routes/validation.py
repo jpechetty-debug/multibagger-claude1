@@ -16,7 +16,7 @@ def _load_json(filename: str) -> dict:
     if not filepath.exists():
         return {}
     try:
-        with open(filepath, "r") as f:
+        with open(filepath) as f:
             return json.load(f)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read {filename}: {str(e)}")

@@ -841,9 +841,11 @@ def parse_elite_data(data):
 
 
 def upsert_to_db(stocks):
-    conn = sqlite3.connect(
-        "runtime/stocks.db" if os.path.exists("runtime/stocks.db") else "stocks.db"
-    )
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    db_path = os.path.join(project_root, "runtime", "stocks.db")
+    if not os.path.exists(db_path):
+        db_path = "runtime/stocks.db" if os.path.exists("runtime/stocks.db") else "stocks.db"
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     count = 0

@@ -1,0 +1,11 @@
+# Generated/runtime content
+**/runtime/claude-mem/
+**/runtime/claude-mem/**
+**/.agent/
+**/.agent/**
+**/backups/
+**/backups/**
+
+# Archived duplicate of the active project
+multibagger-claude1-fixed/
+multibagger-claude1-fixed/**

@@ -13,7 +13,7 @@ class DecisionEntry(BaseModel):
     decision_date: date
     action: str  # BUY, SELL, ADD, TRIM, HOLD
     reason: str
-    expected_cagr: Optional[float] = None
+    expected_cagr: float | None = None
 
 
 class DecisionLogManager:
@@ -41,7 +41,7 @@ class DecisionLogManager:
             return False
 
     @staticmethod
-    def get_decisions(ticker: str = None) -> List[dict]:
+    def get_decisions(ticker: str = None) -> list[dict]:
         """
         Retrieves the decisions, optionally filtered by ticker.
         """

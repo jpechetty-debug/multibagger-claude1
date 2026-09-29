@@ -14,6 +14,8 @@ def safe_float(value: Any, default: float = 0.0) -> float:
     if value is None:
         return default
     try:
+        if isinstance(value, str) and value.startswith("[") and value.endswith("]"):
+            value = value[1:-1]
         v = float(value)
         return v if np.isfinite(v) else default
     except (TypeError, ValueError):

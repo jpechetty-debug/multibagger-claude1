@@ -51,6 +51,20 @@ def _calculate_tiebreak_epsilon(symbol: str) -> float:
     return sym_hash / 100000.0
 
 
+def _request_stale_refresh(symbol: str) -> None:
+    """Best-effort task dispatch kept outside the core scoring calculation."""
+    try:
+        from worker.tasks import refresh_stale_data
+
+        refresh_stale_data.apply_async(
+            args=[symbol],
+            ignore_result=True,
+            retry=False,
+        )
+    except Exception:
+        pass
+
+
 
 
 
@@ -136,11 +150,7 @@ def calculate_institutional_score(
                 data_quality_flags.append("stale_data")
                 _scoring_strategy_override = "STALE_DATA_DEGRADED"
 
-                try:
-                    from worker.tasks import refresh_stale_data
-                    refresh_stale_data.delay(data.get("Symbol", "UNKNOWN"))
-                except Exception:
-                    pass  # Do not block scoring if task dispatch fails
+                _request_stale_refresh(data.get("Symbol", "UNKNOWN"))
             elif age_days > STALE_DATA_WARNING_DAYS:
                 data_quality_flags.append("stale_data")
 

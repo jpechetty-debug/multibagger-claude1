@@ -51,7 +51,7 @@ def test_research_replay_strict_lookahead_boundary(tmp_path, monkeypatch):
 
     # Validate dataframe rows strictly enforce boundary
     assert not df.empty, "Dataframe should return available historical records"
-    
+
     symbols = df["symbol"].tolist()
     assert "AAA.NS" in symbols
     assert "BBB.NS" in symbols

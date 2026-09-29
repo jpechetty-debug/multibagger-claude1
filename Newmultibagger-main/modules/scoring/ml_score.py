@@ -7,34 +7,18 @@ Contains the two-model architecture (Classifier + Regressor) and SHAP integratio
 
 from __future__ import annotations
 
+import json
+import importlib
 import os
 import re
 import warnings
 from dataclasses import dataclass, field
+from datetime import date
 from typing import Any
 
 import joblib
 import numpy as np
 import pandas as pd
-import xgboost as xgb
-import shap
-from shap.explainers import _tree
-
-# --- Monkey-patch for SHAP XGBoost Tree Loader ---
-_original_decode = getattr(_tree, "decode_ubjson_buffer", None)
-if _original_decode:
-    def _patched_decode(fd):
-        jmodel = _original_decode(fd)
-        try:
-            bs = jmodel.get("learner", {}).get("learner_model_param", {}).get("base_score")
-            if isinstance(bs, str) and bs.startswith("["):
-                match = re.search(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", bs)
-                if match:
-                    jmodel["learner"]["learner_model_param"]["base_score"] = match.group(0)
-        except Exception:
-            pass
-        return jmodel
-    _tree.decode_ubjson_buffer = _patched_decode
 
 from modules.feature_factory import (
     compute_features_batch,
@@ -43,6 +27,7 @@ from modules.feature_factory import (
     compute_all_features,
     sanitize_features as _sanitize_extended,
 )
+from modules.data_layer.parquet.feature_store import FeatureStore
 from modules.scoring.utils import (
     safe_float,
     _finite_or_none,
@@ -52,9 +37,54 @@ from modules.scoring.utils import (
 from modules.scoring.walk_forward import (
     HOLDOUT_START,
     HOLDOUT_END,
+    _save_walk_forward_report,
     walk_forward_validate,
     load_walk_forward_report,
 )
+
+_OPTIONAL_MODULES: dict[str, Any] = {}
+
+
+def _load_optional_module(module_name: str, purpose: str):
+    """Import a training-only dependency when its feature is actually used."""
+    if module_name not in _OPTIONAL_MODULES:
+        try:
+            _OPTIONAL_MODULES[module_name] = importlib.import_module(module_name)
+        except ImportError as exc:
+            raise RuntimeError(
+                f"{module_name} is required for {purpose}; install the ML dependencies"
+            ) from exc
+    return _OPTIONAL_MODULES[module_name]
+
+
+def _get_xgboost():
+    return _load_optional_module("xgboost", "model training or inference")
+
+
+def _get_optuna():
+    return _load_optional_module("optuna", "hyperparameter optimization")
+
+
+def _get_shap():
+    shap_module = _load_optional_module("shap", "model explainability")
+    tree_module = importlib.import_module("shap.explainers._tree")
+    original_decode = getattr(tree_module, "decode_ubjson_buffer", None)
+    if original_decode and not getattr(original_decode, "_multibagger_patched", False):
+        def _patched_decode(fd):
+            jmodel = original_decode(fd)
+            try:
+                bs = jmodel.get("learner", {}).get("learner_model_param", {}).get("base_score")
+                if isinstance(bs, str) and bs.startswith("["):
+                    match = re.search(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", bs)
+                    if match:
+                        jmodel["learner"]["learner_model_param"]["base_score"] = match.group(0)
+            except Exception:
+                pass
+            return jmodel
+
+        _patched_decode._multibagger_patched = True
+        tree_module.decode_ubjson_buffer = _patched_decode
+    return shap_module
 
 warnings.filterwarnings("ignore")
 
@@ -147,13 +177,15 @@ def _alias_factors(factors_dict: dict) -> dict:
 
 # --- Model factory ---
 
-def _make_xgb_regressor(params: dict | None = None, **overrides) -> xgb.XGBRegressor:
+def _make_xgb_regressor(params: dict | None = None, **overrides):
+    xgb = _get_xgboost()
     merged = {**_XGB_PARAMS, **(params or {}), **overrides}
     merged.pop("eval_metric", None)
     return xgb.XGBRegressor(**merged)
 
 
-def _make_xgb_classifier(**overrides) -> xgb.XGBClassifier:
+def _make_xgb_classifier(**overrides):
+    xgb = _get_xgboost()
     params = {**_XGB_PARAMS, **overrides}
     params["eval_metric"] = "logloss"
     params["objective"] = "binary:logistic"
@@ -180,13 +212,13 @@ def check_shap_dominance(
         else:
             X_eval = X
 
-        explainer = shap.TreeExplainer(model)
+        explainer = _get_shap().TreeExplainer(model)
         shap_values = explainer.shap_values(X_eval)
         abs_mean = np.abs(shap_values).mean(axis=0)
         total = abs_mean.sum()
         if total == 0 or np.isnan(total):
             equal_share = 1.0 / len(X.columns) if len(X.columns) > 0 else 0.0
-            imp = {col: equal_share for col in X.columns}
+            imp = dict.fromkeys(X.columns, equal_share)
             return True, "OK", imp
 
         shares = abs_mean / total
@@ -218,7 +250,7 @@ def get_feature_importance() -> dict:
     try:
         model = joblib.load(MODEL_PATH)
         importance = model.feature_importances_
-        return dict(zip(FEATURES, [round(float(v), 4) for v in importance]))
+        return dict(zip(FEATURES, [round(float(v), 4) for v in importance], strict=False))
     except Exception:
         return {}
 
@@ -248,9 +280,6 @@ class PredictionResult:
         }
 
 
-import optuna
-
-
 def optuna_optimize(
     train_df: pd.DataFrame,
     *,
@@ -273,12 +302,13 @@ def optuna_optimize(
     Returns:
         Best hyper-parameter dict (compatible with ``_make_xgb_regressor``).
     """
+    optuna = _get_optuna()
     optuna.logging.set_verbosity(optuna.logging.WARNING)
 
     X = _sanitize_features(train_df[FEATURES])
     y = train_df["forward_return"].values
 
-    def _objective(trial: optuna.Trial) -> float:
+    def _objective(trial: Any) -> float:
         params = {
             "n_estimators":     trial.suggest_int("n_estimators",     **_OPTUNA_SEARCH_SPACE["n_estimators"]),
             "learning_rate":    trial.suggest_float("learning_rate",  **_OPTUNA_SEARCH_SPACE["learning_rate"]),
@@ -348,9 +378,6 @@ def optuna_optimize(
 
 
 # --- Training Pipeline ---
-from datetime import date
-from modules.data_layer.parquet.feature_store import FeatureStore
-from modules.scoring.walk_forward import walk_forward_validate, _save_walk_forward_report
 
 def _build_training_frame(df: pd.DataFrame) -> pd.DataFrame:
     from modules.target_engineering import build_training_targets
@@ -369,18 +396,18 @@ def train_hybrid_model() -> bool:
         start_date = date(2000, 1, 1)
         end_date = date.today()
         store = FeatureStore()
-        
+
         # We need to list all symbols to get the dataset.
         # This will get the list of symbols from the lake.
         symbols = store.lake.query_all("daily").select("symbol").unique().collect()["symbol"].to_list()
-        
+
         raw_df = store.generate_training_dataset(symbols, start_date, end_date).to_pandas()
-        
+
         # We need price to calculate returns, score to bootstrap
         if raw_df.empty:
             _log.warning("FeatureStore returned empty dataset")
             return False
-            
+
     except Exception as exc:
         _log.warning("Could not load PIT data from FeatureStore", error=str(exc))
         return False
@@ -408,8 +435,6 @@ def train_hybrid_model() -> bool:
 
     # 4. Walk-forward validation
     validation = walk_forward_validate(train_only)
-    _save_walk_forward_report(validation)
-
     if validation.get("status") == "OK":
         _log.info(
             "Walk-forward complete",
@@ -460,16 +485,18 @@ def train_hybrid_model() -> bool:
         if not passes:
             _log.warning("Production model SHAP dominance exceeds threshold", top_feature=top_feat, reason=reason)
     except Exception as exc:
+        shap_dominance = {"checked": False, "error": str(exc)}
         _log.warning("SHAP dominance check failed", error=str(exc))
+
+    validation["shap_dominance"] = shap_dominance
+    _save_walk_forward_report(validation)
 
     # Cache SHAP expected value
     try:
-        explainer = shap.TreeExplainer(regressor)
+        explainer = _get_shap().TreeExplainer(regressor)
         ev = float(explainer.expected_value)
         os.makedirs(os.path.dirname(SHAP_CACHE_PATH), exist_ok=True)
         with open(SHAP_CACHE_PATH, "w") as fh:
-            import json
-            from modules.scoring.walk_forward import _save_walk_forward_report
             json.dump({"expected_value": ev, "bootstrap": False}, fh)
     except Exception as exc:
         _log.warning("Could not cache SHAP expected value", error=str(exc))
@@ -631,7 +658,7 @@ def bootstrap_synthetic_model() -> bool:
 
     # Cache SHAP expected value
     try:
-        explainer = shap.TreeExplainer(model)
+        explainer = _get_shap().TreeExplainer(model)
         ev = float(explainer.expected_value)
         os.makedirs(os.path.dirname(SHAP_CACHE_PATH), exist_ok=True)
         with open(SHAP_CACHE_PATH, "w") as fh:
@@ -656,14 +683,6 @@ def bootstrap_synthetic_model() -> bool:
 # Main training entry-point
 # ---------------------------------------------------------------------------
 
-
-def safe_float(val) -> float:
-    try:
-        if isinstance(val, str) and val.startswith("[") and val.endswith("]"):
-            val = val[1:-1]
-        return float(val)
-    except (ValueError, TypeError):
-        return 0.0
 
 def predict_and_explain(
     factors_dict: dict,
@@ -690,7 +709,7 @@ def predict_and_explain(
         return _FALLBACK
 
     try:
-        regressor: xgb.XGBRegressor = joblib.load(MODEL_PATH)
+        regressor = joblib.load(MODEL_PATH)
 
         mapped = _alias_factors(factors_dict)
         X_pred = pd.DataFrame(
@@ -721,7 +740,7 @@ def predict_and_explain(
         classifier_prob = None
         if os.path.exists(CLASSIFIER_PATH):
             try:
-                classifier: xgb.XGBClassifier = joblib.load(CLASSIFIER_PATH)
+                classifier = joblib.load(CLASSIFIER_PATH)
                 proba = classifier.predict_proba(X_pred)[0]
                 classifier_prob = safe_float(proba[1]) * 100.0 if len(proba) > 1 else None
             except Exception:
@@ -740,7 +759,7 @@ def predict_and_explain(
             return _FALLBACK
 
         # SHAP from regressor
-        explainer = shap.TreeExplainer(regressor)
+        explainer = _get_shap().TreeExplainer(regressor)
         shap_array = explainer.shap_values(X_pred)
         shap_row = shap_array[0]
 
@@ -804,8 +823,8 @@ def batch_predict(
             for s in stocks
         ]
 
-    regressor: xgb.XGBRegressor = joblib.load(MODEL_PATH)
-    explainer = shap.TreeExplainer(regressor)
+    regressor = joblib.load(MODEL_PATH)
+    explainer = _get_shap().TreeExplainer(regressor)
 
     # Load classifier if available
     classifier = None

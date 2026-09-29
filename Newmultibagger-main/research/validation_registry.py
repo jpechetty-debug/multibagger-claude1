@@ -25,21 +25,21 @@ class ValidationRegistry:
         VALIDATION_DIR.mkdir(parents=True, exist_ok=True)
         if not self.file_path.exists():
             self.file_path.write_text(json.dumps({"runs": []}, indent=4))
-            
+
     def _load(self) -> dict:
         try:
             return json.loads(self.file_path.read_text())
         except Exception:
             return {"runs": []}
-            
+
     def _save(self, data: dict):
         self.file_path.write_text(json.dumps(data, indent=4))
-        
-    def register_run(self, 
-                     model_version: str, 
-                     training_window: str, 
-                     holdout_window: str, 
-                     feature_set: str, 
+
+    def register_run(self,
+                     model_version: str,
+                     training_window: str,
+                     holdout_window: str,
+                     feature_set: str,
                      hyperparameters: dict) -> str:
         """
         Register a new validation run and return its unique run_id.
@@ -54,14 +54,14 @@ class ValidationRegistry:
             "feature_set": feature_set,
             "hyperparameters": hyperparameters
         }
-        
+
         data = self._load()
         data["runs"].append(run_data)
         self._save(data)
         logger.info(f"Registered new validation run: {run_id}")
         return run_id
-        
-    def get_run(self, run_id: str) -> Optional[dict]:
+
+    def get_run(self, run_id: str) -> dict | None:
         data = self._load()
         for r in data["runs"]:
             if r["run_id"] == run_id:

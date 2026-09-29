@@ -8,17 +8,31 @@ NOTE: This registry should be updated quarterly based on shareholding patterns.
 """
 
 import warnings
-from datetime import datetime
+import calendar
+from datetime import date
 
-REGISTRY_AS_OF = "2025-Q3"
+REGISTRY_AS_OF = "2026-Q2"
 
-def _check_registry_staleness():
+REGISTRY_SOURCES = {
+    "DOLLY_KHANNA": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=Dolly+Khanna",
+    "ASHISH_KACHOLIA": "https://www.solomoney.in/ashish-kacholia-portfolio/",
+    "VIJAY_KEDIA": "https://money.rediff.com/companies/vijay-kumar-kedia/11051676",
+    "MUKUL_AGRAWAL": "https://trendlyne.com/portfolio/superstar-shareholders/custom/?query=Mukul+Mahavir+Agrawal",
+    "SUNIL_SINGHANIA": "https://money.rediff.com/companies/sunil-singhania/11052153",
+}
+
+
+def _registry_quarter_end(label: str) -> date:
+    year, quarter = label.split("-Q")
+    month = int(quarter) * 3
+    return date(int(year), month, calendar.monthrange(int(year), month)[1])
+
+
+def _check_registry_staleness(today: date | None = None):
     """Emit a runtime warning if the registry is older than 120 days."""
     try:
-        year, quarter = REGISTRY_AS_OF.split("-Q")
-        quarter_month = {1: 1, 2: 4, 3: 7, 4: 10}[int(quarter)]
-        registry_date = datetime(int(year), quarter_month, 1)
-        age_days = (datetime.now() - registry_date).days
+        registry_date = _registry_quarter_end(REGISTRY_AS_OF)
+        age_days = ((today or date.today()) - registry_date).days
         if age_days > 120:
             warnings.warn(
                 f"Super investor registry is {age_days} days old "
@@ -35,67 +49,60 @@ SUPER_INVESTORS = {
     "DOLLY_KHANNA": {
         "style": "Momentum + Value in Smallcaps",
         "holdings": [
-            "CPSEETF.NS",
             "CHENNPETRO.NS",
-            "MANGCHEFER.NS",
-            "ZUARIIND.NS",
-            "UJJIVANSFB.NS",
-            "KCP.NS",
-            "NITINSPIN.NS",
-            "RAIN.NS",
-            "SOMATEX.NS",
-            "TINPLATE.NS",
+            "SAVERA.NS",
+            "PRAKASH.NS",
         ],
     },
     "ASHISH_KACHOLIA": {
         "style": "High Growth Small/Midcaps",
         "holdings": [
-            "GRAVITA.NS",
-            "FSL.NS",
-            "LUMAXIND.NS",
+            "SHAILY.NS",
+            "KMEW.BO",
             "SAFARI.NS",
-            "GARFIBRES.NS",
-            "PCBL.NS",
-            "AMIORG.NS",
-            "YASHO.NS",
-            "ADORWELD.NS",
-            "BRANDCONC.NS",
+            "XPROINDIA.NS",
+            "AEROFLEX.NS",
         ],
     },
     "VIJAY_KEDIA": {
         "style": "Turnaround + Niche Management",
         "holdings": [
-            "TEJASNET.NS",
             "ELECON.NS",
-            "VAIBHAVGBL.NS",
-            "MAHLOG.NS",
+            "SIYSIL.NS",
             "SUDARSCHEM.NS",
+            "MHRIL.NS",
+            "GLOBALVECT.NS",
+            "AFFORDABLE.NS",
+            "WEBELSOLAR.NS",
             "REPRO.NS",
-            "LYKALABS.NS",
         ],
     },
     "MUKUL_AGRAWAL": {
         "style": "Aggressive Growth / Defense / Rail",
         "holdings": [
-            "NEULANDLAB.NS",
-            "ZEELEARN.NS",
-            "PDS.NS",
-            "RAYMOND.NS",
-            "PARAMOUNT.NS",
-            "DWARKESH.NS",
-            "WHEELS.NS",
+            "AJMERA.NS",
+            "J&KBANK.NS",
+            "JKIL.NS",
+            "MONOLITH.NS",
+            "LAXMIINDIA.NS",
+            "ARISINFRA.NS",
         ],
     },
     "SUNIL_SINGHANIA": {
         "style": "Institutional Quality at Fair Price",
         "holdings": [
-            "HINDWAREAP.NS",
-            "MASTEK.NS",
-            "ROUTE.NS",
+            "CARYSIL.NS",
+            "ANUP.NS",
+            "DYNAMATECH.NS",
+            "TIIL.NS",
+            "TTKHLTCARE.NS",
             "IONEXCHANG.NS",
-            "CMSINFO.NS",
-            "TECHNOE.NS",
-            "PIXTRANS.NS",
+            "RUPA.NS",
+            "SIYSIL.NS",
+            "HGINFRA.NS",
+            "MASTEK.NS",
+            "JUBLPHARMA.NS",
+            "SUVEN.NS",
         ],
     },
 }

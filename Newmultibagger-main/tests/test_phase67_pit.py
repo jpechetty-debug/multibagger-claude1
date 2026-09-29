@@ -164,9 +164,9 @@ def test_retroactive_revision_append(tmp_path, monkeypatch):
     """
     from modules.pit_auditor import PITDataStore
     db_path = tmp_path / "pit_store_revisions.db"
-    
+
     store = PITDataStore(db_name=str(db_path))
-    
+
     # Original filing on May 15
     store.insert_record(
         symbol="AAA.NS",
@@ -176,7 +176,7 @@ def test_retroactive_revision_append(tmp_path, monkeypatch):
         as_of_date="2026-05-15",
         source="vendor"
     )
-    
+
     # Restated filing on June 10
     store.insert_record(
         symbol="AAA.NS",
@@ -191,7 +191,7 @@ def test_retroactive_revision_append(tmp_path, monkeypatch):
     conn = sqlite3.connect(str(db_path))
     df = pd.read_sql("SELECT * FROM pit_data WHERE symbol='AAA.NS' ORDER BY as_of_date", conn)
     conn.close()
-    
+
     assert len(df) == 2, "Both revisions should be preserved in the store"
     assert df.iloc[0]["value"] == 100.0
     assert df.iloc[1]["value"] == 80.0

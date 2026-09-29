@@ -5,10 +5,10 @@ Centrally defines market regimes used in validation and scoring.
 Provides logic to classify a given date or period into a specific regime.
 """
 
-from enum import Enum
+from enum import StrEnum
 from typing import Dict, Any
 
-class MarketRegime(str, Enum):
+class MarketRegime(StrEnum):
     BULL = "BULL"
     BEAR = "BEAR"
     RANGE = "RANGE"
