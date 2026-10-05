@@ -1,58 +1,24 @@
 ## Done
-- **AUDIT LEDGER NOTE (2026-07-22):** (1) [OPEN] Identified dangerous schema drift between Alembic `db/models.py` and live SQLite schema. `db/repository.py::_ensure_column()` has been silently adding active columns (e.g., `revenue_cagr_3y`, `piotroski_score`) at runtime that do not exist in the SQLAlchemy models. Future Alembic autogenerates will destructively attempt to `DROP` these columns. Backported `ApiKey` model to `db/models.py`, but broader column drift remains open. Action required: Either backport all remaining runtime columns to `models.py` to sync Alembic, or officially deprecate Alembic autogenerate and treat `_ensure_column()` as the sole source of schema truth. (2) [RESOLVED] Resolved clean-slate test suite failures on fresh clones: added `jugaad-data` to `requirements.txt`, added `ApiKey` model and `init_db()` bootstrapping to `main.py::lifespan()`, and updated `tests/test_api.py` to use a `TestClient` fixture with context manager execution (enabling lifespan schema init across all test runs). Full suite passing: 641/641.
-- Standardized scoring engine boundary key normalization via `normalize_data_keys`.
-- Added unit and integration tests for key normalization in [test_normalize_data_keys.py](file:///d:/Tradeidesa/Multibagger-claude/Newmultibagger-main/tests/test_normalize_data_keys.py).
-- Fixed `SovereignLogger`'s `critical` method and formatting argument signature compatibility.
-- Fixed `asyncpg` create_pool mock in repository tests.
-- Fixed `rejected_trades.csv` path verification in blackbox tests.
-- Ignored third-party `shap` deprecation warnings in `pytest.ini`.
-- Updated Graphify knowledge graph (`graphify-out/`).
-- Started FastAPI backend server on port 9005.
-- Started React/Vite frontend development server on port 3000.
-- Resolved a compatibility issue with `vectorbt` by downgrading `plotly` to version `5.24.1` (below `6.0.0`) in the virtual environment.
-- Ran the entire test suite (`pytest -m "not live"`): all 226 tests passed successfully.
-- Resolved `/api/stocks` timeout issue by optimizing DuckDB connection initialization in `db/db_core.py` (avoiding redundant network-checking `INSTALL sqlite` calls and doing direct `LOAD sqlite` instead).
-  - First-time backend load time for `/api/stocks` reduced from ~34 seconds to under 3 seconds.
-- Resolved path resolution bugs in `db_utils.py`, `connections.py`, and `correlation.py` where nested modules was causing database calls to target an empty sqlite file in `modules/runtime/stocks.db` instead of the correct database in `runtime/stocks.db`.
-  - The System Data Intelligence pane now successfully loads and displays snapshot age (10D), data quality (100%), and universe breakdown counts (1402 expired).
-- Re-added sync `fetch_fundamentals` to `DataManager` in `data_service.py` to fix price/fundamentals analysis endpoint regressions.
-- Restored `StockDataPayload` schema policy to ignore extra fields, fixing validation test regressions.
-- Successfully executed simulated universe recan and institutional analysis pipeline (Backtest Picks, Alpha Attribution, Liquidity Stress Test, Walk-Forward Validation).
-- Passed the Antigravity Master Checklist (`checklist.py`) with 100% green status.
-- Implemented multi-worker WebSocket safety using a Redis Pub/Sub backend on the `live:prices` channel (fanning out price ticks to local workers).
-- Added query parameter-based authentication (`?token=...` or `?api_key=...`) to WebSocket endpoints.
-- Replaced direct `sqlite3.connect` calls in the backtest engine with the pooled `get_db_connection` context manager from `db.db_core` supporting named parameters.
-- Fixed metrics allowlist IP-spoofing vulnerability by dropping client-controlled `X-Forwarded-For` header trust and relying only on direct TCP peers or configured proxy IPs.
-- Modified holdout evaluations to support custom annualisation periods via `periods_per_year` parameter.
-- Replaced non-functional reproducibility check with a rigorous test ensuring statelessness and input immutability in feature sanitisation.
-- Adjusted momentum feature leakage checks to flag `NEEDS_REVIEW` only when Spearman correlation `|r| > 0.15`, reducing noise.
-- Documented `upstash-redis` as an optional dependency in `requirements.txt`.
-- Added warning logs for skipped backtest periods and expanded columns to include `portfolio_value` in the QARP backtest report.
-- Removed tracked `graphify-out/` files from Git index.
+Older history: see `PROGRESS_ARCHIVE.md` (read it only when you need past context).
+- 2026-10-06: Research tab API calls fixed (commit `1fa13a4`). ValidationDashboard sent `dev_key_123` (got 403), and ResearchDashboard called a non-existent `/api/v1/research/trust-score` (got 404). Both now go through `lib/api.ts`, and Vite proxies `/research`. Verified with Playwright.
+- 2026-10-06: Token hygiene. Removed the one-off root scripts (`fix_tasks.py`, `inject_validation.py`, `audit_runner.py`) and `dupont-roe-decomposition.patch`, all already applied to the code. Added `multibagger-claude1-fixed/` to `.gitignore`. Moved the old Done entries to `PROGRESS_ARCHIVE.md`.
 
 ## In progress
 
 ## Next
-(From the 2026-10-06 Graphify + CodeGraph survey. Order: cheapest first.)
-1. [x] DONE 2026-10-06: Research tab API calls. ValidationDashboard sent `dev_key_123`, which got 403 live. ResearchDashboard called `/api/v1/research/trust-score`, which got 404 (the real route is `/research/trust-score`, and Vite did not proxy `/research`). Added `api.getValidationDashboard()` and `api.getTrustScore()` to `lib/api.ts` and a `/research` proxy in `vite.config.ts`. Playwright check: both calls return 200 and the panels render. Leftover: the backend trust-score response has no `grade` field, so the UI shows an empty "Grade:".
-2. [~] Graphify refreshed 2026-10-06 (`graphify update .` at `2d44090`). Still to do: label the communities (all 600 are named "Community N") with `/graphify --update`, which needs an LLM.
-3. Token hygiene: move root output litter (`*_out*.txt`, `checklist_*.txt`, `*.patch`, `multibagger-claude1-fixed/`, root `*.db`) out of the repo or into `.gitignore`/`.graphifyignore`. Archive old `## Done` entries in this file.
+(Cheapest first.)
+1. Label the Graphify communities: all 600 are named "Community N". Run `/graphify --update` (needs an LLM). The graph itself is current as of `2d44090`.
+2. Small cleanups: collapse the `_sanitize_features` wrapper in `modules/scoring/ml_score.py` into `feature_factory.sanitize_features`, and keep a single logger in `modules/pit_auditor.py` (it has both `_log` and `logger`).
+3. The backend `/research/trust-score` response has no `grade` field, so the UI shows an empty "Grade:".
 4. Move `ticker_list.py` (1572 lines of data) to CSV/JSON.
-5. Split `scripts/internal/screener.py` (2341 lines). It holds `get_stock_data()`, the top god node (57 edges).
-6. Small cleanups: collapse the `_sanitize_features` wrapper in `ml_score.py` into `feature_factory.sanitize_features`, and keep a single logger in `modules/pit_auditor.py` (it has both `_log` and `logger`).
-7. Resolve the Alembic schema drift that is still OPEN (see the audit note in Done).
+5. Split `scripts/internal/screener.py` (2341 lines). It holds `get_stock_data()`, the top god node (58 edges).
+6. [OPEN since 2026-07-22] Alembic schema drift: `db/repository.py::_ensure_column()` adds columns at runtime (e.g. `revenue_cagr_3y`, `piotroski_score`) that are missing from `db/models.py`, so an Alembic autogenerate would DROP them. Either backport the columns to the models or retire autogenerate.
 
 ## Notes
-- Ports:
-  - Frontend: `http://localhost:3000`
-  - Backend API: `http://localhost:9005`
-- Authentication Header: `X-API-Key: DEV_KEY_123`
-
-- Corrected 46 previous INFO-level logging errors back to WARNING/ERROR levels across modules to fix swallowed exceptions.
-- Refactored SovereignLogger initialization across the codebase (38 files) to correctly use the wrapper and preserve structured JSON fields.
-- Secured /ws/signals WebSocket endpoint with API Key validation.
-- Fixed _json_safe_clean import paths in score_report.py and dependencies.py.
-- Made worker/task_bus.py dispatch() uniformly async to prevent silent caller traps in development mode.
-- Added test coverage for worker/task_bus.py in 	ests/test_task_bus.py.
-
-- Resolved 500 API errors on quarterly-results and price-fundamentals endpoints caused by a missing _cache_is_fresh import in app_routes/stocks.py.
+- Ports: frontend `http://localhost:3000`, backend `http://localhost:9005`. Auth header: `X-API-Key: DEV_KEY_123` (case-sensitive; the wrong case gets 403).
+- Start the backend: `cd Newmultibagger-main && .venv/Scripts/python.exe -m uvicorn main:app --port 9005`. Redis connection errors at startup are harmless locally.
+- Vite proxies only `/api`, `/swarm`, `/research`, `/ws`. A backend route outside these 404s in dev.
+- Frontend code should call the backend through `web-ui/src/lib/api.ts`, never with raw `fetch` and a hardcoded key.
+- `vectorbt` needs `plotly<6`. DuckDB uses `LOAD sqlite` (not `INSTALL`) to avoid a ~30 s network check.
+- The runtime DB is `Newmultibagger-main/runtime/stocks.db`. Resolve paths from the project root, never relative to `modules/`.
+- To save tokens, ask `codegraph_explore` (indexed in `Newmultibagger-main/.codegraph`) before grep/read. Plain grep over the tree is slow because of `.venv` and `.pytest_tmp`.
