@@ -40,8 +40,8 @@ def run_liquidity_check():
     print("Initiating Capital Deployment Simulator (Phase 52)...")
 
     try:
-        db_path = "runtime/stocks.db" if os.path.exists("runtime/stocks.db") else "stocks.db"
-        conn = sqlite3.connect(db_path)
+        from db.db_core import DB_PATH
+        conn = sqlite3.connect(DB_PATH)
         df = pd.read_sql("SELECT * FROM multibaggers", conn)
         conn.close()
     except Exception as e:

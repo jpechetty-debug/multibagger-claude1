@@ -126,6 +126,72 @@ def main():
     reverse_mapping = {v: k for k, v in mapping.items()}
     df = df_db.rename(columns=reverse_mapping)
 
+    # 2.5 Rescan real market prices from NSE Bhavcopy and live feeds
+    print("Fetching latest prices from NSE Bhavcopy and live feeds...")
+    from modules.adapters.nse_bhavcopy import download_bhavcopy, get_bhavcopy_price
+    bhavcopy_prices = download_bhavcopy()
+
+    price_updated_count = 0
+    import yfinance as yf
+    for idx, row in df.iterrows():
+        sym = str(row.get("Symbol", "")).strip()
+        if not sym:
+            continue
+        clean_sym = sym.replace(".NS", "").replace(".BO", "")
+        new_price = get_bhavcopy_price(bhavcopy_prices, sym) or get_bhavcopy_price(bhavcopy_prices, clean_sym)
+        if new_price is None or new_price <= 0:
+            try:
+                hist = yf.Ticker(sym).history(period="2d")
+                if not hist.empty and "Close" in hist.columns:
+                    val = float(hist["Close"].iloc[-1])
+                    if val > 0:
+                        new_price = val
+            except Exception:
+                pass
+
+        if new_price and new_price > 0:
+            old_price = float(row.get("Price") or 0.0)
+            df.at[idx, "Price"] = round(new_price, 2)
+            price_updated_count += 1
+
+            high_52w = float(row.get("High_52W") or 0.0)
+            if new_price > high_52w:
+                high_52w = new_price
+                df.at[idx, "High_52W"] = round(high_52w, 2)
+            if high_52w > 0:
+                down_pct = round(((high_52w - new_price) / high_52w) * 100, 2)
+                df.at[idx, "Down_From_52W_High%"] = down_pct
+                df.at[idx, "Dist_From_52W_High"] = round((high_52w - new_price) / high_52w, 4)
+
+            low_52w = float(row.get("Low_52W") or 0.0)
+            if low_52w <= 0 or new_price < low_52w:
+                df.at[idx, "Low_52W"] = round(new_price, 2)
+
+            graham_num = float(row.get("Graham_Number") or 0.0)
+            if graham_num > 0 and new_price > 0:
+                df.at[idx, "Value_Gap%"] = round(((graham_num - new_price) / new_price) * 100, 2)
+
+            atr = float(row.get("ATR") or 0.0)
+            if atr <= 0:
+                atr = round(new_price * 0.02, 2)
+                df.at[idx, "ATR"] = atr
+            df.at[idx, "Buy_Below"] = round(new_price * 1.02, 2)
+            df.at[idx, "Stop_Loss"] = round(max(0.1, new_price - 2 * atr), 2)
+            df.at[idx, "Stop_Loss_ATR"] = round(max(0.1, new_price - 2 * atr), 2)
+            df.at[idx, "Target_1"] = round(new_price + 3 * atr, 2)
+            df.at[idx, "Max_Qty_1L"] = int(100000 / new_price) if new_price > 0 else 0
+
+            if old_price > 0 and new_price > 0:
+                ratio = new_price / old_price
+                mcap = float(row.get("Market_Cap_Cr") or 0.0)
+                if mcap > 0:
+                    df.at[idx, "Market_Cap_Cr"] = round(mcap * ratio, 2)
+                pe = float(row.get("PE_Ratio") or 0.0)
+                if pe > 0:
+                    df.at[idx, "PE_Ratio"] = round(pe * ratio, 2)
+
+    print(f"✅ Successfully refreshed real market prices for {price_updated_count}/{len(df)} shares.")
+
     # 3. Set the date and timestamp dynamically (or from CLI override)
     target_date = args.date or date.today().isoformat()
     df["As_Of_Date"] = target_date

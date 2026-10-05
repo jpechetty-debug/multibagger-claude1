@@ -48,9 +48,8 @@ def run_attribution():
     print("Initiating Alpha Source Attribution (Phase 49)...")
 
     try:
-        conn = sqlite3.connect(
-            "runtime/stocks.db" if os.path.exists("runtime/stocks.db") else "stocks.db"
-        )
+        from db.db_core import DB_PATH
+        conn = sqlite3.connect(DB_PATH)
         df = pd.read_sql("SELECT * FROM multibaggers", conn)
         conn.close()
     except Exception as e:

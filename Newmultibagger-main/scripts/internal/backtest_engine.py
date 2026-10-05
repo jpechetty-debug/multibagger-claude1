@@ -4,11 +4,19 @@ import sys
 # Force a fresh Numba cache to resolve "ValueError: incorrect value for flags variable (overflow)"
 os.environ['NUMBA_CACHE_DIR'] = os.path.join(os.getcwd(), 'numba_cache')
 
+if sys.platform == "win32":
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
 # Ensure root directory is in path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 import numpy as np
 import pandas as pd
-import vectorbt as vbt
+try:
+    import vectorbt as vbt
+except Exception:
+    vbt = None
 import yfinance as yf
 
 import db.repository as database
@@ -56,6 +64,9 @@ def _extract_close_series(df: pd.DataFrame, symbol: str, *, single_symbol: bool)
 
 def run_backtest():
     print("Initiating Walk-Forward Validation (vectorbt)...")
+    if vbt is None:
+        print("⚠️ vectorbt is unavailable in current environment; skipping walk-forward simulation.")
+        return
 
     # 1. Load Data
     try:

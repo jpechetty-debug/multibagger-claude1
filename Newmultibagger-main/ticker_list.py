@@ -1550,8 +1550,8 @@ SECTORS = [
     "JYOTHYLAB.NS",
 
 ]
-
-
+# Backward compatibility alias for worker tasks
+STOCK_LIST = TICKERS
 
 # Guard: warn if SECTORS contains tickers already in TICKERS (prevents double-scanning)
 

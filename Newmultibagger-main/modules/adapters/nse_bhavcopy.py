@@ -168,11 +168,12 @@ def _dataframe_to_price_dict(df: pd.DataFrame) -> dict[str, dict]:
             logger.warning(f"Bhavcopy missing symbol column. Columns: {list(df.columns)}")
             return {}
 
-    # Filter for Equity (EQ) and Book Entry (BE) series only if the column exists
+    # Filter for all traded equity series (EQ, BE, SME: SM/ST, Trade-for-Trade: BZ, E1)
+    equity_series = ("EQ", "BE", "SM", "ST", "BZ", "E1")
     if "SctySrs" in df.columns:
-        df = df[df["SctySrs"].isin(("EQ", "BE"))]
+        df = df[df["SctySrs"].isin(equity_series)]
     elif "SERIES" in df.columns:
-        df = df[df["SERIES"].isin(("EQ", "BE"))]
+        df = df[df["SERIES"].isin(equity_series)]
 
     sym_col = next(k for k, v in available_cols.items() if v == "symbol")
 
