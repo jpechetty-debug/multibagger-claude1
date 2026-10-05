@@ -262,6 +262,14 @@ export const api = {
     return fetchJson<SwarmAlert[]>('/swarm/alerts')
   },
 
+  getValidationDashboard: async (): Promise<any> => {
+    return fetchJson<any>('/api/validation/dashboard')
+  },
+
+  getTrustScore: async (): Promise<{ trust_score: number; grade: string; passed: boolean }> => {
+    return fetchJson<{ trust_score: number; grade: string; passed: boolean }>('/research/trust-score')
+  },
+
   triggerRescan: async (): Promise<{ status: string; message: string }> => {
     const apiKey = import.meta.env.VITE_SOVEREIGN_API_KEY?.trim()
     const headers: Record<string, string> = apiKey ? { [API_KEY_HEADER]: apiKey } : {}

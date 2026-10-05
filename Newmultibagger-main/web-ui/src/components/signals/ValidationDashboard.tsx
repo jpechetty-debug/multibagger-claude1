@@ -19,12 +19,7 @@ export function ValidationDashboard() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch('/api/validation/dashboard', {
-          headers: { 'X-API-Key': 'dev_key_123' }
-        });
-        if (!res.ok) throw new Error('Failed to fetch validation data');
-        const json = await res.json();
-        setData(json);
+        setData(await api.getValidationDashboard())
       } catch (err) {
         setError(getApiErrorMessage(err))
       } finally {

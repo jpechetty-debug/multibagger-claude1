@@ -33,6 +33,14 @@
 ## In progress
 
 ## Next
+(From the 2026-10-06 Graphify + CodeGraph survey. Order: cheapest first.)
+1. [x] DONE 2026-10-06: Research tab API calls. ValidationDashboard sent `dev_key_123`, which got 403 live. ResearchDashboard called `/api/v1/research/trust-score`, which got 404 (the real route is `/research/trust-score`, and Vite did not proxy `/research`). Added `api.getValidationDashboard()` and `api.getTrustScore()` to `lib/api.ts` and a `/research` proxy in `vite.config.ts`. Playwright check: both calls return 200 and the panels render. Leftover: the backend trust-score response has no `grade` field, so the UI shows an empty "Grade:".
+2. [~] Graphify refreshed 2026-10-06 (`graphify update .` at `2d44090`). Still to do: label the communities (all 600 are named "Community N") with `/graphify --update`, which needs an LLM.
+3. Token hygiene: move root output litter (`*_out*.txt`, `checklist_*.txt`, `*.patch`, `multibagger-claude1-fixed/`, root `*.db`) out of the repo or into `.gitignore`/`.graphifyignore`. Archive old `## Done` entries in this file.
+4. Move `ticker_list.py` (1572 lines of data) to CSV/JSON.
+5. Split `scripts/internal/screener.py` (2341 lines). It holds `get_stock_data()`, the top god node (57 edges).
+6. Small cleanups: collapse the `_sanitize_features` wrapper in `ml_score.py` into `feature_factory.sanitize_features`, and keep a single logger in `modules/pit_auditor.py` (it has both `_log` and `logger`).
+7. Resolve the Alembic schema drift that is still OPEN (see the audit note in Done).
 
 ## Notes
 - Ports:

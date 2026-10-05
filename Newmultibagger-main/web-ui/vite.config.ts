@@ -57,6 +57,10 @@ export default defineConfig({
         target: 'http://localhost:9005',
         changeOrigin: true,
       },
+      '/research': {
+        target: 'http://localhost:9005',
+        changeOrigin: true,
+      },
       '/ws': {
         target: 'http://localhost:9005',
         ws: true,

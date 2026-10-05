@@ -6,16 +6,14 @@ import MemoView from './MemoView';
 import KnowledgeBaseView from './KnowledgeBaseView';
 import ReviewView from './ReviewView';
 import { ShieldAlert, ShieldCheck } from 'lucide-react';
+import { api } from '../../lib/api';
 
 const ResearchDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'Thesis' | 'Journal' | 'Memos' | 'Knowledge' | 'Reviews'>('Thesis');
   const [trustScore, setTrustScore] = useState<{ trust_score: number; grade: string; passed: boolean } | null>(null);
 
   useEffect(() => {
-    fetch('/api/v1/research/trust-score', {
-      headers: { 'X-API-Key': 'DEV_KEY_123' }
-    })
-      .then(res => res.json())
+    api.getTrustScore()
       .then(data => setTrustScore(data))
       .catch(console.error);
   }, []);
