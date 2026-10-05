@@ -1096,16 +1096,18 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         # Earnings Acceleration is now calculated via check_earnings_inflection below
 
         # 3. CFO / PAT Ratio — prefer screener_in's pre-computed value
-        cfo_pat_ratio = raw.get("CFO_PAT_Ratio") or 0
-        if not cfo_pat_ratio:
+        # Missing stays None: a 0 here reads as "no cash conversion" and triggers
+        # the Cash Quality ceiling (caps the score at 60) on data we never had.
+        cfo_pat_ratio = raw.get("CFO_PAT_Ratio")
+        if cfo_pat_ratio is None:
             try:
                 cfo = info.get("operatingCashflow")
                 pat = info.get("netIncomeToCommon") or (
                     info.get("trailingEps", 0) * info.get("sharesOutstanding", 0)
                 )
-                cfo_pat_ratio = round(cfo / pat, 2) if cfo and pat and pat > 0 else 0
+                cfo_pat_ratio = round(cfo / pat, 2) if cfo is not None and pat and pat > 0 else None
             except Exception:
-                cfo_pat_ratio = 0
+                cfo_pat_ratio = None
 
         # --- F-Score Metrics (Full 9-Point Piotroski) ---
         f_score, f_score_method, f_score_max = _calculate_f_score_with_method(
@@ -1870,8 +1872,8 @@ def main(argv=None):
                     if val > active_filters["debt_equity_max"]:  # type: ignore
                         passes_filters = False
                 if "cfo_to_pat_min" in active_filters:
-                    val = data.get("CFO_PAT_Ratio", 0)
-                    if val < active_filters["cfo_to_pat_min"]:  # type: ignore
+                    val = data.get("CFO_PAT_Ratio")
+                    if val is not None and val < active_filters["cfo_to_pat_min"]:  # type: ignore
                         passes_filters = False
                 if "piotroski_min" in active_filters:
                     # Framework says piotroski_score or f_score
@@ -2143,7 +2145,7 @@ def main(argv=None):
                     "avg_roe_5y":          stock.get("Avg_ROE_5Y%",        0) or 0,
                     "pe_ratio":            stock.get("PE_Ratio",            0) or 0,
                     "debt_equity":         stock.get("Debt_Equity",         0) or 0,
-                    "cfo_pat_ratio":       stock.get("CFO_PAT_Ratio",       0) or 0,
+                    "cfo_pat_ratio":       stock.get("CFO_PAT_Ratio"),  # None → NaN; XGBoost handles missing
                     "market_cap_cr":       stock.get("Market_Cap_Cr",       0) or 0,
                     "roce":                stock.get("ROCE%",               0) or 0,
                     # 📈 Momentum / technical features ────────────────────────

@@ -71,11 +71,14 @@ SAMPLE_HTML = """
 </ul>
 
 <!-- P&L section -->
+<!-- Mirrors live Screener.in: year headers, "+" expand suffix on labels, trailing TTM column,
+     and a P&L range that starts one year later than the cash-flow table. -->
 <section id="profit-loss">
   <table>
+    <thead><tr><th></th><th>Mar 2022</th><th>Mar 2023</th><th>Mar 2024</th><th>TTM</th></tr></thead>
     <tbody>
       <tr><td>Sales</td><td>100</td><td>120</td><td>140</td><td>160</td></tr>
-      <tr><td>Net Profit</td><td>10</td><td>12</td><td>14</td><td>16</td></tr>
+      <tr><td>Net Profit<button>+</button></td><td>12</td><td>14</td><td>16</td><td>18</td></tr>
       <tr>
         <td>Compounded Sales Growth</td>
         <td>12%</td><td>18%</td><td>22%</td><td>25%</td>
@@ -95,10 +98,11 @@ SAMPLE_HTML = """
 <!-- Cash flow section -->
 <section id="cash-flow">
   <table>
+    <thead><tr><th></th><th>Mar 2021</th><th>Mar 2022</th><th>Mar 2023</th><th>Mar 2024</th></tr></thead>
     <tbody>
       <tr>
-        <td>Cash from Operating Activities</td>
-        <td>11</td><td>13</td><td>15</td>
+        <td>Cash from Operating Activity<button>+</button></td>
+        <td>9</td><td>11</td><td>13</td><td>15</td>
       </tr>
     </tbody>
   </table>
@@ -295,10 +299,18 @@ class TestScreenerParser:
         assert self._parse()["EPS_Growth_10Y%"] == pytest.approx(10.0)
 
     def test_cfo_pat_ratio(self):
-        # CFO avg(11,13,15) = 13.0, PAT avg(12,14,16) = 14.0 → ratio = 13/14 ≈ 0.929
+        # Shared years Mar 2022-2024: CFO avg(11,13,15) = 13.0, PAT avg(12,14,16) = 14.0.
+        # Positional pairing would wrongly use PAT (14,16,TTM 18) or CFO Mar 2021.
         result = self._parse()["CFO_PAT_Ratio"]
         assert result is not None
         assert result == pytest.approx(13.0 / 14.0, rel=1e-2)
+
+    def test_cfo_pat_ratio_none_for_loss_maker(self):
+        html = SAMPLE_HTML.replace(
+            "<td>Net Profit<button>+</button></td><td>12</td><td>14</td><td>16</td>",
+            "<td>Net Profit<button>+</button></td><td>-12</td><td>-14</td><td>-16</td>",
+        )
+        assert ScreenerParser(html, "TEST").parse().get("CFO_PAT_Ratio") is None
 
     def test_quarter_end_date(self):
         # Most recent quarter header = "Sep 2024" → last day = 2024-09-30

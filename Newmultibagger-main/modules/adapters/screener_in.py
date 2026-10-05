@@ -290,53 +290,48 @@ class ScreenerParser:
 
     # ── Cash Flow table: CFO ─────────────────────────────────────────────────
 
-    def _get_cashflow_data(self) -> dict[str, float | None]:
-        """Extract CFO values from the Cash Flow table (last 3 years)."""
-        result: dict[str, float | None] = {}
-        section = self.soup.find("section", {"id": "cash-flow"})
-        if not isinstance(section, Tag):
-            return result
+    def _row_by_year(self, section_id: str, labels: tuple[str, ...]) -> dict[str, float]:
+        """Return {column header: value} for the first row whose label starts with any of ``labels``.
 
-        cfo_values: list[float] = []
-        pat_values: list[float] = []
-
-        for row in section.find_all("tr"):
-            if not isinstance(row, Tag):
-                continue
+        Screener appends an expand button to row labels ("Net Profit+"), so labels
+        are matched by prefix after stripping the trailing "+". Values are keyed by
+        their column header so tables with different year ranges can be aligned.
+        """
+        section = self.soup.find("section", {"id": section_id})
+        table = section.find("table") if isinstance(section, Tag) else None
+        if not isinstance(table, Tag):
+            return {}
+        headers = [th.get_text(strip=True) for th in table.select("thead th")]
+        for row in table.select("tbody tr"):
             cells = row.find_all("td")
             if not cells:
                 continue
-            label = cells[0].get_text(strip=True).lower()
-            if "cash from operating" in label or "operating activities" in label:
-                # Take the last 3 columns (most recent years)
-                for cell in cells[-3:]:
-                    v = _parse_indian_number(cell.get_text(strip=True))
-                    if v is not None:
-                        cfo_values.append(v)
+            label = cells[0].get_text(strip=True).lower().rstrip("+").strip()
+            if not label.startswith(labels):
+                continue
+            values: dict[str, float] = {}
+            for header, cell in zip(headers[1:], cells[1:], strict=False):
+                v = _parse_indian_number(cell.get_text(strip=True))
+                if v is not None:
+                    values[header] = v
+            return values
+        return {}
 
-        # PAT comes from P&L section
-        pnl_section = self.soup.find("section", {"id": "profit-loss"})
-        if isinstance(pnl_section, Tag):
-            for row in pnl_section.find_all("tr"):
-                if not isinstance(row, Tag):
-                    continue
-                cells = row.find_all("td")
-                if not cells:
-                    continue
-                label = cells[0].get_text(strip=True).lower()
-                if label in ("net profit", "profit after tax", "pat"):
-                    for cell in cells[-3:]:
-                        v = _parse_indian_number(cell.get_text(strip=True))
-                        if v is not None:
-                            pat_values.append(v)
-                    break
+    def _get_cashflow_data(self) -> dict[str, float | None]:
+        """CFO/PAT over the 3 most recent fiscal years present in both the Cash Flow and P&L tables."""
+        result: dict[str, float | None] = {}
+        cfo = self._row_by_year("cash-flow", ("cash from operating", "operating activities"))
+        pat = self._row_by_year("profit-loss", ("net profit", "profit after tax", "pat"))
 
-        if cfo_values and pat_values and len(pat_values) >= 1:
-            # Use trailing 3-year averages where available
-            avg_cfo = sum(cfo_values[-3:]) / len(cfo_values[-3:])
-            avg_pat = sum(pat_values[-3:]) / len(pat_values[-3:])
-            if avg_pat and avg_pat != 0:
-                result["CFO_PAT_Ratio"] = round(avg_cfo / avg_pat, 3)
+        # The P&L table ends with a TTM column and starts a year later than the
+        # cash-flow table, so pair values by year header rather than position.
+        common = [h for h in cfo if h in pat and h.upper() != "TTM"][-3:]
+        if not common:
+            return result
+        avg_cfo = sum(cfo[h] for h in common) / len(common)
+        avg_pat = sum(pat[h] for h in common) / len(common)
+        if avg_pat > 0:
+            result["CFO_PAT_Ratio"] = round(avg_cfo / avg_pat, 3)
 
         return result
 

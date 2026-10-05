@@ -8,11 +8,29 @@ Older history: see `PROGRESS_ARCHIVE.md` (read it only when you need past contex
 ## Next
 (Cheapest first.)
 1. Label the Graphify communities: all 600 are named "Community N". Run `/graphify --update` (needs an LLM). The graph itself is current as of `2d44090`.
-2. Small cleanups: collapse the `_sanitize_features` wrapper in `modules/scoring/ml_score.py` into `feature_factory.sanitize_features`, and keep a single logger in `modules/pit_auditor.py` (it has both `_log` and `logger`).
+2. Dead-module removal (verified 2026-10-06, awaiting user approval to delete): no static import, alias, string, `-m`, YAML, Docker or test reference found for `modules/adapters/yf_session.py`, `modules/inflection_detector.py`, `modules/preservation.py`, `modules/sources/` (whole dir), `modules/exceptions.py`, `modules/errors.py`, `modules/redundancy.py`, `modules/attribution.py`, `modules/intelligence/insider.py`, `modules/risk/probability.py`, `modules/portfolio/{capital_simulator,exit_engine}.py`, `modules/tracking/alpha_tracker.py`, `modules/domain/{factor,portfolio,score,security,thesis,snapshot_builder}.py`, `legacy/backtest_engine.py`, `legacy/screener/`. Also drop their 5 aliases from `MODULE_MAPPING` in `modules/__init__.py`. Then run `pytest -m "not live"` and start the app. Keep: `worker/runtime.py` and `db/migrate.py` (`python -m` entry points), `research/*` (used by `run_validations.py`), `backtest/portfolio_backtest.py` and `research/quarterly_review.py` (runnable scripts), and `risk_compat`/`execution`/`tracker`/`validation` (read by `ops/institutional_sprint_driver.py`). Note: `modules/tracker.py`, `modules/execution.py` and `modules/stress_test.py` are shadowed by the `MODULE_MAPPING` import alias and never actually load.
+3. Small cleanups: collapse the `_sanitize_features` wrapper in `modules/scoring/ml_score.py` into `feature_factory.sanitize_features`, and keep a single logger in `modules/pit_auditor.py` (it has both `_log` and `logger`).
 3. The backend `/research/trust-score` response has no `grade` field, so the UI shows an empty "Grade:".
 4. Move `ticker_list.py` (1572 lines of data) to CSV/JSON.
 5. Split `scripts/internal/screener.py` (2341 lines). It holds `get_stock_data()`, the top god node (58 edges).
 6. [OPEN since 2026-07-22] Alembic schema drift: `db/repository.py::_ensure_column()` adds columns at runtime (e.g. `revenue_cagr_3y`, `piotroski_score`) that are missing from `db/models.py`, so an Alembic autogenerate would DROP them. Either backport the columns to the models or retire autogenerate.
+
+## Review findings 2026-10-06 (pick quality)
+- Score cliffs: 100 of 516 current picks score exactly 60.00x (stacked 60-caps in `modules/scoring/ceiling.py` plus an md5 tiebreak below 0.01), so their order is random. The current max score is 68.6, and none reach 70.
+- The ML model is a BOOTSTRAP trained on `_bootstrap_proxy_return` (built from score/ROE/D-E/sales), which is circular. 0 folds, IC null. The validation trust score is 0, and ablation walk-forward was SKIPPED (missing as_of_date/symbol).
+- PIT fundamentals cover only 2026-06-09 to 2026-09-30, so the 3–5y multibagger thesis cannot be tested yet.
+- `score_history` test (1517 stocks, ~132-day forward window from April): overall Spearman IC 0.04, quintiles flat. The top 30 by score returned a median +36% vs +4% for all stocks (p<0.001 vs random 30), but 29 of 30 were capped at exactly 88.0 by an older scoring version.
+- `scripts/internal/enrich_rs_signals.py` silently stubs score=50 / f_score=5 on ImportError or exception.
+
+## Data-source audit 2026-10-06
+- [x] FIXED 2026-10-06: Screener.in CFO parser. Two bugs: the label is now "Net Profit+" (exact match failed), and P&L vs cash-flow columns were paired by position (the P&L table has a TTM column and starts a year later). The new `_row_by_year` pairs values by year header. Missing CFO now stays None in `screener.py` and both NSE adapters (PNSEA also clamped loss PAT to 1). Test fixture updated to the real page structure. Live check: TCS = 1.007; 5 stocks formerly at 60 now get real CFO (0.09–1.65). ADANIPORTS rescored today: 50.30 → 55.48 with the Cash Quality cap gone. NEXT: rerun the universe scan so the stored scores and CFO refresh.
+- [x] Also: `_apply_soft_ceiling` (saturating cap instead of a hard clip) in `modules/scoring/ceiling.py`, so stocks under the same cap keep their order.
+- ROOT CAUSE of the 60-score pile-up: `cfo_pat_ratio == 0` for 494/516 picks, and all 100 stocks at 60.00x have CFO=0. The Screener.in CFO parser (`modules/adapters/screener_in.py:291-340`) returns None even for TCS (the page and #cash-flow section exist, but no rows match, so the HTML likely changed). Then `or 0` at `scripts/internal/screener.py:1099,2146` and in `modules/adapters/nse.py:141,231` turns missing into 0, and the "Cash Quality Spline" caps at 60. Fix: repair the parser, keep None for missing (the ceiling already skips None), and add a test using saved HTML.
+- yfinance leaks: the fundamentals chain is correct (screener_in → nse_xbrl → pnsea → nsepython; yfinance off unless `ENABLE_YFINANCE_FUNDAMENTALS=true`), but 26 production files import yfinance directly. `calculate_institutional_score` itself makes ~6 live yfinance calls per stock (`promoter_intel.get_promoter_trend` ~0.7s, `news_sentiment.fetch_headlines` ~0.5s), so scoring is slow, non-reproducible, and tests hit the network. `NSEPythonProvider` also pulls yfinance statements.
+- No per-value provenance: neither `multibaggers` nor `fundamentals_pit` stores which provider supplied a value.
+- `debt_equity == 0` for 93/516 (likely missing-as-zero too). The F-score distribution is a normal bell (not a stub artifact).
+- `NSE_COOKIE` is set in `.env`; it is not in the shell env, so it depends on dotenv loading.
+- Tests: `pytest-xdist` installed. `pytest -m "not live" -n 8` takes 43s (738 passed). Not yet in requirements-dev.txt.
 
 ## Notes
 - Ports: frontend `http://localhost:3000`, backend `http://localhost:9005`. Auth header: `X-API-Key: DEV_KEY_123` (case-sensitive; the wrong case gets 403).

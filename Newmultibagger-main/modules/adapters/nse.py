@@ -136,11 +136,14 @@ class PNSEAProvider(DataProvider):
         raw_info["_source"] = self.name   # enables resolve_key conflict logging
         info = normalize_info(raw_info, alias_map=_PNSEA_INFO_ALIASES)
 
-        cfo_pat = 0.0
+        # None when either input is missing or PAT <= 0 — never 0, which the
+        # scorer would read as "no cash conversion" and cap the score.
+        cfo_pat = None
         try:
-            cfo_pat = raw.get("info", {}).get("cashFlowFromOperations", 0) / max(
-                raw.get("info", {}).get("netProfit", 1), 1
-            )
+            _cfo = raw.get("info", {}).get("cashFlowFromOperations")
+            _pat = raw.get("info", {}).get("netProfit")
+            if _cfo is not None and _pat is not None and float(_pat) > 0:
+                cfo_pat = float(_cfo) / float(_pat)
         except (ZeroDivisionError, TypeError, ValueError) as _cfo_err:
             logger.warning(f"[{symbol}] CFO/PAT ratio calculation failed: {_cfo_err}")
 
@@ -228,7 +231,7 @@ class NSEPythonProvider(DataProvider):
             "price": quote.get("priceInfo", {}).get("lastPrice"),
             "roe": fundamentals.get("roe"),
             "sales_growth": fundamentals.get("salesGrowth"),
-            "cfo_pat": fundamentals.get("cfoPatRatio", 0),
+            "cfo_pat": fundamentals.get("cfoPatRatio"),
             "pledge_percent": pledged.get("pledgePercent", 0),
             "promoter_holding": shareholding.get("promoter", 0),
             "fii_dii": shareholding.get("institutional", {}),
