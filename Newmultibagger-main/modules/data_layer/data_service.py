@@ -594,12 +594,16 @@ class DataManager:
         """Build non-yFinance fundamentals providers with env-selectable primary."""
         primary = create_fundamentals_provider(executor=self.executor)
         providers: list[Any] = [primary]
-        fallback_factories = (
+        fallback_factories = [
             lambda: ScreenerInProvider(self.executor),
-            lambda: NSEXBRLProvider(self.executor),
             lambda: PNSEAProvider(self.executor),
             lambda: NSEPythonProvider(self.executor),
-        )
+        ]
+        # NSE XBRL needs a browser-copied NSE_COOKIE that expires within hours;
+        # with a stale cookie Akamai tarpits each request for minutes, pinning
+        # executor threads. Prices come from the cookie-free NSE bhavcopy instead.
+        if os.getenv("ENABLE_NSE_XBRL", "false").lower() == "true":
+            fallback_factories.insert(1, lambda: NSEXBRLProvider(self.executor))
         seen = {primary.name}
         for make_provider in fallback_factories:
             provider = make_provider()
