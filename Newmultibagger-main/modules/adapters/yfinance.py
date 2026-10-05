@@ -1,5 +1,6 @@
 # modules/adapters/yfinance.py
 import asyncio
+import math
 from typing import Any
 
 import pandas as pd
@@ -11,6 +12,30 @@ from modules.normalization.cleaner import _has_value, is_payload_skeletal
 from .base import DataProvider
 
 logger = get_logger("adapters.yfinance")
+
+
+def _finite(value: Any) -> float | None:
+    """float(value) if it is a finite number, else None (yfinance uses None and NaN)."""
+    if not _has_value(value):
+        return None
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return None
+    return out if math.isfinite(out) else None
+
+
+def _scaled(value: Any, factor: float) -> float | None:
+    """value * factor, or None when yfinance has no usable number."""
+    v = _finite(value)
+    return None if v is None else round(v * factor, 4)
+
+
+def _cfo_pat_ratio(cfo: Any, pat: Any) -> float | None:
+    cfo_v, pat_v = _finite(cfo), _finite(pat)
+    if cfo_v is None or pat_v is None or pat_v <= 0:
+        return None
+    return round(cfo_v / pat_v, 3)
 
 
 async def _run_executor_safe(loop, executor, fn, default):
@@ -87,15 +112,19 @@ class YFinanceProvider(DataProvider):
             pd.DataFrame(),
         )
 
+        # Missing stays None — the scorer reads 0 as a real (bad) value and caps on it.
+        # yfinance units: returnOnEquity/revenueGrowth are fractions; debtToEquity is
+        # always a percentage (10.2 means a 0.102 ratio).
         return {
             "symbol": symbol,
             "Symbol": symbol,
             "source": self.name,
             "Price": info.get("currentPrice") or info.get("regularMarketPrice"),
-            "ROE%": (info.get("returnOnEquity") or 0) * 100,
-            "Sales_Growth_TTM%": (info.get("revenueGrowth") or 0) * 100,
+            "ROE%": _scaled(info.get("returnOnEquity"), 100),
+            "Sales_Growth_TTM%": _scaled(info.get("revenueGrowth"), 100),
             "PE_Ratio": info.get("trailingPE"),
-            "Debt_Equity": info.get("debtToEquity"),
+            "Debt_Equity": _scaled(info.get("debtToEquity"), 0.01),
+            "CFO_PAT_Ratio": _cfo_pat_ratio(info.get("operatingCashflow"), info.get("netIncomeToCommon")),
             "F_Score": info.get("piotroskiScore"),
             "Sector": info.get("sector"),
             "pledge_percent": 0,

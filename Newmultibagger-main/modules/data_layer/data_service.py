@@ -591,33 +591,33 @@ class DataManager:
         )
 
     def _build_fundamental_provider_chain(self) -> list[Any]:
-        """Build non-yFinance fundamentals providers with env-selectable primary."""
+        """Fundamentals chain: env-selectable primary (default Screener.in), then
+        yFinance as first fallback, then PNSEA / nsepython.
+
+        NSE XBRL is opt-in (ENABLE_NSE_XBRL=true): it needs a browser-copied
+        NSE_COOKIE that expires within hours, and with a stale cookie Akamai
+        tarpits each request for minutes, pinning executor threads.
+        yFinance can be dropped with ENABLE_YFINANCE_FUNDAMENTALS=false.
+        """
         primary = create_fundamentals_provider(executor=self.executor)
         providers: list[Any] = [primary]
-        fallback_factories = [
-            lambda: ScreenerInProvider(self.executor),
+        fallback_factories = [lambda: ScreenerInProvider(self.executor)]
+        if os.getenv("ENABLE_YFINANCE_FUNDAMENTALS", "true").lower() == "true":
+            from modules.adapters.yfinance import YFinanceProvider
+
+            fallback_factories.append(lambda: YFinanceProvider(self.executor))
+        if os.getenv("ENABLE_NSE_XBRL", "false").lower() == "true":
+            fallback_factories.append(lambda: NSEXBRLProvider(self.executor))
+        fallback_factories += [
             lambda: PNSEAProvider(self.executor),
             lambda: NSEPythonProvider(self.executor),
         ]
-        # NSE XBRL needs a browser-copied NSE_COOKIE that expires within hours;
-        # with a stale cookie Akamai tarpits each request for minutes, pinning
-        # executor threads. Prices come from the cookie-free NSE bhavcopy instead.
-        if os.getenv("ENABLE_NSE_XBRL", "false").lower() == "true":
-            fallback_factories.insert(1, lambda: NSEXBRLProvider(self.executor))
         seen = {primary.name}
         for make_provider in fallback_factories:
             provider = make_provider()
             if provider.name not in seen:
                 providers.append(provider)
                 seen.add(provider.name)
-
-        if os.getenv("ENABLE_YFINANCE_FUNDAMENTALS", "false").lower() == "true":
-            from modules.adapters.yfinance import YFinanceProvider
-
-            providers.append(YFinanceProvider(self.executor))
-            logger.warning(
-                "ENABLE_YFINANCE_FUNDAMENTALS=true: yFinance enabled for fundamentals fallback"
-            )
         return providers
 
     async def __aenter__(self):
