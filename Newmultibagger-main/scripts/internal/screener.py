@@ -251,6 +251,18 @@ def _is_present_metric(value):
     return float(value) != 0.0
 
 
+def rating_for_score(score, value_gap=0):
+    """Rating with the V6 valuation gate (Elite requires value gap >= -10%)."""
+    vg = value_gap if value_gap is not None else 0
+    if score >= 80 and vg >= -10:
+        return "Strong Buy (Elite)"
+    if score >= 65:
+        return "Buy"
+    if score >= 50:
+        return "Hold"
+    return "Avoid"
+
+
 def _finite_or_default(value, default=0.0):
     if not _is_finite_number(value):
         return default
@@ -2123,16 +2135,7 @@ def main(argv=None):
             stock["Institutional_Interest"] = score_data.get("institutional_interest", False)
             stock["Super_Investors"] = score_data.get("super_investors", "")
 
-            # Phase 4 Update: Rating with V6 Valuation Gate
-            vg = stock.get("Value_Gap%", 0)
-            if score >= 80 and vg >= -10:
-                stock["Rating"] = "Strong Buy (Elite)"
-            elif score >= 65:
-                stock["Rating"] = "Buy"
-            elif score >= 50:
-                stock["Rating"] = "Hold"
-            else:
-                stock["Rating"] = "Avoid"
+            stock["Rating"] = rating_for_score(score, stock.get("Value_Gap%", 0))
 
             # --- Phase 88: Hybrid Scoring (ML) ---
             try:
