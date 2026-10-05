@@ -64,7 +64,7 @@ def _get_price_history_fallback(symbol: str, period: str = "6mo") -> pd.DataFram
 
 
 def get_price_history(symbol: str, period: str = "6mo") -> pd.DataFrame:
-    """Unified price history: DB first, yfinance fallback.
+    """Unified price history: DB first, then NSE bhavcopy cache, then yfinance.
 
     Returns a DataFrame with at least a 'Close' column indexed by date.
     """
@@ -73,6 +73,12 @@ def get_price_history(symbol: str, period: str = "6mo") -> pd.DataFrame:
 
     df = _get_price_history_from_db(symbol, days=days)
     if not df.empty and len(df) >= 20:
+        return df
+
+    from modules.adapters.bhavcopy_history import get_history as bhavcopy_history
+
+    df = bhavcopy_history(symbol, period=period)
+    if len(df) >= 20:
         return df
 
     return _get_price_history_fallback(symbol, period=period)

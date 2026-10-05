@@ -684,6 +684,16 @@ class DataManager:
         except Exception as e:
             logger.warning(f"Bhavcopy load failed, will use yfinance fallback: {e}")
             self.bhavcopy_prices = {}
+        # Top up the price-history cache with any new sessions (cheap once seeded;
+        # seed with scripts/internal/update_bhavcopy_history.py).
+        try:
+            from modules.adapters.bhavcopy_history import update_cache
+
+            await asyncio.get_running_loop().run_in_executor(
+                self.executor, lambda: update_cache(days=15)
+            )
+        except Exception as e:
+            logger.warning(f"Bhavcopy history top-up failed, history may fall back to yfinance: {e}")
 
     def _get_bhavcopy_price(self, symbol: str) -> float | None:
         """Get price from pre-loaded bhavcopy data."""
@@ -834,9 +844,21 @@ class DataManager:
             return pd.DataFrame()
 
     async def async_fetch_history(self, symbol: str, period: str = "1y") -> pd.DataFrame:
+        # NSE bhavcopy cache first (local, split/bonus-adjusted, no rate limit);
+        # yfinance only when the cache can't cover this symbol/window.
+        from modules.adapters.bhavcopy_history import get_history as bhavcopy_history
+
+        loop = asyncio.get_running_loop()
+        try:
+            df = await loop.run_in_executor(self.executor, bhavcopy_history, symbol, period)
+        except Exception as exc:
+            logger.warning(f"bhavcopy history failed for {symbol}: {exc}")
+            df = pd.DataFrame()
+        if len(df) >= 20:
+            return df
+
         async with self.semaphore:
             await asyncio.sleep(1.0)  # Rate limit yfinance requests to avoid 429
-            loop = asyncio.get_running_loop()
             ticker = yf.Ticker(symbol)
             df = pd.DataFrame()
             for attempt in range(2):
