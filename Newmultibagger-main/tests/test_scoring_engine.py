@@ -354,6 +354,16 @@ class TestDisqualifiers:
         result = calculate_institutional_score(overval)
         assert result["total_score"] <= 75
 
+    def test_capped_stocks_keep_raw_strength_order(self, perfect_stock):
+        """Two stocks under the same cap must not tie: the stronger raw profile ranks higher."""
+        strong = {**perfect_stock, "F_Score": 1}
+        weaker = {**strong, "Symbol": "WEAKER.NS", "Sales_Growth_5Y%": 12, "Sales_Growth_TTM%": 11}
+        r_strong = calculate_institutional_score(strong)
+        r_weaker = calculate_institutional_score(weaker)
+        assert r_strong["raw_score"] > r_weaker["raw_score"]
+        assert r_strong["total_score"] > r_weaker["total_score"] + 0.1
+        assert r_strong["total_score"] <= 57.5 and r_weaker["total_score"] <= 57.5
+
     def test_very_low_fscore_caps_score(self, perfect_stock):
         low_f = {**perfect_stock, "F_Score": 1}
         result = calculate_institutional_score(low_f)

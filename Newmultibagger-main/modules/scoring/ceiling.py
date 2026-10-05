@@ -7,6 +7,7 @@ stocks from achieving high scores regardless of momentum or bonuses.
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from modules.data_utils import optional_float, safe_float
@@ -54,6 +55,27 @@ def _apply_spline_cap(
         disqualifiers.append((f"{name} ({val:.1f})", cap))
 
     return score_ceiling
+
+
+SOFT_CEILING_BAND = 5.0
+
+
+def _apply_soft_ceiling(score: float, ceiling: float, band: float = SOFT_CEILING_BAND) -> float:
+    """Saturate ``score`` toward ``ceiling`` instead of hard-clipping at it.
+
+    A hard ``min(score, ceiling)`` collapses every stock above a cap onto the
+    same value (e.g. ~100 picks tied at exactly 60), leaving their order to the
+    hash tiebreak. Below ``ceiling - band`` the score passes through unchanged;
+    above it, the excess decays exponentially toward the cap. The result is
+    continuous, strictly increasing in ``score`` and never exceeds ``ceiling``,
+    so the cap still binds but stronger stocks keep ranking above weaker ones.
+    """
+    if ceiling >= 100.0:
+        return score
+    knee = ceiling - band
+    if score <= knee:
+        return score
+    return ceiling - band * math.exp(-(score - knee) / band)
 
 
 def _apply_score_ceiling_rules(

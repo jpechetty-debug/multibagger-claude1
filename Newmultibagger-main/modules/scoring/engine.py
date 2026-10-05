@@ -24,7 +24,7 @@ from .adjustments import (
     _apply_sector_relative_adjustment,
     _calculate_bonus_total,
 )
-from .ceiling import _apply_checklist_gate, _apply_score_ceiling_rules
+from .ceiling import _apply_checklist_gate, _apply_score_ceiling_rules, _apply_soft_ceiling
 from .factors import (
     _build_factor_state,
     _calculate_base_score,
@@ -261,7 +261,7 @@ def calculate_institutional_score(
         factor_audit.append({"name": "STALE_DATA_PENALTY", "value": -_staleness_penalty})
 
     base_score += _calculate_tiebreak_epsilon(data.get("Symbol", ""))
-    final_score = min(base_score, score_ceiling)
+    final_score = _apply_soft_ceiling(base_score, score_ceiling)
 
     for disqualifier_name, cap_val in disqualifiers:
         factor_audit.append({"name": disqualifier_name, "value": round(cap_val - 100, 1)})
