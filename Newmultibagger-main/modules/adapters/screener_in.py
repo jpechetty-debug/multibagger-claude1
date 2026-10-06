@@ -357,6 +357,44 @@ class ScreenerParser:
             return self.NEGATIVE_EQUITY_DE if debt > 0 else None
         return round(debt / equity, 3)
 
+    # ── Quarterly results: YoY growth for earnings acceleration ─────────────
+
+    def _get_quarterly_growth(self) -> dict[str, float]:
+        """YoY growth of the latest and previous quarter vs the same quarter a year earlier (no seasonality)."""
+        sales = self._row_by_year("quarters", ("sales", "revenue"))
+        pat = self._row_by_year("quarters", ("net profit",))
+        quarters = list(sales)
+
+        def year_ago(header: str) -> str | None:
+            parts = header.split()
+            if len(parts) != 2 or not parts[1].isdigit():
+                return None
+            return f"{parts[0]} {int(parts[1]) - 1}"
+
+        def yoy(series: dict[str, float], back: int) -> float | None:
+            if len(quarters) <= back:
+                return None
+            q = quarters[-1 - back]
+            base = series.get(year_ago(q) or "")
+            curr = series.get(q)
+            if curr is None or not base:
+                return None
+            return round((curr - base) / abs(base) * 100, 2)
+
+        out = {
+            "Qtr_Sales_YoY%": yoy(sales, 0),
+            "Qtr_Sales_YoY_Prev%": yoy(sales, 1),
+            "Qtr_PAT_YoY%": yoy(pat, 0),
+            "Qtr_PAT_YoY_Prev%": yoy(pat, 1),
+        }
+        if quarters:
+            latest, ago = quarters[-1], year_ago(quarters[-1]) or ""
+            if sales.get(latest) and latest in pat:
+                out["Qtr_NPM%"] = round(pat[latest] / sales[latest] * 100, 2)
+            if sales.get(ago) and ago in pat:
+                out["Qtr_NPM_Year_Ago%"] = round(pat[ago] / sales[ago] * 100, 2)
+        return {k: v for k, v in out.items() if v is not None}
+
     # ── Quarterly results: pub_date for PIT ──────────────────────────────────
 
     def _get_quarterly_dates(self) -> dict[str, str | None]:
@@ -637,6 +675,9 @@ class ScreenerParser:
             "Debt_Equity":       self._get_debt_equity(),
             # Public pages usually carry no pledge row; None means unknown, not 0%.
             "pledge_percent":    pledge,
+
+            # ── Quarterly YoY growth (earnings acceleration)
+            **self._get_quarterly_growth(),
 
             # ── PIT dates (critical for enforce_pit_gate)
             "Quarter_End":       dates.get("Quarter_End"),

@@ -534,8 +534,31 @@ def check_earnings_inflection(ticker_or_data):
     return {"score": 0, "status": False}
 
 
+def _earnings_inflection_from_quarters(data: dict) -> dict:
+    """Score 0-5 from quarterly YoY growth: accelerating and strong sales/PAT, expanding margin."""
+    sales, sales_prev = data.get("Qtr_Sales_YoY%"), data.get("Qtr_Sales_YoY_Prev%")
+    pat, pat_prev = data.get("Qtr_PAT_YoY%"), data.get("Qtr_PAT_YoY_Prev%")
+    npm, npm_ago = data.get("Qtr_NPM%"), data.get("Qtr_NPM_Year_Ago%")
+    score = 0
+    if sales is not None and sales_prev is not None and sales > sales_prev:
+        score += 1
+    if sales is not None and sales > 15:
+        score += 1
+    if pat is not None and pat_prev is not None and pat > pat_prev:
+        score += 1
+    if pat is not None and pat > 20:
+        score += 1
+    if npm is not None and npm_ago is not None and npm > npm_ago:
+        score += 1
+    # A shrinking loss is not earnings acceleration.
+    profitable = npm is None or npm > 0
+    return {"score": score, "status": profitable and score >= 3}
+
+
 def _earnings_inflection_from_dict(data: dict) -> dict:
     """Compute earnings inflection from pre-computed data."""
+    if data.get("Qtr_PAT_YoY%") is not None:
+        return _earnings_inflection_from_quarters(data)
     score = 0
     eps_growth = _safe_float(data.get("EPS_Growth%") or data.get("eps_growth"), 0)
     sg_ttm = _safe_float(data.get("Sales_Growth_TTM%") or data.get("sales_growth"), 0)

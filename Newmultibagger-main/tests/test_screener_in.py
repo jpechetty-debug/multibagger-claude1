@@ -367,6 +367,20 @@ class TestScreenerParser:
         html = SAMPLE_HTML.replace('id="balance-sheet"', 'id="other"')
         assert ScreenerParser(html, "TESTCO").parse()["Debt_Equity"] is None
 
+    def test_quarterly_yoy_growth_compares_same_quarter_last_year(self):
+        r = self._parse()
+        # Sep 2024=135 vs Sep 2023=125; previous column Sep 2023=125 vs Sep 2022=100.
+        assert r["Qtr_Sales_YoY%"] == pytest.approx(8.0)
+        assert r["Qtr_Sales_YoY_Prev%"] == pytest.approx(25.0)
+
+    def test_earnings_inflection_from_quarters(self):
+        from modules.fundamentals import check_earnings_inflection
+        strong = {"Qtr_Sales_YoY%": 30, "Qtr_Sales_YoY_Prev%": 20, "Qtr_PAT_YoY%": 40,
+                  "Qtr_PAT_YoY_Prev%": 25, "Qtr_NPM%": 12, "Qtr_NPM_Year_Ago%": 10}
+        assert check_earnings_inflection(strong) == {"score": 5, "status": True}
+        loss = {**strong, "Qtr_NPM%": -5, "Qtr_NPM_Year_Ago%": -8}
+        assert check_earnings_inflection(loss)["status"] is False
+
     def test_missing_pledge_row_gives_none_not_zero(self):
         html = SAMPLE_HTML.replace("<td>Pledge %</td>", "<td>Others</td>")
         assert ScreenerParser(html, "TESTCO").parse()["pledge_percent"] is None

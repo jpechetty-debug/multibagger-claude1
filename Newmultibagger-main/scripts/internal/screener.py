@@ -1139,7 +1139,9 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         )
         # --- Earnings Inflection (Rich 0-5 Score) ---
         try:
-            inflection = check_earnings_inflection(ticker)
+            # Screener.in quarterly YoY data; the ticker path needs yfinance
+            # quarterly statements, which the data shim does not provide.
+            inflection = check_earnings_inflection(raw if raw.get("Qtr_PAT_YoY%") is not None else ticker)
             earnings_inflection_score = inflection.get("score", 0)
             earnings_accel = inflection.get("status", False)
         except Exception:
