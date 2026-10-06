@@ -35,9 +35,13 @@ INDUSTRY_KEYWORDS = {
     "Hospital": "Healthcare",
     "Construction": "Industrials",
     "Engineering": "Industrials",
-    "Power": "Energy & Utilities",
-    "Electric": "Energy & Utilities",
-    "Telecom": "Communications",
+    # Utility-specific phrases only: a bare "Electric" also matched cable and
+    # electrical-equipment makers ("Cables - Electricals") and filed them as utilities.
+    "Power Generation": "Energy & Utilities",
+    "Power Distribution": "Energy & Utilities",
+    "Electric Utilities": "Energy & Utilities",
+    "Utilities": "Energy & Utilities",
+    "Telecom": "Communication Services",
 }
 
 
@@ -50,10 +54,8 @@ def get_refined_sector(symbol: str, long_name: str, yf_sector: str, yf_industry:
     if clean_sym in INDIAN_SECTOR_MAP:
         return INDIAN_SECTOR_MAP[clean_sym]
 
-    name_upper = long_name.upper()
-    for key, val in INDIAN_SECTOR_MAP.items():
-        if key in name_upper:
-            return val
+    # No company-name substring match: "RELIANCE" filed Reliance Power and
+    # Reliance Infrastructure under "Energy / O2C".
 
     # 2. Industry Keyword Match
     industry_text = (yf_industry or "").title()
