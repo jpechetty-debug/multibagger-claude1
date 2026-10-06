@@ -241,7 +241,7 @@ class RiskGovernor:
         de = stock_data.get("Debt_Equity", 0)
         is_financial = "bank" in sector or "finance" in sector or "nbfc" in sector
 
-        if not is_financial and de > 2.0:
+        if not is_financial and de is not None and de > 2.0:
             msg = f"GOVERNANCE RED FLAG: High Debt (D/E {de} > 2.0)"
             self.log_rejected_trade(symbol, msg)
             return False, msg

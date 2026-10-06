@@ -1407,7 +1407,9 @@ def analyze_sector_rotation(stock_list):
     print("\nCalculating Sector Rotation...")
     for stock in stock_list:
         sec = stock.get("Sector", "Unknown")
-        rs = stock.get("RS_Rating", 0)
+        rs = stock.get("RS_Rating")
+        if rs is None:  # unknown RS must not count as 0 or crash the sum
+            continue
 
         if sec not in sector_returns:
             sector_returns[sec] = 0.0
@@ -1880,28 +1882,29 @@ def main(argv=None):
                     if val < active_filters["roe_min"] * 100:  # type: ignore
                         passes_filters = False
                 if "roce_min" in active_filters:
-                    val = data.get("ROCE%", 0)
-                    if val < active_filters["roce_min"] * 100:  # type: ignore
+                    val = data.get("ROCE%")
+                    if val is None or val < active_filters["roce_min"] * 100:  # type: ignore
                         passes_filters = False
                 if "pat_growth_5y_min" in active_filters:
-                    val = data.get("Median_PAT_Growth_5Y%", 0)
-                    if val < active_filters["pat_growth_5y_min"] * 100:  # type: ignore
+                    val = data.get("Median_PAT_Growth_5Y%")
+                    if val is None or val < active_filters["pat_growth_5y_min"] * 100:  # type: ignore
                         passes_filters = False
                 if "peg_max" in active_filters:
                     val = data.get("PEG_Ratio")
                     if val is None or val > active_filters["peg_max"]:  # type: ignore
                         passes_filters = False
                 if "pledge_pct_max" in active_filters:
-                    val = data.get("Pledge_Pct", 100)
-                    if val > active_filters["pledge_pct_max"]:  # type: ignore
+                    # No free source publishes pledge data, so unknown passes.
+                    val = data.get("Pledge_Pct")
+                    if val is not None and val > active_filters["pledge_pct_max"]:  # type: ignore
                         passes_filters = False
                 if "promoter_pct_min" in active_filters:
                     val = data.get("Promoter_Holding%", 0)
                     if val < active_filters["promoter_pct_min"]:  # type: ignore
                         passes_filters = False
                 if "debt_equity_max" in active_filters:
-                    val = data.get("Debt_Equity", 999)
-                    if val > active_filters["debt_equity_max"]:  # type: ignore
+                    val = data.get("Debt_Equity")
+                    if val is None or val > active_filters["debt_equity_max"]:  # type: ignore
                         passes_filters = False
                 if "cfo_to_pat_min" in active_filters:
                     val = data.get("CFO_PAT_Ratio")
