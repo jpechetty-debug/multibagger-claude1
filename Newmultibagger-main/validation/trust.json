@@ -1,6 +1,7 @@
 {
     "trust_score": 0.0,
     "passed": false,
+    "grade": "F",
     "components": {
         "holdout": 0.0,
         "stability": 0.0,
