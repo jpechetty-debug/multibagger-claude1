@@ -25,3 +25,8 @@ The `Stop` hook commits tracked changes at session end, but also `git add` new f
 
 ## If you're told to stop
 `OPERATOR STEERING:` messages come from a human via the steer hook. Treat them as higher priority than your current plan.
+
+## Data quality is a hard gate
+- Missing data is `None`, never `0`. Do not write `or 0`, `.get(x, 0)` or `fillna(0)` on fundamentals or signals; the scorer already skips `None`, but it rewards a fake 0 (e.g. D/E 0 = debt-free).
+- After any change to data fetching, parsing, scoring inputs or the picks table, run `python -m modules.data_layer.dq_audit` (from `Newmultibagger-main/`). It must exit 0. A full scan runs it automatically and exits 1 on failure.
+- Never silence a finding by loosening a threshold. A known issue goes in `WAIVERS` in `modules/data_layer/dq_audit.py` with a reason and a short expiry date.

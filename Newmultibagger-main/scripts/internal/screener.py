@@ -1508,6 +1508,8 @@ def analyze_market_regime(symbol="^NSEI"):
 def main(argv=None):
     import argparse
 
+    dq_failed = False
+
     parser = argparse.ArgumentParser(description="Institutional Screener v3.0")
     parser.add_argument(
         "--mode",
@@ -2270,6 +2272,15 @@ def main(argv=None):
 
             logging.error(f"Database error while saving multibaggers: {e}", exc_info=True)
 
+        # Strict DQ gate: a failing audit makes the scan exit non-zero.
+        from db.db_core import DB_PATH
+        from modules.data_layer.dq_audit import main as dq_audit_main
+
+        print("\nDQ audit of saved picks:")
+        dq_failed = dq_audit_main(["--db", str(DB_PATH)]) != 0
+        if dq_failed:
+            print("DQ AUDIT FAILED: fix the data (or add a dated waiver) before trusting these picks.")
+
         # Phase 40 & 41: Institutional Analysis Pipeline
         try:
             print("\n" + "=" * 50)
@@ -2350,6 +2361,8 @@ def main(argv=None):
     except Exception as e:
         print(f"Logging Error: {e}")
 
+    return 1 if dq_failed else 0
+
 
 def run_screener(argv=None):
     """Programmatic entry point for one-shot screener runs."""
@@ -2357,4 +2370,4 @@ def run_screener(argv=None):
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
