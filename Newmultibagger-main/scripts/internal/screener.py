@@ -2109,10 +2109,12 @@ def main(argv=None):
                 sym_with_ns = sym if sym.endswith((".NS", ".BO")) else sym + ".NS"
                 bt = batch_bt_results.get(sym_with_ns, batch_bt_results.get(sym, {}))
 
-                stock["Backtest_CAGR"] = bt.get("cagr", 0.0)
-                stock["Backtest_Win_Rate"] = bt.get("win_rate", 0.0)
-                stock["Backtest_Max_DD"] = bt.get("max_drawdown", 0.0)
-                stock["Backtest_Sharpe"] = bt.get("sharpe_ratio", 0.0)
+                # Only the top MAX_VECTORBT_SYMBOLS are backtested; the rest stay None
+                # (0.0 would read as a real 0% CAGR / win rate).
+                stock["Backtest_CAGR"] = bt.get("cagr")
+                stock["Backtest_Win_Rate"] = bt.get("win_rate")
+                stock["Backtest_Max_DD"] = bt.get("max_drawdown")
+                stock["Backtest_Sharpe"] = bt.get("sharpe_ratio")
 
     # 2. Phase 3: Sector Analysis
     if results:

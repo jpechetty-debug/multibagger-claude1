@@ -58,10 +58,10 @@ MAX_AGE_DAYS = 7  # picks must come from a scan at most a week old
 # Known issues being worked on. Key: (check, column). Value: (reason, expiry ISO date).
 WAIVERS: dict[tuple[str, str], tuple[str, str]] = {
     ("constant", "earnings_accel"): ("fixed in 9d94cda; stored rows refresh on next scan", "2026-10-20"),
-    ("zero_fill", "backtest_cagr"): ("per-stock backtest only runs for some picks", "2026-10-20"),
-    ("zero_fill", "backtest_win_rate"): ("per-stock backtest only runs for some picks", "2026-10-20"),
-    ("zero_fill", "backtest_max_dd"): ("per-stock backtest only runs for some picks", "2026-10-20"),
-    ("zero_fill", "backtest_sharpe"): ("per-stock backtest only runs for some picks", "2026-10-20"),
+    ("zero_fill", "backtest_cagr"): ("fixed: unbacktested picks now None; stored zeros clear on next scan", "2026-10-20"),
+    ("zero_fill", "backtest_win_rate"): ("fixed: unbacktested picks now None; stored zeros clear on next scan", "2026-10-20"),
+    ("zero_fill", "backtest_max_dd"): ("fixed: unbacktested picks now None; stored zeros clear on next scan", "2026-10-20"),
+    ("zero_fill", "backtest_sharpe"): ("fixed: unbacktested picks now None; stored zeros clear on next scan", "2026-10-20"),
     ("placeholder", "sector"): ("fixed in code; stored rows refresh on next scan", "2026-10-13"),
     ("dead", "pledge_pct"): ("no free source: Screener.in pages carry no pledge row", "2026-12-31"),
     **{("dead", c): ("computed by the scan but dropped on save; fix next", "2026-10-13") for c in (
