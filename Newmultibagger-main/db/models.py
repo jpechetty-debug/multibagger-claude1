@@ -20,6 +20,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    text,
 )
 from sqlalchemy.orm import DeclarativeBase
 
@@ -58,6 +59,7 @@ class Multibagger(Base):
     avg_roe_5y = Column(Float)
     pe_ratio = Column(Float)
     down_from_52w = Column(Float)
+    down_from_52w_high = Column(Float)  # legacy duplicate of down_from_52w, still read by older consumers
     rs_rating = Column(Float)
     earnings_accel = Column(Integer)
     sector_leader = Column(Integer)
@@ -342,10 +344,28 @@ class HoldoutResult(Base):
     overfitting_flag = Column(Integer, default=0)
 
 
+class ScoreDriftAlert(Base):
+    """Score jumps between scans (created at runtime by db/repository.py; declared
+    here so Alembic autogenerate does not propose dropping it)."""
+
+    __tablename__ = "score_drift_alerts"
+    __table_args__ = (Index("idx_score_drift_symbol", "symbol", "detected_at"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    symbol = Column(Text, nullable=False)
+    old_score = Column(Float)
+    new_score = Column(Float)
+    drift_points = Column(Float)
+    fundamental_changed = Column(Integer, server_default=text("0"))
+    alert_status = Column(Text, server_default=text("'OPEN'"))
+    detected_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
+
+
 class WebhookSubscription(Base):
     """One row per registered outbound webhook endpoint."""
 
     __tablename__ = "webhook_subscriptions"
+    __table_args__ = (Index("idx_wh_active", "is_active"),)
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(120), nullable=False)

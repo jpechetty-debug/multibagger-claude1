@@ -37,7 +37,7 @@ Older history: see `PROGRESS_ARCHIVE.md` (read it only when you need past contex
 3. The backend `/research/trust-score` response has no `grade` field, so the UI shows an empty "Grade:".
 4. Move `ticker_list.py` (1572 lines of data) to CSV/JSON.
 5. Split `scripts/internal/screener.py` (2341 lines). It holds `get_stock_data()`, the top god node (58 edges).
-6. [OPEN since 2026-07-22] Alembic schema drift: `db/repository.py::_ensure_column()` adds columns at runtime (e.g. `revenue_cagr_3y`, `piotroski_score`) that are missing from `db/models.py`, so an Alembic autogenerate would DROP them. Either backport the columns to the models or retire autogenerate.
+6. [x] FIXED 2026-10-07: Alembic schema drift. All `_ensure_column` columns were already declared, except `multibaggers.down_from_52w_high`, which is now added. `score_drift_alerts` (+ idx_score_drift_symbol) and `idx_wh_active` existed only at runtime, so `alembic check` proposed dropping them. They are now declared (`ScoreDriftAlert`, WebhookSubscription.__table_args__). `alembic check` now shows no remove_* ops; 318 modify_type (SQLite TEXT/String naming) and 22 modify_nullable diffs remain, non-destructive. Guard: `tests/test_schema_drift.py` fails if repository.py creates a table/column the models lack. Dead-module deletion is still pending: blocked by the permission classifier, so the user must run the `git rm` (list in item 2) or allow it.
 
 ## Review findings 2026-10-06 (pick quality)
 - Score cliffs: 100 of 516 current picks score exactly 60.00x (stacked 60-caps in `modules/scoring/ceiling.py` plus an md5 tiebreak below 0.01), so their order is random. The current max score is 68.6, and none reach 70.
