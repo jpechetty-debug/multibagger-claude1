@@ -96,3 +96,18 @@ def test_too_few_rows_fails(rows):
 def test_unknown_sector_placeholder_fails():
     conn = _db(sector=lambda i: "Unknown" if i < 10 else "Industrials")
     assert ("placeholder", "sector") in _checks(conn, today=date(2026, 12, 1))
+
+
+def test_stale_scan_fails():
+    conn = _db(updated_at=lambda i: "2026-09-20 10:00:00")
+    assert ("stale", "updated_at") in _checks(conn, today=date(2026, 10, 6))
+    assert ("stale", "updated_at") not in _checks(conn, today=date(2026, 9, 25))
+
+
+def test_screener_in_dependencies_are_declared():
+    # Without these the primary fundamentals provider disables itself silently.
+    from pathlib import Path
+    reqs = (Path(__file__).resolve().parents[1] / "requirements.txt").read_text(encoding="utf-8").lower()
+    lines = [line.strip() for line in reqs.splitlines()]
+    for package in ("curl_cffi", "beautifulsoup4"):
+        assert any(line.startswith(package) for line in lines), f"{package} missing from requirements.txt"

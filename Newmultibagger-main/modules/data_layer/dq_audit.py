@@ -10,6 +10,7 @@ Catches the failure modes that silently corrupted picks before:
   * inverted     - a derived signal that disagrees with its own input (RS vs 6M return)
   * placeholder  - a label standing in for missing data (sector "Unknown")
   * duplicates   - the same symbol saved twice
+  * stale        - the newest saved row is older than MAX_AGE_DAYS
 
 Every check fails the audit. A known issue can be waived only in WAIVERS, with a
 reason and an expiry date; an expired waiver fails again, so nothing stays hidden.
@@ -52,6 +53,7 @@ MONOTONIC = [("rs_rating", "ret_6m", 0.9)]
 PLACEHOLDERS = [("sector", "Unknown", 0.02)]
 
 MIN_ROWS = 50
+MAX_AGE_DAYS = 7  # picks must come from a scan at most a week old
 
 # Known issues being worked on. Key: (check, column). Value: (reason, expiry ISO date).
 WAIVERS: dict[tuple[str, str], tuple[str, str]] = {
@@ -102,6 +104,13 @@ def audit(conn: sqlite3.Connection, table: str = "multibaggers", today: date | N
     n = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
     if n < MIN_ROWS:
         return [Finding("row_count", "*", f"only {n} rows (< {MIN_ROWS})")]
+
+    newest = conn.execute(f"SELECT MAX(updated_at) FROM {table}").fetchone()[0] if any(
+        r[1] == "updated_at" for r in conn.execute(f"PRAGMA table_info({table})")) else None
+    if newest:
+        age = (today - date.fromisoformat(str(newest)[:10])).days
+        if age > MAX_AGE_DAYS:
+            found.append(Finding("stale", "updated_at", f"newest row is {age} days old (limit {MAX_AGE_DAYS})"))
 
     dupes = conn.execute(f"SELECT COUNT(*) - COUNT(DISTINCT symbol) FROM {table}").fetchone()[0]
     if dupes:
