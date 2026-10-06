@@ -1,11 +1,16 @@
 """
-Targeted CFO/PAT and Debt/Equity backfill + rescore — a fast alternative to a full universe rescan.
+Targeted CFO/PAT and Debt/Equity backfill of stored picks.
 
 Background: the Screener.in CFO parser was broken (fixed in 7699b71), so most
 rows in `multibaggers` carry cfo_pat_ratio = 0, which trips the Cash Quality
 ceiling. This script re-fetches ONLY the Screener.in page for those rows
 (one request each, rate-limited by the provider), stores the real ratio or
-NULL, then rescores every row from the stored fundamentals.
+NULL.
+
+It does NOT rescore. Rescoring stored rows is not equivalent to a scan: rows lack
+the sector medians, sector-rotation boost and earnings-inflection score the scan
+uses (SANDUMA rescored to 79.7 vs 100 in the scan). Refresh scores with a full
+scan: powershell -File scripts/run_scan.ps1
 
 Debt/Equity had the same missing-as-zero problem (Screener.in supplied no D/E,
 and the yfinance fallback defaulted to 0, which scores as debt-free), so rows
@@ -16,10 +21,9 @@ Resumable: phase 1 only selects rows still at exactly 0, so an interrupted run
 picks up where it stopped (genuinely debt-free rows stay at 0 and are refetched). A copy of the DB is taken before the first write.
 
 Usage:
-    python scripts/internal/backfill_cfo.py                # backfill + rescore
+    python scripts/internal/backfill_cfo.py                # backfill
     python scripts/internal/backfill_cfo.py --limit 20     # try a small batch first
     python scripts/internal/backfill_cfo.py --dry-run      # fetch and print, write nothing
-    python scripts/internal/backfill_cfo.py --rescore-only # skip fetching
 """
 
 from __future__ import annotations
@@ -39,8 +43,6 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from modules.adapters.screener_in import ScreenerInProvider  # noqa: E402
-from modules.scoring import calculate_institutional_score  # noqa: E402
-from scripts.internal.screener import rating_for_score  # noqa: E402
 
 DEFAULT_DB = PROJECT_ROOT / "runtime" / "stocks.db"
 
@@ -101,47 +103,11 @@ def backfill_cfo(conn: sqlite3.Connection, limit: int | None, dry_run: bool) -> 
     return found, missing
 
 
-def rescore(conn: sqlite3.Connection, dry_run: bool) -> int:
-    rows = [dict(r) for r in conn.execute("SELECT * FROM multibaggers")]
-    print(f"Phase 2: rescoring {len(rows)} stocks from stored fundamentals")
-    changed = 0
-    for i, row in enumerate(rows, start=1):
-        try:
-            res = calculate_institutional_score(row)
-        except Exception as exc:
-            print(f"  {row['symbol']}: scoring failed ({exc}); kept old score")
-            continue
-        score = res["total_score"]
-        if abs(score - (row.get("score") or 0)) > 0.01:
-            changed += 1
-        if not dry_run:
-            conn.execute(
-                "UPDATE multibaggers SET score = ?, rating = ?, conviction_score = ?, "
-                "conviction_boost = ? WHERE symbol = ?",
-                (
-                    score,
-                    rating_for_score(score, row.get("value_gap")),
-                    res.get("conviction_score"),
-                    res.get("conviction_boost"),
-                    row["symbol"],
-                ),
-            )
-        if i % 100 == 0:
-            if not dry_run:
-                conn.commit()
-            print(f"  [{i}/{len(rows)}]")
-    if not dry_run:
-        conn.commit()
-    return changed
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--db", type=Path, default=DEFAULT_DB)
     parser.add_argument("--limit", type=int, default=None, help="only fetch the first N stocks")
-    parser.add_argument("--dry-run", action="store_true", help="fetch and score but write nothing")
-    parser.add_argument("--rescore-only", action="store_true", help="skip phase 1")
-    parser.add_argument("--no-rescore", action="store_true", help="skip phase 2")
+    parser.add_argument("--dry-run", action="store_true", help="fetch and print but write nothing")
     args = parser.parse_args()
 
     logging.disable(logging.WARNING)
@@ -153,11 +119,9 @@ def main() -> int:
 
     conn = _connect(args.db)
     try:
-        if not args.rescore_only:
-            found, missing = backfill_cfo(conn, args.limit, args.dry_run)
-            print(f"Phase 1 done: {found} values found, {missing} unavailable (stored as NULL)")
-        if not args.no_rescore:
-            print(f"Phase 2 done: {rescore(conn, args.dry_run)} scores changed")
+        found, missing = backfill_cfo(conn, args.limit, args.dry_run)
+        print(f"Done: {found} values found, {missing} unavailable (stored as NULL)")
+        print("Scores are unchanged; run a full scan to refresh them: powershell -File scripts/run_scan.ps1")
     finally:
         conn.close()
     return 0
