@@ -27,24 +27,20 @@ MODULE_MAPPING = {
     "news_gate": "intelligence.news_gate",
     "news_sentiment": "intelligence.news_sentiment",
     "promoter_intel": "intelligence.promoter_intel",
-    "insider": "intelligence.insider",
 
     # Risk (Note: 'risk' package itself is handled by modules/risk/__init__.py)
     "stress_test": "risk.stress_test",
     "stress_tester": "risk.stress_tester",
     "correlation": "risk.correlation",
     "regime_hmm": "risk.regime_hmm",
-    "probability": "risk.probability",
     "slippage": "risk.slippage",
 
     # Portfolio
     "allocation_hrp": "portfolio.allocation_hrp",
     "capital_efficiency": "portfolio.capital_efficiency",
-    "capital_simulator": "portfolio.capital_simulator",
     "optimizer": "portfolio.optimizer",
     "execution": "portfolio.execution",
     "execution_analyzer": "portfolio.execution_analyzer",
-    "exit_engine": "portfolio.exit_engine",
     "tax_efficiency": "portfolio.tax_efficiency",
 
     # Reporting (Note: 'reporting' package itself is handled by modules/reporting/__init__.py)
@@ -53,7 +49,6 @@ MODULE_MAPPING = {
 
     # Tracking
     "tracker": "tracking.tracker",
-    "alpha_tracker": "tracking.alpha_tracker",
     "drift_monitor": "tracking.drift_monitor",
     "thesis_monitor": "tracking.thesis_monitor",
     "research_memory": "tracking.research_memory",
