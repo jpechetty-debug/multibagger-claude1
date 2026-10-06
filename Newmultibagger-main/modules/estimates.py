@@ -9,6 +9,7 @@ import os
 
 from core.observability.logger import get_logger
 from modules.cache import cached
+from modules.data_layer.intel_cache import daily_cached
 
 _log = get_logger("modules.estimates")
 
@@ -301,6 +302,7 @@ def analyze_estimate_momentum(earnings_data: dict) -> dict:
 
 
 @cached(ttl=1800, key_prefix="estimates")
+@daily_cached("estimates")
 def get_estimate_data(
     symbol: str,
     info: dict | None = None,

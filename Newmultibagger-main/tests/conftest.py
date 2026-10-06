@@ -12,6 +12,7 @@ import pytest
 
 _os.environ.setdefault("DUCKDB_SKIP_SQLITE_EXT", "1")
 _os.environ.setdefault("SOVEREIGN_TESTING", "1")  # skip lifespan background tasks (ML bootstrap, pub/sub, webhook retry)
+_os.environ.setdefault("INTEL_CACHE_DISABLED", "true")  # no shared on-disk intel cache between tests
 
 
 ROOT = Path(__file__).resolve().parents[1]

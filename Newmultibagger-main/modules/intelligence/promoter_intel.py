@@ -11,6 +11,7 @@ import requests
 
 from core.observability.logger import get_logger
 from modules.db_utils import get_db_connection
+from modules.data_layer.intel_cache import daily_cached
 
 _log = get_logger("modules.intelligence.promoter_intel")
 
@@ -108,6 +109,7 @@ def _get_multibagger_row(symbol: str) -> dict | None:
         conn.close()
 
 
+@daily_cached("promoter_trend")
 def get_promoter_trend(symbol: str) -> dict:
     """
     Compute promoter action trends.
