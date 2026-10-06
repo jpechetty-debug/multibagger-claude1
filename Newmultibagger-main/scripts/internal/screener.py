@@ -1348,6 +1348,11 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             "Ret_6M": mom_features.get("ret_6m", 0),
             "Vol_Breakout": mom_features.get("vol_breakout", 1.0),
             "Dist_From_52W_High": mom_features.get("dist_from_52w_high", 0),
+            # Only the full 9-signal calculation is a Piotroski score.
+            "Piotroski_Score": f_score if f_score_max == 9 and f_score_method == "9pt_piotroski" else None,
+            "OCF_Yield%": raw.get("OCF_Yield%"),
+            "Earnings_Velocity_QoQ%": raw.get("Qtr_PAT_QoQ%"),
+            "Earnings_Velocity_YoY%": raw.get("Qtr_PAT_YoY%"),
             # --- Sprint 1: Compounding Lens ---
             "Revenue_CAGR_3Y": cagr_metrics.get("Revenue_CAGR_3Y"),
             "Revenue_CAGR_5Y": cagr_metrics.get("Revenue_CAGR_5Y"),
@@ -1478,6 +1483,7 @@ def calculate_trade_setup(stock):
             stock["Stop_Loss"] = round(cmp * 0.90, 1)
 
         stock["Target_1"] = round(cmp * 1.25, 1)
+        stock["Target_2"] = round(cmp * 1.5, 1)
 
     return stock
 
@@ -2287,6 +2293,11 @@ def main(argv=None):
         dq_failed = dq_audit_main(["--db", str(DB_PATH)]) != 0
         if dq_failed:
             print("DQ AUDIT FAILED: fix the data (or add a dated waiver) before trusting these picks.")
+        else:
+            import sqlite3
+
+            with sqlite3.connect(DB_PATH, timeout=30) as audit_conn:
+                audit_conn.execute("UPDATE multibaggers SET last_audited = CURRENT_TIMESTAMP")
 
         # Phase 40 & 41: Institutional Analysis Pipeline
         try:

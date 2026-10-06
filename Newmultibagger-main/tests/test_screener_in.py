@@ -401,6 +401,12 @@ class TestScreenerParser:
         r = ScreenerParser(f"<html><body>{crumbs}</body></html>", "T").parse()
         assert (r["Sector"], r["Industry"]) == ("Consumer Cyclical", "Footwear")
 
+    def test_market_cap_with_rupee_and_cr_dot_units(self):
+        # Live markup: "₹ <span class=number>7,61,979</span> Cr." (trailing dot).
+        html = ('<ul id="top-ratios"><li><span class="name">Market Cap</span>'
+                '<span class="nowrap value">₹ <span class="number">7,61,979</span> Cr.</span></li></ul>')
+        assert ScreenerParser(html, "T").parse()["Market_Cap_Cr"] == 761979
+
     def test_missing_pledge_row_gives_none_not_zero(self):
         html = SAMPLE_HTML.replace("<td>Pledge %</td>", "<td>Others</td>")
         assert ScreenerParser(html, "TESTCO").parse()["pledge_percent"] is None

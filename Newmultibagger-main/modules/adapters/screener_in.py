@@ -203,7 +203,12 @@ class ScreenerParser:
                 continue
             name = name_el.get_text(strip=True).lower()
             val_text = val_el.get_text(strip=True)
-            parsed = _parse_indian_number(val_text)
+            # The bare figure sits in an inner span; the full text carries units
+            # like "₹7,61,979Cr." that the number parser rejects.
+            number_el = val_el.find("span", class_="number")
+            parsed = _parse_indian_number(number_el.get_text(strip=True)) if isinstance(number_el, Tag) else None
+            if parsed is None:
+                parsed = _parse_indian_number(val_text)
 
             if "market cap" in name:
                 ratios["Market_Cap_Cr"] = parsed
@@ -398,6 +403,13 @@ class ScreenerParser:
         return {"Net_Income": pat[y], "Total_Revenue": sales[y], "Total_Assets": assets[y],
                 "Total_Equity": capital[y] + reserves[y]}
 
+    def _get_ocf_yield(self, market_cap_cr: float | None) -> float | None:
+        """Latest annual operating cash flow as % of market cap (both ₹ Cr)."""
+        cfo = self._row_by_year("cash-flow", ("cash from operating", "operating activities"))
+        if not cfo or not market_cap_cr:
+            return None
+        return round(list(cfo.values())[-1] / market_cap_cr * 100, 2)
+
     # ── Quarterly results: YoY growth for earnings acceleration ─────────────
 
     def _get_quarterly_growth(self) -> dict[str, float]:
@@ -428,6 +440,9 @@ class ScreenerParser:
             "Qtr_PAT_YoY%": yoy(pat, 0),
             "Qtr_PAT_YoY_Prev%": yoy(pat, 1),
         }
+        if len(quarters) >= 2 and pat.get(quarters[-2]):
+            prev = pat[quarters[-2]]
+            out["Qtr_PAT_QoQ%"] = round((pat.get(quarters[-1], prev) - prev) / abs(prev) * 100, 2)
         if quarters:
             latest, ago = quarters[-1], year_ago(quarters[-1]) or ""
             if sales.get(latest) and latest in pat:
@@ -720,6 +735,7 @@ class ScreenerParser:
             "ROCE%":             top.get("ROCE%"),
             "Avg_ROE_5Y%":       avg_roe,
             "CFO_PAT_Ratio":     cf.get("CFO_PAT_Ratio"),
+            "OCF_Yield%":        self._get_ocf_yield(top.get("Market_Cap_Cr")),
 
             # ── Growth (what Screener uniquely provides vs yFinance)
             "Sales_Growth_5Y%":  pnl.get("Sales_Growth_5Y%"),

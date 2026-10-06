@@ -882,6 +882,7 @@ def save_multibaggers(df, *, replace_existing: bool = False):
         "Buy_Below",
         "Stop_Loss",
         "Target_1",
+        "Target_2",
         "Sales_Growth_TTM%",
         "ROE%",
         "PEG_Ratio",
@@ -926,6 +927,10 @@ def save_multibaggers(df, *, replace_existing: bool = False):
         "Low_52W",
         "Pledge_Pct",
         "Piotroski_Score",
+        "SHAP_Top_Drivers",
+        "OCF_Yield%",
+        "Earnings_Velocity_QoQ%",
+        "Earnings_Velocity_YoY%",
         "ROCE%",
         "Median_PAT_Growth_5Y%",
         "ml_rank_score",
@@ -960,6 +965,8 @@ def save_multibaggers(df, *, replace_existing: bool = False):
     mapping = FIELD_MAPPING
 
     df_db.rename(columns=mapping, inplace=True)
+    if "down_from_52w" in df_db.columns:  # legacy duplicate column read by older consumers
+        df_db["down_from_52w_high"] = df_db["down_from_52w"]
 
     # Preserve existing last_audited timestamps
     try:
