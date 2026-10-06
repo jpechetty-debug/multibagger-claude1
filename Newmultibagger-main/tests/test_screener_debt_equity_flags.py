@@ -36,8 +36,10 @@ def test_resolve_debt_equity_does_not_rescale_small_yfinance_values():
     assert screener._resolve_debt_equity(raw, info) == 0.35
 
 
-def test_resolve_debt_equity_no_data_defaults_to_zero():
-    assert screener._resolve_debt_equity({}, {}) == 0.0
+def test_resolve_debt_equity_no_data_is_none_not_debt_free():
+    # 0.0 would score as a debt-free balance sheet; unknown must stay None.
+    assert screener._resolve_debt_equity({}, {}) is None
+    assert screener._resolve_debt_equity({"Debt_Equity": None}, {"debtToEquity": None}) is None
 
 
 def test_resolve_debt_equity_ignores_non_finite_canonical_value():

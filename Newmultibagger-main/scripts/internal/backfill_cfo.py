@@ -1,5 +1,5 @@
 """
-Targeted CFO/PAT backfill + rescore — a fast alternative to a full universe rescan.
+Targeted CFO/PAT and Debt/Equity backfill + rescore — a fast alternative to a full universe rescan.
 
 Background: the Screener.in CFO parser was broken (fixed in 7699b71), so most
 rows in `multibaggers` carry cfo_pat_ratio = 0, which trips the Cash Quality
@@ -7,8 +7,13 @@ ceiling. This script re-fetches ONLY the Screener.in page for those rows
 (one request each, rate-limited by the provider), stores the real ratio or
 NULL, then rescores every row from the stored fundamentals.
 
+Debt/Equity had the same missing-as-zero problem (Screener.in supplied no D/E,
+and the yfinance fallback defaulted to 0, which scores as debt-free), so rows
+with debt_equity = 0 are refetched in the same pass. Each field is only
+overwritten on the rows where it was 0.
+
 Resumable: phase 1 only selects rows still at exactly 0, so an interrupted run
-picks up where it stopped. A copy of the DB is taken before the first write.
+picks up where it stopped (genuinely debt-free rows stay at 0 and are refetched). A copy of the DB is taken before the first write.
 
 Usage:
     python scripts/internal/backfill_cfo.py                # backfill + rescore
@@ -56,32 +61,43 @@ def _backup(db_path: Path) -> Path:
 
 
 def backfill_cfo(conn: sqlite3.Connection, limit: int | None, dry_run: bool) -> tuple[int, int]:
-    symbols = [r["symbol"] for r in conn.execute(
-        "SELECT symbol FROM multibaggers WHERE cfo_pat_ratio = 0 ORDER BY symbol"
-    )]
+    rows = conn.execute(
+        "SELECT symbol, cfo_pat_ratio = 0 AS need_cfo, debt_equity = 0 AS need_de "
+        "FROM multibaggers WHERE cfo_pat_ratio = 0 OR debt_equity = 0 ORDER BY symbol"
+    ).fetchall()
     if limit:
-        symbols = symbols[:limit]
-    print(f"Phase 1: fetching CFO/PAT for {len(symbols)} stocks (~2s each)")
+        rows = rows[:limit]
+    print(f"Phase 1: fetching CFO/PAT and D/E for {len(rows)} stocks (~2s each)")
 
     provider = ScreenerInProvider()
     found = missing = 0
     started = time.monotonic()
-    for i, symbol in enumerate(symbols, start=1):
+    for i, row in enumerate(rows, start=1):
+        symbol = row["symbol"]
         try:
-            cfo = asyncio.run(provider.fetch_fundamentals(symbol)).get("CFO_PAT_Ratio")
+            data = asyncio.run(provider.fetch_fundamentals(symbol))
         except Exception as exc:  # network/parse failure: leave row at 0 so a rerun retries it
-            print(f"  [{i}/{len(symbols)}] {symbol}: fetch failed ({exc}); will retry next run")
+            print(f"  [{i}/{len(rows)}] {symbol}: fetch failed ({exc}); will retry next run")
             continue
-        if cfo is None:
-            missing += 1
+        updates = {}
+        if row["need_cfo"]:
+            updates["cfo_pat_ratio"] = data.get("CFO_PAT_Ratio")
+        if row["need_de"]:
+            updates["debt_equity"] = data.get("Debt_Equity")
+        for value in updates.values():
+            if value is None:
+                missing += 1
+            else:
+                found += 1
+        if dry_run:
+            print(f"  {symbol}: {updates}")
         else:
-            found += 1
-        if not dry_run:
-            conn.execute("UPDATE multibaggers SET cfo_pat_ratio = ? WHERE symbol = ?", (cfo, symbol))
+            assignments = ", ".join(f"{col} = ?" for col in updates)
+            conn.execute(f"UPDATE multibaggers SET {assignments} WHERE symbol = ?", (*updates.values(), symbol))
             conn.commit()
-        if i % 25 == 0 or i == len(symbols):
-            eta = (time.monotonic() - started) / i * (len(symbols) - i)
-            print(f"  [{i}/{len(symbols)}] found={found} missing={missing} eta={eta / 60:.1f} min")
+        if i % 25 == 0 or i == len(rows):
+            eta = (time.monotonic() - started) / i * (len(rows) - i)
+            print(f"  [{i}/{len(rows)}] found={found} missing={missing} eta={eta / 60:.1f} min")
     return found, missing
 
 
@@ -139,7 +155,7 @@ def main() -> int:
     try:
         if not args.rescore_only:
             found, missing = backfill_cfo(conn, args.limit, args.dry_run)
-            print(f"Phase 1 done: {found} ratios found, {missing} unavailable (stored as NULL)")
+            print(f"Phase 1 done: {found} values found, {missing} unavailable (stored as NULL)")
         if not args.no_rescore:
             print(f"Phase 2 done: {rescore(conn, args.dry_run)} scores changed")
     finally:

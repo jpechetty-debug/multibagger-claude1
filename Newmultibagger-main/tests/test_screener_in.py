@@ -108,6 +108,19 @@ SAMPLE_HTML = """
   </table>
 </section>
 
+<!-- Balance sheet: latest year D/E = 50 / (10 + 190) = 0.25 -->
+<section id="balance-sheet">
+  <table>
+    <thead><tr><th></th><th>Mar 2023</th><th>Mar 2024</th></tr></thead>
+    <tbody>
+      <tr><td>Equity Capital</td><td>10</td><td>10</td></tr>
+      <tr><td>Reserves</td><td>150</td><td>190</td></tr>
+      <tr><td>Borrowings<button>+</button></td><td>80</td><td>50</td></tr>
+      <tr><td>Total Liabilities</td><td>300</td><td>320</td></tr>
+    </tbody>
+  </table>
+</section>
+
 <!-- Quarterly results -->
 <section id="quarters">
   <table>
@@ -339,6 +352,24 @@ class TestScreenerParser:
 
     def test_pledge_percent(self):
         assert self._parse()["pledge_percent"] == pytest.approx(2.5)
+
+    def test_debt_equity_from_latest_balance_sheet_year(self):
+        assert self._parse()["Debt_Equity"] == pytest.approx(0.25)
+
+    def test_debt_equity_negative_net_worth_is_not_debt_free(self):
+        # Equity 10 + Reserves -200 < 0 with debt outstanding: a raw negative
+        # ratio would be clamped to 0.0 (debt-free) by the DQ gate.
+        html = SAMPLE_HTML.replace("<td>190</td>", "<td>-200</td>")
+        de = ScreenerParser(html, "TESTCO").parse()["Debt_Equity"]
+        assert de == ScreenerParser.NEGATIVE_EQUITY_DE
+
+    def test_missing_balance_sheet_gives_none_not_zero(self):
+        html = SAMPLE_HTML.replace('id="balance-sheet"', 'id="other"')
+        assert ScreenerParser(html, "TESTCO").parse()["Debt_Equity"] is None
+
+    def test_missing_pledge_row_gives_none_not_zero(self):
+        html = SAMPLE_HTML.replace("<td>Pledge %</td>", "<td>Others</td>")
+        assert ScreenerParser(html, "TESTCO").parse()["pledge_percent"] is None
 
     def test_sector_extracted(self):
         result = self._parse()["Sector"]

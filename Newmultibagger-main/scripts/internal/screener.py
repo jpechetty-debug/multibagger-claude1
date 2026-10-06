@@ -127,7 +127,7 @@ def _calculate_f_score_with_method(ticker, raw, info, debt_equity):
         if (op_cash_f is not None and net_income_f is not None and op_cash_f > net_income_f)
         else 0
     )
-    f_leverage = 1 if debt_equity < 0.4 else 0
+    f_leverage = 1 if debt_equity is not None and debt_equity < 0.4 else 0
     f_margin = 1 if info.get("grossMargins", 0) and info.get("grossMargins", 0) > 0 else 0
     return f_roa + f_cfo + f_quality + f_leverage + f_margin, "5pt_inline", 5
 
@@ -269,7 +269,7 @@ def _finite_or_default(value, default=0.0):
     return float(value)
 
 
-def _resolve_debt_equity(raw: dict, info: dict) -> float:
+def _resolve_debt_equity(raw: dict, info: dict) -> float | None:
     """Resolve Debt/Equity as a clean ratio (e.g. 0.35 for D/E of 35%).
 
     Prefers a canonical source's ``Debt_Equity`` (Screener.in, NSE XBRL —
@@ -284,12 +284,17 @@ def _resolve_debt_equity(raw: dict, info: dict) -> float:
 
     0.0 is a legitimate value here (debt-free company), so presence is
     checked with ``_is_finite_number`` rather than ``_is_present_metric``,
-    which would incorrectly treat a real zero as "missing".
+    which would incorrectly treat a real zero as "missing". When neither
+    source has a value the result is None: a zero here would score as a
+    debt-free balance sheet.
     """
     canonical = raw.get("Debt_Equity")
     if _is_finite_number(canonical):
         return float(canonical)
-    raw_de = info.get("debtToEquity", 0) or 0
+    raw_de = info.get("debtToEquity")
+    if not _is_finite_number(raw_de):
+        return None
+    raw_de = float(raw_de)
     if raw_de > 10:
         raw_de = raw_de / 100.0
     return float(raw_de)
@@ -1009,13 +1014,11 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         if pledge_pct is None:
             pledge_pct = raw.get("pledge_percent")
         if pledge_pct is None:
-            pledge_pct = info.get("pledgedPercent", 0) or 0
-            if pledge_pct > 1:
-                pledge_pct = float(pledge_pct)
-            else:
+            pledge_pct = info.get("pledgedPercent")
+            if _is_finite_number(pledge_pct) and float(pledge_pct) <= 1:
                 pledge_pct = float(pledge_pct) * 100  # convert from decimal
-        else:
-            pledge_pct = float(pledge_pct)
+        # None = unknown; 0 would read as "no pledged shares".
+        pledge_pct = float(pledge_pct) if _is_finite_number(pledge_pct) else None
 
         total_smart_money = _compute_smart_money_pct(promoter_holding, inst_holding)
 
@@ -1287,7 +1290,7 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             "ROE%": round(roe * 100, 2),
             "Avg_ROE_5Y%": avg_roe_5y,
             "Profit_Margin%": round(profit_margin * 100, 2),
-            "Debt_Equity": round(_finite_or_default(debt_equity), 2),
+            "Debt_Equity": round(debt_equity, 2) if _is_finite_number(debt_equity) else None,
             "PEG_Ratio": _finite_or_default(peg_ratio),
             "PE_Ratio": _finite_or_default(trailing_pe),
             "Down_From_52W_High%": down_from_high_pct,
@@ -2147,7 +2150,7 @@ def main(argv=None):
                     "sales_cagr_5y":       stock.get("Sales_Growth_5Y%",   0) or 0,
                     "avg_roe_5y":          stock.get("Avg_ROE_5Y%",        0) or 0,
                     "pe_ratio":            stock.get("PE_Ratio",            0) or 0,
-                    "debt_equity":         stock.get("Debt_Equity",         0) or 0,
+                    "debt_equity":         stock.get("Debt_Equity"),  # None → NaN, not "debt-free"
                     "cfo_pat_ratio":       stock.get("CFO_PAT_Ratio"),  # None → NaN; XGBoost handles missing
                     "market_cap_cr":       stock.get("Market_Cap_Cr",       0) or 0,
                     "roce":                stock.get("ROCE%",               0) or 0,

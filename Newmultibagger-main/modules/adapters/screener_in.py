@@ -335,6 +335,28 @@ class ScreenerParser:
 
         return result
 
+    # ── Balance Sheet: Debt/Equity ───────────────────────────────────────────
+
+    # D/E reported for a company with zero or negative net worth that still
+    # carries debt. A real negative ratio would be clamped up to 0.0 by the DQ
+    # gate and read as debt-free, so it is pinned at a deliberately bad value.
+    NEGATIVE_EQUITY_DE = 10.0
+
+    def _get_debt_equity(self) -> float | None:
+        """Borrowings / (Equity Capital + Reserves) for the latest balance-sheet year."""
+        borrowings = self._row_by_year("balance-sheet", ("borrowings",))
+        capital = self._row_by_year("balance-sheet", ("equity capital", "share capital"))
+        reserves = self._row_by_year("balance-sheet", ("reserves",))
+        common = [h for h in borrowings if h in capital and h in reserves]
+        if not common:
+            return None
+        latest = common[-1]
+        debt = borrowings[latest]
+        equity = capital[latest] + reserves[latest]
+        if equity <= 0:
+            return self.NEGATIVE_EQUITY_DE if debt > 0 else None
+        return round(debt / equity, 3)
+
     # ── Quarterly results: pub_date for PIT ──────────────────────────────────
 
     def _get_quarterly_dates(self) -> dict[str, str | None]:
@@ -612,7 +634,9 @@ class ScreenerParser:
             "FII_Holding%":      sh.get("FII_Holding%"),
             "DII_Holding%":      sh.get("DII_Holding%"),
             "Inst_Holding%":     sh.get("Inst_Holding%"),
-            "pledge_percent":    pledge or 0,
+            "Debt_Equity":       self._get_debt_equity(),
+            # Public pages usually carry no pledge row; None means unknown, not 0%.
+            "pledge_percent":    pledge,
 
             # ── PIT dates (critical for enforce_pit_gate)
             "Quarter_End":       dates.get("Quarter_End"),

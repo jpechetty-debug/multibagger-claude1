@@ -154,9 +154,9 @@ class PNSEAProvider(DataProvider):
             "roe": raw.get("info", {}).get("roe"),
             "sales_growth": raw.get("info", {}).get("salesGrowth"),
             "cfo_pat": cfo_pat,
-            "pledge_percent": pledged.get("pledgedPercentage", 0)
+            "pledge_percent": pledged.get("pledgedPercentage")
             if isinstance(pledged, dict)
-            else 0,
+            else None,
             "promoter_holding": raw.get("info", {}).get("promoterHolding"),
             "fii_dii": {
                 "fii": raw.get("info", {}).get("fiiHolding"),
