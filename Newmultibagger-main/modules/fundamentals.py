@@ -381,10 +381,12 @@ def calculate_roce(ticker_or_data):
     ROCE = EBIT / (Total Assets - Current Liabilities)
     """
     if isinstance(ticker_or_data, dict):
-        return _safe_float(
-            ticker_or_data.get("ROCE%") or ticker_or_data.get("roce"),
-            0,
-        )
+        # None when unknown: 0 would read as "earns nothing on capital".
+        value = ticker_or_data.get("ROCE%")
+        if value is None:
+            value = ticker_or_data.get("roce")
+        value = _safe_float(value, math.nan)
+        return value if math.isfinite(value) else None
 
     if _has_ticker_api(ticker_or_data):
         _log.warning("DEPRECATION: calculate_roce called with yfinance Ticker")
