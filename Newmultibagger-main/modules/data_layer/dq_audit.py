@@ -8,6 +8,7 @@ Catches the failure modes that silently corrupted picks before:
   * low_coverage - a core scoring input missing for too many rows
   * saturated    - too many values pinned at a DQ clamp bound (RS stuck at 0 or 10)
   * inverted     - a derived signal that disagrees with its own input (RS vs 6M return)
+  * placeholder  - a label standing in for missing data (sector "Unknown")
   * duplicates   - the same symbol saved twice
 
 Every check fails the audit. A known issue can be waived only in WAIVERS, with a
@@ -47,6 +48,9 @@ MAX_SATURATED_SHARE = 0.05
 # (signal, input, min Spearman): the signal must rise with its input.
 MONOTONIC = [("rs_rating", "ret_6m", 0.9)]
 
+# (column, placeholder, max share): placeholder labels standing in for missing data.
+PLACEHOLDERS = [("sector", "Unknown", 0.02)]
+
 MIN_ROWS = 50
 
 # Known issues being worked on. Key: (check, column). Value: (reason, expiry ISO date).
@@ -56,6 +60,7 @@ WAIVERS: dict[tuple[str, str], tuple[str, str]] = {
     ("zero_fill", "backtest_win_rate"): ("per-stock backtest only runs for some picks", "2026-10-20"),
     ("zero_fill", "backtest_max_dd"): ("per-stock backtest only runs for some picks", "2026-10-20"),
     ("zero_fill", "backtest_sharpe"): ("per-stock backtest only runs for some picks", "2026-10-20"),
+    ("placeholder", "sector"): ("fixed in code; stored rows refresh on next scan", "2026-10-13"),
     ("dead", "pledge_pct"): ("no free source: Screener.in pages carry no pledge row", "2026-12-31"),
     **{("dead", c): ("computed by the scan but dropped on save; fix next", "2026-10-13") for c in (
         "roce", "revenue_cagr_5y", "pat_cagr_5y", "eps_cagr_5y", "median_pat_growth", "piotroski_score",
@@ -120,6 +125,11 @@ def audit(conn: sqlite3.Connection, table: str = "multibaggers", today: date | N
             found.append(Finding("zero_fill", col, f"{zeros}/{n} rows are exactly 0"))
         if col in CORE_COVERAGE and nulls / n > CORE_COVERAGE[col]:
             found.append(Finding("low_coverage", col, f"{nulls}/{n} NULL (limit {CORE_COVERAGE[col]:.0%})"))
+
+    for col, placeholder, limit in (ph for ph in PLACEHOLDERS if ph[0] in present):
+        hits = conn.execute(f"SELECT COUNT(*) FROM {table} WHERE {col} = ? OR {col} = ''", (placeholder,)).fetchone()[0]
+        if hits / n > limit:
+            found.append(Finding("placeholder", col, f"{hits}/{n} rows are {placeholder!r} (limit {limit:.0%})"))
 
     for col, lo, hi in (b for b in CLAMP_BOUNDS if b[0] in present):
         pinned = conn.execute(f"SELECT COUNT(*) FROM {table} WHERE {col} <= ? OR {col} >= ?", (lo, hi)).fetchone()[0]

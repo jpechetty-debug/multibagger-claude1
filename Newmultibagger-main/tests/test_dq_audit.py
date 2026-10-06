@@ -91,3 +91,8 @@ def test_too_few_rows_fails(rows):
     conn.execute("CREATE TABLE multibaggers (symbol TEXT, score REAL)")
     conn.executemany("INSERT INTO multibaggers VALUES (?, ?)", [(f"S{i}", 1.0) for i in range(rows)])
     assert ("row_count", "*") in _checks(conn)
+
+
+def test_unknown_sector_placeholder_fails():
+    conn = _db(sector=lambda i: "Unknown" if i < 10 else "Industrials")
+    assert ("placeholder", "sector") in _checks(conn, today=date(2026, 12, 1))

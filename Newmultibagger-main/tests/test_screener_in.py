@@ -395,6 +395,12 @@ class TestScreenerParser:
         assert (r["Sales_Growth_10Y%"], r["Sales_Growth_5Y%"], r["Sales_Growth_3Y%"]) == (9, 10, 6)
         assert (r["EPS_Growth%"], r["EPS_Growth_3Y%"], r["Avg_ROE_5Y%"]) == (9, 8, 49)
 
+    def test_sector_from_market_breadcrumb_mapped_to_house_names(self):
+        crumbs = ('<a href="/market/IN07/" title="Broad Sector">Consumer Discretionary</a>'
+                  '<a href="/market/IN07/IN0701/IN070101/IN070101001/" title="Industry">Footwear</a>')
+        r = ScreenerParser(f"<html><body>{crumbs}</body></html>", "T").parse()
+        assert (r["Sector"], r["Industry"]) == ("Consumer Cyclical", "Footwear")
+
     def test_missing_pledge_row_gives_none_not_zero(self):
         html = SAMPLE_HTML.replace("<td>Pledge %</td>", "<td>Others</td>")
         assert ScreenerParser(html, "TESTCO").parse()["pledge_percent"] is None

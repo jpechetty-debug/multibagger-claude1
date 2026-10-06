@@ -570,8 +570,29 @@ class ScreenerParser:
 
     # ── Sector ────────────────────────────────────────────────────────────────
 
+    # NSE broad sectors (Screener's peer breadcrumb) mapped onto the yfinance-style
+    # names already used for sector medians and limits.
+    _NSE_SECTOR_MAP = {
+        "Commodities": "Basic Materials",
+        "Consumer Discretionary": "Consumer Cyclical",
+        "Fast Moving Consumer Goods": "Consumer Defensive",
+        "Information Technology": "Technology",
+        "Telecommunication": "Communication Services",
+        "Diversified": "Conglomerate",
+    }
+
+    def _market_link(self, title: str) -> str | None:
+        link = self.soup.find("a", href=re.compile(r"^/market/"), title=title)
+        return link.get_text(strip=True) if isinstance(link, Tag) else None
+
+    def _get_industry(self) -> str | None:
+        return self._market_link("Industry")
+
     def _get_sector(self) -> str | None:
-        """Extract sector from the About section or company metadata."""
+        """Sector from the peer breadcrumb (live layout), else the legacy About/metadata markup."""
+        broad = self._market_link("Broad Sector")
+        if broad:
+            return self._NSE_SECTOR_MAP.get(broad, broad)
         # Screener shows sector in the company description area
         about = self.soup.find("div", class_=re.compile(r"company-info|about|description"))
         if isinstance(about, Tag):
@@ -731,6 +752,7 @@ class ScreenerParser:
 
             # ── Classification
             "Sector":            sector,
+            "Industry":          self._get_industry(),
 
             # ── Quality score
             "F_Score":           fscore,

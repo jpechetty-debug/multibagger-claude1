@@ -1155,10 +1155,11 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
         sector = get_refined_sector(
             ticker_symbol,
             info.get("longName", ""),
-            info.get("sector", "Unknown"),
-            info.get("industry", "Unknown"),
+            # yfinance has no sector for many SME listings; Screener.in does.
+            info.get("sector") or raw.get("Sector") or "Unknown",
+            info.get("industry") or raw.get("Industry") or "Unknown",
         )
-        industry = info.get("industry", "Unknown")
+        industry = info.get("industry") or raw.get("Industry") or "Unknown"
 
         # --- 8-Point Metrics ---
         trailing_pe = info.get("trailingPE")
