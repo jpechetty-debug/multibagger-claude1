@@ -381,6 +381,20 @@ class TestScreenerParser:
         loss = {**strong, "Qtr_NPM%": -5, "Qtr_NPM_Year_Ago%": -8}
         assert check_earnings_inflection(loss)["status"] is False
 
+    def test_live_ranges_table_layout(self):
+        # Live Screener.in renders each CAGR as its own small "ranges-table".
+        ranges = """<section id="profit-loss"><table class="ranges-table">
+          <tr><th colspan="2">Compounded Sales Growth</th></tr>
+          <tr><td>10 Years:</td><td>9%</td></tr><tr><td>5 Years:</td><td>10%</td></tr>
+          <tr><td>3 Years:</td><td>6%</td></tr><tr><td>TTM:</td><td>8%</td></tr></table>
+          <table class="ranges-table"><tr><th colspan="2">Compounded Profit Growth</th></tr>
+          <tr><td>5 Years:</td><td>9%</td></tr><tr><td>3 Years:</td><td>8%</td></tr></table>
+          <table class="ranges-table"><tr><th colspan="2">Return on Equity</th></tr>
+          <tr><td>5 Years:</td><td>49%</td></tr></table></section>"""
+        r = ScreenerParser(f"<html><body>{ranges}</body></html>", "T").parse()
+        assert (r["Sales_Growth_10Y%"], r["Sales_Growth_5Y%"], r["Sales_Growth_3Y%"]) == (9, 10, 6)
+        assert (r["EPS_Growth%"], r["EPS_Growth_3Y%"], r["Avg_ROE_5Y%"]) == (9, 8, 49)
+
     def test_missing_pledge_row_gives_none_not_zero(self):
         html = SAMPLE_HTML.replace("<td>Pledge %</td>", "<td>Others</td>")
         assert ScreenerParser(html, "TESTCO").parse()["pledge_percent"] is None

@@ -349,10 +349,10 @@ class ScreenerRow(BaseModel):
     piotroski_score: int | None = Field(
         default=None, validation_alias=_validation_alias("Piotroski_Score", "piotroski_score")
     )
-    roce: float | None = Field(default=None, validation_alias=_validation_alias("ROCE_pct", "roce"))
+    roce: float | None = Field(default=None, validation_alias=AliasChoices("roce", "ROCE%", "ROCE_pct"))
     median_pat_growth: float | None = Field(
         default=None,
-        validation_alias=_validation_alias("Median_PAT_Growth_5Y_pct", "median_pat_growth"),
+        validation_alias=AliasChoices("median_pat_growth", "Median_PAT_Growth_5Y%", "Median_PAT_Growth_5Y_pct"),
     )
     ml_rank_score: float | None = None
     ret_1m: float | None = Field(default=None, validation_alias=_validation_alias("Ret_1M", "ret_1m"))

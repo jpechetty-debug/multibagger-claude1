@@ -248,6 +248,10 @@ class ScreenerParser:
         if not isinstance(section, Tag):
             return result
 
+        ranges = self._get_ranges_tables(section)
+        if ranges:
+            return ranges
+
         for row in section.find_all("tr"):
             if not isinstance(row, Tag):
                 continue
@@ -286,6 +290,29 @@ class ScreenerParser:
                 if valid:
                     result["Avg_ROE_5Y%"] = round(sum(valid) / len(valid), 2)
 
+        return result
+
+    # Live layout: one small "ranges-table" per metric, rows like "5 Years: | 10%".
+    _RANGES_KEYS = {
+        "compounded sales growth": {"10": "Sales_Growth_10Y%", "5": "Sales_Growth_5Y%", "3": "Sales_Growth_3Y%"},
+        "compounded profit growth": {"10": "EPS_Growth_10Y%", "5": "EPS_Growth%", "3": "EPS_Growth_3Y%"},
+        "return on equity": {"5": "Avg_ROE_5Y%"},
+    }
+
+    def _get_ranges_tables(self, section: Tag) -> dict[str, float | None]:
+        result: dict[str, float | None] = {}
+        for table in section.select("table.ranges-table"):
+            title = table.find("th")
+            keys = self._RANGES_KEYS.get(title.get_text(strip=True).lower() if title else "")
+            if not keys:
+                continue
+            for row in table.find_all("tr"):
+                cells = row.find_all("td")
+                if len(cells) < 2:
+                    continue
+                years = cells[0].get_text(strip=True).split(" ")[0]
+                if years in keys:
+                    result[keys[years]] = _parse_percent(cells[1].get_text(strip=True))
         return result
 
     # ── Cash Flow table: CFO ─────────────────────────────────────────────────
@@ -356,6 +383,20 @@ class ScreenerParser:
         if equity <= 0:
             return self.NEGATIVE_EQUITY_DE if debt > 0 else None
         return round(debt / equity, 3)
+
+    def _get_dupont_inputs(self) -> dict[str, float]:
+        """Latest common fiscal year's PAT, sales, total assets and net worth (₹ Cr) for DuPont."""
+        sales = self._row_by_year("profit-loss", ("sales", "revenue"))
+        pat = self._row_by_year("profit-loss", ("net profit",))
+        assets = self._row_by_year("balance-sheet", ("total assets",))
+        capital = self._row_by_year("balance-sheet", ("equity capital", "share capital"))
+        reserves = self._row_by_year("balance-sheet", ("reserves",))
+        common = [h for h in assets if h in sales and h in pat and h in capital and h in reserves]
+        if not common:
+            return {}
+        y = common[-1]
+        return {"Net_Income": pat[y], "Total_Revenue": sales[y], "Total_Assets": assets[y],
+                "Total_Equity": capital[y] + reserves[y]}
 
     # ── Quarterly results: YoY growth for earnings acceleration ─────────────
 
@@ -675,6 +716,11 @@ class ScreenerParser:
             "Debt_Equity":       self._get_debt_equity(),
             # Public pages usually carry no pledge row; None means unknown, not 0%.
             "pledge_percent":    pledge,
+
+            # ── Profit CAGR (Screener's "Compounded Profit Growth") and DuPont inputs
+            "PAT_CAGR_5Y":       pnl.get("EPS_Growth%"),
+            "PAT_CAGR_3Y":       pnl.get("EPS_Growth_3Y%"),
+            **self._get_dupont_inputs(),
 
             # ── Quarterly YoY growth (earnings acceleration)
             **self._get_quarterly_growth(),

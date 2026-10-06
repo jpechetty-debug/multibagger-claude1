@@ -9,6 +9,7 @@ than live API calls. yfinance ticker objects are accepted for backward
 compatibility but a deprecation warning is logged.
 """
 
+import math
 import pandas as pd
 
 from core.observability.logger import get_logger
@@ -413,9 +414,12 @@ def calculate_median_pat_growth(ticker_or_data, years=5):
     """
     if isinstance(ticker_or_data, dict):
         # Use pre-computed growth fields
-        pat_5y = _safe_float(ticker_or_data.get("PAT_CAGR_5Y"), 0)
-        pat_3y = _safe_float(ticker_or_data.get("PAT_CAGR_3Y"), 0)
-        return pat_5y if pat_5y != 0 else pat_3y
+        # None when unknown: 0 would read as "no profit growth".
+        for key in ("PAT_CAGR_5Y", "PAT_CAGR_3Y"):
+            value = ticker_or_data.get(key)
+            if value is not None and math.isfinite(_safe_float(value, math.nan)):
+                return float(value)
+        return None
 
     if _has_ticker_api(ticker_or_data):
         _log.warning("DEPRECATION: calculate_median_pat_growth called with yfinance Ticker")

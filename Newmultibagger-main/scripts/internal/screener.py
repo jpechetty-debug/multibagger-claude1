@@ -1048,6 +1048,9 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             cagr_metrics["EPS_CAGR_5Y"] = raw["EPS_Growth%"]
         if not cagr_metrics.get("EPS_CAGR_3Y") and raw.get("EPS_Growth_3Y%") is not None:
             cagr_metrics["EPS_CAGR_3Y"] = raw["EPS_Growth_3Y%"]
+        for pat_key in ("PAT_CAGR_5Y", "PAT_CAGR_3Y"):
+            if not cagr_metrics.get(pat_key) and raw.get(pat_key) is not None:
+                cagr_metrics[pat_key] = raw[pat_key]
 
         # 2. Sales Growth & ROE (5-Year) & Earnings Acceleration
         financials = ticker.financials
