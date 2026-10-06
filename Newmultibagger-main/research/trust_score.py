@@ -24,6 +24,14 @@ def load_validation_file(filename: str) -> dict:
     except Exception:
         return {}
 
+def trust_grade(score: float) -> str:
+    """Letter grade shown on the Research tab; A matches the >80 pass bar."""
+    for cutoff, grade in ((80, "A"), (65, "B"), (50, "C"), (35, "D")):
+        if score > cutoff:
+            return grade
+    return "F"
+
+
 def compute_trust_score() -> dict:
     logger.info("Computing Composite Trust Score")
 
@@ -99,6 +107,7 @@ def compute_trust_score() -> dict:
     trust_report = {
         "trust_score": float(total_score),
         "passed": bool(total_score > 80.0),
+        "grade": trust_grade(total_score),
         "components": score_components,
         "run_status": {
             "holdout": bool(holdout),

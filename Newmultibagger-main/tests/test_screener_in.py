@@ -33,17 +33,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-# ── Minimal stub so the module imports without curl_cffi / bs4 in CI ─────────
-
-import types as _types  # noqa: E402
-
-_curl_stub = _types.ModuleType("curl_cffi")
-_curl_requests_stub = _types.ModuleType("curl_cffi.requests")
-_curl_requests_stub.Response = type("Response", (), {})  # type: ignore
-_curl_requests_stub.RequestException = Exception  # type: ignore
-_curl_stub.requests = _curl_requests_stub  # type: ignore[attr-defined]
-sys.modules.setdefault("curl_cffi", _curl_stub)
-sys.modules.setdefault("curl_cffi.requests", _curl_requests_stub)
+# curl_cffi is a declared dependency; a stub here leaked into later test modules.
 
 
 from modules.adapters.screener_in import (  # noqa: E402
