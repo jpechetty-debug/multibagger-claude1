@@ -394,9 +394,9 @@ def compute_features_batch(df: pd.DataFrame) -> pd.DataFrame:
         sym = row.get("symbol", f"UNK_{idx}")
         data = row.to_dict()
 
-        # Inject batch-computed values
-        data["sector_rs_rank"] = sector_ranks.get(sym, np.nan)
-        data["pe_vs_sector_median"] = pe_sector.get(sym, np.nan)
+        # Inject batch-computed values (keyed by row: a symbol has one row per date)
+        data["sector_rs_rank"] = sector_ranks.get(idx, np.nan)
+        data["pe_vs_sector_median"] = pe_sector.get(idx, np.nan)
 
         features = compute_all_features(sym, data)
         rows.append(features)
@@ -406,42 +406,42 @@ def compute_features_batch(df: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
-def _compute_sector_rs_ranks(df: pd.DataFrame) -> dict[str, float]:
-    """Compute percentile rank of 3M return within each sector."""
-    ranks: dict[str, float] = {}
+def _peer_groups(df: pd.DataFrame):
+    """Sector peer groups, per as_of_date when present: ranking across dates leaks later rows' returns."""
+    keys = ["as_of_date", "sector"] if "as_of_date" in df.columns else ["sector"]
+    return df.groupby(keys)
+
+
+def _compute_sector_rs_ranks(df: pd.DataFrame) -> dict:
+    """Percentile rank of 3M return within each sector (and date), keyed by row index."""
+    ranks: dict = {}
     if "sector" not in df.columns or "ret_3m" not in df.columns:
         return ranks
 
-    for _sector, group in df.groupby("sector"):
+    for _key, group in _peer_groups(df):
         if len(group) < 2:
-            for sym in group["symbol"]:
-                ranks[sym] = 0.5
+            ranks.update(dict.fromkeys(group.index, 0.5))
             continue
         pct = group["ret_3m"].rank(pct=True, na_option="bottom")
-        for sym, rank_val in zip(group["symbol"], pct, strict=False):
-            ranks[sym] = float(rank_val)
+        ranks.update({i: float(v) for i, v in pct.items()})
 
     return ranks
 
 
-def _compute_pe_vs_sector(df: pd.DataFrame) -> dict[str, float]:
-    """Compute PE ratio relative to sector median."""
-    result: dict[str, float] = {}
+def _compute_pe_vs_sector(df: pd.DataFrame) -> dict:
+    """PE ratio relative to its sector (and date) median, keyed by row index."""
+    result: dict = {}
     if "sector" not in df.columns or "pe_ratio" not in df.columns:
         return result
 
-    for _sector, group in df.groupby("sector"):
+    for _key, group in _peer_groups(df):
         pe_vals = pd.to_numeric(group["pe_ratio"], errors="coerce")
         median_pe = pe_vals.median()
         if median_pe is None or median_pe == 0 or not math.isfinite(median_pe):
-            for sym in group["symbol"]:
-                result[sym] = np.nan
+            result.update(dict.fromkeys(group.index, np.nan))
             continue
-        for sym, pe in zip(group["symbol"], pe_vals, strict=False):
-            if math.isfinite(pe) and math.isfinite(median_pe):
-                result[sym] = (pe / median_pe) - 1.0
-            else:
-                result[sym] = np.nan
+        for i, pe in pe_vals.items():
+            result[i] = (pe / median_pe) - 1.0 if math.isfinite(pe) else np.nan
 
     return result
 

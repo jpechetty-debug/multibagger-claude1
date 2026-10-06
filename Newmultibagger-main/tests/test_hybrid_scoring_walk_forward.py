@@ -289,6 +289,7 @@ class TestPredictAndExplain:
         model_path = str(tmp_path / "model.pkl")
         joblib.dump(model, model_path)
         monkeypatch.setattr(hybrid_scoring, "MODEL_PATH", model_path)
+        monkeypatch.setattr(hybrid_scoring, "CLASSIFIER_PATH", str(tmp_path / "no_classifier.pkl"))
 
         result = hybrid_scoring.predict_and_explain({"score": 50.0})
         # ml_prediction should be the raw prediction × 100 (in %)

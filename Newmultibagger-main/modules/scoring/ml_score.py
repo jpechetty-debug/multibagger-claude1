@@ -132,6 +132,9 @@ _OPTUNA_SEARCH_SPACE: dict[str, dict[str, Any]] = {
 }
 
 SHAP_DOMINANCE_THRESHOLD = 0.90
+# Forward-return label horizon. PIT snapshots start 2026-06-09, so 6M labels only
+# exist from Dec 2026; move this to 6 once enough of them have accumulated.
+TARGET_HORIZON_MONTHS = 3
 
 _SANITIZE_IS_STATELESS = True
 
@@ -381,35 +384,20 @@ def optuna_optimize(
 
 def _build_training_frame(df: pd.DataFrame) -> pd.DataFrame:
     from modules.target_engineering import build_training_targets
-    train_df = build_training_targets(df, horizon_months=6)
+    train_df = build_training_targets(df, horizon_months=TARGET_HORIZON_MONTHS)
     if not train_df.empty:
-        # Features are already computed in FeatureStore, just sanitize
+        # Features come precomputed from load_pit_with_features; just sanitize
         train_df[FEATURES] = _sanitize_features(train_df[FEATURES])
     return train_df
 
 def train_hybrid_model() -> bool:
     _log.info("Initiating Hybrid Scoring Meta-Model Training (XGBoost)...")
 
-    # 1. Extract PIT Data using FeatureStore
-    try:
-        # Use all available dates; FeatureStore will exclude the holdout period automatically
-        start_date = date(2000, 1, 1)
-        end_date = date.today()
-        store = FeatureStore()
-
-        # We need to list all symbols to get the dataset.
-        # This will get the list of symbols from the lake.
-        symbols = store.lake.query_all("daily").select("symbol").unique().collect()["symbol"].to_list()
-
-        raw_df = store.generate_training_dataset(symbols, start_date, end_date).to_pandas()
-
-        # We need price to calculate returns, score to bootstrap
-        if raw_df.empty:
-            _log.warning("FeatureStore returned empty dataset")
-            return False
-
-    except Exception as exc:
-        _log.warning("Could not load PIT data from FeatureStore", error=str(exc))
+    # 1. PIT feature snapshots (fundamentals_pit) with extended features
+    from modules.target_engineering import load_pit_with_features
+    raw_df = load_pit_with_features()
+    if raw_df.empty:
+        _log.warning("No PIT feature rows available")
         return False
 
     if len(raw_df) < 20:

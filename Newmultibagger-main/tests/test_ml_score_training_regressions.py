@@ -67,7 +67,7 @@ def test_train_hybrid_model_saves_walk_forward_report(monkeypatch, tmp_path):
     frame = _training_frame()
     reports: list[dict] = []
 
-    monkeypatch.setattr(ml_score, "FeatureStore", lambda: _FeatureStore(frame))
+    monkeypatch.setattr("modules.target_engineering.load_pit_with_features", lambda: frame)
     monkeypatch.setattr(ml_score, "_build_training_frame", lambda _raw: frame)
     monkeypatch.setattr("modules.holdout.split_holdout", lambda data: (data, pd.DataFrame()))
     monkeypatch.setattr(

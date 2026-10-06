@@ -5,7 +5,7 @@ Compute forward returns and binary multibagger classification targets
 for the ML training pipeline.
 
 Replaces the yfinance-based forward price fetcher with DB-only lookups.
-Uses pit_store.db and survivorship_adjusted_loader for bias-free targets.
+Prices come from the full-universe price_history table (pit_store.db).
 """
 
 from __future__ import annotations
@@ -17,122 +17,93 @@ from core.observability.logger import get_logger
 
 _log = get_logger("modules.target_engineering")
 
-# Multibagger thresholds
-MULTIBAGGER_6M_THRESHOLD = 0.30   # 30% return in 6 months
-MULTIBAGGER_12M_THRESHOLD = 0.50  # 50% return in 12 months
+# Multibagger thresholds per forward horizon (months). 3M ~ the 6M pace compounded.
+MULTIBAGGER_THRESHOLDS = {3: 0.15, 6: 0.30, 12: 0.50}
+MULTIBAGGER_6M_THRESHOLD = MULTIBAGGER_THRESHOLDS[6]
+MULTIBAGGER_12M_THRESHOLD = MULTIBAGGER_THRESHOLDS[12]
+
+ENTRY_TOLERANCE_DAYS = 7   # last close on/before the snapshot date
+EXIT_TOLERANCE_DAYS = 10   # first close on/after the target date
+
+
+def _clean_symbol(sym) -> str:
+    return str(sym).replace(".NS", "").replace(".BO", "")
+
+
+def _asof_prices(df: pd.DataFrame, when: pd.Series, direction: str, tolerance_days: int) -> pd.Series:
+    """Close from price_history nearest ``when`` per row (backward = on/before, forward = on/after)."""
+    out = pd.Series(np.nan, index=df.index, dtype=float)
+    try:
+        from modules.data_layer.price_history import load_closes
+        prices = load_closes()
+    except Exception as exc:
+        _log.error("Failed to load price_history", error=str(exc))
+        return out
+    if prices.empty or df.empty:
+        return out
+
+    prices["key"] = prices["symbol"].map(_clean_symbol)
+    left = pd.DataFrame({"key": df["symbol"].map(_clean_symbol), "when": pd.to_datetime(when, errors="coerce"), "row": df.index})
+    left = left.dropna(subset=["when"]).sort_values("when")
+    merged = pd.merge_asof(
+        left,
+        prices[["key", "date", "close"]].sort_values("date"),
+        left_on="when", right_on="date", by="key",
+        direction=direction, tolerance=pd.Timedelta(days=tolerance_days),
+    )
+    out.loc[merged["row"].to_numpy()] = merged["close"].to_numpy()
+    return out
 
 
 def fetch_forward_prices_db(
     df: pd.DataFrame,
     months: int = 6,
 ) -> pd.Series:
-    """Fetch forward prices from pit_store.db for each (symbol, as_of_date) row.
+    """Adjusted close ``months`` after each (symbol, as_of_date) row, from price_history.
 
-    Returns a Series aligned with df.index containing forward prices.
-    NaN where data is unavailable.
+    NaN where the horizon has not elapsed yet or the symbol has no prices.
     """
     if df.empty:
         return pd.Series(dtype=float)
+    target = pd.to_datetime(df["as_of_date"], errors="coerce") + pd.DateOffset(months=months)
+    return _asof_prices(df, target, "forward", EXIT_TOLERANCE_DAYS)
 
-    try:
-        from modules.data_layer.db_utils import get_db_connection
-    except ImportError:
-        _log.error("Cannot import db_utils — returning empty series")
-        return pd.Series(np.nan, index=df.index)
 
-    out = pd.Series(np.nan, index=df.index, dtype=float)
-    df = df.copy()
-    df["as_of_date"] = pd.to_datetime(df["as_of_date"], errors="coerce")
-    df["target_date"] = df["as_of_date"] + pd.DateOffset(months=months)
-
-    try:
-        with get_db_connection("pit_store.db") as conn:
-            # Bulk-load all price data once
-            price_df = pd.read_sql(
-                """
-                SELECT symbol, as_of_date, value AS price
-                FROM pit_data
-                WHERE metric_name = 'price' AND value IS NOT NULL
-                ORDER BY symbol, as_of_date
-                """,
-                conn,
-            )
-    except Exception as exc:
-        _log.error("Failed to load price data from pit_store.db", error=str(exc))
-        return out
-
-    if price_df.empty:
-        return out
-
-    price_df["as_of_date"] = pd.to_datetime(price_df["as_of_date"], errors="coerce")
-    price_df["price"] = pd.to_numeric(price_df["price"], errors="coerce")
-    price_df = price_df.dropna()
-
-    # Index by symbol for fast lookup
-    price_by_sym: dict[str, pd.DataFrame] = {}
-    for sym, grp in price_df.groupby("symbol"):
-        price_by_sym[str(sym)] = grp.set_index("as_of_date").sort_index()
-
-    for idx, row in df.iterrows():
-        sym = str(row.get("symbol", ""))
-        clean = sym.replace(".NS", "").replace(".BO", "")
-        target_date = row.get("target_date")
-
-        if pd.isna(target_date):
-            continue
-
-        sym_prices = price_by_sym.get(clean)
-        if sym_prices is None or sym_prices.empty:
-            continue
-
-        # Find closest price on or after target_date
-        future = sym_prices[sym_prices.index >= target_date]
-        if future.empty:
-            continue
-
-        closest_date = future.index[0]
-        if (closest_date - target_date).days <= 45:  # Allow 45-day tolerance
-            out.at[idx] = float(future.iloc[0]["price"])
-
-    return out
+def fetch_entry_prices_db(df: pd.DataFrame) -> pd.Series:
+    """Adjusted close on/before each row's as_of_date, from price_history."""
+    if df.empty:
+        return pd.Series(dtype=float)
+    return _asof_prices(df, df["as_of_date"], "backward", ENTRY_TOLERANCE_DAYS)
 
 
 def build_training_targets(
     df: pd.DataFrame,
-    horizon_months: int = 6,
+    horizon_months: int = 3,
 ) -> pd.DataFrame:
     """Attach forward returns and binary multibagger label to PIT rows.
 
-    Args:
-        df: DataFrame with 'symbol', 'as_of_date', 'pit_price' columns.
-        horizon_months: Forward return horizon (default 6 months).
+    Entry and exit prices both come from the adjusted price_history, so splits and
+    bonuses do not show up as returns. The snapshot's own price is not used.
 
-    Returns:
-        DataFrame with added columns:
-        - forward_price: price at T + horizon_months
-        - forward_return: (forward_price - pit_price) / pit_price
-        - is_multibagger: 1 if forward_return > threshold, 0 otherwise
+    Returns rows with:
+        - entry_price, forward_price
+        - forward_return: (forward_price - entry_price) / entry_price
+        - is_multibagger: 1 if forward_return > the horizon's threshold
     """
     out = df.copy()
-
-    # Fetch forward prices
+    out["entry_price"] = fetch_entry_prices_db(out)
     out["forward_price"] = fetch_forward_prices_db(out, months=horizon_months)
-    out = out.dropna(subset=["pit_price", "forward_price"])
-    out = out[out["pit_price"] > 0]
+    out = out.dropna(subset=["entry_price", "forward_price"])
+    out = out[out["entry_price"] > 0]
 
     if out.empty:
-        _log.info("No valid forward-return pairs found")
+        _log.info("No valid forward-return pairs found", horizon=f"{horizon_months}M")
         return out
 
-    out["forward_return"] = (out["forward_price"] - out["pit_price"]) / out["pit_price"]
-    out.replace([np.inf, -np.inf], np.nan, inplace=True)
-    out = out.dropna(subset=["forward_return"])
+    out["forward_return"] = (out["forward_price"] - out["entry_price"]) / out["entry_price"]
+    out = out.replace([np.inf, -np.inf], np.nan).dropna(subset=["forward_return"])
 
-    # Binary target
-    threshold = (
-        MULTIBAGGER_6M_THRESHOLD if horizon_months <= 6
-        else MULTIBAGGER_12M_THRESHOLD
-    )
+    threshold = MULTIBAGGER_THRESHOLDS.get(horizon_months, MULTIBAGGER_THRESHOLDS[12])
     out["is_multibagger"] = (out["forward_return"] > threshold).astype(int)
 
     _log.info(

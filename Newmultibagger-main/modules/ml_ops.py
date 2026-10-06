@@ -168,6 +168,11 @@ def run_automated_training() -> bool:
     logger.info("Starting automated ML retraining…")
 
     log_bootstrap_upgrade_availability()
+    try:  # forward-return labels need closes up to today
+        from modules.data_layer.price_history import update_price_history
+        update_price_history()
+    except Exception as exc:
+        logger.warning(f"Price history update failed; training on stored prices: {exc}")
     success = train_hybrid_model()
 
     if not success:
