@@ -18,21 +18,11 @@ from typing import Any  # noqa: E402
 
 import modules.adapters.yf_patch  # noqa: E402, F401
 
-try:
-    from modules.fundamentals import calculate_piotroski_f_score
-    from modules.scoring import calculate_institutional_score
-except ImportError:
+from scripts.internal.screener import get_benchmark_return, relative_strength
 
-    def calculate_institutional_score(
-        data: dict[str, Any],
-        sector_boost: int | float = 0,
-        market_regime: str = "Neutral",
-        sector_medians: dict[str, dict[str, float]] | None = None,
-    ) -> dict[str, Any]:
-        return {"total_score": 50}
-
-    def calculate_piotroski_f_score(ticker: Any) -> Any:
-        return 5
+# No fallback stubs: a silent score of 50 / F-score of 5 would be stored as real data.
+from modules.fundamentals import calculate_piotroski_f_score
+from modules.scoring import calculate_institutional_score
 
 
 DEFAULT_DB_PATH = PROJECT_ROOT / "stocks.db"
@@ -91,47 +81,32 @@ def enrich(
             price = info.get("currentPrice") or 0
             name = info.get("shortName") or info.get("longName") or symbol
             sector = info.get("sector") or "Unknown"
-            roe = (info.get("returnOnEquity") or 0) * 100
-            pe = info.get("trailingPE") or info.get("forwardPE") or 0
+            # Missing values stay None: 0 would score as debt-free, zero growth, etc.
+            def scaled(key, factor, info=info):
+                value = info.get(key)
+                return value * factor if isinstance(value, int | float) else None
+
+            roe = scaled("returnOnEquity", 100)
+            pe = info.get("trailingPE") or info.get("forwardPE")
             # US-listed tickers report marketCap in USD; convert via FX before Crore division.
-            market_cap_cr = to_inr_cr(info.get("marketCap"), info.get("currency")) or 0
-            debt_equity = (info.get("debtToEquity") or 0) / 100
-            sales_growth = (info.get("revenueGrowth") or 0) * 100
-            cfo = info.get("operatingCashflow") or 0
-            pat = info.get("netIncomeToCommon") or 1
-            cfo_pat = round(cfo / pat, 2) if pat > 0 else 0
+            market_cap_cr = to_inr_cr(info.get("marketCap"), info.get("currency"))
+            debt_equity = scaled("debtToEquity", 0.01)
+            sales_growth = scaled("revenueGrowth", 100)
+            cfo, pat = info.get("operatingCashflow"), info.get("netIncomeToCommon")
+            cfo_pat = round(cfo / pat, 2) if cfo is not None and pat and pat > 0 else None
 
             try:
                 f_score = calculate_piotroski_f_score(ticker)
             except Exception:
-                f_score = 5
+                f_score = None
 
             hist = ticker.history(period="1y")
-            rs_rating = 0
+            rs_rating = None
             if not hist.empty and len(hist) > 126:
                 price_6m_ago = hist["Close"].iloc[-126]
                 if price_6m_ago > 0:
                     stock_6m_ret = ((price - price_6m_ago) / price_6m_ago) * 100
-                    # RS_Rating must be a ratio vs the benchmark, not an absolute return.
-                    # Using absolute % (the previous calculation) writes values of 30, -10,
-                    # etc. into the DB, which saturate the normalization range (0.0–2.0)
-                    # immediately and make every stock with a positive 6M return look equal.
-                    try:
-                        nifty = yf.Ticker("^NSEI")
-                        nifty_hist = nifty.history(period="1y")
-                        if not nifty_hist.empty and len(nifty_hist) > 126:
-                            nifty_6m_ago = nifty_hist["Close"].iloc[-126]
-                            nifty_6m_ret = ((nifty_hist["Close"].iloc[-1] - nifty_6m_ago) / nifty_6m_ago) * 100
-                            if nifty_6m_ret != 0:
-                                rs_rating = round(stock_6m_ret / nifty_6m_ret, 2)
-                            else:
-                                rs_rating = 1.0 if stock_6m_ret > 0 else 0.0
-                        else:
-                            # Fallback: assume flat benchmark (10% annualised → ~5% 6M)
-                            nifty_6m_ret = 5.0
-                            rs_rating = round(stock_6m_ret / nifty_6m_ret, 2)
-                    except Exception:
-                        rs_rating = 1.0 if stock_6m_ret > 0 else 0.0
+                    rs_rating = relative_strength(stock_6m_ret, get_benchmark_return())
 
             high_52w = info.get("fiftyTwoWeekHigh", price)
             low_52w = info.get("fiftyTwoWeekLow", price)
@@ -154,9 +129,10 @@ def enrich(
                     score_data,
                     market_regime=market_regime,
                 )
-                final_score = score_res.get("total_score", 50)
-            except Exception:
-                final_score = 50
+                final_score = score_res["total_score"]
+            except Exception as exc:  # never store a placeholder score
+                print(f"  Skipped {symbol} (scoring failed: {exc})")
+                continue
 
             now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             cursor.execute(

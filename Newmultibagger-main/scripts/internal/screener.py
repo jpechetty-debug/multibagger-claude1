@@ -1240,7 +1240,7 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             )  # We use High target for elite conviction
             analyst_count = seed.get("analyst_count", analyst_count)
 
-        analyst_upside = 0
+        analyst_upside = None  # no analyst target: unknown, not 0% upside
         if target_mean and target_mean > 0 and current_price > 0:
             analyst_upside = round(((target_mean - current_price) / current_price) * 100, 2)
 
@@ -1300,14 +1300,15 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             "200_DMA": dma_200,
             "50_DMA": dma_50,
             "RSI": round(rsi_current, 2),
-            "Sales_Growth_TTM%": round(sales_growth * 100, 2),
+            # roe / sales_growth start at 0 and stay 0 only when every source was missing.
+            "Sales_Growth_TTM%": round(sales_growth * 100, 2) if sales_growth else None,
             "Sales_Growth_5Y%": revenue_cagr_5y,
-            "ROE%": round(roe * 100, 2),
+            "ROE%": round(roe * 100, 2) if roe else None,
             "Avg_ROE_5Y%": avg_roe_5y,
             "Profit_Margin%": round(profit_margin * 100, 2),
             "Debt_Equity": round(debt_equity, 2) if _is_finite_number(debt_equity) else None,
             "PEG_Ratio": peg_ratio if _is_finite_number(peg_ratio) and peg_ratio != 0 else None,
-            "PE_Ratio": _finite_or_default(trailing_pe),
+            "PE_Ratio": trailing_pe if _is_present_metric(trailing_pe) else None,
             "Down_From_52W_High%": down_from_high_pct,
             "Smart_Money%": round(total_smart_money, 2),  # already sum of percentages, no ×100
             "Free_Cashflow": free_cashflow,
@@ -1884,8 +1885,8 @@ def main(argv=None):
                     ):  # Engine uses %, Framework uses decimal
                         passes_filters = False
                 if "roe_min" in active_filters:
-                    val = data.get("ROE%", 0)
-                    if val < active_filters["roe_min"] * 100:  # type: ignore
+                    val = data.get("ROE%")
+                    if val is None or val < active_filters["roe_min"] * 100:  # type: ignore
                         passes_filters = False
                 if "roce_min" in active_filters:
                     val = data.get("ROCE%")
