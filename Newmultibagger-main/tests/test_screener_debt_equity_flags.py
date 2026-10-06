@@ -162,3 +162,16 @@ def test_compute_smart_money_pct_confirmed_zero_still_sums_correctly():
     # A confirmed 0.0 (not None) must still contribute, distinguishing this
     # from the "unknown" case above.
     assert screener._compute_smart_money_pct(0.0, 15.0) == 15.0
+
+
+# ── relative_strength ────────────────────────────────────────────────────
+
+
+def test_relative_strength_does_not_invert_when_benchmark_falls():
+    # Nifty -5%: a +200% stock must rank far above a -80% stock.
+    assert screener.relative_strength(200, -5) > 3
+    assert screener.relative_strength(-80, -5) < 0.25
+
+
+def test_relative_strength_neutral_is_one():
+    assert screener.relative_strength(10, 10) == 1.0

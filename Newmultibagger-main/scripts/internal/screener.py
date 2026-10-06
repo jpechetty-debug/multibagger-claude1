@@ -702,6 +702,18 @@ def validate_score_distribution(results):
 BENCHMARK_6M_RETURN = None
 
 
+def relative_strength(stock_ret_pct, bench_ret_pct):
+    """Price-relative RS: growth of the stock over growth of the benchmark (1.0 = in line).
+
+    A plain ratio of returns flips sign when the benchmark is down, so a stock
+    up 200% scored worse than one down 80%.
+    """
+    bench_growth = 1 + (bench_ret_pct or 0) / 100
+    if bench_growth <= 0:
+        return None
+    return round((1 + stock_ret_pct / 100) / bench_growth, 2)
+
+
 def get_benchmark_return():
     """Fetches Nifty 50 6M Return once per run."""
     global BENCHMARK_6M_RETURN
@@ -824,18 +836,15 @@ def _calculate_technical_snapshot(ticker_symbol, hist, data_source):
             "Price_Age_Days": price_age_days,
         }}
 
-    rs_rating = 0
+    rs_rating = None  # unknown, not "worst"
     try:
         if len(hist) > 126:
             price_6m_ago = hist["Close"].iloc[-126]
-            stock_6m_ret = ((current_price - price_6m_ago) / price_6m_ago) * 100
-            nifty_6m_ret = get_benchmark_return()
-            if nifty_6m_ret != 0 and price_6m_ago != 0:
-                rs_rating = round(stock_6m_ret / nifty_6m_ret, 2)
-            else:
-                rs_rating = 1.0 if stock_6m_ret > 0 else 0.0
+            if price_6m_ago > 0:
+                stock_6m_ret = ((current_price - price_6m_ago) / price_6m_ago) * 100
+                rs_rating = relative_strength(stock_6m_ret, get_benchmark_return())
     except Exception:
-        rs_rating = 0
+        rs_rating = None
 
     dma_200 = hist["Close"].tail(200).mean() if len(hist) >= 200 else hist["Close"].mean()
     dma_50 = hist["Close"].tail(50).mean() if len(hist) >= 50 else hist["Close"].mean()
@@ -1291,7 +1300,7 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             "Avg_ROE_5Y%": avg_roe_5y,
             "Profit_Margin%": round(profit_margin * 100, 2),
             "Debt_Equity": round(debt_equity, 2) if _is_finite_number(debt_equity) else None,
-            "PEG_Ratio": _finite_or_default(peg_ratio),
+            "PEG_Ratio": peg_ratio if _is_finite_number(peg_ratio) and peg_ratio != 0 else None,
             "PE_Ratio": _finite_or_default(trailing_pe),
             "Down_From_52W_High%": down_from_high_pct,
             "Smart_Money%": round(total_smart_money, 2),  # already sum of percentages, no ×100
