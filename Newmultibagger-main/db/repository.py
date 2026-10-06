@@ -210,6 +210,8 @@ def _ensure_runtime_schema():
             _ensure_column(conn, "multibaggers", "low_52w", "REAL")
             # Multibagger Hunt columns
             _ensure_column(conn, "multibaggers", "pledge_pct", "REAL")
+            _ensure_column(conn, "multibaggers", "data_source", "TEXT")
+            _ensure_column(conn, "multibaggers", "data_freshness", "TEXT")
             _ensure_column(conn, "multibaggers", "piotroski_score", "INTEGER")
             # Momentum Features
             _ensure_column(conn, "multibaggers", "ret_1m", "REAL")
@@ -950,6 +952,8 @@ def save_multibaggers(df, *, replace_existing: bool = False):
         "Dividend_Payout",
         "Cap_Category",
         "Data_Quality_Flags",
+        "Data_Source",
+        "Data_Freshness",
         "Net_Margin%",
         "Asset_Turnover",
         "Financial_Leverage",

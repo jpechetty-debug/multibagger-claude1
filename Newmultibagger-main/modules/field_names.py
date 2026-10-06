@@ -69,6 +69,8 @@ FIELD_MAPPING: dict[str, str] = {
     "Low_52W": "low_52w",
     "Pledge_Pct": "pledge_pct",
     "Piotroski_Score": "piotroski_score",
+    "Data_Source": "data_source",
+    "Data_Freshness": "data_freshness",
     "SHAP_Top_Drivers": "shap_top_drivers",
     "OCF_Yield%": "ocf_yield",
     "Earnings_Velocity_QoQ%": "earnings_velocity_qoq",

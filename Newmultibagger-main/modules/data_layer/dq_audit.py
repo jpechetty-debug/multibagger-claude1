@@ -50,7 +50,11 @@ MAX_SATURATED_SHARE = 0.05
 MONOTONIC = [("rs_rating", "ret_6m", 0.9)]
 
 # (column, placeholder, max share): placeholder labels standing in for missing data.
-PLACEHOLDERS = [("sector", "Unknown", 0.02)]
+PLACEHOLDERS = [
+    ("sector", "Unknown", 0.02),
+    ("data_source", "fallback_failed", 0.02),  # every provider failed for this stock
+    ("data_source", "unknown", 0.02),
+]
 
 MIN_ROWS = 50
 MAX_AGE_DAYS = 7  # picks must come from a scan at most a week old

@@ -1288,6 +1288,7 @@ async def get_stock_data(ticker_symbol, dm=None, include_quarterly=True):
             "Symbol": ticker_symbol,
             "Price": current_price,
             "Data_Source": data_source,
+            "Data_Freshness": raw.get("data_freshness"),
             "History_Bars_1Y": history_bars,
             "Last_Price_Date": last_price_date_iso,
             "Price_Age_Days": price_age_days,

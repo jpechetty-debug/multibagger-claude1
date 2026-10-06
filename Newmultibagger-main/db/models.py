@@ -133,6 +133,10 @@ class Multibagger(Base):
 
     # V3.1 Data Quality
     data_quality_flags = Column(Text)
+    # Provenance: the provider that supplied this row's fundamentals, and whether
+    # they were live, cached, or a stale fallback.
+    data_source = Column(String)
+    data_freshness = Column(String)
 
     # Phase 1: New Alpha Data
     ocf_yield = Column(Float)
