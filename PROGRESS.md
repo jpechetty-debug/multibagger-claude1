@@ -15,6 +15,17 @@ Older history: see `PROGRESS_ARCHIVE.md` (read it only when you need past contex
 
 - 2026-10-06: SANDUMA = 100.0 investigated. Only 1/821 stocks was at 100 (3 ≥90, 20 ≥80, no pile-ups). `_apply_soft_ceiling` skipped caps ≥100, so bonuses (sector-relative +6, rotation boost, inflection +5) above 100 hit the hard clip. 100 now saturates like the other caps: ≤95 is unchanged, 100→98.16, 110→99.75. The stored SANDUMA row updates on the next scan. HAZARD: rescoring from stored rows (`backfill_cfo.py --rescore-only`) is NOT equivalent to the scan, because it omits sector_medians, sector_boost and the unstored Earnings_Inflection_Score. SANDUMA rescored to 79.7 vs 100 in the scan. FIXED: the rescore path was removed from `backfill_cfo.py`; refresh scores with `powershell -File scripts/run_scan.ps1`.
 
+- 2026-10-07 easy-first batch (each committed, suite green):
+  - `scripts/run_scan.ps1`: detached full scan with a timestamped log in runtime/.
+  - The 8 dead columns are now populated: target_2, piotroski_score (9-pt only), shap_top_drivers, ocf_yield, earnings_velocity_qoq/yoy, down_from_52w_high, and last_audited (stamped when the DQ audit passes). The Screener.in market cap was None for every stock ('₹7,61,979Cr.' trailing dot), fixed.
+  - Missing ROE / TTM sales growth / P/E / analyst upside are None, not 0. `enrich_rs_signals.py` lost its score=50 / F=5 stubs and its inverted RS.
+  - Research tab Grade (A>80…F). Removed the leaking curl_cffi test stub (fixes the test-order bug).
+  - The stored-row rescore was removed from `backfill_cfo.py` (not scan-equivalent).
+  - Sector rules: 'Electric' no longer maps cable makers to utilities, there is no company-name substring match (Reliance group), and Telecom maps to 'Communication Services'.
+  - Unbacktested picks keep None backtest metrics.
+  - `modules/data_layer/intel_cache.py`: same-day cache (failures included) for get_promoter_trend and get_estimate_data. Rescoring a stock went from 1.0s to 0.0s with an identical score. Disable with INTEL_CACHE_DISABLED=true (conftest does).
+  - The new OCF yield / QoQ fields fill once the 24h fundamentals cache from the 2026-10-06 scan expires.
+
 ## In progress
 
 ## Next
