@@ -66,6 +66,8 @@ WAIVERS: dict[tuple[str, str], tuple[str, str]] = {
     ("zero_fill", "backtest_win_rate"): ("fixed: unbacktested picks now None; stored zeros clear on next scan", "2026-10-20"),
     ("zero_fill", "backtest_max_dd"): ("fixed: unbacktested picks now None; stored zeros clear on next scan", "2026-10-20"),
     ("zero_fill", "backtest_sharpe"): ("fixed: unbacktested picks now None; stored zeros clear on next scan", "2026-10-20"),
+    ("dead", "data_source"): ("provenance column added 2026-10-07; filled by the next scan", "2026-10-13"),
+    ("dead", "data_freshness"): ("provenance column added 2026-10-07; filled by the next scan", "2026-10-13"),
     ("placeholder", "sector"): ("fixed in code; stored rows refresh on next scan", "2026-10-13"),
     ("dead", "pledge_pct"): ("no free source: Screener.in pages carry no pledge row", "2026-12-31"),
     **{("dead", c): ("computed by the scan but dropped on save; fix next", "2026-10-13") for c in (
