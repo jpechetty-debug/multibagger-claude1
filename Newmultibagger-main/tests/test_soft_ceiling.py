@@ -29,3 +29,12 @@ def test_strictly_increasing_above_cap():
 def test_continuous_at_knee():
     knee = 60.0 - SOFT_CEILING_BAND
     assert _apply_soft_ceiling(knee + 1e-6, 60.0) == pytest.approx(knee, abs=1e-5)
+
+
+def test_soft_ceiling_saturates_at_100_instead_of_tying():
+    from modules.scoring.ceiling import _apply_soft_ceiling
+
+    scores = [_apply_soft_ceiling(x, 100.0) for x in (90, 100, 105, 120)]
+    assert scores[0] == 90
+    assert all(a < b for a, b in zip(scores, scores[1:], strict=False))
+    assert scores[-1] < 100.0

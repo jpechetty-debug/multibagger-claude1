@@ -70,8 +70,9 @@ def _apply_soft_ceiling(score: float, ceiling: float, band: float = SOFT_CEILING
     continuous, strictly increasing in ``score`` and never exceeds ``ceiling``,
     so the cap still binds but stronger stocks keep ranking above weaker ones.
     """
-    if ceiling >= 100.0:
-        return score
+    # The 100 cap saturates too: bonuses can push a score past 100, and a hard
+    # clip there would tie every such stock at exactly 100.
+    ceiling = min(ceiling, 100.0)
     knee = ceiling - band
     if score <= knee:
         return score
