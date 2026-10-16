@@ -1,0 +1,30 @@
+{
+  "as_of": "2026-10-16",
+  "source_database": "D:\\Codex\\Multibagger-claude\\Newmultibagger-main\\runtime\\stocks.db",
+  "output_database": "D:\\Codex\\Multibagger-claude\\Newmultibagger-main\\reports\\local_enrichment\\2026-10-16.db",
+  "current_picks": 915,
+  "local_price_symbols": 3739,
+  "listing_symbols": 2831,
+  "lake_symbols": 1997,
+  "lake_keys_already_in_pit": 24956,
+  "lake_keys_not_in_pit": 0,
+  "source_files_hashed": 2293,
+  "counts": {
+    "valid_price_rows": 902879,
+    "lake_rows": 24980,
+    "non_nse_lake_rows_excluded": 24,
+    "future_fundamental_date": 42,
+    "picks_with_local_price": 915,
+    "picks_with_listing_metadata": 865,
+    "picks_with_lake_snapshot": 895,
+    "picks_requiring_review": 93,
+    "stale_local_price": 2,
+    "unverified_listing_date": 50
+  },
+  "notes": [
+    "Source databases were opened read-only. Original prices and scores are retained.",
+    "Lake data is historical snapshot evidence, not independently verified financial filings.",
+    "Price differences compare different observation times; they are review signals, not proven errors.",
+    "Price age uses calendar days. This output does not recalculate scores or certify investment eligibility."
+  ]
+}

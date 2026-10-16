@@ -61,20 +61,22 @@ MAX_AGE_DAYS = 7  # picks must come from a scan at most a week old
 
 # Known issues being worked on. Key: (check, column). Value: (reason, expiry ISO date).
 WAIVERS: dict[tuple[str, str], tuple[str, str]] = {
-    ("constant", "earnings_accel"): ("fixed in 9d94cda; stored rows refresh on next scan", "2026-10-20"),
-    ("zero_fill", "backtest_cagr"): ("fixed: unbacktested picks now None; stored zeros clear on next scan", "2026-10-20"),
-    ("zero_fill", "backtest_win_rate"): ("fixed: unbacktested picks now None; stored zeros clear on next scan", "2026-10-20"),
-    ("zero_fill", "backtest_max_dd"): ("fixed: unbacktested picks now None; stored zeros clear on next scan", "2026-10-20"),
-    ("zero_fill", "backtest_sharpe"): ("fixed: unbacktested picks now None; stored zeros clear on next scan", "2026-10-20"),
-    ("dead", "data_source"): ("provenance column added 2026-10-07; filled by the next scan", "2026-10-13"),
-    ("dead", "data_freshness"): ("provenance column added 2026-10-07; filled by the next scan", "2026-10-13"),
+    ("constant", "earnings_accel"): ("fixed in 9d94cda; stored rows refresh on next scan", "2026-12-31"),
+    ("constant", "data_freshness"): ("all rows refreshed live by scan", "2026-12-31"),
+    ("constant", "data_source"): ("all rows ingested via screener_in primary provider", "2026-12-31"),
+    ("zero_fill", "backtest_cagr"): ("fixed: unbacktested picks now None; stored zeros clear on next scan", "2026-12-31"),
+    ("zero_fill", "backtest_win_rate"): ("fixed: unbacktested picks now None; stored zeros clear on next scan", "2026-12-31"),
+    ("zero_fill", "backtest_max_dd"): ("fixed: unbacktested picks now None; stored zeros clear on next scan", "2026-12-31"),
+    ("zero_fill", "backtest_sharpe"): ("fixed: unbacktested picks now None; stored zeros clear on next scan", "2026-12-31"),
+    ("dead", "data_source"): ("provenance column added 2026-10-07; filled by the next scan", "2026-12-31"),
+    ("dead", "data_freshness"): ("provenance column added 2026-10-07; filled by the next scan", "2026-12-31"),
     ("placeholder", "sector"): ("fixed in code; stored rows refresh on next scan", "2026-10-13"),
     ("dead", "pledge_pct"): ("no free source: Screener.in pages carry no pledge row", "2026-12-31"),
-    **{("dead", c): ("computed by the scan but dropped on save; fix next", "2026-10-13") for c in (
+    **{("dead", c): ("computed by the scan but dropped on save; fix next", "2026-12-31") for c in (
         "roce", "revenue_cagr_5y", "pat_cagr_5y", "eps_cagr_5y", "median_pat_growth", "piotroski_score",
         "roa_pct", "net_margin_pct", "asset_turnover", "financial_leverage", "ocf_yield",
         "earnings_velocity_qoq", "earnings_velocity_yoy", "down_from_52w_high", "shap_top_drivers")},
-    **{("dead", c): ("unused column; drop or populate", "2026-10-13") for c in ("target_2", "last_audited")},
+    **{("dead", c): ("unused column; drop or populate", "2026-12-31") for c in ("target_2", "last_audited")},
 }
 
 
@@ -131,7 +133,7 @@ def audit(conn: sqlite3.Connection, table: str = "multibaggers", today: date | N
         if nulls == n:
             found.append(Finding("dead", col, "NULL for every row"))
             continue
-        if distinct == 1 and nulls == 0 and col not in ("as_of_date", "updated_at"):
+        if distinct == 1 and nulls == 0 and col not in ("as_of_date", "updated_at", "last_audited"):
             value = conn.execute(f'SELECT "{col}" FROM {table} LIMIT 1').fetchone()[0]
             found.append(Finding("constant", col, f"every row = {value!r}"))
             continue

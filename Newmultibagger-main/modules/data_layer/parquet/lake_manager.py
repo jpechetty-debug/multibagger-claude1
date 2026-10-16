@@ -11,9 +11,8 @@ from datetime import date
 import polars as pl
 from zoneinfo import ZoneInfo
 
-# Ensure data lake directory exists
-DATA_LAKE_PATH = Path("data/lake")
-DATA_LAKE_PATH.mkdir(parents=True, exist_ok=True)
+# Resolve from this project rather than the shell's working directory.
+DATA_LAKE_PATH = Path(__file__).resolve().parents[3] / "data" / "lake"
 
 class ParquetLakeManager:
     """Manages the Parquet data lake for analytical queries."""
@@ -25,12 +24,12 @@ class ParquetLakeManager:
         """Get the partition path for a specific symbol."""
         # e.g., data/lake/daily/RELIANCE.NS.parquet
         type_dir = self.lake_path / data_type
-        type_dir.mkdir(exist_ok=True)
         return type_dir / f"{symbol}.parquet"
 
     def write_symbol_history(self, symbol: str, df: pl.DataFrame, data_type: str = "daily") -> None:
         """Write a symbol's historical data to Parquet."""
         path = self._get_partition_path(symbol, data_type)
+        path.parent.mkdir(parents=True, exist_ok=True)
         df.write_parquet(path)
 
     def read_symbol_history(self, symbol: str, data_type: str = "daily") -> pl.DataFrame:

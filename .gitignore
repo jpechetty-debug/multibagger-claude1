@@ -46,7 +46,7 @@ node_modules/
 *.pkl
 *.joblib
 market_regime_hmm.pkl
-celerybeat-schedule
+celerybeat-schedule*
 celerybeat.pid
 
 # ── Docker ────────────────────────────────────────────────────────────────────

@@ -1,0 +1,55 @@
+{
+  "as_of": "2026-10-16",
+  "base_review": "D:\\Codex\\Multibagger-claude\\Newmultibagger-main\\reports\\local_enrichment\\2026-10-16.db",
+  "output": "D:\\Codex\\Multibagger-claude\\Newmultibagger-main\\reports\\local_enrichment\\2026-10-16-cross-project.db",
+  "current_picks": 915,
+  "sources": [
+    {
+      "path": "D:\\Codex\\Multibagger-claude\\Newmultibagger-main\\runtime\\bhavcopy_cache\\bhavcopy_20261015.csv",
+      "sha256": "28dddf28f66dbb63f32092ec66761f6c2169c9bf188d3bfbf067f0bac38377a8"
+    },
+    {
+      "path": "D:\\Codex\\Finding Multibagger NSE\\multibagger634-main\\lite.db",
+      "bytes": 7976222720,
+      "mtime_ns": 1792159522613211700
+    },
+    {
+      "path": "D:\\Codex\\Finding Multibagger NSE\\multibagger634-main\\runtime\\fyers-stocks-2017-before-20261016\\daily.sqlite3",
+      "bytes": 131567616,
+      "mtime_ns": 1792068633910303900
+    }
+  ],
+  "counts": {
+    "picks_with_external_identity": 913,
+    "isin_match": 907,
+    "fundamentals_symbols": 364,
+    "financial_history_symbols": 364,
+    "quarterly_results_symbols": 359,
+    "price_treatments_symbols": 115,
+    "normalized_price_rows": 372255,
+    "fundamentals_rows": 364,
+    "evidence_usable_for_review": 2260,
+    "missing_target_field_candidates": 170,
+    "missing_targets_with_usable_evidence": 168,
+    "financial_history_rows": 2222,
+    "quarterly_results_rows": 4515,
+    "price_treatments_rows": 4691,
+    "needs_evidence_review": 6,
+    "exact_symbol_only": 8,
+    "source_documents_retained": 2070,
+    "archive_price_rows": 625902,
+    "archive_price_symbols": 359
+  },
+  "price_range": [
+    "2017-01-02",
+    "2026-10-16"
+  ],
+  "notes": [
+    "Original application databases, downloaded files, prices and scores remain unchanged.",
+    "Field candidates require target fiscal-period, scope and formula compatibility review before adoption.",
+    "Current financial_history/quarterly_results projections are reference rows, not independently PIT-certified vintages.",
+    "Price sources keep separate adjustment bases; overlapping rows are not concatenated into one return series.",
+    "Archive chunk lineage is retained; original response bodies/hashes have not been revalidated in this import.",
+    "Financial field document metadata is retained; original source blobs remain in the source database."
+  ]
+}
